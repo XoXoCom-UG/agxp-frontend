@@ -1,3 +1,8 @@
+-- NOT NEEDED for the current setup. Decision (2026-08-27): AgxP reuses the OLD
+-- bi-agent-frontend Supabase project directly, so `channels`/`videos` are
+-- already there — nothing to transfer. Kept here for reference in case AgxP
+-- splits onto its own project later.
+--
 -- ONE-TIME data transfer: copies `channels` + `videos` from the OLD Supabase
 -- project (bi-agent-frontend) into THIS project, using postgres_fdw — no local
 -- pg_dump/psql needed.

@@ -1,3 +1,9 @@
+-- NEEDED ONLY if AgxP runs on a Supabase project SEPARATE from the old
+-- bi-agent-frontend database. Decision (2026-08-27): AgxP reuses the OLD
+-- project directly, so `channels`/`videos` already exist there — skip this
+-- file and migrate_videos_channels.sql entirely. Kept here for reference in
+-- case AgxP splits onto its own project later.
+--
 -- AgxP — biblioteca de continut video mostenita din baza veche (bi-agent-frontend).
 -- Videouri YouTube analizate (calitate, categorii, insight-uri de business) plus
 -- embeddings pentru retrieval semantic (folosit in fazele viitoare de RAG).
