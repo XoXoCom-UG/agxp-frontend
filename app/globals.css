@@ -1,0 +1,227 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --green: #16a34a;
+  --green-light: #f0fdf4;
+  --green-mid: #bbf7d0;
+  --green-dark: #15803d;
+}
+
+/* ── Dark mode base ─────────────────────────────────────────────────────────── */
+* { box-sizing: border-box; }
+
+html { background-color: #fafafa; }
+html.dark { background-color: #09090b; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  background-color: #fafafa;
+}
+html.dark body { background-color: #09090b; color: #fafafa; }
+
+/* ── Spinner ────────────────────────────────────────────────────────────────── */
+@keyframes thinking-spin { to { transform: rotate(360deg); } }
+.thinking-spinner {
+  width: 14px; height: 14px; flex-shrink: 0;
+  border: 2px solid #e5e7eb;
+  border-top-color: var(--green);
+  border-radius: 9999px;
+  animation: thinking-spin 0.7s linear infinite;
+  display: inline-block;
+}
+html.dark .thinking-spinner { border-color: #3f3f46; border-top-color: var(--green); }
+
+/* ── Fade up ────────────────────────────────────────────────────────────────── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-in { animation: fade-up 0.2s ease-out; }
+
+/* ── Concept animations ─────────────────────────────────────────────────────── */
+@keyframes concept-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.concept-fade-in { animation: concept-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.concept-fade-in-1 { animation-delay: 0ms; }
+.concept-fade-in-2 { animation-delay: 80ms; }
+.concept-fade-in-3 { animation-delay: 160ms; }
+.concept-section   { animation: concept-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+@keyframes deck-card-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.deck-card { animation: deck-card-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+@keyframes slide-from-right {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.roadmap-panel { animation: slide-from-right 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* ── Choice chips ───────────────────────────────────────────────────────────── */
+.choice-chip {
+  padding: 7px 14px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: white;
+  color: #4b5563;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+html.dark .choice-chip { border-color: #3f3f46; background: #27272a; color: #a1a1aa; }
+.choice-chip:hover:not(:disabled) { border-color: var(--green); background: var(--green-light); color: var(--green-dark); }
+html.dark .choice-chip:hover:not(:disabled) { background: #052e16; color: #4ade80; }
+.choice-chip.chosen { background: var(--green); color: white; border-color: transparent; font-weight: 500; }
+.choice-chip:disabled:not(.chosen) { opacity: 0.4; cursor: default; }
+
+/* ── Chat prose ─────────────────────────────────────────────────────────────── */
+.prose-chat p { margin-bottom: 6px; }
+.prose-chat p:last-child { margin-bottom: 0; }
+.prose-chat strong { font-weight: 600; }
+.prose-chat em { font-style: italic; opacity: 0.8; }
+.prose-chat ul { margin: 8px 0 8px 18px; list-style: disc; }
+.prose-chat li { margin-bottom: 3px; font-size: 13px; line-height: 1.6; }
+.prose-chat h4 { font-weight: 600; margin: 10px 0 4px; }
+.prose-chat code { font-size: 12px; font-family: monospace; background: #f3f4f6; padding: 1px 5px; border-radius: 4px; }
+html.dark .prose-chat code { background: #27272a; color: #d4d4d8; }
+
+/* ── Home hero: interactive background + word rotator ───────────────────────── */
+.mf-aurora { position: absolute; border-radius: 50%; filter: blur(90px); opacity: 1; transition: opacity 0.6s ease; }
+.mf-aurora-1 { width: 44vw; height: 44vw; left: 8%; top: -18%;
+  background: radial-gradient(circle, rgba(34,197,94,0.14), transparent 70%); animation: mf-drift1 26s ease-in-out infinite; }
+.mf-aurora-2 { width: 38vw; height: 38vw; right: 4%; bottom: -20%;
+  background: radial-gradient(circle, rgba(74,222,128,0.10), transparent 72%); animation: mf-drift2 32s ease-in-out infinite; }
+html.dark .mf-aurora-1 { background: radial-gradient(circle, rgba(34,197,94,0.12), transparent 70%); }
+html.dark .mf-aurora-2 { background: radial-gradient(circle, rgba(74,222,128,0.08), transparent 72%); }
+@keyframes mf-drift1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(4%,3%) scale(1.1); } }
+@keyframes mf-drift2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-3%,-3%) scale(1.08); } }
+
+.mf-dotfield {
+  position: absolute; inset: 0; opacity: 0; transition: opacity 0.5s ease;
+  background-image: radial-gradient(rgba(22,163,74,0.30) 1px, transparent 1.6px);
+  background-size: 22px 22px;
+  -webkit-mask-image: radial-gradient(circle 230px at var(--mx,-1000px) var(--my,-1000px), #000 0%, rgba(0,0,0,0.4) 42%, transparent 72%);
+  mask-image: radial-gradient(circle 230px at var(--mx,-1000px) var(--my,-1000px), #000 0%, rgba(0,0,0,0.4) 42%, transparent 72%);
+}
+html.dark .mf-dotfield { background-image: radial-gradient(rgba(74,222,128,0.42) 1px, transparent 1.6px); }
+
+.mf-cursor-glow {
+  position: absolute; width: 460px; height: 460px; border-radius: 50%; transform: translate(-50%,-50%);
+  left: -1000px; top: -1000px; opacity: 0; transition: opacity 0.5s ease; pointer-events: none;
+  background: radial-gradient(circle, rgba(34,197,94,0.12), transparent 60%);
+}
+html.dark .mf-cursor-glow { background: radial-gradient(circle, rgba(34,197,94,0.14), transparent 60%); }
+
+.mf-bg.mf-interacting .mf-aurora { opacity: 0.35; }
+.mf-bg.mf-interacting .mf-dotfield { opacity: 1; }
+.mf-bg.mf-interacting .mf-cursor-glow { opacity: 1; }
+
+.mf-slot { display: inline-block; }
+.mf-rotator { display: inline-block; will-change: transform, filter, opacity; animation: mf-rollin 0.55s cubic-bezier(0.2,0.8,0.2,1); }
+@keyframes mf-rollin {
+  0%   { opacity: 0; transform: translateY(0.7em); filter: blur(7px); }
+  60%  { filter: blur(0); }
+  100% { opacity: 1; transform: none; filter: blur(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mf-aurora, .mf-rotator { animation: none !important; }
+}
+
+/* ── Print: export the Transformation Concept as a clean PDF ──────────── */
+@media print {
+  .no-print { display: none !important; }
+  html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
+  /* Let the concept content flow across pages instead of being clipped by
+     the fixed 100vh app layout. */
+  .print-area {
+    position: static !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    flex: none !important;
+  }
+  .print-area * { overflow: visible !important; }
+}
+
+/* ── Enterprise foundation: semantic colors, states, a11y ───────────────────── */
+:root { --ok:#16a34a; --warn:#b45309; --err:#dc2626; --info:#2563eb; }
+html.dark { --ok:#22c55e; --warn:#f59e0b; --err:#f87171; --info:#60a5fa; }
+
+/* Measure categories — one hue per category, kept consistent across all four
+   diagram views so a colour always means the same thing. Tuned per theme
+   (lighter//more saturated on dark) rather than reused verbatim. */
+:root {
+  --cat-tooling:#16a34a;  --cat-tooling-tint:#e9f8ef;
+  --cat-agile:#c2610a;    --cat-agile-tint:#fdf2e3;
+  --cat-business:#2563eb; --cat-business-tint:#e9f0fe;
+  --cat-security:#e11d48; --cat-security-tint:#fdecf0;
+}
+html.dark {
+  --cat-tooling:#34d17a;  --cat-tooling-tint:#0f2417;
+  --cat-agile:#f0a94e;    --cat-agile-tint:#2a1c0b;
+  --cat-business:#6d94f7; --cat-business-tint:#101d3a;
+  --cat-security:#f2607f; --cat-security-tint:#2c1017;
+}
+
+/* Visible keyboard focus everywhere (mouse clicks stay clean via :focus-visible) */
+:where(a,button,[role="button"],input,textarea,select,summary,[tabindex]):focus-visible {
+  outline: 2px solid var(--green); outline-offset: 2px; border-radius: 6px;
+}
+
+/* A container that shows focus for the field inside it — the composers use
+   focus-within to turn their whole border green. Without this the rule above ALSO
+   ringed the textarea, so focusing it drew two green rounded rectangles, one inside
+   the other. The container's border is the focus indicator here, so the inner one is
+   redundant, not missing: accessibility is preserved. */
+.focus-parent :focus-visible { outline: none; }
+
+/* Skeleton loaders */
+.skeleton { position: relative; overflow: hidden; background: #eceeec; border-radius: 8px; }
+html.dark .skeleton { background: #1f2320; }
+.skeleton::after { content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.6), transparent); animation: sk 1.4s infinite; }
+html.dark .skeleton::after { background: linear-gradient(90deg, transparent, rgba(255,255,255,.06), transparent); }
+@keyframes sk { 100% { transform: translateX(100%); } }
+
+/* Keyboard hint chip */
+.kbd { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 10px; line-height: 1;
+  padding: 2px 5px; border-radius: 5px; border: 1px solid #e5e7eb; background: #f9fafb; color: #6b7280; }
+html.dark .kbd { border-color: #3f3f46; background: #27272a; color: #a1a1aa; }
+
+/* Respect reduced-motion globally */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+
+/* ── Cards respond to the cursor ──────────────────────────────────────────
+   Asked for on the Concept and Roadmap cards. Deliberately restrained: these sit
+   in dense grids, so anything stronger than a 2px lift turns scanning the page
+   into a light show. Defined once so both pages tune together, and so the
+   reduced-motion escape hatch below has a single thing to switch off — the global
+   rule shortens transitions but cannot cancel a transform. */
+.card-lift {
+  transition: transform .18s cubic-bezier(.23, 1, .32, 1),
+              box-shadow .18s cubic-bezier(.23, 1, .32, 1),
+              border-color .18s ease;
+  will-change: transform;
+}
+.card-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px -14px rgba(16, 40, 22, .38);
+  border-color: rgb(161 161 170);          /* zinc-400 */
+}
+.dark .card-lift:hover {
+  box-shadow: 0 10px 22px -14px rgba(0, 0, 0, .6);
+  border-color: rgb(82 82 91);             /* zinc-600 */
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-lift, .card-lift:hover { transform: none; transition: none; }
+}
