@@ -3,10 +3,11 @@
 @tailwind utilities;
 
 :root {
-  --green: #16a34a;
-  --green-light: #f0fdf4;
-  --green-mid: #bbf7d0;
-  --green-dark: #15803d;
+  /* Placeholder accent (slate/blue) — see the same note in tailwind.config.js */
+  --green: #2563eb;
+  --green-light: #eff6ff;
+  --green-mid: #bfdbfe;
+  --green-dark: #1d4ed8;
 }
 
 /* ── Dark mode base ─────────────────────────────────────────────────────────── */

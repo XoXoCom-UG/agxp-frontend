@@ -20,7 +20,7 @@ export default function LoginPage() {
     }
     if (tab === "login") {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) setMsg({ text: "E-Mail oder Passwort ist falsch.", ok: false }); else router.push("/chat");
+      if (error) setMsg({ text: "E-Mail oder Passwort ist falsch.", ok: false }); else router.push("/dashboard");
     } else {
       const { error } = await supabase.auth.signUp({
         email, password,

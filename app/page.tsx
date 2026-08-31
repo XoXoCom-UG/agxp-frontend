@@ -10,7 +10,7 @@ export default function Root() {
 
   useEffect(() => {
     if (!loading) {
-      router.replace(session ? "/chat" : "/login");
+      router.replace(session ? "/dashboard" : "/login");
     }
   }, [session, loading, router]);
 

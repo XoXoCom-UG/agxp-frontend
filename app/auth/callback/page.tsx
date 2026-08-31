@@ -18,7 +18,7 @@ export default function AuthCallbackPage() {
     (async () => {
       // 1) Session already established (implicit flow / already exchanged).
       const { data: s0 } = await supabase.auth.getSession();
-      if (s0.session) { router.replace("/chat"); return; }
+      if (s0.session) { router.replace("/dashboard"); return; }
 
       // 2) PKCE: explicitly exchange the ?code= for a session. This is what
       //    Google OAuth needs — the browser client does NOT auto-exchange it.
@@ -26,7 +26,7 @@ export default function AuthCallbackPage() {
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (cancelled) return;
-        if (!error) { router.replace("/chat"); return; }
+        if (!error) { router.replace("/dashboard"); return; }
       }
 
       // 3) Fallback: poll briefly (e.g. hash-based e-mail confirmation links).
@@ -34,7 +34,7 @@ export default function AuthCallbackPage() {
       iv = setInterval(async () => {
         tries++;
         const { data } = await supabase.auth.getSession();
-        if (data.session) { clearInterval(iv); router.replace("/chat"); }
+        if (data.session) { clearInterval(iv); router.replace("/dashboard"); }
         else if (tries > 12) { clearInterval(iv); setFailed(true); }
       }, 400);
     })();
