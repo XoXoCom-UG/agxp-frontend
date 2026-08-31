@@ -104,6 +104,10 @@ export async function createAgent(input: {
   methodIds: string[];
 }): Promise<Agent> {
   const supabase = createClient();
+  const { data: userData } = await supabase.auth.getUser();
+  const createdBy = userData.user?.id;
+  if (!createdBy) throw new Error("Nicht angemeldet.");
+
   const { data: agent, error } = await supabase
     .from("agents")
     .insert({
@@ -113,6 +117,7 @@ export async function createAgent(input: {
       tagline: input.tagline || null,
       avatar_placeholder: input.name.split(/\s+/).map(w => w[0]).join("").slice(0, 3).toUpperCase(),
       knowledge_level: "New",
+      created_by: createdBy,
     })
     .select("id")
     .single();

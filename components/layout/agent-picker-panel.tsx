@@ -230,15 +230,18 @@ function ConfigureView({ role, template, onCreated }: { role: AgentType; templat
   const [selectedSecondary, setSelectedSecondary] = useState<Set<string>>(new Set());
   const [touched, setTouched] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  // Only ever runs for the template the panel was opened with — re-running on
+  // every `t` identity change would stomp on methods the user has since toggled.
   useEffect(() => {
     listAllMethods().then(methods => {
       setAllMethods(methods);
       const byName = (names: string[]) => new Set(methods.filter(m => names.includes(m.name)).map(m => m.id));
       setSelectedPrimary(byName(t.primary));
       setSelectedSecondary(byName(t.secondary));
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const primaryMethods = allMethods.filter(m => m.is_primary);
@@ -251,12 +254,15 @@ function ConfigureView({ role, template, onCreated }: { role: AgentType; templat
 
   async function submit() {
     setTouched(true);
+    setError(null);
     if (!valid || saving) return;
     setSaving(true);
     try {
       const methodIds = [...selectedPrimary, ...selectedSecondary];
       const agent = await createAgent({ type: role, name: name.trim(), description: description.trim(), tagline: t.sub, methodIds });
       onCreated(agent);
+    } catch (e) {
+      setError((e as Error).message || "Agent konnte nicht erstellt werden.");
     } finally { setSaving(false); }
   }
 
@@ -290,6 +296,7 @@ function ConfigureView({ role, template, onCreated }: { role: AgentType; templat
           </div>
         </div>
         <div className="field"><label>Knowledge Level</label><div className="val" style={{ fontSize: "var(--text-xs)", color: "var(--text-secondary)" }}>New (no project history yet)</div></div>
+        {error && <div className="field-err">{error}</div>}
         <div className="configure-actions">
           <button className="btn btn-solid" disabled={!valid || saving} onClick={submit}>
             {saving ? <span className="spinner" /> : (<><IconCheck size={13} />Create Agent</>)}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { IconArrow } from "@/components/layout/agxp-icons";
+import { IconArrow, IconFolder } from "@/components/layout/agxp-icons";
 
 const PROJECT_TYPES = [
   "AI Transformation",
@@ -46,8 +46,11 @@ export function CreateProjectSheet({ open, onClose, onSubmit }: {
     <div className="sheet-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="sheet" role="dialog" aria-modal="true" aria-label="Create New Project">
         <div className="sheet-head">
-          <h2>Create New Project</h2>
-          <div className="sub">Set up a new AI transformation initiative — your existing projects stay visible on the left.</div>
+          <div className="sheet-icon"><IconFolder size={19} /></div>
+          <div>
+            <h2>Create New Project</h2>
+            <div className="sub">Set up a new AI transformation initiative — your existing projects stay visible on the left.</div>
+          </div>
         </div>
 
         <div className="sheet-body">
@@ -60,7 +63,7 @@ export function CreateProjectSheet({ open, onClose, onSubmit }: {
           </div>
           <div className="field">
             <label>Project Description</label>
-            <textarea rows={3} value={description} onChange={e => setDescription(e.target.value)}
+            <textarea rows={5} value={description} onChange={e => setDescription(e.target.value)}
               placeholder="Briefly describe the objective of this project" />
           </div>
           <div className="field">

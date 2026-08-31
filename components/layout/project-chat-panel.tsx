@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import type { Agent, AgentType } from "@/lib/agents";
 import { listMessages, addMessage, clearMessages, touchProjectActivity, type Project, type ProjectMessage } from "@/lib/projects";
 import { askAgent } from "@/lib/ask-agent";
+import { parseMarkers } from "@/lib/message-markers";
+import { md } from "@/lib/markdown";
 import { ConfirmDialog } from "@/components/layout/confirm-dialog";
 import {
   IconCoach, IconConsultant, IconMore, IconUsers, IconSwap, IconPlus, IconSend,
@@ -23,6 +25,7 @@ const QUICK_ACTIONS: Record<AgentType, { t: string; s: string }[]> = {
     { t: "Ich brauche Coaching zu einem IT-Thema", s: "Begleitung bei der Einführung neuer Arbeitsweisen." },
   ],
 };
+const GENERATE_CONCEPT_PROMPT = "Bitte erstelle jetzt das vollständige Transformation Concept basierend auf unserem bisherigen Gespräch.";
 
 export function ProjectChatPanel({ project, role, agent, onChangeAgent }: {
   project: Project; role: AgentType; agent: Agent; onChangeAgent: () => void;
@@ -70,6 +73,21 @@ export function ProjectChatPanel({ project, role, agent, onChangeAgent }: {
     setMessages([]);
   }
 
+  // Progress only applies to the Consultant (Transformation Concept readiness).
+  // Scan from the newest message backwards for the last reported value.
+  let progress: number | null = null;
+  if (role === "consultant") {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role !== "assistant") continue;
+      const p = parseMarkers(messages[i].content).progress;
+      if (p !== null) { progress = p; break; }
+    }
+  }
+  const lastAssistantIdx = (() => {
+    for (let i = messages.length - 1; i >= 0; i--) if (messages[i].role === "assistant") return i;
+    return -1;
+  })();
+
   return (
     <section className={`panel ${role}`}>
       {confirm === "change" && (
@@ -94,6 +112,7 @@ export function ProjectChatPanel({ project, role, agent, onChangeAgent }: {
         <div className="chat-meta">
           <div className="cm">Knowledge<b>{agent.knowledge_level}</b></div>
           <div className="cm">Projects<b>{agent.last_projects.length}</b></div>
+          {progress !== null && <div className="cm">Context<b>{progress}%</b></div>}
         </div>
         <button className="chat-menu-btn" data-tooltip="Agent menu" onClick={e => { e.stopPropagation(); setMenuOpen(o => !o); }}>
           <IconMore />
@@ -106,6 +125,21 @@ export function ProjectChatPanel({ project, role, agent, onChangeAgent }: {
           </div>
         )}
       </div>
+
+      {progress !== null && (
+        <div className={`progress-banner ${progress >= 100 ? "ready" : ""}`}>
+          <div className="top">
+            <span>Context für Transformation Concept</span>
+            <b style={{ marginLeft: "auto" }}>{progress}%</b>
+          </div>
+          <div className="bar"><span style={{ width: `${progress}%` }} /></div>
+          {progress >= 100 && (
+            <button className="ready-cta" disabled={sending} onClick={() => send(GENERATE_CONCEPT_PROMPT)}>
+              Transformation Concept erstellen
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="chat-body">
         {!loaded && <div className="spinner" style={{ margin: "0 auto", borderColor: "var(--border-strong)", borderTopColor: "var(--foreground)" }} />}
@@ -127,14 +161,24 @@ export function ProjectChatPanel({ project, role, agent, onChangeAgent }: {
           </div>
         )}
 
-        {messages.map(m => m.role === "user"
-          ? <div key={m.id} className="msg-user">{m.content}</div>
-          : (
+        {messages.map((m, i) => {
+          if (m.role === "user") return <div key={m.id} className="msg-user">{m.content}</div>;
+          const parsed = parseMarkers(m.content);
+          const showChoices = i === lastAssistantIdx && parsed.choices.length > 0 && !sending;
+          return (
             <div key={m.id} className="msg-agent">
               <div className="marker"><span className="bar" /><span className="who">{agent.name}</span></div>
-              <div className="txt">{m.content}</div>
+              <div className="txt" dangerouslySetInnerHTML={{ __html: md(parsed.text) }} />
+              {showChoices && (
+                <div className="choice-row">
+                  {parsed.choices.map(c => (
+                    <button key={c} className="choice-chip" disabled={sending} onClick={() => send(c)}>{c}</button>
+                  ))}
+                </div>
+              )}
             </div>
-          ))}
+          );
+        })}
 
         {sending && (
           <div className="msg-typing"><span className="tline" />{agent.name} is thinking...</div>

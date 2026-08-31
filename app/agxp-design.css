@@ -250,20 +250,27 @@ svg.arrow{ width:12px; height:12px; stroke:currentColor; flex-shrink:0; transiti
 /* ---------- SHEET ---------- */
 .sheet-overlay{ position:fixed; inset:0; z-index:80; background:transparent; }
 .sheet{
-  position:fixed; top:60px; right:0; bottom:0; width:440px; max-width:92vw;
+  position:fixed; top:60px; right:0; bottom:0; width:560px; max-width:94vw;
   background:var(--popover); border-left:1px solid var(--border);
   box-shadow:-30px 0 60px -28px rgba(0,0,0,0.5), -1px 0 0 rgba(0,0,0,0.06);
   display:flex; flex-direction:column; z-index:81;
   animation:sheetIn 280ms var(--ease-out);
 }
 @keyframes sheetIn{ from{ transform:translateX(100%); } to{ transform:translateX(0); } }
-.sheet-head{ padding:var(--sp-6); border-bottom:1px solid var(--border-soft); flex-shrink:0; }
-.sheet-head h2{ font-size:var(--text-xl); font-weight:650; margin-bottom:6px; color:var(--text-primary); }
-.sheet-head .sub{ font-size:var(--text-xs); color:var(--text-secondary); line-height:1.5; }
-.sheet-body{ flex:1; overflow-y:auto; padding:var(--sp-6); }
-.sheet-body .field{ margin-bottom:var(--sp-4); }
-.sheet-actions{ display:flex; gap:10px; padding:var(--sp-5) var(--sp-6); border-top:1px solid var(--border-soft); flex-shrink:0; }
-.sheet-actions .btn{ flex:1; justify-content:center; }
+.sheet-head{ padding:var(--sp-7) var(--sp-7) var(--sp-6); border-bottom:1px solid var(--border-soft); flex-shrink:0; display:flex; align-items:flex-start; gap:var(--sp-4); }
+.sheet-head .sheet-icon{
+  width:44px; height:44px; border-radius:var(--radius-lg); flex-shrink:0; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(155deg, var(--coach-2), var(--consultant-1)); box-shadow:inset 0 1px 0 rgba(255,255,255,0.16), 0 8px 20px -10px rgba(0,0,0,0.6);
+}
+.sheet-head h2{ font-size:22px; font-weight:650; margin-bottom:7px; color:var(--text-primary); letter-spacing:-0.2px; }
+.sheet-head .sub{ font-size:var(--text-sm); color:var(--text-secondary); line-height:1.55; }
+.sheet-body{ flex:1; overflow-y:auto; padding:var(--sp-7); }
+.sheet-body .field{ margin-bottom:var(--sp-5); }
+.sheet-body .field label{ font-size:var(--text-2xs); }
+.sheet-body .field input, .sheet-body .field textarea, .sheet-body .field select{ height:46px; padding:13px 15px; font-size:var(--text-sm); }
+.sheet-body .field textarea{ height:auto; }
+.sheet-actions{ display:flex; gap:10px; padding:var(--sp-6) var(--sp-7); border-top:1px solid var(--border-soft); flex-shrink:0; }
+.sheet-actions .btn{ flex:1; justify-content:center; height:44px; font-size:var(--text-sm); }
 
 /* ---------- MAIN WORKSPACE (setup) ---------- */
 main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var(--sp-6); min-height:0; }
@@ -535,6 +542,39 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 /* ---------- HISTORY / DASHBOARD ---------- */
 .flat-view{ flex:1; overflow-y:auto; padding:4px 0 var(--sp-7); display:flex; justify-content:center; }
 .flat-col{ width:100%; max-width:900px; padding:0 var(--sp-6); }
+
+/* ---------- CHOICE CHIPS — clickable quick-replies under an agent question,
+   parsed from a [[CHOICES: ...]] marker. Same visual language as method-chip
+   but the state is "answered", not "toggled on". ---------- */
+.choice-row{ display:flex; flex-wrap:wrap; gap:7px; margin-top:9px; padding-left:11px; }
+.choice-chip{
+  font-size:var(--text-2xs); font-weight:500; padding:8px 13px; border-radius:var(--r-pill);
+  border:1px solid var(--border-medium); color:var(--text-secondary); background:var(--surface-1);
+  transition:color .14s var(--ease-out), border-color .14s var(--ease-out), background-color .14s var(--ease-out), transform 120ms var(--ease-out);
+}
+.choice-chip:active:not(:disabled){ transform:scale(0.96); }
+.choice-chip:disabled{ opacity:.5; cursor:default; }
+@media (hover:hover) and (pointer:fine){
+  .choice-chip:hover:not(:disabled){ color:var(--text-primary); border-color:color-mix(in srgb, var(--ring) 45%, transparent); background:rgba(255,255,255,0.06); }
+}
+
+/* ---------- PROGRESS BANNER — Consultant-only "context readiness" strip,
+   reuses active-method-badge's look with a progress bar underneath. ---------- */
+.progress-banner{ display:flex; flex-direction:column; gap:7px; padding:10px 26px; border-bottom:1px solid var(--border-soft); background:linear-gradient(90deg, rgba(46,41,37,0.08), transparent); flex-shrink:0; }
+.progress-banner .top{ display:flex; align-items:center; gap:9px; font-size:var(--text-3xs); color:var(--text-secondary); }
+.progress-banner .top b{ color:var(--text-primary); }
+.progress-banner .bar{ height:3px; border-radius:2px; background:var(--border-medium); overflow:hidden; }
+.progress-banner .bar > span{ display:block; height:100%; background:var(--magenta); transition:width .3s var(--ease-out); }
+.progress-banner.ready{ background:linear-gradient(90deg, color-mix(in srgb, var(--success) 14%, transparent), transparent); }
+.progress-banner .ready-cta{
+  align-self:flex-start; font-size:var(--text-2xs); font-weight:600; color:var(--primary-foreground); background:var(--primary);
+  border:1px solid transparent; border-radius:8px; padding:7px 13px; display:flex; align-items:center; gap:6px;
+  transition:background-color .16s var(--ease-out), transform 120ms var(--ease-out);
+}
+.progress-banner .ready-cta:active{ transform:scale(0.97); }
+@media (hover:hover) and (pointer:fine){
+  .progress-banner .ready-cta:hover{ background:var(--primary-soft); }
+}
 
 .app ::-webkit-scrollbar{ width:8px; }
 .app ::-webkit-scrollbar-thumb{ background:var(--border-strong); border-radius:8px; }
