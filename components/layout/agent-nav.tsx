@@ -37,6 +37,16 @@ export function AgentNav({ projectName }: { projectName?: string }) {
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
+  // AgentNav is the single owner of the create-project sheet — pages that
+  // also want a "New Project" button (e.g. the Projects list) dispatch this
+  // event instead of mounting their own sheet, which used to render two
+  // overlapping instances at once.
+  useEffect(() => {
+    function onOpen() { setCreating(true); }
+    window.addEventListener("agxp:new-project", onOpen);
+    return () => window.removeEventListener("agxp:new-project", onOpen);
+  }, []);
+
   async function submitCreateProject(name: string, description: string, type: string) {
     const project = await createProject({ name, description, type });
     setCreating(false);

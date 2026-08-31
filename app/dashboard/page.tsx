@@ -6,8 +6,6 @@ import { useAuth } from "@/lib/auth-context";
 import { listProjects, renameProject, archiveProject, type Project } from "@/lib/projects";
 import { listAgents, type Agent } from "@/lib/agents";
 import { AgentNav } from "@/components/layout/agent-nav";
-import { CreateProjectSheet } from "@/components/layout/create-project-sheet";
-import { createProject } from "@/lib/projects";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { Folder, Plus, ChevronRight, MoreHorizontal } from "lucide-react";
@@ -24,8 +22,13 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
   const [menuFor, setMenuFor] = useState<string | null>(null);
+
+  // AgentNav owns the single Create Project sheet instance — this just asks
+  // it to open, instead of mounting a second sheet of its own.
+  function openCreateProject() {
+    window.dispatchEvent(new Event("agxp:new-project"));
+  }
 
   useEffect(() => { if (!authLoading && !token) router.replace("/login"); }, [token, authLoading, router]);
 
@@ -45,12 +48,6 @@ export default function ProjectsPage() {
   function teamLabel(p: Project) {
     const parts = [agentName(p.consultant_agent_id), agentName(p.coach_agent_id)].filter(Boolean);
     return parts.length ? parts.join(" + ") : "No agents assigned yet";
-  }
-
-  async function submitCreateProject(name: string, description: string, type: string) {
-    const project = await createProject({ name, description, type });
-    setCreating(false);
-    router.push(`/dashboard/project/${project.id}/setup`);
   }
 
   function openProject(p: Project) {
@@ -84,7 +81,6 @@ export default function ProjectsPage() {
   return (
     <div className="flex flex-col bg-background" style={{ height: "100vh", overflow: "hidden" }}>
       <AgentNav />
-      <CreateProjectSheet open={creating} onClose={() => setCreating(false)} onSubmit={submitCreateProject} />
 
       <div className="px-6 pt-5 pb-4 flex items-end justify-between gap-5 shrink-0">
         <div>
@@ -93,7 +89,7 @@ export default function ProjectsPage() {
             Start a new transformation initiative or continue working on an existing project.
           </p>
         </div>
-        <Button onClick={() => setCreating(true)}><Plus className="w-3.5 h-3.5" strokeWidth={2} />New Project</Button>
+        <Button onClick={openCreateProject}><Plus className="w-3.5 h-3.5" strokeWidth={2} />New Project</Button>
       </div>
 
       <div className="flex-1 overflow-y-auto flex justify-center px-6 pb-8">
@@ -110,7 +106,7 @@ export default function ProjectsPage() {
               <p className="text-xs text-secondary-foreground max-w-sm mx-auto mb-5 leading-relaxed">
                 Create your first AI transformation project to begin building your project team.
               </p>
-              <Button onClick={() => setCreating(true)}><Plus className="w-3.5 h-3.5" strokeWidth={2} />Create New Project</Button>
+              <Button onClick={openCreateProject}><Plus className="w-3.5 h-3.5" strokeWidth={2} />Create New Project</Button>
             </div>
           )}
 
@@ -120,6 +116,16 @@ export default function ProjectsPage() {
                 <StatTile label="Total Projects" value={String(visible.length)} />
                 <StatTile label="In Progress" value={String(inProgress)} accent />
                 <StatTile label="Completed" value={String(completed)} />
+              </div>
+
+              <div className="flex items-center gap-4 px-2 pb-2 border-b border-border">
+                <span className="w-[34px] shrink-0" aria-hidden="true" />
+                <span className="flex-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Project</span>
+                <span className="hidden md:block w-[190px] text-[10px] font-bold uppercase tracking-wide text-muted-foreground shrink-0">Team</span>
+                <span className="hidden sm:block w-[100px] text-[10px] font-bold uppercase tracking-wide text-muted-foreground shrink-0">Updated</span>
+                <span className="w-[100px] text-[10px] font-bold uppercase tracking-wide text-muted-foreground shrink-0">Status</span>
+                <span className="w-3.5 shrink-0" aria-hidden="true" />
+                <span className="w-7 shrink-0" aria-hidden="true" />
               </div>
 
               <div className="flex flex-col">

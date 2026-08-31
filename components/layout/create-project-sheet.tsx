@@ -23,16 +23,20 @@ export function CreateProjectSheet({ open, onClose, onSubmit }: {
   const [type, setType] = useState(PROJECT_TYPES[0]);
   const [touched, setTouched] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!open) return null;
 
   async function submit() {
     setTouched(true);
+    setError(null);
     if (!name.trim() || loading) return;
     setLoading(true);
     try {
       await onSubmit(name.trim(), description.trim(), type);
       setName(""); setDescription(""); setType(PROJECT_TYPES[0]); setTouched(false);
+    } catch (e) {
+      setError((e as Error).message || "Projekt konnte nicht erstellt werden.");
     } finally {
       setLoading(false);
     }
@@ -75,7 +79,10 @@ export function CreateProjectSheet({ open, onClose, onSubmit }: {
           </div>
         </div>
 
-        <div className="flex gap-2.5 p-5 border-t border-border shrink-0">
+        {error && (
+          <p className="mx-6 mb-3 text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded-sm px-3 py-2 shrink-0">{error}</p>
+        )}
+        <div className="flex gap-2.5 p-5 pt-0 border-t border-border shrink-0">
           <Button variant="secondary" className="flex-1 justify-center" onClick={onClose}>Cancel</Button>
           <Button className="flex-1 justify-center" disabled={!name.trim() || loading} onClick={submit}>
             {loading ? <span className="thinking-spinner" style={{ width: 13, height: 13 }} /> : <>Create Project <ArrowRight className="w-3.5 h-3.5" strokeWidth={2.2} /></>}
