@@ -1,7 +1,11 @@
 import type { Agent } from "@/lib/agents";
-import type { WorkspaceMessage } from "@/lib/agent-workspace-store";
 
-export async function askAgent(agent: Agent, messages: WorkspaceMessage[]): Promise<string> {
+export interface ChatTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export async function askAgent(agent: Agent, messages: ChatTurn[]): Promise<string> {
   const res = await fetch("/api/agent/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

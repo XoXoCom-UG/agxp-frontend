@@ -32,13 +32,23 @@ inserted_methods as (
 
 -- ── Agents ──────────────────────────────────────────────────────────────────
 inserted_agents as (
-  insert into agents (type, name, avatar_placeholder)
+  insert into agents (type, name, avatar_placeholder, tagline, description, expertise, knowledge_level)
   values
-    ('consultant', 'AI Strategy Consultant', 'ASC'),
-    ('consultant', 'Business Analyst',       'BA'),
-    ('consultant', 'Solution Architect',     'SA'),
-    ('coach',      'Change Management Coach','CMC'),
-    ('coach',      'IT-Coaching Coach',      'ITC')
+    ('consultant', 'AI Strategy Consultant', 'ASC', 'Strategy & AI Transformation',
+      'Strategische Analyse und strukturierte Begleitung von AI- und IT-Transformationsprojekten.',
+      'AI Strategy · Transformation · Requirements', 'High'),
+    ('consultant', 'Business Analyst', 'BA', 'Process & Requirements',
+      'Unterstützt strukturierte Projekt-Discovery, Anforderungsklärung und Umsetzung.',
+      'Business Analysis · Requirements', 'Medium'),
+    ('consultant', 'Solution Architect', 'SA', 'Systems & Integration',
+      'Entwirft Ziel-Systemlandschaften und Integrationskonzepte.',
+      'System Design · Integration', 'Medium'),
+    ('coach', 'Change Management Coach', 'CMC', 'Change & Adoption',
+      'Begleitet Teams durch Veränderungsprozesse im Rahmen von AI-/IT-Transformationen.',
+      'Change Management · Stakeholder Communication', 'High'),
+    ('coach', 'IT-Coaching Coach', 'ITC', 'IT-Coaching & Enablement',
+      'Coacht Fachbereiche bei der Einführung neuer IT-/AI-gestützter Arbeitsweisen.',
+      'IT Coaching · Enablement', 'Medium')
   returning id, name
 ),
 

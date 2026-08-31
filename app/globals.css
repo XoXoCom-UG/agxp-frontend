@@ -2,25 +2,102 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =============================================================================
+   DESIGN TOKENS — ported from Ana's mockup (agxp-functional-ui, v7).
+   shadcn/ui-style semantic architecture. Dark (near-monochrome graphite, one
+   warm amber accent) is the base; `html.light` overrides for light mode.
+   `--green*` are kept as aliases so existing `var(--green)` references
+   elsewhere in this file (and any leftover legacy code) keep working —
+   only the values here ever need to move again.
+   ============================================================================= */
 :root {
-  /* Placeholder accent (slate/blue) — see the same note in tailwind.config.js */
-  --green: #2563eb;
-  --green-light: #eff6ff;
-  --green-mid: #bfdbfe;
-  --green-dark: #1d4ed8;
+  --background:#0A0A0B;
+  --foreground:#F2F1EE;
+
+  --card:#17171A;
+  --card-foreground:#F2F1EE;
+  --popover:#1E1E22;
+  --popover-foreground:#F2F1EE;
+
+  --primary:#D6A25A;
+  --primary-foreground:#1A1408;
+  --primary-soft:#E6BC7E;
+
+  --secondary:#17171A;
+  --secondary-foreground:#A6A29B;
+  --muted:#17171A;
+  --muted-foreground:#726E68;
+  --accent:#1E1E22;
+  --accent-foreground:#F2F1EE;
+
+  --destructive:#C4574A;
+  --destructive-foreground:#FBEAE6;
+  --success:#8FAE93;
+
+  /* Coach vs Consultant: cool vs warm temperature on the same neutral scale. */
+  --coach-1:#2C2C33; --coach-2:#38383F; --coach-3:#1D1D22;
+  --consultant-1:#2E2925; --consultant-2:#3B3430; --consultant-3:#201C19;
+
+  --border:rgba(255,255,255,0.10);
+  --border-strong:rgba(255,255,255,0.20);
+  --input:rgba(255,255,255,0.14);
+  --ring:var(--primary-soft);
+  --hl:rgba(255,255,255,0.06);
+
+  --radius:10px;
+  --radius-xs:calc(var(--radius) * 0.8);
+  --radius-sm:var(--radius);
+  --radius-md:calc(var(--radius) * 1.2);
+  --radius-lg:calc(var(--radius) * 1.6);
+  --radius-pill:999px;
+
+  /* Legacy aliases — every var(--green*) already written elsewhere in this
+     file (or leftover legacy code) still resolves. */
+  --green: var(--primary);
+  --green-light: var(--secondary);
+  --green-mid: var(--border-strong);
+  --green-dark: var(--primary-soft);
+}
+
+html.light {
+  --background:#FAFAF9;
+  --foreground:#18181B;
+
+  --card:#FFFFFF;
+  --card-foreground:#18181B;
+  --popover:#FFFFFF;
+  --popover-foreground:#18181B;
+
+  --secondary:#F1F1EF;
+  --secondary-foreground:#52525B;
+  --muted:#F1F1EF;
+  --muted-foreground:#8B8B85;
+  --accent:#EFEFEC;
+  --accent-foreground:#18181B;
+
+  --destructive:#B84B3E;
+  --destructive-foreground:#FBEAE6;
+  --success:#4F7D58;
+
+  --coach-1:#F1F2F4; --coach-2:#E4E6EA; --coach-3:#F8F9FA;
+  --consultant-1:#F5F1EF; --consultant-2:#EAE3DF; --consultant-3:#FAF8F6;
+
+  --border:rgba(0,0,0,0.09);
+  --border-strong:rgba(0,0,0,0.18);
+  --input:rgba(0,0,0,0.13);
+  --hl:rgba(255,255,255,0.7);
 }
 
 /* ── Dark mode base ─────────────────────────────────────────────────────────── */
 * { box-sizing: border-box; }
 
-html { background-color: #fafafa; }
-html.dark { background-color: #09090b; }
+html { background-color: var(--background); }
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
-  background-color: #fafafa;
+  background-color: var(--background);
+  color: var(--foreground);
 }
-html.dark body { background-color: #09090b; color: #fafafa; }
 
 /* ── Spinner ────────────────────────────────────────────────────────────────── */
 @keyframes thinking-spin { to { transform: rotate(360deg); } }

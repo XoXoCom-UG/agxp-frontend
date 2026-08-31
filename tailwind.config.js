@@ -9,10 +9,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Placeholder accent — temporary neutral slate/blue while the real
-        // AgxP brand colors aren't fixed yet. Kept under the `green` key so
-        // every existing `text-green-*`/`bg-green-*` class repaints without
-        // touching every file that uses them; swap these values, not the key.
+        // Legacy placeholder accent — only used by app/_legacy (unrouted).
         green: {
           50:  "#eff6ff",
           100: "#dbeafe",
@@ -38,6 +35,25 @@ module.exports = {
           900: "#18181b",
           950: "#09090b",
         },
+        // Semantic tokens ported from Ana's design (agxp-functional-ui) — CSS
+        // custom properties in globals.css, dark by default with a `.light`
+        // override. Used across the active screens instead of raw zinc/green.
+        background: "var(--background)",
+        foreground: "var(--foreground)",
+        card: { DEFAULT: "var(--card)", foreground: "var(--card-foreground)" },
+        popover: { DEFAULT: "var(--popover)", foreground: "var(--popover-foreground)" },
+        primary: { DEFAULT: "var(--primary)", foreground: "var(--primary-foreground)", soft: "var(--primary-soft)" },
+        secondary: { DEFAULT: "var(--secondary)", foreground: "var(--secondary-foreground)" },
+        muted: { DEFAULT: "var(--muted)", foreground: "var(--muted-foreground)" },
+        accent: { DEFAULT: "var(--accent)", foreground: "var(--accent-foreground)" },
+        destructive: { DEFAULT: "var(--destructive)", foreground: "var(--destructive-foreground)" },
+        success: "var(--success)",
+        border: "var(--border)",
+        "border-strong": "var(--border-strong)",
+        input: "var(--input)",
+        ring: "var(--ring)",
+        coach: { 1: "var(--coach-1)", 2: "var(--coach-2)", 3: "var(--coach-3)" },
+        consultant: { 1: "var(--consultant-1)", 2: "var(--consultant-2)", 3: "var(--consultant-3)" },
       },
       fontFamily: {
         sans: ["-apple-system", "BlinkMacSystemFont", "Inter", "Segoe UI", "sans-serif"],
@@ -46,6 +62,11 @@ module.exports = {
         xl: "12px",
         "2xl": "16px",
         "3xl": "20px",
+        xs: "var(--radius-xs)",
+        sm: "var(--radius-sm)",
+        md: "var(--radius-md)",
+        lg: "var(--radius-lg)",
+        pill: "var(--radius-pill)",
       },
     },
   },

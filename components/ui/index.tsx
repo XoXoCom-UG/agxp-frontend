@@ -1,4 +1,6 @@
-// Shadcn-style UI primitives — hand-crafted to match ui.shadcn.com aesthetics
+// UI primitives — restyled on the semantic design tokens ported from Ana's
+// mockup (agxp-functional-ui): flat fills, one crisp shadow, no glossy
+// gradients. Exactly one "primary" visual language, used consistently.
 
 import { cn } from "@/lib/utils";
 import React from "react";
@@ -13,13 +15,13 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export function Button({ variant = "default", size = "md", className, children, ...props }: ButtonProps) {
-  const base = "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
+  const base = "inline-flex items-center justify-center gap-2 rounded-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50";
   const variants: Record<BtnVariant, string> = {
-    default: "bg-green-600 text-white hover:bg-green-700 shadow-sm active:scale-[0.98]",
-    outline: "border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 shadow-sm",
-    ghost: "hover:bg-gray-100 text-gray-700",
-    secondary: "bg-gray-100 text-gray-700 hover:bg-gray-200",
-    destructive: "bg-red-500 text-white hover:bg-red-600",
+    default: "bg-primary text-primary-foreground font-semibold hover:bg-primary-soft shadow-sm active:scale-[0.97]",
+    outline: "border border-border bg-secondary hover:bg-accent text-secondary-foreground shadow-sm",
+    ghost: "hover:bg-accent text-secondary-foreground",
+    secondary: "bg-secondary text-secondary-foreground border border-border hover:border-border-strong",
+    destructive: "bg-destructive text-destructive-foreground hover:opacity-90",
   };
   const sizes: Record<BtnSize, string> = {
     sm: "h-8 px-3 text-xs",
@@ -43,14 +45,14 @@ interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
 
 export function Badge({ variant = "default", className, children, ...props }: BadgeProps) {
   const variants: Record<BadgeVariant, string> = {
-    default: "bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800",
-    secondary: "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700",
-    outline: "bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700",
-    success: "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800",
-    destructive: "bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800",
+    default: "bg-primary/15 text-primary border-primary/30",
+    secondary: "bg-secondary text-secondary-foreground border-border",
+    outline: "bg-transparent text-secondary-foreground border-border-strong",
+    success: "bg-success/15 text-success border-success/30",
+    destructive: "bg-destructive/15 text-destructive border-destructive/30",
   };
   return (
-    <span className={cn("inline-flex items-center border rounded-full px-2.5 py-0.5 text-xs font-semibold", variants[variant], className)} {...props}>
+    <span className={cn("inline-flex items-center border rounded-pill px-2.5 py-0.5 text-xs font-semibold", variants[variant], className)} {...props}>
       {children}
     </span>
   );
@@ -58,13 +60,13 @@ export function Badge({ variant = "default", className, children, ...props }: Ba
 
 // ── Card ────────────────────────────────────────────────────────────────────
 export function Card({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("rounded-xl border border-gray-200 bg-white shadow-sm", className)} {...props}>{children}</div>;
+  return <div className={cn("rounded-md border border-border bg-card shadow-sm", className)} {...props}>{children}</div>;
 }
 export function CardHeader({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("flex items-center justify-between px-5 py-4 border-b border-gray-100", className)} {...props}>{children}</div>;
+  return <div className={cn("flex items-center justify-between px-5 py-4 border-b border-border", className)} {...props}>{children}</div>;
 }
 export function CardTitle({ className, children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
-  return <h3 className={cn("text-sm font-semibold text-gray-900", className)} {...props}>{children}</h3>;
+  return <h3 className={cn("text-sm font-semibold text-foreground", className)} {...props}>{children}</h3>;
 }
 export function CardContent({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return <div className={cn("p-5", className)} {...props}>{children}</div>;
@@ -72,20 +74,20 @@ export function CardContent({ className, children, ...props }: React.HTMLAttribu
 
 // ── Separator ───────────────────────────────────────────────────────────────
 export function Separator({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("h-px bg-gray-100 w-full", className)} {...props} />;
+  return <div className={cn("h-px bg-border w-full", className)} {...props} />;
 }
 
 // ── Input ───────────────────────────────────────────────────────────────────
 export function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
-    <input className={cn("flex h-9 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50", className)} {...props} />
+    <input className={cn("flex h-9 w-full rounded-sm border border-input bg-secondary px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50", className)} {...props} />
   );
 }
 
 // ── Textarea ─────────────────────────────────────────────────────────────────
 export function Textarea({ className, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
-    <textarea className={cn("flex w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50 resize-none", className)} {...props} />
+    <textarea className={cn("flex w-full rounded-sm border border-input bg-secondary px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50 resize-none", className)} {...props} />
   );
 }
 
@@ -93,8 +95,7 @@ export function Textarea({ className, ...props }: React.TextareaHTMLAttributes<H
 export function Avatar({ initials, size = "md", className }: { initials: string; size?: "sm" | "md"; className?: string }) {
   const s = size === "sm" ? "w-7 h-7 text-xs" : "w-8 h-8 text-sm";
   return (
-    <div className={cn("rounded-full flex items-center justify-center font-bold shrink-0", s, className)}
-      style={{ background: "var(--green-light)", color: "var(--green-dark)", border: "1px solid var(--green-mid)" }}>
+    <div className={cn("rounded-pill flex items-center justify-center font-bold shrink-0 bg-primary/15 text-primary border border-primary/30", s, className)}>
       {initials}
     </div>
   );
@@ -102,12 +103,12 @@ export function Avatar({ initials, size = "md", className }: { initials: string;
 
 // ── Tabs ─────────────────────────────────────────────────────────────────────
 export function TabGroup({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={cn("flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5 gap-0.5", className)}>{children}</div>;
+  return <div className={cn("flex bg-secondary rounded-sm p-0.5 gap-0.5", className)}>{children}</div>;
 }
 export function Tab({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button onClick={onClick}
-      className={cn("px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all", active ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-50 shadow-sm" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200")}>
+      className={cn("px-3.5 py-1.5 rounded-xs text-xs font-semibold transition-all", active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-secondary-foreground")}>
       {children}
     </button>
   );
@@ -118,9 +119,9 @@ export function KpiCard({ label, value, sub }: { label: string; value: string; s
   return (
     <Card className="overflow-hidden hover:shadow-md transition-shadow duration-200">
       <CardContent className="p-5">
-        <p className="text-xs tracking-widest uppercase text-zinc-500 mb-3">{label}</p>
-        <p className="text-2xl font-bold text-zinc-900 leading-none mb-1.5 tracking-tight break-words">{value}</p>
-        {sub && <p className="text-xs text-zinc-400">{sub}</p>}
+        <p className="text-xs tracking-widest uppercase text-muted-foreground mb-3">{label}</p>
+        <p className="text-2xl font-bold text-foreground leading-none mb-1.5 tracking-tight break-words">{value}</p>
+        {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
       </CardContent>
     </Card>
   );
