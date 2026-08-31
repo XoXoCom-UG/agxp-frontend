@@ -37,14 +37,14 @@ function addActivity(activity: ActivityEntry[], t: string): ActivityEntry[] {
 
 export async function listProjects(): Promise<Project[]> {
   const supabase = createClient();
-  const { data, error } = await supabase.from("projects").select("*").order("last_activity_at", { ascending: false });
+  const { data, error } = await supabase.from("agxp_projects").select("*").order("last_activity_at", { ascending: false });
   if (error) throw error;
   return (data ?? []) as Project[];
 }
 
 export async function getProject(id: string): Promise<Project | null> {
   const supabase = createClient();
-  const { data, error } = await supabase.from("projects").select("*").eq("id", id).maybeSingle();
+  const { data, error } = await supabase.from("agxp_projects").select("*").eq("id", id).maybeSingle();
   if (error) throw error;
   return data as Project | null;
 }
@@ -56,7 +56,7 @@ export async function createProject(input: { name: string; description?: string;
   if (!ownerId) throw new Error("Nicht angemeldet.");
 
   const { data, error } = await supabase
-    .from("projects")
+    .from("agxp_projects")
     .insert({
       owner_id: ownerId,
       name: input.name,
@@ -83,7 +83,7 @@ export async function assignAgent(projectId: string, column: AgentType, agentId:
   patch[column === "coach" ? "coach_agent_id" : "consultant_agent_id"] = agentId;
   if (project.status === "Not Started") patch.status = "In Progress";
 
-  const { data, error } = await supabase.from("projects").update(patch).eq("id", projectId).select("*").single();
+  const { data, error } = await supabase.from("agxp_projects").update(patch).eq("id", projectId).select("*").single();
   if (error) throw error;
   return data as Project;
 }
@@ -92,20 +92,20 @@ export async function clearAgent(projectId: string, column: AgentType): Promise<
   const supabase = createClient();
   const patch: Record<string, unknown> = {};
   patch[column === "coach" ? "coach_agent_id" : "consultant_agent_id"] = null;
-  const { data, error } = await supabase.from("projects").update(patch).eq("id", projectId).select("*").single();
+  const { data, error } = await supabase.from("agxp_projects").update(patch).eq("id", projectId).select("*").single();
   if (error) throw error;
   return data as Project;
 }
 
 export async function renameProject(projectId: string, name: string): Promise<void> {
   const supabase = createClient();
-  const { error } = await supabase.from("projects").update({ name }).eq("id", projectId);
+  const { error } = await supabase.from("agxp_projects").update({ name }).eq("id", projectId);
   if (error) throw error;
 }
 
 export async function archiveProject(projectId: string): Promise<void> {
   const supabase = createClient();
-  const { error } = await supabase.from("projects").update({ status: "Archived" }).eq("id", projectId);
+  const { error } = await supabase.from("agxp_projects").update({ status: "Archived" }).eq("id", projectId);
   if (error) throw error;
 }
 
@@ -113,7 +113,7 @@ export async function touchProjectActivity(projectId: string, label: string): Pr
   const supabase = createClient();
   const project = await getProject(projectId);
   if (!project) return;
-  await supabase.from("projects").update({
+  await supabase.from("agxp_projects").update({
     activity: addActivity(project.activity, label),
     last_activity_at: new Date().toISOString(),
   }).eq("id", projectId);
@@ -122,7 +122,7 @@ export async function touchProjectActivity(projectId: string, label: string): Pr
 export async function listMessages(projectId: string, column: AgentType): Promise<ProjectMessage[]> {
   const supabase = createClient();
   const { data, error } = await supabase
-    .from("project_messages")
+    .from("agxp_project_messages")
     .select("*")
     .eq("project_id", projectId)
     .eq("column_type", column)
@@ -133,6 +133,6 @@ export async function listMessages(projectId: string, column: AgentType): Promis
 
 export async function addMessage(projectId: string, column: AgentType, role: "user" | "assistant", content: string): Promise<void> {
   const supabase = createClient();
-  const { error } = await supabase.from("project_messages").insert({ project_id: projectId, column_type: column, role, content });
+  const { error } = await supabase.from("agxp_project_messages").insert({ project_id: projectId, column_type: column, role, content });
   if (error) throw error;
 }
