@@ -9,14 +9,16 @@ import { ChevronRight } from "lucide-react";
  * A single agent, rendered as a compact horizontal row — not a square card —
  * so a column of "existing agents" reads as a scannable list.
  */
-export function AgentCard({ agent, onClick }: { agent: Agent; onClick: () => void }) {
+export function AgentCard({ agent, onClick, active }: { agent: Agent; onClick: () => void; active?: boolean }) {
   return (
     <button
       onClick={onClick}
       className={cn(
-        "group/agent w-full flex items-center gap-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800",
+        "group/agent w-full flex items-center gap-3.5 rounded-xl border",
         "bg-white dark:bg-zinc-900 px-4 py-3.5 text-left transition-colors duration-150",
-        "hover:border-green-300 dark:hover:border-green-800 hover:bg-green-50/40 dark:hover:bg-green-950/20"
+        active
+          ? "border-green-400 dark:border-green-700 bg-green-50/40 dark:bg-green-950/20"
+          : "border-zinc-200 dark:border-zinc-800 hover:border-green-300 dark:hover:border-green-800 hover:bg-green-50/40 dark:hover:bg-green-950/20"
       )}
     >
       <div className="w-10 h-10 rounded-xl bg-green-50 dark:bg-green-950/60 ring-1 ring-green-100 dark:ring-green-900 flex items-center justify-center shrink-0 text-xs font-bold text-green-700 dark:text-green-400">
@@ -26,6 +28,7 @@ export function AgentCard({ agent, onClick }: { agent: Agent; onClick: () => voi
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 mb-1">
           <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 truncate">{agent.name}</p>
+          {active && <Badge variant="default">Aktiv</Badge>}
         </div>
 
         {agent.methods.length > 0 && (

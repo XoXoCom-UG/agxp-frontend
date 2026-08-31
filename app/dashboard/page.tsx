@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { listAgents, type Agent, type AgentType } from "@/lib/agents";
+import { useAgentWorkspace } from "@/lib/agent-workspace-store";
 import { AgentNav } from "@/components/layout/agent-nav";
 import { AgentCard } from "@/components/cards/agent-card";
 import { Plus, UserRoundCog, HeartHandshake } from "lucide-react";
@@ -17,6 +18,13 @@ const COLUMN_META: Record<AgentType, { title: string; icon: React.ReactNode }> =
 function AgentColumn({ type, agents, loading }: { type: AgentType; agents: Agent[]; loading: boolean }) {
   const router = useRouter();
   const meta = COLUMN_META[type];
+  const activeAgentId = useAgentWorkspace(s => s[type].agent?.id);
+  const setColumnAgent = useAgentWorkspace(s => s.setColumnAgent);
+
+  function pick(agent: Agent) {
+    setColumnAgent(type, agent);
+    router.push("/dashboard/workspace");
+  }
 
   return (
     <div className="flex-1 min-w-0 flex flex-col px-5 md:px-8 py-8 md:overflow-y-auto">
@@ -54,7 +62,7 @@ function AgentColumn({ type, agents, loading }: { type: AgentType; agents: Agent
           <p className="text-sm text-zinc-400 py-4">Noch keine Agenten.</p>
         )}
         {!loading && agents.map(a => (
-          <AgentCard key={a.id} agent={a} onClick={() => router.push(`/dashboard/agent/${a.id}`)} />
+          <AgentCard key={a.id} agent={a} active={a.id === activeAgentId} onClick={() => pick(a)} />
         ))}
       </div>
     </div>
