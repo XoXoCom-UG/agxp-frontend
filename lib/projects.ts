@@ -136,3 +136,9 @@ export async function addMessage(projectId: string, column: AgentType, role: "us
   const { error } = await supabase.from("agxp_project_messages").insert({ project_id: projectId, column_type: column, role, content });
   if (error) throw error;
 }
+
+export async function clearMessages(projectId: string, column: AgentType): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("agxp_project_messages").delete().eq("project_id", projectId).eq("column_type", column);
+  if (error) throw error;
+}

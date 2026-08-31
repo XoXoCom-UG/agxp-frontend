@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Input, Textarea } from "@/components/ui";
-import { ArrowRight } from "lucide-react";
+import { IconArrow } from "@/components/layout/agxp-icons";
 
 const PROJECT_TYPES = [
   "AI Transformation",
@@ -26,6 +25,7 @@ export function CreateProjectSheet({ open, onClose, onSubmit }: {
   const [error, setError] = useState<string | null>(null);
 
   if (!open) return null;
+  const nameErr = touched && !name.trim();
 
   async function submit() {
     setTouched(true);
@@ -43,50 +43,40 @@ export function CreateProjectSheet({ open, onClose, onSubmit }: {
   }
 
   return (
-    <div className="fixed inset-0 z-[80]" onClick={onClose}>
-      <div
-        className="fixed top-[60px] right-0 bottom-0 w-[440px] max-w-[92vw] bg-popover border-l border-border flex flex-col shadow-2xl"
-        role="dialog" aria-modal="true" aria-label="Create New Project" onClick={e => e.stopPropagation()}
-      >
-        <div className="p-6 border-b border-border shrink-0">
-          <h2 className="text-xl font-semibold text-foreground mb-1.5">Create New Project</h2>
-          <p className="text-xs text-secondary-foreground leading-relaxed">
-            Set up a new AI transformation initiative — your existing projects stay visible on the left.
-          </p>
+    <div className="sheet-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="sheet" role="dialog" aria-modal="true" aria-label="Create New Project">
+        <div className="sheet-head">
+          <h2>Create New Project</h2>
+          <div className="sub">Set up a new AI transformation initiative — your existing projects stay visible on the left.</div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
-          <div>
-            <label className="flex justify-between text-[11px] font-bold tracking-wide text-muted-foreground uppercase mb-2">
-              Project Name <span className="text-primary-soft">Required</span>
-            </label>
-            <Input value={name} onChange={e => setName(e.target.value)}
+        <div className="sheet-body">
+          <div className="field">
+            <label>Project Name <span className="req">Required</span></label>
+            <input type="text" value={name} onChange={e => setName(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter") submit(); }}
               placeholder="e.g. Customer Onboarding Transformation" />
-            {touched && !name.trim() && <p className="text-[11px] text-destructive mt-1.5">Project name is required.</p>}
+            <div className={`err ${nameErr ? "show" : ""}`}>Project name is required.</div>
           </div>
-          <div>
-            <label className="block text-[11px] font-bold tracking-wide text-muted-foreground uppercase mb-2">Project Description</label>
-            <Textarea rows={3} value={description} onChange={e => setDescription(e.target.value)}
+          <div className="field">
+            <label>Project Description</label>
+            <textarea rows={3} value={description} onChange={e => setDescription(e.target.value)}
               placeholder="Briefly describe the objective of this project" />
           </div>
-          <div>
-            <label className="block text-[11px] font-bold tracking-wide text-muted-foreground uppercase mb-2">Project Type</label>
-            <select value={type} onChange={e => setType(e.target.value)}
-              className="w-full h-9 rounded-sm border border-input bg-secondary px-3 text-sm text-foreground outline-none">
+          <div className="field">
+            <label>Project Type</label>
+            <select value={type} onChange={e => setType(e.target.value)}>
               {PROJECT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
+          {error && <div className="err show">{error}</div>}
         </div>
 
-        {error && (
-          <p className="mx-6 mb-3 text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded-sm px-3 py-2 shrink-0">{error}</p>
-        )}
-        <div className="flex gap-2.5 p-5 pt-0 border-t border-border shrink-0">
-          <Button variant="secondary" className="flex-1 justify-center" onClick={onClose}>Cancel</Button>
-          <Button className="flex-1 justify-center" disabled={!name.trim() || loading} onClick={submit}>
-            {loading ? <span className="thinking-spinner" style={{ width: 13, height: 13 }} /> : <>Create Project <ArrowRight className="w-3.5 h-3.5" strokeWidth={2.2} /></>}
-          </Button>
+        <div className="sheet-actions">
+          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="btn btn-hero" disabled={!name.trim() || loading} onClick={submit}>
+            {loading ? <span className="spinner" /> : <>Create Project <IconArrow /></>}
+          </button>
         </div>
       </div>
     </div>

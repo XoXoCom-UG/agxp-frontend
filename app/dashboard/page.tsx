@@ -6,15 +6,10 @@ import { useAuth } from "@/lib/auth-context";
 import { listProjects, renameProject, archiveProject, type Project } from "@/lib/projects";
 import { listAgents, type Agent } from "@/lib/agents";
 import { AgentNav } from "@/components/layout/agent-nav";
-import { Button } from "@/components/ui";
-import { cn } from "@/lib/utils";
-import { Folder, Plus, ChevronRight, MoreHorizontal } from "lucide-react";
+import { ConfirmDialog } from "@/components/layout/confirm-dialog";
+import { IconFolder, IconPlus, IconArrow, IconMore } from "@/components/layout/agxp-icons";
 
-function statusDotClass(status: Project["status"]) {
-  if (status === "In Progress") return "bg-primary";
-  if (status === "Completed") return "bg-success";
-  return "bg-muted-foreground";
-}
+function statusClass(s: Project["status"]) { return s.toLowerCase().replace(/\s+/g, "-"); }
 
 export default function ProjectsPage() {
   const { token, loading: authLoading } = useAuth();
@@ -23,12 +18,7 @@ export default function ProjectsPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [menuFor, setMenuFor] = useState<string | null>(null);
-
-  // AgentNav owns the single Create Project sheet instance — this just asks
-  // it to open, instead of mounting a second sheet of its own.
-  function openCreateProject() {
-    window.dispatchEvent(new Event("agxp:new-project"));
-  }
+  const [confirmArchive, setConfirmArchive] = useState<Project | null>(null);
 
   useEffect(() => { if (!authLoading && !token) router.replace("/login"); }, [token, authLoading, router]);
 
@@ -42,17 +32,16 @@ export default function ProjectsPage() {
     return () => { alive = false; };
   }, [token]);
 
-  function agentName(id: string | null) {
-    return id ? agents.find(a => a.id === id)?.name : null;
-  }
+  function openCreateProject() { window.dispatchEvent(new Event("agxp:new-project")); }
+
+  function agentName(id: string | null) { return id ? agents.find(a => a.id === id)?.name : null; }
   function teamLabel(p: Project) {
     const parts = [agentName(p.consultant_agent_id), agentName(p.coach_agent_id)].filter(Boolean);
     return parts.length ? parts.join(" + ") : "No agents assigned yet";
   }
 
   function openProject(p: Project) {
-    if (p.coach_agent_id && p.consultant_agent_id) router.push(`/dashboard/project/${p.id}/workspace`);
-    else router.push(`/dashboard/project/${p.id}/setup`);
+    router.push(p.coach_agent_id && p.consultant_agent_id ? `/dashboard/project/${p.id}/workspace` : `/dashboard/project/${p.id}/setup`);
   }
 
   async function doRename(p: Project) {
@@ -62,122 +51,93 @@ export default function ProjectsPage() {
     await renameProject(p.id, val.trim());
     setProjects(prev => prev.map(x => x.id === p.id ? { ...x, name: val.trim() } : x));
   }
-  async function doArchive(p: Project) {
-    setMenuFor(null);
-    await archiveProject(p.id);
-    setProjects(prev => prev.filter(x => x.id !== p.id));
+  async function doArchive() {
+    if (!confirmArchive) return;
+    await archiveProject(confirmArchive.id);
+    setProjects(prev => prev.filter(x => x.id !== confirmArchive.id));
+    setConfirmArchive(null);
   }
 
   if (authLoading || !token) return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="thinking-spinner" style={{ width: 24, height: 24 }} />
+    <div className="app" style={{ alignItems: "center", justifyContent: "center" }}>
+      <div className="spinner" style={{ width: 24, height: 24, borderColor: "var(--border-strong)", borderTopColor: "var(--primary)" }} />
     </div>
   );
 
-  const visible = projects.filter(p => p.status !== "Archived");
-  const inProgress = visible.filter(p => p.status === "In Progress").length;
-  const completed = visible.filter(p => p.status === "Completed").length;
+  const list = projects.filter(p => p.status !== "Archived");
+  const inProgress = list.filter(p => p.status === "In Progress").length;
+  const completed = list.filter(p => p.status === "Completed").length;
 
   return (
-    <div className="flex flex-col bg-background" style={{ height: "100vh", overflow: "hidden" }}>
+    <div className="app">
       <AgentNav />
 
-      <div className="px-6 pt-5 pb-4 flex items-end justify-between gap-5 shrink-0">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-1.5">Projects</h1>
-          <p className="text-sm text-secondary-foreground max-w-md">
-            Start a new transformation initiative or continue working on an existing project.
-          </p>
+      {confirmArchive && (
+        <ConfirmDialog title="Archive project?" body={`"${confirmArchive.name}" will be moved out of your active projects.`}
+          confirmLabel="Archive" onConfirm={doArchive} onCancel={() => setConfirmArchive(null)} />
+      )}
+
+      <div className="view-root">
+        <div className="page-head">
+          <div><h1>Projects</h1><p>Start a new transformation initiative or continue working on an existing project.</p></div>
+          <button className="btn btn-hero" onClick={openCreateProject}><IconPlus />New Project</button>
         </div>
-        <Button onClick={openCreateProject}><Plus className="w-3.5 h-3.5" strokeWidth={2} />New Project</Button>
-      </div>
 
-      <div className="flex-1 overflow-y-auto flex justify-center px-6 pb-8">
-        <div className="w-full max-w-[900px]">
-          {loading && (
-            <div className="flex flex-col gap-2.5 pt-2">
-              {Array.from({ length: 3 }).map((_, i) => <div key={i} className="skeleton h-[74px] w-full rounded-md" />)}
-            </div>
-          )}
+        <div className="projects-view" onClick={() => setMenuFor(null)}>
+          <div className="projects-col">
+            {loading && <p style={{ color: "var(--text-muted)", fontSize: "var(--text-xs)", padding: "20px 8px" }}>Loading…</p>}
 
-          {!loading && visible.length === 0 && (
-            <div className="text-center py-20">
-              <h3 className="text-base font-semibold text-foreground mb-2">No projects yet</h3>
-              <p className="text-xs text-secondary-foreground max-w-sm mx-auto mb-5 leading-relaxed">
-                Create your first AI transformation project to begin building your project team.
-              </p>
-              <Button onClick={openCreateProject}><Plus className="w-3.5 h-3.5" strokeWidth={2} />Create New Project</Button>
-            </div>
-          )}
-
-          {!loading && visible.length > 0 && (
-            <>
-              <div className="grid grid-cols-3 gap-3 mb-6">
-                <StatTile label="Total Projects" value={String(visible.length)} />
-                <StatTile label="In Progress" value={String(inProgress)} accent />
-                <StatTile label="Completed" value={String(completed)} />
+            {!loading && list.length === 0 && (
+              <div className="projects-empty">
+                <h3>No projects yet</h3>
+                <p>Create your first AI transformation project to begin building your project team.</p>
+                <button className="btn btn-hero" onClick={openCreateProject}><IconPlus />Create New Project</button>
               </div>
+            )}
 
-              <div className="flex items-center gap-4 px-2 pb-2 border-b border-border">
-                <span className="w-[34px] shrink-0" aria-hidden="true" />
-                <span className="flex-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Project</span>
-                <span className="hidden md:block w-[190px] text-[10px] font-bold uppercase tracking-wide text-muted-foreground shrink-0">Team</span>
-                <span className="hidden sm:block w-[100px] text-[10px] font-bold uppercase tracking-wide text-muted-foreground shrink-0">Updated</span>
-                <span className="w-[100px] text-[10px] font-bold uppercase tracking-wide text-muted-foreground shrink-0">Status</span>
-                <span className="w-3.5 shrink-0" aria-hidden="true" />
-                <span className="w-7 shrink-0" aria-hidden="true" />
-              </div>
+            {!loading && list.length > 0 && (
+              <>
+                <div className="stats-grid">
+                  <div className="stat-tile"><span className="stat-label">Total Projects</span><span className="stat-value">{list.length}</span></div>
+                  <div className="stat-tile"><span className="stat-label">In Progress</span><span className="stat-value accent">{inProgress}</span></div>
+                  <div className="stat-tile"><span className="stat-label">Completed</span><span className="stat-value">{completed}</span></div>
+                </div>
 
-              <div className="flex flex-col">
-                {visible.map(p => (
-                  <div key={p.id}
-                    onClick={() => openProject(p)}
-                    className="group/row flex items-center gap-4 py-4 px-2 border-b border-border cursor-pointer hover:bg-accent/40 transition-colors relative"
-                  >
-                    <div className="w-[34px] h-[34px] rounded-xs bg-secondary border border-border flex items-center justify-center shrink-0">
-                      <Folder className="w-[15px] h-[15px] text-muted-foreground" strokeWidth={1.8} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-foreground truncate">{p.name}</p>
-                      {p.description && <p className="text-xs text-muted-foreground truncate mt-0.5">{p.description}</p>}
-                    </div>
-                    <p className="hidden md:block text-xs text-secondary-foreground w-[190px] truncate">{teamLabel(p)}</p>
-                    <p className="hidden sm:block text-xs text-secondary-foreground w-[100px] truncate">
-                      {new Date(p.last_activity_at).toLocaleDateString()}
-                    </p>
-                    <span className="flex items-center gap-1.5 text-xs font-medium text-secondary-foreground shrink-0 w-[100px]">
-                      <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", statusDotClass(p.status))} />
-                      {p.status}
-                    </span>
-                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0 group-hover/row:translate-x-0.5 transition-transform" strokeWidth={2} />
-                    <button
-                      onClick={e => { e.stopPropagation(); setMenuFor(menuFor === p.id ? null : p.id); }}
-                      className="w-7 h-7 rounded-xs flex items-center justify-center text-muted-foreground opacity-0 group-hover/row:opacity-100 hover:bg-secondary hover:text-foreground transition-colors shrink-0">
-                      <MoreHorizontal className="w-4 h-4" strokeWidth={2} />
-                    </button>
-                    {menuFor === p.id && (
-                      <div onClick={e => e.stopPropagation()}
-                        className="absolute top-11 right-8 min-w-[180px] bg-popover border border-input rounded-md p-1.5 shadow-xl z-40">
-                        <button onClick={() => doRename(p)} className="w-full text-left text-xs text-secondary-foreground px-2.5 py-2 rounded-xs hover:bg-accent hover:text-foreground transition-colors">Rename Project</button>
-                        <button onClick={() => doArchive(p)} className="w-full text-left text-xs text-secondary-foreground px-2.5 py-2 rounded-xs hover:bg-accent hover:text-foreground transition-colors">Archive Project</button>
+                <div className="data-head">
+                  <span className="col-project">Project</span><span>Team</span><span>Updated</span><span>Status</span>
+                </div>
+
+                <div className="project-list">
+                  {list.map(p => (
+                    <div key={p.id} className="project-row" tabIndex={0} role="button" aria-label={`Open ${p.name}`}
+                      onClick={() => openProject(p)}>
+                      <div className="pr-icon"><IconFolder /></div>
+                      <div className="pr-info">
+                        <div className="pr-name">{p.name}</div>
+                        <div className="pr-desc">{p.description || "No description provided."}</div>
                       </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
+                      <div className="pr-agents">{teamLabel(p)}</div>
+                      <div className="pr-updated">{new Date(p.last_activity_at).toLocaleDateString()}</div>
+                      <span className={`status-pill ${statusClass(p.status)}`}><span className="sd" />{p.status}</span>
+                      <span className="open-action" aria-hidden="true"><IconArrow /></span>
+                      <button className="overflow-btn" data-tooltip="More"
+                        onClick={e => { e.stopPropagation(); setMenuFor(menuFor === p.id ? null : p.id); }}>
+                        <IconMore />
+                      </button>
+                      {menuFor === p.id && (
+                        <div className="popover" style={{ top: 44, right: 36 }} onClick={e => e.stopPropagation()}>
+                          <button className="mi" onClick={() => doRename(p)}><IconFolder size={13} />Rename Project</button>
+                          <button className="mi" onClick={() => { setMenuFor(null); setConfirmArchive(p); }}>Archive Project</button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function StatTile({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <div className="flex flex-col gap-1.5 px-5 py-4 rounded-md bg-card border border-border">
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
-      <span className={cn("text-[28px] font-semibold tracking-tight", accent ? "text-primary" : "text-foreground")}>{value}</span>
     </div>
   );
 }

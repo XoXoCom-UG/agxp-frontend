@@ -2,25 +2,37 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Agent, AgentType } from "@/lib/agents";
-import { listMessages, addMessage, touchProjectActivity, type Project, type ProjectMessage } from "@/lib/projects";
+import { listMessages, addMessage, clearMessages, touchProjectActivity, type Project, type ProjectMessage } from "@/lib/projects";
 import { askAgent } from "@/lib/ask-agent";
-import { cn } from "@/lib/utils";
-import { ArrowUp, UserRoundCog, HeartHandshake } from "lucide-react";
+import { ConfirmDialog } from "@/components/layout/confirm-dialog";
+import {
+  IconCoach, IconConsultant, IconMore, IconUsers, IconSwap, IconPlus, IconSend,
+} from "@/components/layout/agxp-icons";
 
 const OPENING: Record<AgentType, string> = {
   consultant: "Hey, wie kann ich dir heute helfen?",
   coach: "Hey, worüber möchtest du heute sprechen?",
 };
-const QUICK_REPLIES: Record<AgentType, string[]> = {
-  consultant: ["Ich möchte eine Unterhaltung über AI starten", "Erstelle mir ein IT Transformation Concept"],
-  coach: ["Ich möchte über eine Veränderung im Team sprechen", "Ich brauche Coaching zu einem IT-Thema"],
+const QUICK_ACTIONS: Record<AgentType, { t: string; s: string }[]> = {
+  consultant: [
+    { t: "Ich möchte eine Unterhaltung über AI starten", s: "Freie Exploration — kein festes Ziel." },
+    { t: "Erstelle mir ein IT Transformation Concept", s: "Strukturierte Ist/Ziel-Analyse mit Maßnahmen." },
+  ],
+  coach: [
+    { t: "Ich möchte über eine Veränderung im Team sprechen", s: "Widerstände, Kommunikation, Team-Dynamik." },
+    { t: "Ich brauche Coaching zu einem IT-Thema", s: "Begleitung bei der Einführung neuer Arbeitsweisen." },
+  ],
 };
 
-export function ProjectChatPanel({ project, role, agent }: { project: Project; role: AgentType; agent: Agent }) {
+export function ProjectChatPanel({ project, role, agent, onChangeAgent }: {
+  project: Project; role: AgentType; agent: Agent; onChangeAgent: () => void;
+}) {
   const [messages, setMessages] = useState<ProjectMessage[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [confirm, setConfirm] = useState<"change" | "reset" | "details" | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -52,90 +64,93 @@ export function ProjectChatPanel({ project, role, agent }: { project: Project; r
     }
   }
 
+  async function resetConversation() {
+    setConfirm(null);
+    await clearMessages(project.id, role);
+    setMessages([]);
+  }
+
   return (
-    <section className={cn(
-      "flex-1 min-w-0 rounded-lg border border-border flex flex-col overflow-hidden",
-      role === "coach" ? "bg-gradient-to-b from-coach-3 to-background" : "bg-gradient-to-b from-consultant-3 to-background"
-    )}>
-      {/* Head */}
-      <div className="flex items-center gap-3 px-5 py-3.5 border-b border-border shrink-0">
-        <div className={cn("w-[38px] h-[38px] rounded-md flex items-center justify-center shrink-0",
-          role === "coach" ? "bg-coach-2" : "bg-consultant-2")}>
-          {role === "coach" ? <HeartHandshake className="w-[17px] h-[17px] text-white/90" strokeWidth={1.8} /> : <UserRoundCog className="w-[17px] h-[17px] text-white/90" strokeWidth={1.8} />}
+    <section className={`panel ${role}`}>
+      {confirm === "change" && (
+        <ConfirmDialog title="Change agent?" body={`You'll return to selection for the ${role === "coach" ? "Coach" : "Consultant"} only. The other agent stays assigned.`}
+          confirmLabel="Change agent" onConfirm={() => { setConfirm(null); onChangeAgent(); }} onCancel={() => setConfirm(null)} />
+      )}
+      {confirm === "reset" && (
+        <ConfirmDialog title="Start a new conversation?" body="Current chat messages will be cleared." confirmLabel="Start new"
+          onConfirm={resetConversation} onCancel={() => setConfirm(null)} />
+      )}
+      {confirm === "details" && (
+        <ConfirmDialog title={agent.name} confirmLabel="Close" onConfirm={() => setConfirm(null)} onCancel={() => setConfirm(null)}
+          body={`${agent.expertise || agent.tagline || ""}. Knowledge: ${agent.knowledge_level}.${agent.primaryMethods.length ? " Primary methods: " + agent.primaryMethods.map(m => m.name).join(", ") + "." : ""}`} />
+      )}
+
+      <div className="chat-head">
+        <div className="chat-avatar">{role === "coach" ? <IconCoach size={17} /> : <IconConsultant size={17} />}</div>
+        <div>
+          <div className="n">{agent.name}</div>
+          <div className="r"><span className={`role-dot ${role}`} />{role === "coach" ? "Coach" : "Consultant"}</div>
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-foreground truncate">{agent.name}</p>
-          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mt-0.5">{role === "coach" ? "Coach" : "Consultant"}</p>
+        <div className="chat-meta">
+          <div className="cm">Knowledge<b>{agent.knowledge_level}</b></div>
+          <div className="cm">Projects<b>{agent.last_projects.length}</b></div>
         </div>
-        <div className="flex gap-4 text-right shrink-0">
-          <div><p className="text-[10px] text-muted-foreground">Knowledge</p><p className="text-xs font-semibold text-foreground">{agent.knowledge_level}</p></div>
-          <div><p className="text-[10px] text-muted-foreground">Projects</p><p className="text-xs font-semibold text-foreground">{agent.last_projects.length}</p></div>
-        </div>
+        <button className="chat-menu-btn" data-tooltip="Agent menu" onClick={e => { e.stopPropagation(); setMenuOpen(o => !o); }}>
+          <IconMore />
+        </button>
+        {menuOpen && (
+          <div className="popover" onClick={e => e.stopPropagation()}>
+            <button className="mi" onClick={() => { setMenuOpen(false); setConfirm("details"); }}><IconUsers size={13} />Agent details</button>
+            <button className="mi" onClick={() => { setMenuOpen(false); setConfirm("change"); }}><IconSwap size={13} />Change agent</button>
+            <button className="mi" onClick={() => { setMenuOpen(false); setConfirm("reset"); }}><IconPlus size={13} />New conversation</button>
+          </div>
+        )}
       </div>
 
-      {/* Body */}
-      <div className="flex-1 overflow-y-auto px-5 py-5 flex flex-col gap-4">
-        {!loaded && <div className="thinking-spinner mx-auto" style={{ width: 18, height: 18 }} />}
+      <div className="chat-body">
+        {!loaded && <div className="spinner" style={{ margin: "0 auto", borderColor: "var(--border-strong)", borderTopColor: "var(--foreground)" }} />}
 
         {loaded && (
-          <AgentBubble name={agent.name} text={OPENING[role]} />
+          <div className="msg-agent">
+            <div className="marker"><span className="bar" /><span className="who">{agent.name}</span></div>
+            <div className="txt">{OPENING[role]}</div>
+          </div>
         )}
         {loaded && messages.length === 0 && (
-          <div className="flex flex-wrap gap-1.5 -mt-2">
-            {QUICK_REPLIES[role].map(q => (
-              <button key={q} onClick={() => send(q)} className="choice-chip text-[12px]">{q}</button>
+          <div className="qa-list">
+            {QUICK_ACTIONS[role].map((q, i) => (
+              <button key={q.t} className="qa-item" onClick={() => send(q.t)}>
+                <span className="qno">0{i + 1}</span>
+                <div className="qtxt"><div className="qt">{q.t}</div><div className="qs">{q.s}</div></div>
+              </button>
             ))}
           </div>
         )}
 
         {messages.map(m => m.role === "user"
-          ? <UserBubble key={m.id} text={m.content} />
-          : <AgentBubble key={m.id} name={agent.name} text={m.content} />)}
+          ? <div key={m.id} className="msg-user">{m.content}</div>
+          : (
+            <div key={m.id} className="msg-agent">
+              <div className="marker"><span className="bar" /><span className="who">{agent.name}</span></div>
+              <div className="txt">{m.content}</div>
+            </div>
+          ))}
 
         {sending && (
-          <div className="flex items-center gap-2">
-            <span className="w-[3px] h-[13px] rounded bg-border-strong" />
-            <div className="thinking-spinner" style={{ width: 14, height: 14 }} />
-          </div>
+          <div className="msg-typing"><span className="tline" />{agent.name} is thinking...</div>
         )}
         <div ref={bottomRef} />
       </div>
 
-      {/* Composer */}
-      <div className="flex gap-2.5 items-end px-5 py-3.5 border-t border-border shrink-0">
-        <textarea value={input} rows={1} disabled={sending}
+      <div className="chat-input">
+        <textarea className="autosize" rows={1} disabled={sending} value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }}
-          placeholder={`Ask your ${role === "coach" ? "Coach" : "Consultant"}...`}
-          className="flex-1 bg-popover border border-input rounded-md px-3.5 py-2.5 text-xs text-foreground outline-none resize-none leading-relaxed placeholder:text-muted-foreground disabled:opacity-50"
-          style={{ minHeight: 22, maxHeight: 100 }} />
-        <button onClick={() => send(input)} disabled={!input.trim() || sending}
-          className={cn("w-[42px] h-[42px] rounded-md flex items-center justify-center shrink-0 transition-opacity",
-            input.trim() && !sending ? "opacity-100" : "opacity-35 cursor-not-allowed",
-            role === "coach" ? "bg-coach-2" : "bg-consultant-2")}>
-          <ArrowUp className="w-3.5 h-3.5 text-white" strokeWidth={2.2} />
+          placeholder={`Ask your ${role === "coach" ? "Coach" : "Consultant"}...`} />
+        <button data-tooltip="Send message" disabled={!input.trim() || sending} onClick={() => send(input)}>
+          <IconSend size={14} />
         </button>
       </div>
     </section>
-  );
-}
-
-function AgentBubble({ name, text }: { name: string; text: string }) {
-  return (
-    <div className="max-w-[86%]">
-      <div className="flex items-center gap-2 mb-1.5">
-        <span className="w-[3px] h-[13px] rounded bg-border-strong" />
-        <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{name}</span>
-      </div>
-      <p className="text-sm text-foreground leading-relaxed pl-[11px] whitespace-pre-wrap">{text}</p>
-    </div>
-  );
-}
-
-function UserBubble({ text }: { text: string }) {
-  return (
-    <div className="self-end max-w-[78%] bg-gradient-to-b from-popover to-card border border-input rounded-xl rounded-br-sm px-3.5 py-3 text-xs text-foreground leading-relaxed whitespace-pre-wrap">
-      {text}
-    </div>
   );
 }

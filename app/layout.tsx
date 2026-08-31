@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import "./agxp-design.css";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { AuthProvider } from "@/lib/auth-context";
 import { CookieBanner } from "@/components/layout/cookie-banner";

@@ -3,12 +3,11 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { getProject, type Project } from "@/lib/projects";
-import { listAgents, type Agent } from "@/lib/agents";
+import { getProject, clearAgent, type Project } from "@/lib/projects";
+import { listAgents, type Agent, type AgentType } from "@/lib/agents";
 import { AgentNav } from "@/components/layout/agent-nav";
 import { ProjectChatPanel } from "@/components/layout/project-chat-panel";
-import { Button } from "@/components/ui";
-import { ArrowLeft } from "lucide-react";
+import { IconBack } from "@/components/layout/agxp-icons";
 
 export default function ProjectWorkspacePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -38,18 +37,24 @@ export default function ProjectWorkspacePage({ params }: { params: Promise<{ id:
     }
   }, [project, router]);
 
+  async function changeAgent(column: AgentType) {
+    if (!project) return;
+    await clearAgent(project.id, column);
+    router.push(`/dashboard/project/${project.id}/setup`);
+  }
+
   if (authLoading || !token || (!project && !notFound)) return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="thinking-spinner" style={{ width: 24, height: 24 }} />
+    <div className="app" style={{ alignItems: "center", justifyContent: "center" }}>
+      <div className="spinner" style={{ width: 24, height: 24, borderColor: "var(--border-strong)", borderTopColor: "var(--primary)" }} />
     </div>
   );
 
   if (notFound || !project) {
     return (
-      <div className="flex flex-col bg-background" style={{ height: "100vh" }}>
+      <div className="app">
         <AgentNav />
-        <div className="flex-1 flex items-center justify-center">
-          <p className="text-sm text-muted-foreground">Project not found.</p>
+        <div className="view-root" style={{ alignItems: "center", justifyContent: "center" }}>
+          <p style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>Project not found.</p>
         </div>
       </div>
     );
@@ -60,22 +65,19 @@ export default function ProjectWorkspacePage({ params }: { params: Promise<{ id:
   if (!coach || !consultant) return null; // redirecting to setup
 
   return (
-    <div className="flex flex-col bg-background" style={{ height: "100vh", overflow: "hidden" }}>
-      <AgentNav projectName={project.name} />
-
-      <div className="px-6 pt-5 pb-4 flex items-end justify-between gap-5 shrink-0">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-1.5">{project.name}</h1>
-          <p className="text-sm text-secondary-foreground">Coach and Consultant operate as two independent, persistent conversations on this project.</p>
+    <div className="app">
+      <AgentNav projectName={project.name} projectId={project.id} />
+      <div className="view-root">
+        <div className="page-head">
+          <div><h1>{project.name}</h1><p>Coach and Consultant operate as two independent, persistent conversations on this project.</p></div>
+          <button className="btn btn-ghost" onClick={() => router.push(`/dashboard/project/${project.id}/setup`)}>
+            <IconBack size={11} />Change agents
+          </button>
         </div>
-        <Button variant="secondary" onClick={() => router.push(`/dashboard/project/${project.id}/setup`)}>
-          <ArrowLeft className="w-3.5 h-3.5" strokeWidth={2.2} />Change agents
-        </Button>
-      </div>
-
-      <div className="flex-1 flex gap-4 px-6 pb-6 min-h-0">
-        <ProjectChatPanel project={project} role="coach" agent={coach} />
-        <ProjectChatPanel project={project} role="consultant" agent={consultant} />
+        <main className="workspace">
+          <ProjectChatPanel project={project} role="coach" agent={coach} onChangeAgent={() => changeAgent("coach")} />
+          <ProjectChatPanel project={project} role="consultant" agent={consultant} onChangeAgent={() => changeAgent("consultant")} />
+        </main>
       </div>
     </div>
   );

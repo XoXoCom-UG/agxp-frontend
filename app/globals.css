@@ -44,6 +44,10 @@
   --ring:var(--primary-soft);
   --hl:rgba(255,255,255,0.06);
 
+  --ease-out:cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out:cubic-bezier(0.77, 0, 0.175, 1);
+  --focus-ring:0 0 0 2px var(--background), 0 0 0 4px var(--ring);
+
   --radius:10px;
   --radius-xs:calc(var(--radius) * 0.8);
   --radius-sm:var(--radius);
@@ -51,8 +55,35 @@
   --radius-lg:calc(var(--radius) * 1.6);
   --radius-pill:999px;
 
-  /* Legacy aliases — every var(--green*) already written elsewhere in this
-     file (or leftover legacy code) still resolves. */
+  /* Type scale — 8 steps instead of ~17 near-duplicate one-off sizes. */
+  --text-3xs:10px; --text-2xs:11px; --text-xs:12px; --text-sm:13px; --text-base:14px;
+  --text-lg:16px; --text-xl:20px; --text-2xl:25px;
+
+  /* Spacing — multiples of 4. */
+  --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px; --sp-7:32px;
+
+  /* Legacy aliases — every var(--x) written across the ported CSS (agxp-design.css)
+     resolves from here; only the values on the token side ever need to move. */
+  --bg-deep:var(--background);
+  --surface-1:var(--card);
+  --surface-2:var(--popover);
+  --indigo-light:var(--coach-2);
+  --violet-dark:var(--coach-3);
+  --plum-dark:var(--consultant-3);
+  --plum:var(--consultant-1);
+  --plum-light:var(--consultant-2);
+  --magenta:var(--primary);
+  --magenta-soft:var(--primary-soft);
+  --blush:var(--primary);
+  --blush-muted:var(--destructive);
+  --text-primary:var(--foreground);
+  --text-secondary:var(--secondary-foreground);
+  --text-muted:var(--muted-foreground);
+  --border-soft:var(--border);
+  --border-medium:var(--input);
+  --r-xs:var(--radius-xs); --r-md:var(--radius-md); --r-lg:var(--radius-lg); --r-pill:var(--radius-pill);
+
+  /* Our own alias (predates the Ana port) — a few inline styles still use it. */
   --green: var(--primary);
   --green-light: var(--secondary);
   --green-mid: var(--border-strong);
