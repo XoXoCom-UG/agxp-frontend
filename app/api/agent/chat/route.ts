@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
   try {
     const response = await anthropic.messages.create({
       model: MODEL,
-      max_tokens: 1024,
+      max_tokens: 8192,
       system: SYSTEM_PROMPTS[body.agentType](body.agentName || "dein Agent"),
       messages: body.messages.map(m => ({ role: m.role, content: m.content })),
     });
