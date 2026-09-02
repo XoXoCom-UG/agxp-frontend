@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { IconArrow, IconFolder } from "@/components/layout/agxp-icons";
 
 const PROJECT_TYPES = [
@@ -42,7 +43,7 @@ export function CreateProjectSheet({ open, onClose, onSubmit }: {
     }
   }
 
-  return (
+  return createPortal(
     <div className="sheet-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="sheet" role="dialog" aria-modal="true" aria-label="Create New Project">
         <div className="sheet-head">
@@ -82,6 +83,7 @@ export function CreateProjectSheet({ open, onClose, onSubmit }: {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

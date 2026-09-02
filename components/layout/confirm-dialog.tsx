@@ -1,5 +1,7 @@
 "use client";
 
+import { createPortal } from "react-dom";
+
 export interface ConfirmDialogProps {
   title: string;
   body: string;
@@ -9,7 +11,7 @@ export interface ConfirmDialogProps {
 }
 
 export function ConfirmDialog({ title, body, confirmLabel, onConfirm, onCancel }: ConfirmDialogProps) {
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onCancel(); }}>
       <div className="modal" style={{ width: 380 }} role="alertdialog" aria-modal="true">
         <h2>{title}</h2>
@@ -19,6 +21,7 @@ export function ConfirmDialog({ title, body, confirmLabel, onConfirm, onCancel }
           <button className="btn btn-plum" onClick={onConfirm}>{confirmLabel || "Confirm"}</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
