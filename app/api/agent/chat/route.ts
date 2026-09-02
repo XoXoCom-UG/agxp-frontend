@@ -4,15 +4,19 @@ import type { AgentType } from "@/lib/agents";
 
 const MODEL = "claude-sonnet-5";
 
-// Both roles can offer clickable quick-replies for a question with a short,
-// predictable set of likely answers — the client parses this marker out of
-// the text and renders it as chips instead of the raw "[[CHOICES: ...]]".
+// The user wants EVERY question to end with pickable options — no free-text
+// guessing, no exceptions. This is a hard requirement, not a "when it makes
+// sense" suggestion, because the first, softer wording got ignored/skipped
+// by the model on open-ended questions.
 const CHOICES_INSTRUCTION =
-  `\n\nWenn deine Antwort mit einer Frage endet, die typischerweise 2-4 kurze, klar ` +
-  `unterscheidbare Antwortoptionen hat, füge ganz am Ende (in einer eigenen Zeile) genau einen ` +
-  `Marker hinzu: [[CHOICES: Option A|Option B|Option C]] (2-4 kurze Optionen, durch | getrennt). ` +
-  `Nutze das NICHT bei offenen Fragen ohne sinnvolle kurze Antwortoptionen. Der Marker erscheint ` +
-  `nie im sichtbaren Text — er wird vom Frontend herausgefiltert und als Buttons dargestellt.`;
+  `\n\nWICHTIG — das ist eine feste Regel, keine Empfehlung: JEDE Antwort, die mit einer Frage an ` +
+  `den Nutzer endet, MUSS mit einem Marker in einer eigenen letzten Zeile enden: ` +
+  `[[CHOICES: Option A|Option B|Option C]] (2-5 kurze, klar unterscheidbare Antwortoptionen, ` +
+  `durch | getrennt). Das gilt auch für offene/weiche Fragen — formuliere dann plausible, ` +
+  `konkrete Beispielantworten als Optionen (der Nutzer kann trotzdem frei tippen, die Optionen sind ` +
+  `nur ein Vorschlag). Nur wenn deine Antwort mit GAR KEINER Frage endet, lässt du den Marker weg. ` +
+  `Der Marker erscheint nie im sichtbaren Text — er wird vom Frontend herausgefiltert und als Buttons ` +
+  `dargestellt.`;
 
 const SYSTEM_PROMPTS: Record<AgentType, (name: string) => string> = {
   consultant: (name) =>
