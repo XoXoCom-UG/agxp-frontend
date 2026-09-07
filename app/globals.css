@@ -12,32 +12,33 @@
    here ever need to move again.
    ============================================================================= */
 :root {
-  --background:#0A0A0B;
-  --foreground:#F2F1EE;
+  --background:#06080D;
+  --foreground:#EDF2F8;
 
-  --card:#17171A;
-  --card-foreground:#F2F1EE;
-  --popover:#1E1E22;
-  --popover-foreground:#F2F1EE;
+  --card:#0B111B;
+  --card-foreground:#EDF2F8;
+  --popover:#101826;
+  --popover-foreground:#EDF2F8;
 
-  --primary:#3E7BFA;
-  --primary-foreground:#F5F8FF;
-  --primary-soft:#6B9BFF;
+  --primary:#1E76F0;
+  --primary-foreground:#FFFFFF;
+  --primary-soft:#4A93FF;
 
-  --secondary:#17171A;
-  --secondary-foreground:#A6A29B;
-  --muted:#17171A;
-  --muted-foreground:#726E68;
-  --accent:#1E1E22;
-  --accent-foreground:#F2F1EE;
+  --secondary:#0E1622;
+  --secondary-foreground:#A9B4C4;
+  --muted:#0E1622;
+  --muted-foreground:#7C8798;
+  --accent:#141E2E;
+  --accent-foreground:#EDF2F8;
 
-  --destructive:#C4574A;
+  --destructive:#E0574A;
   --destructive-foreground:#FBEAE6;
-  --success:#8FAE93;
+  --success:#3FB27F;
 
-  /* Coach vs Consultant: cool vs warm temperature on the same neutral scale. */
-  --coach-1:#2C2C33; --coach-2:#38383F; --coach-3:#1D1D22;
-  --consultant-1:#2E2925; --consultant-2:#3B3430; --consultant-3:#201C19;
+  /* Coach vs Consultant: both on the same blue-dark scale — the Consultant
+     side sits a step brighter because it leads the screen. */
+  --coach-1:#16202E; --coach-2:#1B2838; --coach-3:#0A1017;
+  --consultant-1:#17253A; --consultant-2:#1D3049; --consultant-3:#0B1420;
 
   --border:rgba(255,255,255,0.10);
   --border-strong:rgba(255,255,255,0.20);

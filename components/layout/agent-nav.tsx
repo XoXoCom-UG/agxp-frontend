@@ -4,28 +4,26 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/lib/auth-context";
-import { createBlankProject, listProjects, type Project } from "@/lib/projects";
+import { listProjects, PLACEHOLDER_PROJECT_NAME, type Project } from "@/lib/projects";
 import {
-  IconDiamond, IconSun, IconMoon, IconBell, IconChevronDown, IconUser, IconLogout, IconFolder, IconPlus,
+  IconDiamond, IconSun, IconMoon, IconChevronDown, IconUser, IconLogout, IconFolder, IconPlus,
 } from "@/components/layout/agxp-icons";
 
-type Tab = "projects" | "newtask" | "history" | "agents";
+type Tab = "newtask" | "history" | "agents";
 
 function activeTab(pathname: string): Tab {
-  if (pathname.startsWith("/dashboard/project/")) return "newtask";
   if (pathname.startsWith("/dashboard/history")) return "history";
   if (pathname.startsWith("/dashboard/agents")) return "agents";
-  return "projects";
+  return "newtask";
 }
 
-type PopoverName = "notif" | "avatar" | "switcher" | null;
+type PopoverName = "avatar" | "switcher" | null;
 
 export function AgentNav({ projectName, projectId }: { projectName?: string; projectId?: string }) {
   const { user, profileName, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
-  const [starting, setStarting] = useState(false);
   const [popover, setPopover] = useState<PopoverName>(null);
   const [switcherProjects, setSwitcherProjects] = useState<Project[] | null>(null);
   const ref = useRef<HTMLDivElement>(null);
@@ -39,28 +37,6 @@ export function AgentNav({ projectName, projectId }: { projectName?: string; pro
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
-  // "New Task" (nav, or the Projects list's own button — see the dispatched
-  // event below) has no in-between form: create a blank project and drop the
-  // user straight into the agent picker. It's renamed from the first message
-  // once the conversation actually starts (lib/projects.renameFromFirstMessage).
-  async function startNewTask() {
-    if (starting) return;
-    setStarting(true);
-    try {
-      const project = await createBlankProject();
-      router.push(`/dashboard/project/${project.id}/setup`);
-    } finally {
-      setStarting(false);
-    }
-  }
-
-  useEffect(() => {
-    function onStart() { startNewTask(); }
-    window.addEventListener("agxp:new-project", onStart);
-    return () => window.removeEventListener("agxp:new-project", onStart);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   function toggle(name: Exclude<PopoverName, null>) {
     setPopover(p => p === name ? null : name);
     if (name === "switcher" && !switcherProjects) {
@@ -68,54 +44,47 @@ export function AgentNav({ projectName, projectId }: { projectName?: string; pro
     }
   }
 
-  function switchProject(p: Project) {
+  // "New Task" is the start screen — it doesn't create anything yet. The
+  // project row appears the moment the user actually picks an agent or sends
+  // a message (see NewTaskScreen.ensureProject), so abandoned starts don't
+  // leave empty projects behind.
+  function newTask() { setPopover(null); router.push("/dashboard"); }
+
+  function openProject(p: Project) {
     setPopover(null);
-    if (p.coach_agent_id && p.consultant_agent_id) router.push(`/dashboard/project/${p.id}/workspace`);
-    else router.push(`/dashboard/project/${p.id}/setup`);
+    router.push(`/dashboard/project/${p.id}`);
   }
 
   return (
     <header onClick={e => e.stopPropagation()}>
       <div style={{ display: "flex", alignItems: "center", minWidth: 0 }}>
-        <button className="brand" onClick={() => router.push("/dashboard")}>
+        <button className="brand" onClick={newTask}>
           <div className="brand-mark"><IconDiamond size={12} /></div>
-          <div className="brand-text"><span className="name">Agentix Projects</span><span className="sub">AgXP</span></div>
+          <div className="brand-text stacked"><span className="name">Agentix Projects</span><span className="sub">AGXP</span></div>
         </button>
 
         <nav>
-          <button className={tab === "projects" ? "active" : ""} onClick={() => router.push("/dashboard")}>Projects</button>
-          <button className={tab === "newtask" ? "active" : ""} disabled={starting} onClick={startNewTask}>New Task</button>
+          <button className={tab === "newtask" ? "active" : ""} onClick={newTask}>New Task</button>
           <button className={tab === "history" ? "active" : ""} onClick={() => router.push("/dashboard/history")}>Project History</button>
           <button className={tab === "agents" ? "active" : ""} onClick={() => router.push("/dashboard/agents")}>Agent Dashboard</button>
         </nav>
-
-        {projectName && (
-          <button className="project-context" onClick={e => { e.stopPropagation(); toggle("switcher"); }}>
-            <span className="dot" /><span className="pname">{projectName}</span><IconChevronDown size={10} />
-          </button>
-        )}
       </div>
 
       <div className="util" ref={ref}>
+        <button className="workspace-pill" onClick={e => { e.stopPropagation(); toggle("switcher"); }}>
+          {projectName && projectName !== PLACEHOLDER_PROJECT_NAME ? projectName : "Transformation Workspace"}
+          <IconChevronDown size={10} />
+        </button>
+
         <button className="icon-btn" data-tooltip={theme === "light" ? "Switch to dark theme" : "Switch to light theme"}
           onClick={e => { e.stopPropagation(); setTheme(theme === "light" ? "dark" : "light"); }}>
           {theme === "light" ? <IconMoon /> : <IconSun />}
-        </button>
-
-        <button className="icon-btn" data-tooltip="Notifications" onClick={e => { e.stopPropagation(); toggle("notif"); }}>
-          <IconBell /><span className="notif-dot" />
         </button>
 
         <button className="avatar" onClick={e => { e.stopPropagation(); toggle("avatar"); }}>
           {(profileName || user?.email || "U").slice(0, 2).toUpperCase()}
         </button>
 
-        {popover === "notif" && (
-          <div className="popover" onClick={e => e.stopPropagation()}>
-            <div className="ph">Notifications</div>
-            <div className="pi">Your AI project team is ready.</div>
-          </div>
-        )}
         {popover === "avatar" && (
           <div className="popover" onClick={e => e.stopPropagation()}>
             <button className="mi"><IconUser size={13} />Profile</button>
@@ -124,17 +93,17 @@ export function AgentNav({ projectName, projectId }: { projectName?: string; pro
           </div>
         )}
         {popover === "switcher" && (
-          <div className="popover switcher" onClick={e => e.stopPropagation()}>
+          <div className="popover switcher" style={{ right: 96 }} onClick={e => e.stopPropagation()}>
             <div className="ph">Switch Project</div>
             {(switcherProjects ?? []).filter(p => p.status !== "Archived").map(p => (
-              <button key={p.id} className="mi switcher-row" style={{ width: "100%" }} onClick={() => switchProject(p)}>
+              <button key={p.id} className="mi switcher-row" style={{ width: "100%" }} onClick={() => openProject(p)}>
                 {p.id === projectId ? <span className="cur" /> : <span style={{ width: 6, flexShrink: 0 }} />}
                 <span className="sn">{p.name}</span>
               </button>
             ))}
             <hr />
-            <button className="mi" onClick={() => { setPopover(null); startNewTask(); }}><IconPlus size={13} />Create New Project</button>
-            <button className="mi" onClick={() => { setPopover(null); router.push("/dashboard"); }}><IconFolder size={13} />View All Projects</button>
+            <button className="mi" onClick={newTask}><IconPlus size={13} />New Task</button>
+            <button className="mi" onClick={() => { setPopover(null); router.push("/dashboard/history"); }}><IconFolder size={13} />Project History</button>
           </div>
         )}
       </div>

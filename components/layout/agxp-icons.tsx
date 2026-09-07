@@ -1,12 +1,12 @@
 // Icons copied path-for-path from Ana's mockup (agxp-functional-ui) so shapes
 // match exactly, not just approximate Lucide equivalents.
 
-type IconProps = { size?: number; className?: string };
+type IconProps = { size?: number; className?: string; style?: React.CSSProperties };
 
-function Svg({ size = 14, className, children, strokeWidth = 1.8 }: IconProps & { children: React.ReactNode; strokeWidth?: number }) {
+function Svg({ size = 14, className, style, children, strokeWidth = 1.8 }: IconProps & { children: React.ReactNode; strokeWidth?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}>
+      strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
       {children}
     </svg>
   );

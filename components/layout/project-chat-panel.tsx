@@ -2,29 +2,36 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Agent, AgentType } from "@/lib/agents";
-import { listMessages, addMessage, clearMessages, touchProjectActivity, renameFromFirstMessage, type Project, type ProjectMessage } from "@/lib/projects";
+import { listMessages, addMessage, touchProjectActivity, renameFromFirstMessage, type Project, type ProjectMessage } from "@/lib/projects";
 import { askAgent } from "@/lib/ask-agent";
 import { parseMarkers } from "@/lib/message-markers";
+import { methodLabel, methodBlurb } from "@/lib/method-labels";
 import { md } from "@/lib/markdown";
-import { ConfirmDialog } from "@/components/layout/confirm-dialog";
-import {
-  IconCoach, IconConsultant, IconMore, IconUsers, IconPlus, IconSend,
-} from "@/components/layout/agxp-icons";
+import { IconCoach, IconConsultant, IconArrow, IconSend, IconCheck, IconSearch } from "@/components/layout/agxp-icons";
 
 const OPENING: Record<AgentType, string> = {
-  consultant: "Hey, wie kann ich dir heute helfen?",
-  coach: "Hey, worüber möchtest du heute sprechen?",
+  consultant: "Hey, what can I do for you today?",
+  coach: "Hey, what would you like to talk through today?",
 };
-const QUICK_ACTIONS: Record<AgentType, { t: string; s: string }[]> = {
-  consultant: [
-    { t: "Ich möchte eine Unterhaltung über AI starten", s: "Freie Exploration — kein festes Ziel." },
-    { t: "Erstelle mir ein IT Transformation Concept", s: "Strukturierte Ist/Ziel-Analyse mit Maßnahmen." },
-  ],
-  coach: [
-    { t: "Ich möchte über eine Veränderung im Team sprechen", s: "Widerstände, Kommunikation, Team-Dynamik." },
-    { t: "Ich brauche Coaching zu einem IT-Thema", s: "Begleitung bei der Einführung neuer Arbeitsweisen." },
-  ],
-};
+
+/** The agent offers what it knows: a full guided interview, or one of its methods. */
+function quickActions(agent: Agent) {
+  const actions = [{
+    title: "Full Assessment",
+    blurb: "Standardized interview process.",
+    prompt: "Let's do a full assessment with the standardized interview process.",
+    icon: <IconCheck size={14} />,
+  }];
+  for (const m of agent.primaryMethods.slice(0, 3)) {
+    actions.push({
+      title: methodLabel(m.name),
+      blurb: methodBlurb(m.name),
+      prompt: `Let's work through the ${methodLabel(m.name)} method together.`,
+      icon: <IconSearch size={14} />,
+    });
+  }
+  return actions;
+}
 
 export function ProjectChatPanel({ project, role, agent, primary, onProjectNamed }: {
   project: Project; role: AgentType; agent: Agent;
@@ -36,8 +43,6 @@ export function ProjectChatPanel({ project, role, agent, primary, onProjectNamed
   const [loaded, setLoaded] = useState(false);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [confirm, setConfirm] = useState<"reset" | "details" | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -67,71 +72,66 @@ export function ProjectChatPanel({ project, role, agent, primary, onProjectNamed
       setMessages(prev => [...prev, { id: crypto.randomUUID(), project_id: project.id, column_type: role, role: "assistant", content: reply, created_at: new Date().toISOString() }]);
       touchProjectActivity(project.id, `${role === "coach" ? "Coach" : "Consultant"} replied`).catch(() => {});
     } catch (e) {
-      setMessages(prev => [...prev, { id: crypto.randomUUID(), project_id: project.id, column_type: role, role: "assistant", content: `Fehler: ${(e as Error).message}`, created_at: new Date().toISOString() }]);
+      setMessages(prev => [...prev, { id: crypto.randomUUID(), project_id: project.id, column_type: role, role: "assistant", content: `Error: ${(e as Error).message}`, created_at: new Date().toISOString() }]);
     } finally {
       setSending(false);
     }
-  }
-
-  async function resetConversation() {
-    setConfirm(null);
-    await clearMessages(project.id, role);
-    setMessages([]);
   }
 
   const lastAssistantIdx = (() => {
     for (let i = messages.length - 1; i >= 0; i--) if (messages[i].role === "assistant") return i;
     return -1;
   })();
+  const actions = quickActions(agent);
 
   return (
     <section className={`panel ${role}`} style={primary ? { flex: 1.6 } : undefined}>
-      {confirm === "reset" && (
-        <ConfirmDialog title="Start a new conversation?" body="Current chat messages will be cleared." confirmLabel="Start new"
-          onConfirm={resetConversation} onCancel={() => setConfirm(null)} />
-      )}
-      {confirm === "details" && (
-        <ConfirmDialog title={agent.name} confirmLabel="Close" onConfirm={() => setConfirm(null)} onCancel={() => setConfirm(null)}
-          body={`${agent.expertise || agent.tagline || ""}.${agent.primaryMethods.length ? " Primary methods: " + agent.primaryMethods.map(m => m.name).join(", ") + "." : ""}`} />
-      )}
-
+      {/* Head + Steckbrief: who this agent is, condensed */}
       <div className="chat-head">
         <div className="chat-avatar">{role === "coach" ? <IconCoach size={17} /> : <IconConsultant size={17} />}</div>
-        <div>
+        <div style={{ minWidth: 0 }}>
           <div className="n">{agent.name}</div>
           <div className="r"><span className={`role-dot ${role}`} />{role === "coach" ? "Coach" : "Consultant"}</div>
         </div>
-        <button className="chat-menu-btn" data-tooltip="Agent menu" onClick={e => { e.stopPropagation(); setMenuOpen(o => !o); }}>
-          <IconMore />
-        </button>
-        {menuOpen && (
-          <div className="popover" onClick={e => e.stopPropagation()}>
-            <button className="mi" onClick={() => { setMenuOpen(false); setConfirm("details"); }}><IconUsers size={13} />Agent details</button>
-            <button className="mi" onClick={() => { setMenuOpen(false); setConfirm("reset"); }}><IconPlus size={13} />New conversation</button>
-          </div>
-        )}
       </div>
-      {(agent.tagline || agent.expertise) && (
-        <div style={{ padding: "8px 26px", fontSize: "var(--text-2xs)", color: "var(--text-muted)", borderBottom: "1px solid var(--border-soft)" }}>
-          {agent.tagline || agent.expertise}
+
+      <div className="steckbrief">
+        <div className="sb-stats">
+          <div><span className="lbl">Knowledge Level</span><b>{agent.knowledge_level}</b></div>
+          <div><span className="lbl">Previous Projects</span><b>{agent.last_projects.length}</b></div>
+          {agent.tagline && <div><span className="lbl">Type</span><b>{agent.tagline}</b></div>}
         </div>
-      )}
+        <div className="sb-methods">
+          {agent.primaryMethods.length > 0 && (
+            <div className="grp">
+              <span className="lbl">Primary Methods</span>
+              <div className="chips">{agent.primaryMethods.map(m => <span key={m.id} className="m-chip">{methodLabel(m.name)}</span>)}</div>
+            </div>
+          )}
+          {agent.secondaryMethods.length > 0 && (
+            <div className="grp">
+              <span className="lbl">Secondary Methods</span>
+              <div className="chips">{agent.secondaryMethods.map(m => <span key={m.id} className="m-chip secondary">{methodLabel(m.name)}</span>)}</div>
+            </div>
+          )}
+        </div>
+      </div>
 
       <div className="chat-body">
         {!loaded && <div className="spinner" style={{ margin: "0 auto", borderColor: "var(--border-strong)", borderTopColor: "var(--foreground)" }} />}
 
         {loaded && (
           <div className="msg-agent">
-            <div className="marker"><span className="bar" /><span className="who">{agent.name}</span></div>
             <div className="txt">{OPENING[role]}</div>
           </div>
         )}
         {loaded && messages.length === 0 && (
           <div className="qa-list">
-            {QUICK_ACTIONS[role].map((q, i) => (
-              <button key={q.t} className="qa-item" onClick={() => send(q.t)}>
-                <span className="qno">0{i + 1}</span>
-                <div className="qtxt"><div className="qt">{q.t}</div><div className="qs">{q.s}</div></div>
+            {actions.map(a => (
+              <button key={a.title} className="qa-item" onClick={() => send(a.prompt)}>
+                <span className="qa-ic">{a.icon}</span>
+                <div className="qtxt"><div className="qt">{a.title}</div><div className="qs">{a.blurb}</div></div>
+                <IconArrow />
               </button>
             ))}
           </div>
@@ -143,10 +143,9 @@ export function ProjectChatPanel({ project, role, agent, primary, onProjectNamed
           const showChoices = i === lastAssistantIdx && parsed.choices.length > 0 && !sending;
           return (
             <div key={m.id} className="msg-agent">
-              <div className="marker"><span className="bar" /><span className="who">{agent.name}</span></div>
               <div className="txt" dangerouslySetInnerHTML={{ __html: md(parsed.text) }} />
               {showChoices && (
-                <div className="choice-row">
+                <div className="choice-row" style={{ paddingLeft: 0 }}>
                   {parsed.choices.map(c => (
                     <button key={c} className="choice-chip" disabled={sending} onClick={() => send(c)}>{c}</button>
                   ))}
@@ -166,7 +165,7 @@ export function ProjectChatPanel({ project, role, agent, primary, onProjectNamed
         <textarea className="autosize" rows={1} disabled={sending} value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }}
-          placeholder={`Ask your ${role === "coach" ? "Coach" : "Consultant"}...`} />
+          placeholder={`Ask your ${role === "coach" ? "coach" : "consultant"}...`} />
         <button data-tooltip="Send message" disabled={!input.trim() || sending} onClick={() => send(input)}>
           <IconSend size={14} />
         </button>
