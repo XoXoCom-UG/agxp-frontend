@@ -6,8 +6,10 @@ import { listMessages, addMessage, touchProjectActivity, renameFromFirstMessage,
 import { askAgent } from "@/lib/ask-agent";
 import { parseMarkers } from "@/lib/message-markers";
 import { methodLabel, methodBlurb } from "@/lib/method-labels";
+import { levelFor, nextLevel, LEVEL_ORDER } from "@/lib/agent-progress";
 import { md } from "@/lib/markdown";
-import { IconCoach, IconConsultant, IconArrow, IconSend, IconCheck, IconSearch } from "@/components/layout/agxp-icons";
+import { AgentOrb, type OrbState } from "@/components/layout/agent-orb";
+import { IconArrow, IconSend, IconCheck, IconSearch } from "@/components/layout/agxp-icons";
 
 const OPENING: Record<AgentType, string> = {
   consultant: "Hey, what can I do for you today?",
@@ -33,17 +35,29 @@ function quickActions(agent: Agent) {
   return actions;
 }
 
-export function ProjectChatPanel({ project, role, agent, primary, onProjectNamed }: {
+export function ProjectChatPanel({ project, role, agent, primary, projectCount = 0, onProjectNamed }: {
   project: Project; role: AgentType; agent: Agent;
   /** Consultant leads the layout (larger). */
   primary?: boolean;
+  /** How many of the user's projects this agent has worked on, this one included. */
+  projectCount?: number;
   onProjectNamed?: (name: string) => void;
 }) {
   const [messages, setMessages] = useState<ProjectMessage[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [orb, setOrb] = useState<OrbState>("idle");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const speakTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => { if (speakTimer.current) clearTimeout(speakTimer.current); }, []);
+
+  function playSpeaking() {
+    setOrb("speaking");
+    if (speakTimer.current) clearTimeout(speakTimer.current);
+    speakTimer.current = setTimeout(() => setOrb("idle"), 900);
+  }
 
   useEffect(() => {
     let alive = true;
@@ -61,6 +75,7 @@ export function ProjectChatPanel({ project, role, agent, primary, onProjectNamed
     const userMsg: ProjectMessage = { id: crypto.randomUUID(), project_id: project.id, column_type: role, role: "user", content: t, created_at: new Date().toISOString() };
     setMessages(prev => [...prev, userMsg]);
     setSending(true);
+    setOrb("thinking");
     try {
       await addMessage(project.id, role, "user", t);
       if (isFirstEver) {
@@ -70,9 +85,11 @@ export function ProjectChatPanel({ project, role, agent, primary, onProjectNamed
       const reply = await askAgent(agent, history);
       await addMessage(project.id, role, "assistant", reply);
       setMessages(prev => [...prev, { id: crypto.randomUUID(), project_id: project.id, column_type: role, role: "assistant", content: reply, created_at: new Date().toISOString() }]);
+      playSpeaking();
       touchProjectActivity(project.id, `${role === "coach" ? "Coach" : "Consultant"} replied`).catch(() => {});
     } catch (e) {
       setMessages(prev => [...prev, { id: crypto.randomUUID(), project_id: project.id, column_type: role, role: "assistant", content: `Error: ${(e as Error).message}`, created_at: new Date().toISOString() }]);
+      setOrb("idle");
     } finally {
       setSending(false);
     }
@@ -84,11 +101,19 @@ export function ProjectChatPanel({ project, role, agent, primary, onProjectNamed
   })();
   const actions = quickActions(agent);
 
+  // The agent levels up on the work it has actually done for this user; this
+  // project is one of them, so compare against the count without it to know
+  // whether joining here is what pushed it up a level.
+  const totalProjects = agent.last_projects.length + projectCount;
+  const level = levelFor(totalProjects);
+  const leveledUp = levelFor(Math.max(0, totalProjects - 1)) !== level;
+  const { next, remaining } = nextLevel(totalProjects);
+
   return (
     <section className={`panel ${role}`} style={primary ? { flex: 1.6 } : undefined}>
       {/* Head + Steckbrief: who this agent is, condensed */}
       <div className="chat-head">
-        <div className="chat-avatar">{role === "coach" ? <IconCoach size={17} /> : <IconConsultant size={17} />}</div>
+        <AgentOrb role={role} state={orb} size={38} enter />
         <div style={{ minWidth: 0 }}>
           <div className="n">{agent.name}</div>
           <div className="r"><span className={`role-dot ${role}`} />{role === "coach" ? "Coach" : "Consultant"}</div>
@@ -97,8 +122,20 @@ export function ProjectChatPanel({ project, role, agent, primary, onProjectNamed
 
       <div className="steckbrief">
         <div className="sb-stats">
-          <div><span className="lbl">Knowledge Level</span><b>{agent.knowledge_level}</b></div>
-          <div><span className="lbl">Previous Projects</span><b>{agent.last_projects.length}</b></div>
+          <div>
+            <span className="lbl">Knowledge Level</span>
+            <div className="level">
+              <b>{level}</b>
+              <span className="level-bar">
+                {LEVEL_ORDER.map((l, i) => (
+                  <span key={l} className={`level-seg ${i <= LEVEL_ORDER.indexOf(level) ? "on" : ""}`} />
+                ))}
+              </span>
+              {leveledUp && <span className="level-up">Level up</span>}
+            </div>
+            {next && <div className="level-hint">{remaining} more project{remaining === 1 ? "" : "s"} to {next}</div>}
+          </div>
+          <div><span className="lbl">Previous Projects</span><b>{totalProjects}</b></div>
           {agent.tagline && <div><span className="lbl">Type</span><b>{agent.tagline}</b></div>}
         </div>
         <div className="sb-methods">

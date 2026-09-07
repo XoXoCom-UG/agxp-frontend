@@ -4,10 +4,13 @@ import { useEffect, useState } from "react";
 import type { Agent, AgentType, Method } from "@/lib/agents";
 import { listAllMethods, createAgent } from "@/lib/agents";
 import { assignAgent, type Project } from "@/lib/projects";
+import { levelFor, LEVEL_ORDER } from "@/lib/agent-progress";
+import { methodLabel } from "@/lib/method-labels";
 import { dateStr } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/layout/confirm-dialog";
+import { AgentOrb } from "@/components/layout/agent-orb";
 import {
-  IconBack, IconPlus, IconArrow, IconSearch, IconCoach, IconConsultant, IconCheck, IconChevronDown,
+  IconBack, IconPlus, IconArrow, IconSearch, IconCheck, IconChevronDown,
 } from "@/components/layout/agxp-icons";
 
 type PanelState = "empty" | "list" | "detail" | "type" | "configure";
@@ -57,7 +60,7 @@ const TYPE_CATALOG: Record<AgentType, TypeTemplate[]> = {
   ],
 };
 
-export function AgentPickerPanel({ role, project, agents, ensureProject, onAssigned, onAgentCreated, primary }: {
+export function AgentPickerPanel({ role, project, agents, ensureProject, onAssigned, onAgentCreated, primary, projectCounts = {} }: {
   role: AgentType;
   /** Null until the project row exists — it's created lazily on the first real action. */
   project: Project | null;
@@ -66,7 +69,10 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   onAssigned: (project: Project) => void;
   onAgentCreated: (agent: Agent) => void;
   primary?: boolean;
+  /** Projects each agent has worked on for this user — drives its level. */
+  projectCounts?: Record<string, number>;
 }) {
+  const totalProjects = (a: Agent) => a.last_projects.length + (projectCounts[a.id] ?? 0);
   const head = ROLE_HEAD[role];
   const [state, setState] = useState<PanelState>("empty");
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -108,7 +114,7 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
       )}
 
       <div className="panel-head">
-        <div className="ic">{role === "coach" ? <IconCoach size={17} /> : <IconConsultant size={17} />}</div>
+        <AgentOrb role={role} size={34} enter />
         <div style={{ minWidth: 0, flex: 1 }}>
           <h2>{head.title}</h2>
           <div className="sub">{head.sub}</div>
@@ -174,7 +180,7 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
                   {a.primaryMethods.length > 0 && <div className="dr-methods"><span className="mlabel">Primary</span>{a.primaryMethods.map(m => m.name).join(" · ")}</div>}
                   {a.secondaryMethods.length > 0 && <div className="dr-methods secondary"><span className="mlabel">Secondary</span>{a.secondaryMethods.map(m => m.name).join(" · ")}</div>}
                   <div className="dr-foot">
-                    <span className="proj-count">{a.last_projects.length} Projects</span>
+                    <span className="proj-count">{levelFor(totalProjects(a))} · {totalProjects(a)} Projects</span>
                     <span className="dr-select" aria-hidden="true">Select <IconArrow /></span>
                   </div>
                 </div>
@@ -184,7 +190,8 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
         </>
 
       ) : state === "detail" ? (
-        <DetailView agent={roleAgents.find(a => a.id === detailId) ?? null} role={role} busy={busy} onSelect={a => setPendingConfirm(a)} />
+        <DetailView agent={roleAgents.find(a => a.id === detailId) ?? null} role={role} busy={busy}
+          totalProjects={totalProjects} onSelect={a => setPendingConfirm(a)} />
 
       ) : state === "type" ? (
         <>
@@ -215,27 +222,41 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   );
 }
 
-function DetailView({ agent, role, busy, onSelect }: { agent: Agent | null; role: AgentType; busy: boolean; onSelect: (agent: Agent) => void }) {
+function DetailView({ agent, role, busy, totalProjects, onSelect }: {
+  agent: Agent | null; role: AgentType; busy: boolean;
+  totalProjects: (a: Agent) => number;
+  onSelect: (agent: Agent) => void;
+}) {
   if (!agent) return null;
+  const total = totalProjects(agent);
+  const level = levelFor(total);
   return (
     <div className="detail">
       <div className="role-line"><span className={`role-dot ${role}`} /><span className="role-eyebrow">{ROLE_LABEL[role]}</span></div>
       <h2>{agent.name}</h2>
       {agent.description && <div className="detail-desc">{agent.description}</div>}
       <div className="sb-stats">
-        <div><span className="lbl">Knowledge Level</span><b>{agent.knowledge_level}</b></div>
-        <div><span className="lbl">Previous Projects</span><b>{agent.last_projects.length}</b></div>
+        <div>
+          <span className="lbl">Knowledge Level</span>
+          <div className="level">
+            <b>{level}</b>
+            <span className="level-bar">
+              {LEVEL_ORDER.map((l, i) => <span key={l} className={`level-seg ${i <= LEVEL_ORDER.indexOf(level) ? "on" : ""}`} />)}
+            </span>
+          </div>
+        </div>
+        <div><span className="lbl">Previous Projects</span><b>{total}</b></div>
         {agent.tagline && <div><span className="lbl">Type</span><b>{agent.tagline}</b></div>}
       </div>
       <div className="sb-methods" style={{ marginBottom: "var(--sp-5)" }}>
         {agent.primaryMethods.length > 0 && (
           <div className="grp"><span className="lbl">Primary Methods</span>
-            <div className="chips">{agent.primaryMethods.map(m => <span key={m.id} className="m-chip">{m.name}</span>)}</div>
+            <div className="chips">{agent.primaryMethods.map(m => <span key={m.id} className="m-chip">{methodLabel(m.name)}</span>)}</div>
           </div>
         )}
         {agent.secondaryMethods.length > 0 && (
           <div className="grp"><span className="lbl">Secondary Methods</span>
-            <div className="chips">{agent.secondaryMethods.map(m => <span key={m.id} className="m-chip secondary">{m.name}</span>)}</div>
+            <div className="chips">{agent.secondaryMethods.map(m => <span key={m.id} className="m-chip secondary">{methodLabel(m.name)}</span>)}</div>
           </div>
         )}
       </div>

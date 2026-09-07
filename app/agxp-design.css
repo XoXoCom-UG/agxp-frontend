@@ -694,6 +694,52 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 .qa-list{ background:var(--card); }
 .qa-item{ align-items:center; }
 
+/* ---------- AGENT ORB — the only "gamified" motion in the app ----------
+   Still when idle; ripples while thinking; one short pulse when a reply
+   lands; a small entrance when the agent joins the project. */
+.orb{ position:relative; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
+.orb-core{
+  position:relative; z-index:1; width:100%; height:100%; border-radius:var(--r-md);
+  display:flex; align-items:center; justify-content:center; color:#fff;
+  background:linear-gradient(160deg, var(--consultant-2), var(--consultant-3));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.16), 0 6px 16px -8px rgba(0,0,0,0.6);
+  transition:box-shadow .2s var(--ease-out);
+}
+.orb-coach .orb-core{ background:linear-gradient(160deg, var(--coach-2), var(--coach-3)); }
+.orb-core svg{ width:52%; height:52%; opacity:.92; }
+.orb-ring{ position:absolute; inset:0; border-radius:var(--r-md); border:1px solid var(--primary); opacity:0; pointer-events:none; }
+.orb-thinking .orb-ring{ animation:orbRipple 1.6s var(--ease-out) infinite; }
+.orb-thinking .orb-ring.r2{ animation-delay:.8s; }
+.orb-thinking .orb-core{
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.16),
+             0 0 0 1px color-mix(in srgb, var(--primary) 45%, transparent),
+             0 8px 22px -10px var(--primary);
+}
+@keyframes orbRipple{ from{ opacity:.5; transform:scale(1); } to{ opacity:0; transform:scale(1.55); } }
+.orb-speaking .orb-core{ animation:orbSpeak 900ms var(--ease-out); }
+@keyframes orbSpeak{
+  0%{ transform:scale(1); } 22%{ transform:scale(1.10); }
+  45%{ transform:scale(0.98); } 70%{ transform:scale(1.04); } 100%{ transform:scale(1); }
+}
+.orb-enter{ animation:orbEnter 420ms var(--ease-out); }
+@keyframes orbEnter{ from{ opacity:0; transform:scale(.6) translateY(4px); } to{ opacity:1; transform:none; } }
+@media (prefers-reduced-motion: reduce){
+  .orb-thinking .orb-ring, .orb-speaking .orb-core, .orb-enter{ animation:none !important; }
+}
+
+/* Level — the agent grows as it works on your projects */
+.level{ display:flex; align-items:center; gap:9px; }
+.level-bar{ display:flex; gap:3px; }
+.level-seg{ width:16px; height:4px; border-radius:2px; background:var(--border-medium); transition:background-color .3s var(--ease-out); }
+.level-seg.on{ background:var(--primary); }
+.level-hint{ font-size:var(--text-3xs); color:var(--text-muted); }
+.level-up{
+  font-size:var(--text-3xs); font-weight:700; letter-spacing:0.06em; text-transform:uppercase;
+  color:var(--primary-foreground); background:var(--primary); border-radius:var(--r-pill); padding:2px 9px;
+  animation:levelUp 600ms var(--ease-out);
+}
+@keyframes levelUp{ 0%{ opacity:0; transform:translateY(5px) scale(.9); } 60%{ transform:translateY(0) scale(1.07); } 100%{ opacity:1; transform:none; } }
+
 /* Project artifacts — the downloadable method outputs, not built yet */
 .artifact-bar{ display:flex; align-items:center; gap:var(--sp-3); padding:var(--sp-4) var(--sp-6); flex-shrink:0; flex-wrap:wrap; }
 .artifact-bar .lbl{ font-size:var(--text-3xs); font-weight:700; letter-spacing:0.09em; text-transform:uppercase; color:var(--text-muted); }

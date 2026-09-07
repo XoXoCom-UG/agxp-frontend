@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { getProject, createBlankProject, PLACEHOLDER_PROJECT_NAME, type Project } from "@/lib/projects";
 import { listAgents, type Agent, type AgentType } from "@/lib/agents";
+import { projectCountsByAgent } from "@/lib/agent-progress";
 import { AgentNav } from "@/components/layout/agent-nav";
 import { AgentPickerPanel } from "@/components/layout/agent-picker-panel";
 import { ProjectChatPanel } from "@/components/layout/project-chat-panel";
@@ -25,6 +26,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
   const router = useRouter();
   const [project, setProject] = useState<Project | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [projectCounts, setProjectCounts] = useState<Record<string, number>>({});
   const [loadingData, setLoadingData] = useState(true);
   const creating = useRef<Promise<Project> | null>(null);
 
@@ -33,12 +35,23 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
   useEffect(() => {
     if (!token) return;
     let alive = true;
-    Promise.all([projectId ? getProject(projectId) : Promise.resolve(null), listAgents()])
-      .then(([p, a]) => { if (!alive) return; setProject(p); setAgents(a); })
+    Promise.all([
+      projectId ? getProject(projectId) : Promise.resolve(null),
+      listAgents(),
+      projectCountsByAgent().catch(() => ({} as Record<string, number>)),
+    ])
+      .then(([p, a, counts]) => { if (!alive) return; setProject(p); setAgents(a); setProjectCounts(counts); })
       .catch(() => {})
       .finally(() => { if (alive) setLoadingData(false); });
     return () => { alive = false; };
   }, [token, projectId]);
+
+  // An agent that just joined a project may have crossed a level threshold —
+  // refresh the counts so the Steckbrief shows it right away.
+  function handleAssigned(p: Project) {
+    setProject(p);
+    projectCountsByAgent().then(setProjectCounts).catch(() => {});
+  }
 
   // Creates the row on first real use and points the URL at it without
   // remounting this screen (a router.push here would throw away panel state).
@@ -62,13 +75,15 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
     if (project && assigned) {
       return (
         <ProjectChatPanel key={role} project={project} role={role} agent={assigned} primary={isPrimary}
+          projectCount={projectCounts[assigned.id] ?? 0}
           onProjectNamed={name => setProject(p => p && { ...p, name })} />
       );
     }
     return (
       <AgentPickerPanel key={role} role={role} project={project} agents={agents} primary={isPrimary}
         ensureProject={ensureProject}
-        onAssigned={setProject}
+        projectCounts={projectCounts}
+        onAssigned={handleAssigned}
         onAgentCreated={a => setAgents(prev => [...prev, a])} />
     );
   }
