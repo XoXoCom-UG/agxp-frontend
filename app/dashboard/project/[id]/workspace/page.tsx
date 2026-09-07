@@ -3,8 +3,8 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { getProject, clearAgent, type Project } from "@/lib/projects";
-import { listAgents, type Agent, type AgentType } from "@/lib/agents";
+import { getProject, PLACEHOLDER_PROJECT_NAME, type Project } from "@/lib/projects";
+import { listAgents, type Agent } from "@/lib/agents";
 import { AgentNav } from "@/components/layout/agent-nav";
 import { ProjectChatPanel } from "@/components/layout/project-chat-panel";
 import { IconBack } from "@/components/layout/agxp-icons";
@@ -37,12 +37,6 @@ export default function ProjectWorkspacePage({ params }: { params: Promise<{ id:
     }
   }, [project, router]);
 
-  async function changeAgent(column: AgentType) {
-    if (!project) return;
-    await clearAgent(project.id, column);
-    router.push(`/dashboard/project/${project.id}/setup`);
-  }
-
   if (authLoading || !token || (!project && !notFound)) return (
     <div className="app" style={{ alignItems: "center", justifyContent: "center" }}>
       <div className="spinner" style={{ width: 24, height: 24, borderColor: "var(--border-strong)", borderTopColor: "var(--primary)" }} />
@@ -64,19 +58,24 @@ export default function ProjectWorkspacePage({ params }: { params: Promise<{ id:
   const consultant = agents.find(a => a.id === project.consultant_agent_id);
   if (!coach || !consultant) return null; // redirecting to setup
 
+  const named = project.name !== PLACEHOLDER_PROJECT_NAME;
+
   return (
     <div className="app">
-      <AgentNav projectName={project.name} projectId={project.id} />
+      <AgentNav projectName={named ? project.name : undefined} projectId={project.id} />
       <div className="view-root">
         <div className="page-head">
-          <div><h1>{project.name}</h1><p>Coach and Consultant operate as two independent, persistent conversations on this project.</p></div>
+          <div><h1>{named ? project.name : "New conversation"}</h1><p>Coach and Consultant operate as two independent, persistent conversations on this project.</p></div>
           <button className="btn btn-ghost" onClick={() => router.push(`/dashboard/project/${project.id}/setup`)}>
             <IconBack size={11} />Change agents
           </button>
         </div>
+        {/* Consultant leads (larger, left) — Coach supports (smaller, right), matching Matfit. */}
         <main className="workspace">
-          <ProjectChatPanel project={project} role="coach" agent={coach} onChangeAgent={() => changeAgent("coach")} />
-          <ProjectChatPanel project={project} role="consultant" agent={consultant} onChangeAgent={() => changeAgent("consultant")} />
+          <ProjectChatPanel project={project} role="consultant" agent={consultant} primary
+            onProjectNamed={name => setProject(p => p && { ...p, name })} />
+          <ProjectChatPanel project={project} role="coach" agent={coach}
+            onProjectNamed={name => setProject(p => p && { ...p, name })} />
         </main>
       </div>
     </div>

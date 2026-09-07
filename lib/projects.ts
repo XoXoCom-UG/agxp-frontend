@@ -35,6 +35,27 @@ function addActivity(activity: ActivityEntry[], t: string): ActivityEntry[] {
   return [{ t, d: "Just now" }, ...activity].slice(0, 20);
 }
 
+// Every project used to require a manual "Create Project" form up front — a
+// name, a description, a type — before you could even get to picking agents.
+// Patryk's review (2026-09-02): no manual step at all. "New Task" creates a
+// blank project silently and drops the user straight into the agent picker;
+// the project gets a real name later, from the first message (see
+// renameFromFirstMessage below), the way the old Matfit chat did it.
+export const PLACEHOLDER_PROJECT_NAME = "New Project";
+
+export async function createBlankProject(): Promise<Project> {
+  return createProject({ name: PLACEHOLDER_PROJECT_NAME });
+}
+
+/** Backfills the placeholder name from the first message actually sent, once. */
+export async function renameFromFirstMessage(project: Project, text: string): Promise<string | null> {
+  if (project.name !== PLACEHOLDER_PROJECT_NAME) return null;
+  const name = text.trim().slice(0, 55);
+  if (!name) return null;
+  await renameProject(project.id, name);
+  return name;
+}
+
 export async function listProjects(): Promise<Project[]> {
   const supabase = createClient();
   const { data, error } = await supabase.from("agxp_projects").select("*").order("last_activity_at", { ascending: false });

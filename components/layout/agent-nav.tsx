@@ -4,8 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/lib/auth-context";
-import { createProject, listProjects, type Project } from "@/lib/projects";
-import { CreateProjectSheet } from "@/components/layout/create-project-sheet";
+import { createBlankProject, listProjects, type Project } from "@/lib/projects";
 import {
   IconDiamond, IconSun, IconMoon, IconBell, IconChevronDown, IconUser, IconLogout, IconFolder, IconPlus,
 } from "@/components/layout/agxp-icons";
@@ -26,7 +25,7 @@ export function AgentNav({ projectName, projectId }: { projectName?: string; pro
   const router = useRouter();
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
-  const [creating, setCreating] = useState(false);
+  const [starting, setStarting] = useState(false);
   const [popover, setPopover] = useState<PopoverName>(null);
   const [switcherProjects, setSwitcherProjects] = useState<Project[] | null>(null);
   const ref = useRef<HTMLDivElement>(null);
@@ -40,14 +39,26 @@ export function AgentNav({ projectName, projectId }: { projectName?: string; pro
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
-  // AgentNav is the single owner of the create-project sheet — pages that
-  // also want a "New Project" button (e.g. the Projects list) dispatch this
-  // event instead of mounting their own sheet, which used to render two
-  // overlapping instances at once.
+  // "New Task" (nav, or the Projects list's own button — see the dispatched
+  // event below) has no in-between form: create a blank project and drop the
+  // user straight into the agent picker. It's renamed from the first message
+  // once the conversation actually starts (lib/projects.renameFromFirstMessage).
+  async function startNewTask() {
+    if (starting) return;
+    setStarting(true);
+    try {
+      const project = await createBlankProject();
+      router.push(`/dashboard/project/${project.id}/setup`);
+    } finally {
+      setStarting(false);
+    }
+  }
+
   useEffect(() => {
-    function onOpen() { setCreating(true); }
-    window.addEventListener("agxp:new-project", onOpen);
-    return () => window.removeEventListener("agxp:new-project", onOpen);
+    function onStart() { startNewTask(); }
+    window.addEventListener("agxp:new-project", onStart);
+    return () => window.removeEventListener("agxp:new-project", onStart);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function toggle(name: Exclude<PopoverName, null>) {
@@ -55,12 +66,6 @@ export function AgentNav({ projectName, projectId }: { projectName?: string; pro
     if (name === "switcher" && !switcherProjects) {
       listProjects().then(setSwitcherProjects).catch(() => setSwitcherProjects([]));
     }
-  }
-
-  async function submitCreateProject(name: string, description: string, type: string) {
-    const project = await createProject({ name, description, type });
-    setCreating(false);
-    router.push(`/dashboard/project/${project.id}/setup`);
   }
 
   function switchProject(p: Project) {
@@ -71,18 +76,16 @@ export function AgentNav({ projectName, projectId }: { projectName?: string; pro
 
   return (
     <header onClick={e => e.stopPropagation()}>
-      <CreateProjectSheet open={creating} onClose={() => setCreating(false)} onSubmit={submitCreateProject} />
-
       <div style={{ display: "flex", alignItems: "center", minWidth: 0 }}>
         <button className="brand" onClick={() => router.push("/dashboard")}>
           <div className="brand-mark"><IconDiamond size={12} /></div>
-          <div className="brand-text"><span className="name">Agentix Projects</span><span className="sub">AgxP</span></div>
+          <div className="brand-text"><span className="name">Agentix Projects</span><span className="sub">AgXP</span></div>
         </button>
 
         <nav>
           <button className={tab === "projects" ? "active" : ""} onClick={() => router.push("/dashboard")}>Projects</button>
-          <button className={tab === "newtask" ? "active" : ""} onClick={() => setCreating(true)}>New Task</button>
-          <button className={tab === "history" ? "active" : ""} onClick={() => router.push("/dashboard/history")}>Task History</button>
+          <button className={tab === "newtask" ? "active" : ""} disabled={starting} onClick={startNewTask}>New Task</button>
+          <button className={tab === "history" ? "active" : ""} onClick={() => router.push("/dashboard/history")}>Project History</button>
           <button className={tab === "agents" ? "active" : ""} onClick={() => router.push("/dashboard/agents")}>Agent Dashboard</button>
         </nav>
 
@@ -130,7 +133,7 @@ export function AgentNav({ projectName, projectId }: { projectName?: string; pro
               </button>
             ))}
             <hr />
-            <button className="mi" onClick={() => { setPopover(null); setCreating(true); }}><IconPlus size={13} />Create New Project</button>
+            <button className="mi" onClick={() => { setPopover(null); startNewTask(); }}><IconPlus size={13} />Create New Project</button>
             <button className="mi" onClick={() => { setPopover(null); router.push("/dashboard"); }}><IconFolder size={13} />View All Projects</button>
           </div>
         )}

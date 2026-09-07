@@ -5,6 +5,7 @@ import type { Agent, AgentType, Method } from "@/lib/agents";
 import { listAllMethods, createAgent } from "@/lib/agents";
 import { assignAgent, clearAgent, type Project } from "@/lib/projects";
 import { dateStr } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/layout/confirm-dialog";
 import {
   IconBack, IconPlus, IconArrow, IconSearch, IconCoach, IconConsultant, IconCheck,
 } from "@/components/layout/agxp-icons";
@@ -43,12 +44,14 @@ const TYPE_CATALOG: Record<AgentType, TypeTemplate[]> = {
   ],
 };
 
-export function AgentPickerPanel({ role, project, agents, onAssigned, onAgentCreated }: {
+export function AgentPickerPanel({ role, project, agents, onAssigned, onAgentCreated, primary }: {
   role: AgentType;
   project: Project;
   agents: Agent[];
   onAssigned: (project: Project) => void;
   onAgentCreated: (agent: Agent) => void;
+  /** Consultant leads the layout (larger, per Patryk's 2026-09-02 review — matches Matfit). */
+  primary?: boolean;
 }) {
   const assignedId = role === "coach" ? project.coach_agent_id : project.consultant_agent_id;
   const assigned = agents.find(a => a.id === assignedId) ?? null;
@@ -58,6 +61,9 @@ export function AgentPickerPanel({ role, project, agents, onAssigned, onAgentCre
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState<TypeTemplate | null>(null);
+  // Confirming a pick before it commits replaces the old "Change agent"
+  // mid-conversation button — catches a mis-click right where it happens.
+  const [pendingConfirm, setPendingConfirm] = useState<Agent | null>(null);
 
   const roleAgents = agents.filter(a => a.type === role);
   const filtered = roleAgents.filter(a => {
@@ -82,7 +88,16 @@ export function AgentPickerPanel({ role, project, agents, onAssigned, onAgentCre
   const reco = TYPE_CATALOG[role][0];
 
   return (
-    <section className={`panel ${role}`}>
+    <section className={`panel ${role}`} style={primary ? { flex: 1.6 } : undefined}>
+      {pendingConfirm && (
+        <ConfirmDialog
+          title={`${pendingConfirm.name} as your ${ROLE_LABEL[role]}?`}
+          body="You can review this again before both roles are filled — once your Coach and Consultant are both set, the project workspace opens automatically."
+          confirmLabel={`Confirm ${ROLE_LABEL[role]}`}
+          onConfirm={() => { const a = pendingConfirm; setPendingConfirm(null); select(a.id); }}
+          onCancel={() => setPendingConfirm(null)}
+        />
+      )}
       <div className="pane-head">
         <div className="pane-head-top">
           <div>
@@ -160,7 +175,7 @@ export function AgentPickerPanel({ role, project, agents, onAssigned, onAgentCre
         </>
 
       ) : state === "detail" ? (
-        <DetailView agent={roleAgents.find(a => a.id === detailId) ?? null} role={role} busy={busy} onSelect={select} />
+        <DetailView agent={roleAgents.find(a => a.id === detailId) ?? null} role={role} busy={busy} onSelect={a => setPendingConfirm(a)} />
 
       ) : state === "type" ? (
         <>
@@ -185,7 +200,7 @@ export function AgentPickerPanel({ role, project, agents, onAssigned, onAgentCre
   );
 }
 
-function DetailView({ agent, role, busy, onSelect }: { agent: Agent | null; role: AgentType; busy: boolean; onSelect: (id: string) => void }) {
+function DetailView({ agent, role, busy, onSelect }: { agent: Agent | null; role: AgentType; busy: boolean; onSelect: (agent: Agent) => void }) {
   if (!agent) return null;
   return (
     <div className="detail">
@@ -214,7 +229,7 @@ function DetailView({ agent, role, busy, onSelect }: { agent: Agent | null; role
           ))}</div>
         </div>
       )}
-      <button className="detail-select-btn" disabled={busy} onClick={() => onSelect(agent.id)}>
+      <button className="detail-select-btn" disabled={busy} onClick={() => onSelect(agent)}>
         Select {ROLE_LABEL[role]} <IconArrow />
       </button>
     </div>

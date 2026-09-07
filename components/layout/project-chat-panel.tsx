@@ -2,13 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Agent, AgentType } from "@/lib/agents";
-import { listMessages, addMessage, clearMessages, touchProjectActivity, type Project, type ProjectMessage } from "@/lib/projects";
+import { listMessages, addMessage, clearMessages, touchProjectActivity, renameFromFirstMessage, type Project, type ProjectMessage } from "@/lib/projects";
 import { askAgent } from "@/lib/ask-agent";
 import { parseMarkers } from "@/lib/message-markers";
 import { md } from "@/lib/markdown";
 import { ConfirmDialog } from "@/components/layout/confirm-dialog";
 import {
-  IconCoach, IconConsultant, IconMore, IconUsers, IconSwap, IconPlus, IconSend,
+  IconCoach, IconConsultant, IconMore, IconUsers, IconPlus, IconSend,
 } from "@/components/layout/agxp-icons";
 
 const OPENING: Record<AgentType, string> = {
@@ -25,17 +25,19 @@ const QUICK_ACTIONS: Record<AgentType, { t: string; s: string }[]> = {
     { t: "Ich brauche Coaching zu einem IT-Thema", s: "Begleitung bei der Einführung neuer Arbeitsweisen." },
   ],
 };
-const GENERATE_CONCEPT_PROMPT = "Bitte erstelle jetzt das vollständige Transformation Concept basierend auf unserem bisherigen Gespräch.";
 
-export function ProjectChatPanel({ project, role, agent, onChangeAgent }: {
-  project: Project; role: AgentType; agent: Agent; onChangeAgent: () => void;
+export function ProjectChatPanel({ project, role, agent, primary, onProjectNamed }: {
+  project: Project; role: AgentType; agent: Agent;
+  /** Consultant leads the layout (larger). */
+  primary?: boolean;
+  onProjectNamed?: (name: string) => void;
 }) {
   const [messages, setMessages] = useState<ProjectMessage[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [confirm, setConfirm] = useState<"change" | "reset" | "details" | null>(null);
+  const [confirm, setConfirm] = useState<"reset" | "details" | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -50,11 +52,15 @@ export function ProjectChatPanel({ project, role, agent, onChangeAgent }: {
     const t = text.trim();
     if (!t || sending) return;
     setInput("");
+    const isFirstEver = messages.length === 0;
     const userMsg: ProjectMessage = { id: crypto.randomUUID(), project_id: project.id, column_type: role, role: "user", content: t, created_at: new Date().toISOString() };
     setMessages(prev => [...prev, userMsg]);
     setSending(true);
     try {
       await addMessage(project.id, role, "user", t);
+      if (isFirstEver) {
+        renameFromFirstMessage(project, t).then(name => { if (name) onProjectNamed?.(name); }).catch(() => {});
+      }
       const history = [...messages, userMsg].map(m => ({ role: m.role, content: m.content }));
       const reply = await askAgent(agent, history);
       await addMessage(project.id, role, "assistant", reply);
@@ -73,34 +79,20 @@ export function ProjectChatPanel({ project, role, agent, onChangeAgent }: {
     setMessages([]);
   }
 
-  // Progress only applies to the Consultant (Transformation Concept readiness).
-  // Scan from the newest message backwards for the last reported value.
-  let progress: number | null = null;
-  if (role === "consultant") {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role !== "assistant") continue;
-      const p = parseMarkers(messages[i].content).progress;
-      if (p !== null) { progress = p; break; }
-    }
-  }
   const lastAssistantIdx = (() => {
     for (let i = messages.length - 1; i >= 0; i--) if (messages[i].role === "assistant") return i;
     return -1;
   })();
 
   return (
-    <section className={`panel ${role}`}>
-      {confirm === "change" && (
-        <ConfirmDialog title="Change agent?" body={`You'll return to selection for the ${role === "coach" ? "Coach" : "Consultant"} only. The other agent stays assigned.`}
-          confirmLabel="Change agent" onConfirm={() => { setConfirm(null); onChangeAgent(); }} onCancel={() => setConfirm(null)} />
-      )}
+    <section className={`panel ${role}`} style={primary ? { flex: 1.6 } : undefined}>
       {confirm === "reset" && (
         <ConfirmDialog title="Start a new conversation?" body="Current chat messages will be cleared." confirmLabel="Start new"
           onConfirm={resetConversation} onCancel={() => setConfirm(null)} />
       )}
       {confirm === "details" && (
         <ConfirmDialog title={agent.name} confirmLabel="Close" onConfirm={() => setConfirm(null)} onCancel={() => setConfirm(null)}
-          body={`${agent.expertise || agent.tagline || ""}. Knowledge: ${agent.knowledge_level}.${agent.primaryMethods.length ? " Primary methods: " + agent.primaryMethods.map(m => m.name).join(", ") + "." : ""}`} />
+          body={`${agent.expertise || agent.tagline || ""}.${agent.primaryMethods.length ? " Primary methods: " + agent.primaryMethods.map(m => m.name).join(", ") + "." : ""}`} />
       )}
 
       <div className="chat-head">
@@ -109,35 +101,19 @@ export function ProjectChatPanel({ project, role, agent, onChangeAgent }: {
           <div className="n">{agent.name}</div>
           <div className="r"><span className={`role-dot ${role}`} />{role === "coach" ? "Coach" : "Consultant"}</div>
         </div>
-        <div className="chat-meta">
-          <div className="cm">Knowledge<b>{agent.knowledge_level}</b></div>
-          <div className="cm">Projects<b>{agent.last_projects.length}</b></div>
-          {progress !== null && <div className="cm">Context<b>{progress}%</b></div>}
-        </div>
         <button className="chat-menu-btn" data-tooltip="Agent menu" onClick={e => { e.stopPropagation(); setMenuOpen(o => !o); }}>
           <IconMore />
         </button>
         {menuOpen && (
           <div className="popover" onClick={e => e.stopPropagation()}>
             <button className="mi" onClick={() => { setMenuOpen(false); setConfirm("details"); }}><IconUsers size={13} />Agent details</button>
-            <button className="mi" onClick={() => { setMenuOpen(false); setConfirm("change"); }}><IconSwap size={13} />Change agent</button>
             <button className="mi" onClick={() => { setMenuOpen(false); setConfirm("reset"); }}><IconPlus size={13} />New conversation</button>
           </div>
         )}
       </div>
-
-      {progress !== null && (
-        <div className={`progress-banner ${progress >= 100 ? "ready" : ""}`}>
-          <div className="top">
-            <span>Context für Transformation Concept</span>
-            <b style={{ marginLeft: "auto" }}>{progress}%</b>
-          </div>
-          <div className="bar"><span style={{ width: `${progress}%` }} /></div>
-          {progress >= 100 && (
-            <button className="ready-cta" disabled={sending} onClick={() => send(GENERATE_CONCEPT_PROMPT)}>
-              Transformation Concept erstellen
-            </button>
-          )}
+      {(agent.tagline || agent.expertise) && (
+        <div style={{ padding: "8px 26px", fontSize: "var(--text-2xs)", color: "var(--text-muted)", borderBottom: "1px solid var(--border-soft)" }}>
+          {agent.tagline || agent.expertise}
         </div>
       )}
 

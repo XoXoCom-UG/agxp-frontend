@@ -3,12 +3,13 @@
 @tailwind utilities;
 
 /* =============================================================================
-   DESIGN TOKENS — ported from Ana's mockup (agxp-functional-ui, v7).
-   shadcn/ui-style semantic architecture. Dark (near-monochrome graphite, one
-   warm amber accent) is the base; `html.light` overrides for light mode.
-   `--green*` are kept as aliases so existing `var(--green)` references
-   elsewhere in this file (and any leftover legacy code) keep working —
-   only the values here ever need to move again.
+   DESIGN TOKENS — ported from Ana's mockup (agxp-functional-ui, v7), accent
+   swapped from gold to blue per Patryk's 2026-09-02 review ("schwarz mit
+   Blau, transparentes Blau — wie PowerPoint Slides"). Dark (near-monochrome
+   graphite) is the base; `html.light` overrides for light mode. `--green*`
+   are kept as aliases so existing `var(--green)` references elsewhere in
+   this file (and any leftover legacy code) keep working — only the values
+   here ever need to move again.
    ============================================================================= */
 :root {
   --background:#0A0A0B;
@@ -19,9 +20,9 @@
   --popover:#1E1E22;
   --popover-foreground:#F2F1EE;
 
-  --primary:#D6A25A;
-  --primary-foreground:#1A1408;
-  --primary-soft:#E6BC7E;
+  --primary:#3E7BFA;
+  --primary-foreground:#F5F8FF;
+  --primary-soft:#6B9BFF;
 
   --secondary:#17171A;
   --secondary-foreground:#A6A29B;
