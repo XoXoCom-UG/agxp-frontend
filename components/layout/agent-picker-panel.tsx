@@ -8,7 +8,7 @@ import { levelFor, LEVEL_ORDER } from "@/lib/agent-progress";
 import { methodLabel } from "@/lib/method-labels";
 import { dateStr } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/layout/confirm-dialog";
-import { AgentOrb } from "@/components/layout/agent-orb";
+import { AgentMascot } from "@/components/layout/agent-mascot";
 import {
   IconBack, IconPlus, IconArrow, IconSearch, IconCheck, IconChevronDown,
 } from "@/components/layout/agxp-icons";
@@ -114,7 +114,7 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
       )}
 
       <div className="panel-head">
-        <AgentOrb role={role} size={34} enter />
+        <AgentMascot role={role} size={38} enter />
         <div style={{ minWidth: 0, flex: 1 }}>
           <h2>{head.title}</h2>
           <div className="sub">{head.sub}</div>

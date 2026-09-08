@@ -694,37 +694,63 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 .qa-list{ background:var(--card); }
 .qa-item{ align-items:center; }
 
-/* ---------- AGENT ORB — the only "gamified" motion in the app ----------
-   Still when idle; ripples while thinking; one short pulse when a reply
-   lands; a small entrance when the agent joins the project. */
-.orb{ position:relative; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
-.orb-core{
-  position:relative; z-index:1; width:100%; height:100%; border-radius:var(--r-md);
-  display:flex; align-items:center; justify-content:center; color:#fff;
-  background:linear-gradient(160deg, var(--consultant-2), var(--consultant-3));
-  box-shadow:inset 0 1px 0 rgba(255,255,255,0.16), 0 6px 16px -8px rgba(0,0,0,0.6);
-  transition:box-shadow .2s var(--ease-out);
+/* ---------- AGENT MASCOT — the only "gamified" motion in the app ----------
+   Blinks now and then so it reads as alive, pulses its antenna and shows
+   "…" while thinking, and moves its mouth while a reply lands. Geometric,
+   not cartoonish: this sits in a consulting tool. */
+.mascot{ display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; position:relative; }
+.mascot svg{ width:100%; height:100%; overflow:visible; }
+.mascot-consultant{ --m-head:var(--consultant-2); --m-head-2:var(--consultant-3); }
+.mascot-coach{ --m-head:var(--coach-2); --m-head-2:var(--coach-3); }
+
+.m-face{ fill:var(--m-head); stroke:color-mix(in srgb, #fff 14%, transparent); stroke-width:1; }
+.m-visor{ fill:var(--m-head-2); }
+.m-eye{ fill:#EAF2FF; }
+.m-mouth{ fill:color-mix(in srgb, var(--primary-soft) 85%, #fff); }
+.m-dot{ fill:var(--primary-soft); opacity:.35; }
+.m-dots{ opacity:0; }
+.m-antenna{ stroke:var(--border-strong); }
+.m-antenna-dot{ fill:var(--primary); }
+.m-tie path{ fill:var(--primary); opacity:.9; }
+.m-headset path{ stroke:var(--primary); fill:none; }
+.m-headset rect{ fill:var(--primary); }
+.mascot-consultant .m-headset{ display:none; }
+.mascot-coach .m-tie{ display:none; }
+
+/* SVG parts need an explicit box before transforms behave predictably */
+.m-eye, .m-mouth, .m-antenna-dot, .m-head, .m-dot{ transform-box:fill-box; transform-origin:center; }
+
+/* Idle: a rare blink — the smallest possible signal that someone's home */
+.m-eye{ animation:mBlink 5.5s var(--ease-out) infinite; }
+@keyframes mBlink{
+  0%, 92%, 100%{ transform:scaleY(1); }
+  95%{ transform:scaleY(0.12); }
+  97%{ transform:scaleY(1); }
 }
-.orb-coach .orb-core{ background:linear-gradient(160deg, var(--coach-2), var(--coach-3)); }
-.orb-core svg{ width:52%; height:52%; opacity:.92; }
-.orb-ring{ position:absolute; inset:0; border-radius:var(--r-md); border:1px solid var(--primary); opacity:0; pointer-events:none; }
-.orb-thinking .orb-ring{ animation:orbRipple 1.6s var(--ease-out) infinite; }
-.orb-thinking .orb-ring.r2{ animation-delay:.8s; }
-.orb-thinking .orb-core{
-  box-shadow:inset 0 1px 0 rgba(255,255,255,0.16),
-             0 0 0 1px color-mix(in srgb, var(--primary) 45%, transparent),
-             0 8px 22px -10px var(--primary);
-}
-@keyframes orbRipple{ from{ opacity:.5; transform:scale(1); } to{ opacity:0; transform:scale(1.55); } }
-.orb-speaking .orb-core{ animation:orbSpeak 900ms var(--ease-out); }
-@keyframes orbSpeak{
-  0%{ transform:scale(1); } 22%{ transform:scale(1.10); }
-  45%{ transform:scale(0.98); } 70%{ transform:scale(1.04); } 100%{ transform:scale(1); }
-}
-.orb-enter{ animation:orbEnter 420ms var(--ease-out); }
-@keyframes orbEnter{ from{ opacity:0; transform:scale(.6) translateY(4px); } to{ opacity:1; transform:none; } }
+
+/* Thinking: antenna pulses, mouth turns into a travelling "…" */
+.is-thinking .m-antenna-dot{ animation:mPulse .95s ease-in-out infinite; }
+@keyframes mPulse{ 0%,100%{ transform:scale(1); opacity:1; } 50%{ transform:scale(1.45); opacity:.55; } }
+.is-thinking .m-mouth{ opacity:0; }
+.is-thinking .m-dots{ opacity:1; }
+.is-thinking .m-dot{ animation:mDot 1.1s ease-in-out infinite; }
+.is-thinking .m-dot:nth-child(2){ animation-delay:.16s; }
+.is-thinking .m-dot:nth-child(3){ animation-delay:.32s; }
+@keyframes mDot{ 0%,100%{ opacity:.3; transform:translateY(0); } 50%{ opacity:1; transform:translateY(-1.4px); } }
+
+/* Speaking: the mouth actually moves, with the faintest head bob */
+.is-speaking .m-mouth{ animation:mTalk .26s ease-in-out infinite; }
+@keyframes mTalk{ 0%,100%{ transform:scaleY(.55); } 50%{ transform:scaleY(1.9); } }
+.is-speaking .m-head{ animation:mBob .52s ease-in-out infinite; }
+@keyframes mBob{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-0.7px); } }
+
+/* Entrance when the agent joins the project */
+.mascot-enter{ animation:mPop 480ms var(--ease-out); }
+@keyframes mPop{ 0%{ opacity:0; transform:scale(.55) translateY(6px); } 62%{ transform:scale(1.09); } 100%{ opacity:1; transform:none; } }
+
 @media (prefers-reduced-motion: reduce){
-  .orb-thinking .orb-ring, .orb-speaking .orb-core, .orb-enter{ animation:none !important; }
+  .m-eye, .is-thinking .m-antenna-dot, .is-thinking .m-dot,
+  .is-speaking .m-mouth, .is-speaking .m-head, .mascot-enter{ animation:none !important; }
 }
 
 /* Level — the agent grows as it works on your projects */

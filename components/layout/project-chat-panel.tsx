@@ -8,7 +8,7 @@ import { parseMarkers } from "@/lib/message-markers";
 import { methodLabel, methodBlurb } from "@/lib/method-labels";
 import { levelFor, nextLevel, LEVEL_ORDER } from "@/lib/agent-progress";
 import { md } from "@/lib/markdown";
-import { AgentOrb, type OrbState } from "@/components/layout/agent-orb";
+import { AgentMascot, type MascotState } from "@/components/layout/agent-mascot";
 import { IconArrow, IconSend, IconCheck, IconSearch } from "@/components/layout/agxp-icons";
 
 const OPENING: Record<AgentType, string> = {
@@ -47,7 +47,7 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
   const [loaded, setLoaded] = useState(false);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
-  const [orb, setOrb] = useState<OrbState>("idle");
+  const [orb, setOrb] = useState<MascotState>("idle");
   const bottomRef = useRef<HTMLDivElement>(null);
   const speakTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -113,7 +113,7 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
     <section className={`panel ${role}`} style={primary ? { flex: 1.6 } : undefined}>
       {/* Head + Steckbrief: who this agent is, condensed */}
       <div className="chat-head">
-        <AgentOrb role={role} state={orb} size={38} enter />
+        <AgentMascot role={role} state={orb} size={46} enter />
         <div style={{ minWidth: 0 }}>
           <div className="n">{agent.name}</div>
           <div className="r"><span className={`role-dot ${role}`} />{role === "coach" ? "Coach" : "Consultant"}</div>
