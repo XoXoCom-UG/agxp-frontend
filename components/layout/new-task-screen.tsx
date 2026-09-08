@@ -10,7 +10,11 @@ import { AgentNav } from "@/components/layout/agent-nav";
 import { AgentPickerPanel } from "@/components/layout/agent-picker-panel";
 import { ProjectChatPanel } from "@/components/layout/project-chat-panel";
 
-const ARTIFACTS = ["AI Transformation Roadmap", "User Stories", "AI & IT Glossary", "Roadmap", "PDF"];
+// What the two panels are working toward: the Consultant's Transformation
+// Concept and the Coach's Change Plan, plus the smaller outputs. Both
+// documents are generated in the conversation today; these chips are the
+// future one-click/downloadable versions.
+const ARTIFACTS = ["Transformation Concept", "Change Plan", "User Stories", "AI & IT Glossary", "Roadmap", "PDF"];
 
 /**
  * The start screen: a narrow Coach panel beside a wide Consultant panel.

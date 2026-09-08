@@ -65,7 +65,23 @@ const SYSTEM_PROMPTS: Record<AgentType, (name: string) => string> = {
     `Antworten vorgibst, und hilf der Person, ihre eigene nächste Handlung zu finden. Antworte IMMER ` +
     `in der Sprache, in der der Nutzer schreibt.` +
     CONVERSATIONAL_STYLE +
-    CHOICES_INSTRUCTION,
+    CHOICES_INSTRUCTION +
+    // The Consultant's side of the screen builds toward a Transformation
+    // Concept; this is the Coach's equivalent end product, so both panels
+    // are working toward something instead of one just chatting.
+    `\n\nDein Ergebnis-Dokument ist der CHANGE PLAN — das menschliche Gegenstück zum Transformation ` +
+    `Concept des Consultants: nicht Technik, sondern wie die Organisation die Veränderung mitgeht. ` +
+    `Du trackst, wie viel Kontext du dafür schon hast (betroffene Rollen/Stakeholder, konkrete ` +
+    `Widerstände und Sorgen, bisherige Kommunikation, Skill-/Trainingsbedarf, Zeitrahmen des Rollouts). ` +
+    `Füge am ENDE JEDER Antwort (nach dem CHOICES-Marker, falls vorhanden, in einer eigenen Zeile) ` +
+    `genau einen Marker hinzu: [[PROGRESS: NN]] — NN ist eine Schätzung 0-100 in 5er-Schritten, wie ` +
+    `bereit du bist, einen vollständigen Change Plan zu erstellen. Erhöhe den Wert erst, wenn der ` +
+    `Nutzer tatsächlich neue relevante Informationen geliefert hat. Bei 100 frag explizit (mit ` +
+    `CHOICES), ob der Nutzer den Change Plan jetzt erstellt haben möchte. Wenn er darum bittet, ` +
+    `generiere ein vollständiges strukturiertes Dokument mit: Stakeholder-Map (wer ist betroffen, ` +
+    `was ist deren Sorge), erwartete Widerstände und wie man ihnen begegnet, Kommunikationsplan (wer ` +
+    `erfährt was, wann, über welchen Kanal), Enablement/Training pro Rolle, und Rollout-Schritte mit ` +
+    `Meilensteinen — hier ist die volle Struktur/Tabellenform angebracht.`,
 };
 
 interface ChatBody {

@@ -16,14 +16,23 @@ const OPENING: Record<AgentType, string> = {
   coach: "Hey, what would you like to talk through today?",
 };
 
-/** The agent offers what it knows: a full guided interview, or one of its methods. */
-function quickActions(agent: Agent) {
-  const actions = [{
+/** Each role's way in: the Consultant interviews, the Coach takes the temperature. */
+const OPENER_ACTION: Record<AgentType, { title: string; blurb: string; prompt: string }> = {
+  consultant: {
     title: "Full Assessment",
     blurb: "Standardized interview process.",
     prompt: "Let's do a full assessment with the standardized interview process.",
-    icon: <IconCheck size={14} />,
-  }];
+  },
+  coach: {
+    title: "Change Readiness Check",
+    blurb: "Where the team stands today.",
+    prompt: "Let's check how ready the team is for this change.",
+  },
+};
+
+/** The agent offers what it knows: its way in, or one of its methods. */
+function quickActions(agent: Agent) {
+  const actions = [{ ...OPENER_ACTION[agent.type], icon: <IconCheck size={14} /> }];
   for (const m of agent.primaryMethods.slice(0, 3)) {
     actions.push({
       title: methodLabel(m.name),
