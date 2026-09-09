@@ -7,6 +7,7 @@ import { assignAgent, type Project } from "@/lib/projects";
 import { levelFor, LEVEL_ORDER } from "@/lib/agent-progress";
 import { methodLabel } from "@/lib/method-labels";
 import { dateStr } from "@/lib/utils";
+import { describeDbError } from "@/lib/db-error";
 import { ConfirmDialog } from "@/components/layout/confirm-dialog";
 import { AgentMascot } from "@/components/layout/agent-mascot";
 import {
@@ -298,7 +299,9 @@ function ConfigureView({ role, template, onCreated }: { role: AgentType; templat
       const agent = await createAgent({ type: role, name: name.trim(), description: description.trim(), tagline: t.sub, methodIds });
       onCreated(agent);
     } catch (e) {
-      setError((e as Error).message || "Agent konnte nicht erstellt werden.");
+      // The Postgres error code goes on screen — the bare RLS message alone
+      // never said which policy was missing.
+      setError(describeDbError(e, "Creating the agent"));
     } finally { setSaving(false); }
   }
 
