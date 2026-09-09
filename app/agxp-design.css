@@ -1062,3 +1062,156 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
   color:var(--text-secondary); background:var(--secondary); border:1px solid var(--border-soft);
   border-radius:var(--r-pill); padding:1px 8px;
 }
+
+/* =============================================================================
+   DOCUMENT VISUALS — the graphics of the deliverable, drawn from the agent's
+   structured blocks (lib/doc-visuals.ts). All CSS, no chart library, so they
+   print and theme like the rest of the app.
+
+   Colour rule: blue + grey is the base. Red/amber/green appear only where the
+   colour IS the information (risk severity, delta vs. target, stance).
+   ============================================================================= */
+
+/* A — the numbers from the interview */
+.v-kpi{ display:grid; grid-template-columns:repeat(auto-fit, minmax(118px, 1fr)); gap:10px; margin:var(--sp-3) 0 var(--sp-5); }
+.v-tile{
+  display:flex; flex-direction:column; gap:7px; padding:14px 15px; border-radius:12px;
+  border:1px solid var(--border-soft); background:color-mix(in srgb, var(--primary) 7%, transparent);
+}
+.v-tile .lbl{ font-size:var(--text-3xs); font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--text-muted); line-height:1.3; }
+.v-tile b{ font-size:25px; font-weight:650; letter-spacing:-0.6px; color:var(--text-primary); line-height:1.05; white-space:nowrap; }
+.v-tile.t-bad b{ color:var(--destructive); }
+.v-tile.t-good b{ color:var(--success); }
+.v-tile.t-warn b{ color:var(--warn); }
+
+/* B — today against the target, per indicator */
+.v-gap{ display:flex; flex-direction:column; gap:16px; margin:var(--sp-3) 0 var(--sp-5); }
+.v-gap-row .top{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:9px; }
+.v-gap-row .n{ font-size:var(--text-sm); font-weight:650; color:var(--text-primary); }
+.v-gap-row .d{ font-size:var(--text-2xs); color:var(--text-muted); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.v-gap-row .delta{
+  font-style:normal; font-weight:700; font-size:var(--text-3xs); border-radius:var(--r-pill); padding:2px 7px; margin-left:5px;
+}
+.v-gap-row .delta.good{ color:var(--success); background:color-mix(in srgb, var(--success) 16%, transparent); }
+.v-gap-row .delta.up{ color:var(--destructive); background:color-mix(in srgb, var(--destructive) 16%, transparent); }
+.v-gap-row .bars{ display:grid; grid-template-columns:34px 1fr; align-items:center; gap:6px 9px; }
+.v-gap-row .k{ font-size:var(--text-3xs); color:var(--text-muted); text-transform:lowercase; }
+.v-gap-row .track{ height:9px; border-radius:var(--r-pill); background:var(--border-medium); overflow:hidden; }
+.v-gap-row .track i{ display:block; height:100%; border-radius:var(--r-pill); }
+.v-gap-row .now{ background:color-mix(in srgb, var(--foreground) 26%, transparent); }
+.v-gap-row .goal{
+  background:linear-gradient(90deg, var(--primary), var(--primary-soft));
+  box-shadow:0 0 14px -3px color-mix(in srgb, var(--primary) 85%, transparent);
+}
+
+/* C — the process as a chain: as-is over to-be */
+.v-flow{ display:flex; flex-direction:column; gap:13px; margin:var(--sp-3) 0 var(--sp-5); }
+.v-flow-lane{ display:flex; align-items:flex-start; gap:11px; }
+.v-flow-lane .k{
+  flex-shrink:0; width:44px; padding-top:7px; font-size:var(--text-3xs); font-weight:700;
+  letter-spacing:0.07em; text-transform:uppercase; color:var(--text-muted);
+}
+.v-flow .chain{ display:flex; align-items:center; flex-wrap:wrap; gap:5px; }
+.v-flow .step{
+  font-size:var(--text-2xs); color:var(--text-primary); background:var(--surface-1);
+  border:1px solid var(--border-soft); border-radius:9px; padding:7px 11px; line-height:1.35;
+}
+.v-flow .step.auto{
+  color:var(--primary-soft); border-color:color-mix(in srgb, var(--primary) 48%, transparent);
+  background:color-mix(in srgb, var(--primary) 13%, transparent); font-weight:600;
+}
+.v-flow .arw{ font-size:var(--text-xs); color:var(--text-muted); }
+.v-flow .lnk{ display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
+.v-legend{ display:flex; align-items:center; gap:7px; font-size:var(--text-3xs); color:var(--text-muted); padding-left:55px; }
+.v-legend .sw{
+  width:9px; height:9px; border-radius:3px; border:1px solid var(--border-medium); background:var(--surface-1);
+  margin-left:9px;
+}
+.v-legend .sw:first-child{ margin-left:0; }
+.v-legend .sw.auto{ border-color:color-mix(in srgb, var(--primary) 48%, transparent); background:var(--primary); }
+
+/* D — the measures on a calendar */
+.v-road{ display:grid; grid-template-columns:repeat(auto-fit, minmax(152px, 1fr)); gap:12px; margin:var(--sp-3) 0 var(--sp-5); }
+.v-road-col{ display:flex; flex-direction:column; gap:9px; }
+.v-road-col .rail{ height:3px; border-radius:2px; background:var(--border-medium); }
+.v-road-col[data-first="1"] .rail{ background:var(--primary); }
+.v-road-col .ph{ font-size:var(--text-3xs); font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--text-muted); }
+.v-road-col .items{ display:flex; flex-direction:column; gap:6px; }
+.v-road-col .it{
+  font-size:var(--text-2xs); line-height:1.45; color:var(--text-primary);
+  background:var(--surface-1); border:1px solid var(--border-soft); border-radius:9px; padding:8px 10px;
+}
+.v-road-col[data-first="1"] .it{ border-color:color-mix(in srgb, var(--primary) 34%, transparent); }
+
+/* E — risks on a probability x impact grid */
+.v-risk{ margin:var(--sp-3) 0 var(--sp-5); }
+.v-risk-plot{ display:flex; align-items:stretch; gap:9px; }
+.v-risk .ax-y{
+  writing-mode:vertical-rl; transform:rotate(180deg);
+  height:152px; display:flex; align-items:center; justify-content:center;
+  font-size:var(--text-3xs); font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--text-muted);
+}
+.v-risk .y-ticks{ height:152px; display:flex; flex-direction:column; justify-content:space-around; font-size:var(--text-3xs); color:var(--text-muted); text-align:right; }
+.v-risk-main{ flex:1; min-width:0; }
+.v-risk .grid{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); grid-auto-rows:48px; gap:4px; }
+.v-risk .cell{
+  border:1px solid var(--border-soft); border-radius:9px; background:var(--surface-1);
+  display:flex; align-items:center; justify-content:center; gap:4px;
+}
+.v-risk .cell.warm{ background:color-mix(in srgb, var(--warn) 9%, transparent); }
+.v-risk .cell.hot{ background:color-mix(in srgb, var(--destructive) 11%, transparent); border-color:color-mix(in srgb, var(--destructive) 28%, transparent); }
+.v-risk .rchip{
+  font-size:var(--text-3xs); font-weight:700; border-radius:var(--r-pill); padding:3px 9px;
+  color:var(--primary-soft); background:color-mix(in srgb, var(--primary) 18%, transparent);
+}
+.v-risk .rchip.t-warn{ color:var(--warn); background:color-mix(in srgb, var(--warn) 20%, transparent); }
+.v-risk .rchip.t-bad{ color:var(--destructive); background:color-mix(in srgb, var(--destructive) 20%, transparent); }
+.v-risk .x-ticks{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:4px; margin-top:6px; font-size:var(--text-3xs); color:var(--text-muted); text-align:center; }
+.v-risk .ax-x{ display:block; margin-top:4px; text-align:center; font-size:var(--text-3xs); font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--text-muted); }
+.v-risk-key{ list-style:none; display:flex; flex-wrap:wrap; gap:6px 16px; margin:var(--sp-4) 0 0; padding:0; }
+.v-risk-key li{ display:flex; align-items:center; gap:7px; font-size:var(--text-2xs); color:var(--text-secondary); }
+.v-risk-key .rid{ font-size:var(--text-3xs); font-weight:700; color:var(--text-muted); }
+
+/* Coach — the stakeholder board */
+.v-stake{ display:grid; grid-template-columns:repeat(auto-fit, minmax(196px, 1fr)); gap:10px; margin:var(--sp-3) 0 var(--sp-5); }
+.v-stake-card{
+  display:flex; flex-direction:column; gap:9px; padding:13px 14px; border-radius:12px;
+  border:1px solid var(--border-soft); background:var(--surface-1);
+}
+.v-stake-card .top{ display:flex; align-items:center; justify-content:space-between; gap:9px; }
+.v-stake-card b{ font-size:var(--text-sm); font-weight:650; color:var(--text-primary); }
+.v-stake-card .cnt{
+  font-size:var(--text-3xs); font-weight:700; color:var(--text-secondary);
+  background:var(--secondary); border-radius:var(--r-pill); padding:2px 8px; flex-shrink:0;
+}
+.v-stake-card .mid{ display:flex; align-items:center; justify-content:space-between; gap:9px; }
+.v-stake-card .stance{ font-size:var(--text-3xs); font-weight:700; letter-spacing:0.04em; border-radius:var(--r-pill); padding:2px 9px; }
+.v-stake-card.s-pro .stance{ color:var(--success); background:color-mix(in srgb, var(--success) 16%, transparent); }
+.v-stake-card.s-mid .stance{ color:var(--text-secondary); background:var(--secondary); }
+.v-stake-card.s-con .stance{ color:var(--destructive); background:color-mix(in srgb, var(--destructive) 16%, transparent); }
+.v-stake-card .infl{ display:flex; gap:3px; flex-shrink:0; }
+.v-stake-card .infl i{ width:7px; height:7px; border-radius:50%; background:transparent; border:1px solid var(--border-strong); }
+.v-stake-card .infl i.on{ background:var(--primary); border-color:var(--primary); }
+.v-stake-card .why{ font-size:var(--text-2xs); line-height:1.55; color:var(--text-muted); }
+
+/* Graphics + bullets means the document is scanned, not read: tighter list
+   rhythm, and the rare paragraph stays narrow. */
+.doc-body li{ margin-bottom:7px; }
+.doc-body h2 + .v-kpi, .doc-body h2 + .v-gap, .doc-body h2 + .v-flow,
+.doc-body h2 + .v-road, .doc-body h2 + .v-risk, .doc-body h2 + .v-stake{ margin-top:var(--sp-4); }
+
+/* Visuals in print: keep them, drop the glow, never split one across pages */
+@media print{
+  .v-kpi, .v-gap-row, .v-flow, .v-road, .v-risk, .v-stake-card{ break-inside:avoid; }
+  .v-gap-row .goal{ box-shadow:none !important; background:#1E76F0 !important; }
+  .v-gap-row .now{ background:#9aa3ad !important; }
+  .v-tile, .v-flow .step, .v-road-col .it, .v-risk .cell, .v-stake-card{
+    border-color:#d5d8dd !important; background:#fff !important;
+  }
+  .v-flow .step.auto{ background:#eaf2fe !important; border-color:#1E76F0 !important; color:#0d4a9c !important; }
+  .v-risk .cell.hot{ background:#fdeceb !important; }
+  .v-risk .cell.warm{ background:#fdf5e7 !important; }
+  .v-tile b{ color:#111 !important; }
+  .v-tile.t-bad b{ color:#b3372a !important; }
+  .v-tile.t-good b{ color:#2f7a58 !important; }
+}

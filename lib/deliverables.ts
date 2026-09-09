@@ -36,6 +36,42 @@ export interface Deliverable {
   regeneratePrompt: string;
 }
 
+/**
+ * The graphics vocabulary. The renderer for these lives in lib/doc-visuals.ts
+ * and draws them in pure CSS, so they survive print/PDF and both themes.
+ *
+ * The user's call (2026-09-09): the document is graphics plus bullets — "prea
+ * mult scris si prea putine grafice". So every section leads with a visual and
+ * the prose is gone.
+ */
+const VISUAL_SPEC =
+  "\n\nVISUAL-BLÖCKE — das Dokument besteht aus Grafiken, nicht aus Text. Du schreibst die Daten " +
+  "als Fenced Block mit Pipe-getrennten Zeilen; die Oberfläche zeichnet daraus die Grafik. " +
+  "Erfinde keine anderen Blocktypen, schreibe keinen Erklärtext in den Block, und packe NIE das " +
+  "ganze Dokument in einen Code-Block.\n\n" +
+  "1) Kennzahlen-Kacheln — `Label | Wert | good|bad|warn`. Die Einheit gehört ins Label, der Wert " +
+  "bleibt kurz (max. 7 Zeichen), sonst bricht die Kachel um. Den Ton nur setzen, wenn die Zahl " +
+  "eindeutig gut oder schlecht ist — höchstens bei 2 von 4 Kacheln:\n" +
+  "```agxp-kpi\nAufträge pro Tag | 180\nPlanung pro Tour | 12 min\nDiesel pro Monat | 600 € | bad\n" +
+  "Lieferscheine weg pro Woche | 8 | bad\n```\n\n" +
+  "2) Heute gegen Ziel — `Indikator | heute | ziel | Einheit`. Beide Werte MÜSSEN Zahlen sein, " +
+  "sonst wird kein Balken gezeichnet:\n" +
+  "```agxp-gap\nPlanung pro Tour | 12 | 3 | min\nLeerkilometer-Touren | 4 | 1 | pro Woche\n```\n\n" +
+  "3) Prozesskette — genau zwei Zeilen, `as-is:` und `to-be:`, Schritte mit `|` getrennt. Ein `*` " +
+  "am Ende eines Schritts heißt: läuft automatisch:\n" +
+  "```agxp-flow\nas-is: E-Mail rein | Excel tippen | Tour bauen | Fahrer anrufen\n" +
+  "to-be: Auftrag erkannt* | Tour vorgeschlagen* | Disponent gibt frei | App benachrichtigt*\n```\n\n" +
+  "4) Zeitschiene — `Phase | Punkt; Punkt; Punkt`, 3-4 Phasen, chronologisch:\n" +
+  "```agxp-roadmap\nsofort | Aufträge zentral sammeln; Lieferscheine per App\n30 Tage | Pilot mit einer Region\n" +
+  "90 Tage | Rollout alle Regionen\n```\n\n" +
+  "5) Risiko-Matrix — `Risiko | Wahrscheinlichkeit | Auswirkung`, beide nur `gering`, `mittel` " +
+  "oder `hoch`:\n" +
+  "```agxp-risks\nDisponenten blockieren | hoch | hoch\nDatenqualität | mittel | mittel\n```\n\n" +
+  "6) Stakeholder-Board — `Gruppe | Anzahl | Haltung | Einfluss | Sorge`. Haltung ist " +
+  "`Unterstützer`, `neutral` oder `skeptisch`, Einfluss `gering|mittel|hoch`, die Sorge möglichst " +
+  "im Wortlaut der Betroffenen:\n" +
+  "```agxp-stakeholders\nDisponenten | 5 | skeptisch | hoch | \"Kein Computer kennt die B75 besser\"\n```";
+
 export const DELIVERABLES: Record<AgentType, Deliverable> = {
   consultant: {
     title: "Transformation Concept",
@@ -51,24 +87,24 @@ export const DELIVERABLES: Record<AgentType, Deliverable> = {
       { label: "Risks & dependencies", goal: "Was könnte das Projekt zum Scheitern bringen, welche Entscheidungen/Freigaben hängen an anderen Personen." },
     ],
     sections: [
-      { title: "Executive Summary", must: "3-5 Sätze: Ausgangslage, Kern des Problems in Zahlen, empfohlene Richtung, erwarteter Nutzen." },
-      { title: "Ist-Zustand", must: "Der Prozess Schritt für Schritt (nummeriert), beteiligte Rollen und Systeme, Mengen/Zeiten/Kosten wo bekannt." },
-      { title: "Ziel-Zustand", must: "Wie der Prozess nach der Transformation läuft — was automatisiert ist, was bewusst beim Menschen bleibt, welche Freigaben es weiter gibt." },
-      { title: "Gap-Analyse", must: "Tabelle: Bereich | Heute | Ziel | Lücke | Warum das heute blockiert." },
-      { title: "Empfohlene Tools & Technologien", must: "2-4 konkrete, namentlich benannte Optionen als Tabelle: Tool | Passt, weil | Pro | Contra | Grober Aufwand/Kosten. Danach eine klare Empfehlung mit Begründung." },
-      { title: "Priorisierte Maßnahmen", must: "Mindestens 5 Maßnahmen als Tabelle: Maßnahme | Priorität | Aufwand | Wer | Zeitrahmen — sortiert nach Wirkung." },
-      { title: "Erfolgsmessung", must: "Tabelle: Kennzahl | Heute | Ziel | Wie gemessen | Wann geprüft." },
-      { title: "Risiken & nächste Schritte", must: "Risiken als Tabelle (Risiko | Wahrscheinlichkeit | Auswirkung | Gegenmaßnahme) und danach die nächsten 3 konkreten Schritte mit Verantwortlichen." },
+      { title: "Auf einen Blick", must: "Ein `agxp-kpi` Block mit 4 Kennzahlen aus dem Gespräch, danach 3-4 Bullets: Kern des Problems, empfohlene Richtung, erwarteter Nutzen." },
+      { title: "Prozess: heute und morgen", must: "Ein `agxp-flow` Block mit je 4-6 Schritten in as-is und to-be (`*` an jedem automatisierten Schritt), danach 3-5 Bullets zu den Unterschieden." },
+      { title: "Gap-Analyse", must: "Ein `agxp-gap` Block mit 3-5 Indikatoren, danach pro Indikator ein Bullet: was blockiert das heute." },
+      { title: "Tools und Technologien", must: "Eine Tabelle mit 2-4 namentlich benannten Optionen: Tool | Passt weil | Pro | Contra | Aufwand. Danach 1-2 Bullets mit der Empfehlung und der Begründung." },
+      { title: "Maßnahmen", must: "Ein `agxp-roadmap` Block mit 3 Phasen und je 1-3 Maßnahmen, danach pro Maßnahme ein Bullet mit Verantwortlichem." },
+      { title: "Erfolgsmessung", must: "Ein `agxp-gap` Block mit den Kennzahlen (heute vs. Ziel), danach pro Kennzahl ein Bullet: wie und wann gemessen." },
+      { title: "Risiken", must: "Ein `agxp-risks` Block mit 3-5 Risiken, danach pro Risiko ein Bullet mit der Gegenmaßnahme." },
+      { title: "Nächste Schritte", must: "Genau 3 Bullets, jedes mit Verantwortlichem und Termin. Kein Visual." },
     ],
     generatePrompt:
       "Create the complete Transformation Concept now, based on our whole conversation. " +
-      "Make it thorough: fill every section with the concrete details, numbers and names we discussed, " +
-      "use tables where the section calls for them, and no filler. " +
+      "Graphics and bullets only — no paragraphs: every section leads with its visual block, " +
+      "filled with the concrete numbers and names we discussed. " +
       "Answer in the language we have been speaking.",
     regeneratePrompt:
-      "Rebuild the complete Transformation Concept from scratch, richer and more detailed than the last " +
-      "version: every section filled out, the tables complete, concrete numbers and named tools instead " +
-      "of general statements. Answer in the language we have been speaking.",
+      "Rebuild the complete Transformation Concept from scratch, sharper than the last version: " +
+      "every visual block filled with real numbers from our conversation, named tools instead of " +
+      "general statements, and no paragraphs. Answer in the language we have been speaking.",
   },
   coach: {
     title: "Change Plan",
@@ -82,23 +118,23 @@ export const DELIVERABLES: Record<AgentType, Deliverable> = {
       { label: "Rollout & milestones", goal: "Zeitrahmen des Rollouts, feste Termine, wann welche Gruppe dran ist, was zuerst pilotiert wird." },
     ],
     sections: [
-      { title: "Ausgangslage", must: "3-5 Sätze: was sich verändert, für wen, in welchem Zeitrahmen, und wie die Stimmung heute ist." },
-      { title: "Stakeholder-Map", must: "Tabelle: Rolle/Gruppe | Anzahl | Was ändert sich für sie | Größte Sorge | Haltung (Unterstützer/neutral/skeptisch) | Wer kümmert sich um sie." },
-      { title: "Erwartete Widerstände & Antworten darauf", must: "Tabelle: Widerstand (möglichst im Wortlaut der Betroffenen) | Was dahinter steckt | Antwort/Maßnahme | Wer spricht mit ihnen." },
-      { title: "Kommunikationsplan", must: "Mindestens 5 Einträge über den Rollout verteilt, als Tabelle: Zeitpunkt | Zielgruppe | Botschaft | Kanal | Absender." },
-      { title: "Enablement & Training pro Rolle", must: "Tabelle: Rolle | Was sie können müssen | Format (Schulung/Learning by doing/Doku) | Dauer | Wann." },
-      { title: "Rollout-Schritte mit Meilensteinen", must: "Nummerierte Phasen mit Zeitfenster: wer wann dran ist, was der Pilot ist, welche Meilensteine es gibt und woran man abbricht bzw. nachsteuert." },
-      { title: "Woran wir merken, dass es angenommen wird", must: "Beobachtbare Signale plus Tabelle: Signal | Wie gemessen | Ab wann erwartet." },
+      { title: "Auf einen Blick", must: "Ein `agxp-kpi` Block mit 4 Zahlen (betroffene Menschen, betroffene Rollen, Wochen bis Rollout, Anzahl offener Widerstände), danach 3-4 Bullets zur Lage." },
+      { title: "Stakeholder", must: "Ein `agxp-stakeholders` Block mit allen betroffenen Gruppen, danach 2-4 Bullets: wer braucht zuerst Aufmerksamkeit und warum." },
+      { title: "Widerstände und Antworten", must: "Eine Tabelle: Widerstand (im Wortlaut) | Was dahinter steckt | Antwort | Wer spricht. Danach 1-2 Bullets zum größten Hebel." },
+      { title: "Kommunikationsplan", must: "Ein `agxp-roadmap` Block mit 3-4 Zeitpunkten und je 1-3 Botschaften, danach pro Zeitpunkt ein Bullet mit Kanal und Absender." },
+      { title: "Enablement und Training", must: "Eine Tabelle: Rolle | Kann heute | Braucht | Format | Wann. Kein Visual." },
+      { title: "Rollout", must: "Ein `agxp-roadmap` Block mit den Phasen (welche Gruppe wann), danach pro Phase ein Bullet mit dem Meilenstein und dem Abbruchkriterium." },
+      { title: "Akzeptanz messen", must: "Ein `agxp-gap` Block mit 2-4 beobachtbaren Signalen (heute vs. Ziel), danach pro Signal ein Bullet: wie gemessen." },
     ],
     generatePrompt:
       "Create the complete Change Plan now, based on our whole conversation. " +
-      "Make it thorough: fill every section with the concrete roles, concerns and dates we discussed, " +
-      "use tables where the section calls for them, and no filler. " +
+      "Graphics and bullets only — no paragraphs: every section leads with its visual block, " +
+      "filled with the concrete roles, quotes and dates we discussed. " +
       "Answer in the language we have been speaking.",
     regeneratePrompt:
-      "Rebuild the complete Change Plan from scratch, richer and more detailed than the last version: " +
-      "every section filled out, the tables complete, concrete roles, quotes and dates instead of general " +
-      "statements. Answer in the language we have been speaking.",
+      "Rebuild the complete Change Plan from scratch, sharper than the last version: every visual " +
+      "block filled with the real roles, quotes and dates from our conversation, and no paragraphs. " +
+      "Answer in the language we have been speaking.",
   },
 };
 
@@ -125,6 +161,8 @@ export function agendaPrompt(d: Deliverable): string {
     `- Bleib auf einer Station, bis du sie wirklich verstanden hast — in der Regel 2-4 Nachfragen, ` +
     `die auf der letzten Antwort des Nutzers aufbauen ("Wie oft passiert das?", "Was kostet euch das ` +
     `im Monat?", "Wer merkt das zuerst?", "Hast du ein konkretes Beispiel von letzter Woche?").\n` +
+    `- Frag konsequent nach ZAHLEN. Das Dokument besteht aus Grafiken, und eine Grafik ohne Zahl ` +
+    `ist leer: Menge pro Tag, Minuten pro Vorgang, Euro pro Monat, Anzahl Personen, Termine.\n` +
     `- Wenn eine Antwort vage bleibt, frag nach einer Zahl oder einem konkreten Beispiel, statt zur ` +
     `nächsten Station zu springen.\n` +
     `- Fasse zwischendurch in einem Satz zusammen, was du verstanden hast, bevor du weiterfragst — ` +
@@ -150,23 +188,19 @@ export function agendaPrompt(d: Deliverable): string {
     `Wenn der Nutzer nur eine Verständnisfrage zu einer Sektion hat, antworte kurz im Chat OHNE Marker ` +
     `und ohne Teile des Dokuments zu wiederholen. Sobald er aber eine Änderung will, erstellst du das ` +
     `KOMPLETTE Dokument neu (wieder mit Marker) — niemals nur die geänderte Sektion, niemals ` +
-    `"hier der angepasste Abschnitt".\n\n` +
-    `Aufbau des Dokuments: "# ${d.title}" als Titel, danach genau diese Sektionen als ` +
+    `"hier der angepasste Abschnitt".` +
+    VISUAL_SPEC +
+    `\n\nAufbau des Dokuments: "# ${d.title}" als Titel, danach genau diese Sektionen als ` +
     `"##"-Überschriften, in dieser Reihenfolge:\n${sections}\n\n` +
-    `Qualitätsanspruch — dafür ist der Nutzer hier, also gib dir hier deutlich mehr Mühe als in einer ` +
-    `Chat-Antwort:\n` +
-    `- JEDE Sektion wird ausgefüllt. Keine leere Überschrift, keine Sektion, die nur aus "wird noch ` +
-    `ergänzt" besteht.\n` +
-    `- Benutze die konkreten Zahlen, Namen, Systeme und Zitate aus dem Gespräch. Wo eine Information ` +
-    `fehlt, schreibe an genau dieser Stelle eine explizite Annahme ("Annahme: ...") oder "offen: ..." ` +
-    `— das ersetzt aber nie eine ganze Sektion.\n` +
-    `- Tabellen dort, wo die Sektion sie verlangt (siehe oben), mit vollständig gefüllten Zeilen — ` +
-    `keine Fließtext-Wand.\n` +
-    `- Ziel-Umfang: 900-1800 Wörter. Lieber konkret und ausführlich als kurz und allgemein.\n` +
-    `- Keine Floskeln ("in der heutigen schnelllebigen Welt"), keine Wiederholung der Interviewfragen, ` +
-    `kein Meta-Kommentar über das Dokument selbst.\n` +
-    `- Jede neue Version ist eine vollständige Neuerstellung des ganzen Dokuments, und sie ist ` +
-    `ausführlicher und konkreter als die vorherige.\n\n` +
+    `Qualitätsanspruch — das Dokument wird gescannt, nicht gelesen:\n` +
+    `- KEINE Absätze. Jede Sektion ist: der vorgesehene Visual-Block, danach kurze Bullets ` +
+    `(höchstens 15 Wörter pro Bullet, höchstens 5 Bullets pro Sektion).\n` +
+    `- Jede Sektion wird ausgefüllt, und jeder Visual-Block enthält echte Werte aus dem Gespräch — ` +
+    `keine Platzhalter, keine erfundenen Zahlen.\n` +
+    `- Fehlt eine Zahl, schreibe sie als Annahme in das Bullet darunter ("Annahme: ...") oder ` +
+    `markiere den Punkt als "offen: ..." — lass aber keinen Block weg.\n` +
+    `- Keine Floskeln, keine Wiederholung der Interviewfragen, kein Meta-Kommentar über das Dokument.\n` +
+    `- Jede neue Version ist eine vollständige Neuerstellung und konkreter als die vorherige.\n\n` +
     `Am Ende des Dokuments stellst du eine kurze Frage (mit CHOICES), was angepasst werden soll.`
   );
 }

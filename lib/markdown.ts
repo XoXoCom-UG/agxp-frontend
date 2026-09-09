@@ -7,6 +7,8 @@
  * inject markup (XSS via dangerouslySetInnerHTML).
  */
 
+import { renderDocVisual } from "@/lib/doc-visuals";
+
 function escapeHtml(t: string): string {
   return t
     .replace(/&/g, "&amp;")
@@ -61,6 +63,7 @@ export function md(raw: string): string {
 
     // Fenced code block (``` or ```lang)
     if (trimmed.startsWith("```")) {
+      const lang = trimmed.slice(3).trim();
       const codeLines: string[] = [];
       i++;
       while (i < lines.length && !lines[i].trim().startsWith("```")) {
@@ -69,6 +72,11 @@ export function md(raw: string): string {
       }
       i++; // skip closing ```
       const escaped = codeLines.join("\n"); // already HTML-escaped globally
+
+      // An agxp-* fence is a graphic of the deliverable, not source code.
+      const visual = renderDocVisual(lang, escaped);
+      if (visual) { out.push(visual); continue; }
+
       out.push(
         `<pre class="bg-zinc-950 dark:bg-zinc-950 text-zinc-100 rounded-xl p-4 overflow-x-auto my-4 text-[12.5px] font-mono leading-relaxed border border-zinc-800"><code>${escaped}</code></pre>`
       );
