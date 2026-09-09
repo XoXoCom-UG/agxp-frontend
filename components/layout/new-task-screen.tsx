@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { getProject, createBlankProject, PLACEHOLDER_PROJECT_NAME, type Project } from "@/lib/projects";
+import { getProject, createBlankProject, clearAgent, PLACEHOLDER_PROJECT_NAME, type Project } from "@/lib/projects";
 import { listAgents, type Agent, type AgentType } from "@/lib/agents";
 import { projectCountsByAgent } from "@/lib/agent-progress";
 import { AgentNav } from "@/components/layout/agent-nav";
@@ -57,6 +57,14 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
     projectCountsByAgent().then(setProjectCounts).catch(() => {});
   }
 
+  // "Change agent" (reached from the chat panel's own ⋯ menu, not a popup at
+  // selection time — Ana's call, matching v8) drops the assignment so
+  // panelFor falls back to the picker for that role.
+  async function changeAgent(role: AgentType) {
+    if (!project) return;
+    setProject(await clearAgent(project.id, role));
+  }
+
   // Creates the row on first real use and points the URL at it without
   // remounting this screen (a router.push here would throw away panel state).
   async function ensureProject(): Promise<Project> {
@@ -80,7 +88,8 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
       return (
         <ProjectChatPanel key={role} project={project} role={role} agent={assigned} primary={isPrimary}
           projectCount={projectCounts[assigned.id] ?? 0}
-          onProjectNamed={name => setProject(p => p && { ...p, name })} />
+          onProjectNamed={name => setProject(p => p && { ...p, name })}
+          onChangeAgent={() => changeAgent(role)} />
       );
     }
     return (
@@ -111,10 +120,10 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
           </div>
         </div>
 
-        {/* Coach supports (narrow, left) — Consultant leads (wide, right). */}
+        {/* Consultant leads (wide, left) — Coach supports (narrow, right). */}
         <main className="workspace">
-          {panelFor("coach")}
           {panelFor("consultant")}
+          {panelFor("coach")}
         </main>
 
         <div className="artifact-bar">
