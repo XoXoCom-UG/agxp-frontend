@@ -1,20 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { getProject, createBlankProject, PLACEHOLDER_PROJECT_NAME, type Project } from "@/lib/projects";
 import { listAgents, type Agent, type AgentType } from "@/lib/agents";
 import { projectCountsByAgent } from "@/lib/agent-progress";
+import { DELIVERABLES } from "@/lib/deliverables";
 import { AgentNav } from "@/components/layout/agent-nav";
 import { AgentPickerPanel } from "@/components/layout/agent-picker-panel";
 import { ProjectChatPanel } from "@/components/layout/project-chat-panel";
+import { DeliverableView, type DeliverableDoc } from "@/components/layout/deliverable-view";
 
-// What the two panels are working toward: the Consultant's Transformation
-// Concept and the Coach's Change Plan, plus the smaller outputs. Both
-// documents are generated in the conversation today; these chips are the
-// future one-click/downloadable versions.
-const ARTIFACTS = ["Transformation Concept", "Change Plan", "User Stories", "AI & IT Glossary", "Roadmap", "PDF"];
+// The smaller outputs, still to come. The two main documents (Transformation
+// Concept / Change Plan) are not in this list — they come from the panels
+// themselves, so their chips can open the real generated document.
+const SOON_ARTIFACTS = ["User Stories", "AI & IT Glossary", "Roadmap", "PDF"];
 
 /**
  * The start screen: a narrow Coach panel beside a wide Consultant panel.
@@ -32,6 +33,9 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [projectCounts, setProjectCounts] = useState<Record<string, number>>({});
   const [loadingData, setLoadingData] = useState(true);
+  // The finished deliverable of each panel, and the one being read right now.
+  const [docs, setDocs] = useState<Record<AgentType, DeliverableDoc | null>>({ coach: null, consultant: null });
+  const [openDoc, setOpenDoc] = useState<DeliverableDoc | null>(null);
   const creating = useRef<Promise<Project> | null>(null);
 
   useEffect(() => { if (!authLoading && !token) router.replace("/login"); }, [token, authLoading, router]);
@@ -49,6 +53,10 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
       .finally(() => { if (alive) setLoadingData(false); });
     return () => { alive = false; };
   }, [token, projectId]);
+
+  const reportDoc = useCallback((role: AgentType, doc: DeliverableDoc | null) => {
+    setDocs(prev => (prev[role]?.content === doc?.content ? prev : { ...prev, [role]: doc }));
+  }, []);
 
   // An agent that just joined a project may have crossed a level threshold —
   // refresh the counts so the Steckbrief shows it right away.
@@ -80,6 +88,8 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
       return (
         <ProjectChatPanel key={role} project={project} role={role} agent={assigned} primary={isPrimary}
           projectCount={projectCounts[assigned.id] ?? 0}
+          onOpenDoc={setOpenDoc}
+          onDeliverableChange={doc => reportDoc(role, doc)}
           onProjectNamed={name => setProject(p => p && { ...p, name })} />
       );
     }
@@ -119,11 +129,24 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
 
         <div className="artifact-bar">
           <span className="lbl">Project artifacts</span>
-          {ARTIFACTS.map(a => (
+          {(["consultant", "coach"] as AgentType[]).map(role => {
+            const doc = docs[role];
+            const title = DELIVERABLES[role].title;
+            return doc ? (
+              <button key={role} className="artifact-chip live" onClick={() => setOpenDoc(doc)}>
+                {title}<span className="ready">open</span>
+              </button>
+            ) : (
+              <span key={role} className="artifact-chip" title="Generated in the conversation">{title}</span>
+            );
+          })}
+          {SOON_ARTIFACTS.map(a => (
             <span key={a} className="artifact-chip" title="Coming soon">{a}<span className="soon">soon</span></span>
           ))}
         </div>
       </div>
+
+      {openDoc && <DeliverableView doc={openDoc} onClose={() => setOpenDoc(null)} />}
     </div>
   );
 }

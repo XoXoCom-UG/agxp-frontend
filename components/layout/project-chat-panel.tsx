@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Agent, AgentType } from "@/lib/agents";
 import { listMessages, addMessage, touchProjectActivity, renameFromFirstMessage, type Project, type ProjectMessage } from "@/lib/projects";
 import { askAgent } from "@/lib/ask-agent";
-import { parseMarkers } from "@/lib/message-markers";
+import { parseMarkers, looksLikeDocument, type TopicMarker } from "@/lib/message-markers";
+import { DELIVERABLES } from "@/lib/deliverables";
 import { methodLabel, methodBlurb } from "@/lib/method-labels";
 import { levelFor, nextLevel, LEVEL_ORDER } from "@/lib/agent-progress";
 import { md } from "@/lib/markdown";
 import { AgentMascot, type MascotState } from "@/components/layout/agent-mascot";
-import { IconArrow, IconSend, IconCheck, IconSearch } from "@/components/layout/agxp-icons";
+import type { DeliverableDoc } from "@/components/layout/deliverable-view";
+import { IconArrow, IconSend, IconCheck, IconSearch, IconDoc, IconSpark } from "@/components/layout/agxp-icons";
 
 const OPENING: Record<AgentType, string> = {
   consultant: "Hey, what can I do for you today?",
@@ -17,22 +19,25 @@ const OPENING: Record<AgentType, string> = {
 };
 
 /** Each role's way in: the Consultant interviews, the Coach takes the temperature. */
-const OPENER_ACTION: Record<AgentType, { title: string; blurb: string; prompt: string }> = {
+const OPENER_ACTION: Record<AgentType, { title: string; prompt: string }> = {
   consultant: {
     title: "Full Assessment",
-    blurb: "Standardized interview process.",
     prompt: "Let's do a full assessment with the standardized interview process.",
   },
   coach: {
     title: "Change Readiness Check",
-    blurb: "Where the team stands today.",
     prompt: "Let's check how ready the team is for this change.",
   },
 };
 
-/** The agent offers what it knows: its way in, or one of its methods. */
+/** The agent offers what it knows: the guided interview, or one of its methods. */
 function quickActions(agent: Agent) {
-  const actions = [{ ...OPENER_ACTION[agent.type], icon: <IconCheck size={14} /> }];
+  const deliverable = DELIVERABLES[agent.type];
+  const actions = [{
+    ...OPENER_ACTION[agent.type],
+    blurb: `${deliverable.stations.length} guided steps toward your ${deliverable.title}.`,
+    icon: <IconCheck size={14} />,
+  }];
   for (const m of agent.primaryMethods.slice(0, 3)) {
     actions.push({
       title: methodLabel(m.name),
@@ -44,13 +49,17 @@ function quickActions(agent: Agent) {
   return actions;
 }
 
-export function ProjectChatPanel({ project, role, agent, primary, projectCount = 0, onProjectNamed }: {
+export function ProjectChatPanel({ project, role, agent, primary, projectCount = 0, onProjectNamed, onOpenDoc, onDeliverableChange }: {
   project: Project; role: AgentType; agent: Agent;
   /** Consultant leads the layout (larger). */
   primary?: boolean;
   /** How many of the user's projects this agent has worked on, this one included. */
   projectCount?: number;
   onProjectNamed?: (name: string) => void;
+  /** Opens the finished deliverable in the full document view (owned by the screen). */
+  onOpenDoc?: (doc: DeliverableDoc) => void;
+  /** Reports this panel's finished deliverable so the artifact bar can link to it. */
+  onDeliverableChange?: (doc: DeliverableDoc | null) => void;
 }) {
   const [messages, setMessages] = useState<ProjectMessage[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -59,6 +68,8 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
   const [orb, setOrb] = useState<MascotState>("idle");
   const bottomRef = useRef<HTMLDivElement>(null);
   const speakTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const deliverable = DELIVERABLES[role];
 
   useEffect(() => () => { if (speakTimer.current) clearTimeout(speakTimer.current); }, []);
 
@@ -75,6 +86,10 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
   }, [project.id, role]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, sending]);
+
+  function buildDoc(content: string, title: string, createdAt: string): DeliverableDoc {
+    return { title, role, agentName: agent.name, projectName: project.name, content, createdAt };
+  }
 
   async function send(text: string) {
     const t = text.trim();
@@ -93,8 +108,15 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
       const history = [...messages, userMsg].map(m => ({ role: m.role, content: m.content }));
       const reply = await askAgent(agent, history);
       await addMessage(project.id, role, "assistant", reply);
-      setMessages(prev => [...prev, { id: crypto.randomUUID(), project_id: project.id, column_type: role, role: "assistant", content: reply, created_at: new Date().toISOString() }]);
+      const createdAt = new Date().toISOString();
+      setMessages(prev => [...prev, { id: crypto.randomUUID(), project_id: project.id, column_type: role, role: "assistant", content: reply, created_at: createdAt }]);
       playSpeaking();
+      // The document is the moment worth showing — open it right away instead
+      // of leaving the user to find a card in the scrollback.
+      const parsed = parseMarkers(reply);
+      if (parsed.doc || looksLikeDocument(parsed.text)) {
+        onOpenDoc?.(buildDoc(parsed.text, parsed.doc || deliverable.title, createdAt));
+      }
       touchProjectActivity(project.id, `${role === "coach" ? "Coach" : "Consultant"} replied`).catch(() => {});
     } catch (e) {
       setMessages(prev => [...prev, { id: crypto.randomUUID(), project_id: project.id, column_type: role, role: "assistant", content: `Error: ${(e as Error).message}`, created_at: new Date().toISOString() }]);
@@ -109,6 +131,45 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
     return -1;
   })();
   const actions = quickActions(agent);
+
+  // How far the interview has got: the newest assistant message that carries
+  // each marker wins, so reloading history rebuilds the same rail.
+  const { pct, station } = useMemo(() => {
+    let pct: number | null = null;
+    let station: TopicMarker | null = null;
+    for (let i = messages.length - 1; i >= 0 && (pct === null || station === null); i--) {
+      if (messages[i].role !== "assistant") continue;
+      const p = parseMarkers(messages[i].content);
+      if (pct === null && p.progress !== null) pct = p.progress;
+      if (station === null && p.topic) station = p.topic;
+    }
+    return { pct: pct ?? 0, station };
+  }, [messages]);
+
+  // The finished deliverable, if the agent has already produced one.
+  const docMsg = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (m.role !== "assistant") continue;
+      const p = parseMarkers(m.content);
+      if (p.doc || looksLikeDocument(p.text)) return { m, p };
+    }
+    return null;
+  }, [messages]);
+
+  const currentDoc = docMsg ? buildDoc(docMsg.p.text, docMsg.p.doc || deliverable.title, docMsg.m.created_at) : null;
+
+  // Kept in refs so reporting up doesn't depend on identities that change on
+  // every render (which would loop against the parent's setState).
+  const docRef = useRef(currentDoc);
+  docRef.current = currentDoc;
+  const reportRef = useRef(onDeliverableChange);
+  reportRef.current = onDeliverableChange;
+  useEffect(() => { reportRef.current?.(docRef.current); }, [docMsg]);
+
+  const stationIdx = station ? station.index - 1 : (messages.length > 0 ? 0 : -1);
+  const stationLabel = station?.label || deliverable.stations[Math.max(0, stationIdx)]?.label || "";
+  const ready = pct >= 100;
 
   // The agent levels up on the work it has actually done for this user; this
   // project is one of them, so compare against the count without it to know
@@ -163,6 +224,35 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
         </div>
       </div>
 
+      {/* The deliverable rail: what this panel is building, and how far along it is */}
+      <div className={`deliv-rail${ready ? " ready" : ""}${currentDoc ? " done" : ""}`}
+        style={{ ["--dr-steps" as string]: deliverable.stations.length }}>
+        <div className="dr-top">
+          <span className="dr-kind"><IconDoc size={12} />{deliverable.title}</span>
+          {currentDoc ? <span className="dr-badge">Ready</span> : <span className="dr-pct">{pct}%</span>}
+        </div>
+        <div className="dr-bar"><span style={{ width: `${currentDoc ? 100 : pct}%` }} /></div>
+        <div className="dr-bottom">
+          <span className="dr-step">
+            {currentDoc
+              ? "Document generated"
+              : stationIdx < 0
+                ? `${deliverable.stations.length} steps · not started`
+                : `Step ${stationIdx + 1} of ${deliverable.stations.length} · ${stationLabel}`}
+          </span>
+          {currentDoc ? (
+            <button className="dr-cta" onClick={() => onOpenDoc?.(currentDoc)}>
+              <IconDoc size={12} />Open
+            </button>
+          ) : (
+            <button className="dr-cta" disabled={sending} onClick={() => send(deliverable.generatePrompt)}
+              data-tooltip={ready ? "Everything answered — build it" : "Builds it with what the agent knows so far"}>
+              <IconSpark size={12} />Generate
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className="chat-body">
         {!loaded && <div className="spinner" style={{ margin: "0 auto", borderColor: "var(--border-strong)", borderTopColor: "var(--foreground)" }} />}
 
@@ -172,31 +262,63 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
           </div>
         )}
         {loaded && messages.length === 0 && (
-          <div className="qa-list">
-            {actions.map(a => (
-              <button key={a.title} className="qa-item" onClick={() => send(a.prompt)}>
-                <span className="qa-ic">{a.icon}</span>
-                <div className="qtxt"><div className="qt">{a.title}</div><div className="qs">{a.blurb}</div></div>
-                <IconArrow />
-              </button>
-            ))}
-          </div>
+          <>
+            <div className="qa-list">
+              {actions.map(a => (
+                <button key={a.title} className="qa-item" onClick={() => send(a.prompt)}>
+                  <span className="qa-ic">{a.icon}</span>
+                  <div className="qtxt"><div className="qt">{a.title}</div><div className="qs">{a.blurb}</div></div>
+                  <IconArrow />
+                </button>
+              ))}
+            </div>
+            {/* What the interview will actually ask, so the first click isn't blind */}
+            <div className="agenda-peek">
+              <span className="lbl">The road to your {deliverable.title}</span>
+              <ol>
+                {deliverable.stations.map(s => <li key={s.label}>{s.label}</li>)}
+              </ol>
+            </div>
+          </>
         )}
 
         {messages.map((m, i) => {
           if (m.role === "user") return <div key={m.id} className="msg-user">{m.content}</div>;
           const parsed = parseMarkers(m.content);
           const showChoices = i === lastAssistantIdx && parsed.choices.length > 0 && !sending;
+          const isDoc = !!parsed.doc || looksLikeDocument(parsed.text);
+          const choices = showChoices ? (
+            <div className="choice-row" style={{ paddingLeft: 0 }}>
+              {parsed.choices.map(c => (
+                <button key={c} className="choice-chip" disabled={sending} onClick={() => send(c)}>{c}</button>
+              ))}
+            </div>
+          ) : null;
+
+          // A generated document is a document, not a 2000-word chat bubble.
+          if (isDoc) {
+            const title = parsed.doc || deliverable.title;
+            const sections = (parsed.text.match(/^##\s+\S/gm) ?? []).length;
+            const words = parsed.text.split(/\s+/).filter(Boolean).length;
+            return (
+              <div key={m.id} className="msg-agent">
+                <button className="doc-card" onClick={() => onOpenDoc?.(buildDoc(parsed.text, title, m.created_at))}>
+                  <span className="dc-ic"><IconDoc size={17} /></span>
+                  <span className="dc-txt">
+                    <span className="dc-t">{title}</span>
+                    <span className="dc-s">{sections} sections · {words.toLocaleString()} words · open to read</span>
+                  </span>
+                  <IconArrow />
+                </button>
+                {choices}
+              </div>
+            );
+          }
+
           return (
             <div key={m.id} className="msg-agent">
               <div className="txt" dangerouslySetInnerHTML={{ __html: md(parsed.text) }} />
-              {showChoices && (
-                <div className="choice-row" style={{ paddingLeft: 0 }}>
-                  {parsed.choices.map(c => (
-                    <button key={c} className="choice-chip" disabled={sending} onClick={() => send(c)}>{c}</button>
-                  ))}
-                </div>
-              )}
+              {choices}
             </div>
           );
         })}

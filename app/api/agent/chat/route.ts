@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 import type { AgentType } from "@/lib/agents";
+import { DELIVERABLES, agendaPrompt } from "@/lib/deliverables";
 
 const MODEL = "claude-sonnet-5";
 
@@ -31,9 +32,9 @@ const CONVERSATIONAL_STYLE =
   `kurz (wenige Sätze), bevor die Frage kommt. Baue auf dem auf, was der Nutzer gerade gesagt hat, ` +
   `statt eine vorgefertigte Checkliste abzuarbeiten. Große strukturierte Inhalte (Tabellen, ` +
   `vollständige Dokumente) lieferst du NUR, wenn der Nutzer explizit danach fragt (z.B. das fertige ` +
-  `Transformation Concept) — nicht als Zwischenschritt im normalen Gesprächsfluss.`;
+  `Ergebnis-Dokument) — nicht als Zwischenschritt im normalen Gesprächsfluss.`;
 
-const SYSTEM_PROMPTS: Record<AgentType, (name: string) => string> = {
+const ROLE_PROMPTS: Record<AgentType, (name: string) => string> = {
   consultant: (name) =>
     `Du bist ${name}, ein erfahrener KI-Transformation Consultant. Du hilfst Unternehmen, ` +
     `AI-Projekte zu planen: Ist-Zustand verstehen, Ziel-Zustand definieren, Lücken (Gap-Analyse) ` +
@@ -43,46 +44,26 @@ const SYSTEM_PROMPTS: Record<AgentType, (name: string) => string> = {
     `verstanden zu haben wie sein Kunde. Du kennst mehrere Methoden (z.B. As-Is/To-Be, Gap-Analyse) — ` +
     `biete sie im Gespräch an, wenn sie passen ("Dafür kenne ich eine Methode — soll ich sie anwenden?"), ` +
     `statt sie aufzudrängen. Antworte IMMER in der Sprache, in der der Nutzer schreibt (schreibt er ` +
-    `Englisch, antworte Englisch; schreibt er Deutsch, antworte Deutsch). Formatiere nur längere/finale Antworten mit Markdown ` +
-    `(Überschriften mit #/##, Listen mit -, **fett** für Schlüsselbegriffe).` +
-    CONVERSATIONAL_STYLE +
-    CHOICES_INSTRUCTION +
-    `\n\nDu trackst außerdem, wie viel Kontext du für ein vollständiges Transformation Concept ` +
-    `(Ist-Zustand, Ziel-Zustand, Tooling-Empfehlungen, konkrete Maßnahmen) schon gesammelt hast. ` +
-    `Füge am ENDE JEDER Antwort (nach dem CHOICES-Marker, falls vorhanden, in einer eigenen Zeile) ` +
-    `genau einen Marker hinzu: [[PROGRESS: NN]] — NN ist eine Schätzung 0-100 in 5er-Schritten, wie ` +
-    `bereit du bist, ein vollständiges Transformation Concept zu erstellen (0 = gerade erst gestartet, ` +
-    `100 = alle wichtigen Infos vorhanden). Erhöhe den Wert erst, wenn der Nutzer tatsächlich neue ` +
-    `relevante Informationen geliefert hat. Bei 100 frag explizit (mit CHOICES), ob der Nutzer jetzt das ` +
-    `Transformation Concept erstellt haben möchte. Wenn der Nutzer dich bittet, das Transformation ` +
-    `Concept zu erstellen, generiere ein vollständiges strukturiertes Dokument (Ist-Zustand, ` +
-    `Ziel-Zustand, Gap-Analyse, empfohlene Tools mit Pro/Contra, priorisierte Maßnahmen) basierend auf ` +
-    `dem gesamten bisherigen Gespräch — hier ist die volle Struktur/Tabellenform angebracht.`,
+    `Englisch, antworte Englisch; schreibt er Deutsch, antworte Deutsch). Formatiere nur längere/finale ` +
+    `Antworten mit Markdown (Überschriften mit #/##, Listen mit -, **fett** für Schlüsselbegriffe).`,
   coach: (name) =>
     `Du bist ${name}, ein Change-Management- und IT-Coach. Du begleitest Menschen durch ` +
     `Veränderungsprozesse rund um AI/IT-Transformationen — Widerstände, Team-Dynamik, ` +
     `Kommunikation. Antworte empathisch und coachend: stelle mehr Fragen, als du ` +
     `Antworten vorgibst, und hilf der Person, ihre eigene nächste Handlung zu finden. Antworte IMMER ` +
-    `in der Sprache, in der der Nutzer schreibt.` +
+    `in der Sprache, in der der Nutzer schreibt.`,
+};
+
+function systemPrompt(type: AgentType, name: string): string {
+  return (
+    ROLE_PROMPTS[type](name) +
     CONVERSATIONAL_STYLE +
     CHOICES_INSTRUCTION +
-    // The Consultant's side of the screen builds toward a Transformation
-    // Concept; this is the Coach's equivalent end product, so both panels
-    // are working toward something instead of one just chatting.
-    `\n\nDein Ergebnis-Dokument ist der CHANGE PLAN — das menschliche Gegenstück zum Transformation ` +
-    `Concept des Consultants: nicht Technik, sondern wie die Organisation die Veränderung mitgeht. ` +
-    `Du trackst, wie viel Kontext du dafür schon hast (betroffene Rollen/Stakeholder, konkrete ` +
-    `Widerstände und Sorgen, bisherige Kommunikation, Skill-/Trainingsbedarf, Zeitrahmen des Rollouts). ` +
-    `Füge am ENDE JEDER Antwort (nach dem CHOICES-Marker, falls vorhanden, in einer eigenen Zeile) ` +
-    `genau einen Marker hinzu: [[PROGRESS: NN]] — NN ist eine Schätzung 0-100 in 5er-Schritten, wie ` +
-    `bereit du bist, einen vollständigen Change Plan zu erstellen. Erhöhe den Wert erst, wenn der ` +
-    `Nutzer tatsächlich neue relevante Informationen geliefert hat. Bei 100 frag explizit (mit ` +
-    `CHOICES), ob der Nutzer den Change Plan jetzt erstellt haben möchte. Wenn er darum bittet, ` +
-    `generiere ein vollständiges strukturiertes Dokument mit: Stakeholder-Map (wer ist betroffen, ` +
-    `was ist deren Sorge), erwartete Widerstände und wie man ihnen begegnet, Kommunikationsplan (wer ` +
-    `erfährt was, wann, über welchen Kanal), Enablement/Training pro Rolle, und Rollout-Schritte mit ` +
-    `Meilensteinen — hier ist die volle Struktur/Tabellenform angebracht.`,
-};
+    // The interview agenda and the finished document live in lib/deliverables
+    // so the prompt and the progress rail in the UI can't drift apart.
+    agendaPrompt(DELIVERABLES[type])
+  );
+}
 
 interface ChatBody {
   agentType: AgentType;
@@ -97,7 +78,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = (await req.json()) as ChatBody;
-  if (!body?.messages?.length || !body.agentType) {
+  if (!body?.messages?.length || !body.agentType || !DELIVERABLES[body.agentType]) {
     return NextResponse.json({ error: "messages und agentType sind erforderlich." }, { status: 400 });
   }
 
@@ -107,7 +88,7 @@ export async function POST(req: NextRequest) {
     const response = await anthropic.messages.create({
       model: MODEL,
       max_tokens: 8192,
-      system: SYSTEM_PROMPTS[body.agentType](body.agentName || "dein Agent"),
+      system: systemPrompt(body.agentType, body.agentName || "dein Agent"),
       messages: body.messages.map(m => ({ role: m.role, content: m.content })),
     });
 

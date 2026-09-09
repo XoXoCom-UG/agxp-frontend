@@ -775,3 +775,266 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
   cursor:not-allowed;
 }
 .artifact-chip .soon{ font-size:var(--text-3xs); color:var(--primary-soft); background:color-mix(in srgb, var(--primary) 14%, transparent); border-radius:var(--r-pill); padding:2px 7px; }
+
+/* =============================================================================
+   DELIVERABLE — what each panel is building (Transformation Concept / Change
+   Plan): the progress rail, the agenda preview, the document card in the chat
+   and the full document reader.
+   ============================================================================= */
+
+/* The rail: title + readiness %, a bar divided into as many steps as the
+   interview has stations (--dr-steps), the current step, and the CTA. */
+.deliv-rail{
+  display:flex; flex-direction:column; gap:8px; flex-shrink:0;
+  padding:11px var(--sp-6) 12px; border-bottom:1px solid var(--border-soft);
+  background:linear-gradient(90deg, color-mix(in srgb, var(--primary) 9%, transparent), transparent);
+}
+.deliv-rail .dr-top{ display:flex; align-items:center; gap:9px; }
+.dr-kind{
+  display:inline-flex; align-items:center; gap:7px; font-size:var(--text-3xs); font-weight:700;
+  letter-spacing:0.09em; text-transform:uppercase; color:var(--primary-soft);
+}
+.dr-pct{ margin-left:auto; font-size:var(--text-2xs); font-weight:650; color:var(--text-primary); font-variant-numeric:tabular-nums; }
+.dr-badge{
+  margin-left:auto; font-size:var(--text-3xs); font-weight:700; letter-spacing:0.06em; text-transform:uppercase;
+  color:var(--primary-foreground); background:var(--success); border-radius:var(--r-pill); padding:2px 9px;
+}
+.dr-bar{
+  position:relative; height:5px; border-radius:3px; overflow:hidden; background:var(--border-medium);
+  background-image:repeating-linear-gradient(90deg,
+    transparent 0 calc(100% / var(--dr-steps, 8) - 1.5px),
+    color-mix(in srgb, var(--background) 70%, transparent) calc(100% / var(--dr-steps, 8) - 1.5px) calc(100% / var(--dr-steps, 8)));
+}
+.dr-bar > span{
+  display:block; height:100%; border-radius:3px;
+  background:linear-gradient(90deg, var(--primary), var(--primary-soft));
+  box-shadow:0 0 12px -2px color-mix(in srgb, var(--primary) 80%, transparent);
+  transition:width .45s var(--ease-out);
+}
+.deliv-rail.done .dr-bar > span{ background:linear-gradient(90deg, var(--success), color-mix(in srgb, var(--success) 60%, #fff)); }
+.dr-bottom{ display:flex; align-items:center; gap:10px; }
+.dr-step{ font-size:var(--text-2xs); color:var(--text-secondary); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dr-cta{
+  margin-left:auto; flex-shrink:0; display:inline-flex; align-items:center; gap:6px;
+  font-size:var(--text-2xs); font-weight:600; color:var(--text-primary);
+  background:var(--surface-1); border:1px solid var(--border-medium); border-radius:8px; padding:6px 11px;
+  transition:color .16s var(--ease-out), border-color .16s var(--ease-out), background-color .16s var(--ease-out), transform 120ms var(--ease-out);
+}
+.dr-cta:active:not(:disabled){ transform:scale(0.96); }
+.dr-cta:disabled{ opacity:.45; cursor:not-allowed; }
+.deliv-rail.ready .dr-cta{
+  color:var(--primary-foreground); background:var(--primary); border-color:transparent;
+  animation:drReady 2.4s var(--ease-out) infinite;
+}
+.deliv-rail.done .dr-cta{ color:var(--primary-foreground); background:var(--primary); border-color:transparent; }
+@keyframes drReady{
+  0%, 100%{ box-shadow:0 0 0 0 color-mix(in srgb, var(--primary) 55%, transparent); }
+  50%{ box-shadow:0 0 0 6px transparent; }
+}
+@media (hover:hover) and (pointer:fine){
+  .dr-cta:hover:not(:disabled){ color:var(--text-primary); border-color:color-mix(in srgb, var(--ring) 55%, transparent); background:color-mix(in srgb, var(--primary) 10%, transparent); }
+  .deliv-rail.ready .dr-cta:hover, .deliv-rail.done .dr-cta:hover{ background:var(--primary-soft); color:var(--primary-foreground); }
+}
+
+/* Agenda preview — the stations the interview will walk through, shown in the
+   empty state so the first click isn't a leap of faith. */
+.agenda-peek{ max-width:520px; margin-top:2px; }
+.agenda-peek .lbl{
+  display:block; font-size:var(--text-3xs); font-weight:700; letter-spacing:0.09em;
+  text-transform:uppercase; color:var(--text-muted); margin-bottom:9px;
+}
+.agenda-peek ol{ list-style:none; display:flex; flex-wrap:wrap; gap:6px; counter-reset:ag; }
+.agenda-peek li{
+  counter-increment:ag; display:inline-flex; align-items:center; gap:7px;
+  font-size:var(--text-2xs); color:var(--text-secondary);
+  border:1px solid var(--border-soft); border-radius:var(--r-pill); padding:5px 11px 5px 6px;
+}
+.agenda-peek li::before{
+  content:counter(ag); display:flex; align-items:center; justify-content:center;
+  width:17px; height:17px; border-radius:50%; font-size:var(--text-3xs); font-weight:700;
+  color:var(--primary-soft); background:color-mix(in srgb, var(--primary) 16%, transparent);
+}
+
+/* The generated document, as it appears in the conversation */
+.doc-card{
+  display:flex; align-items:center; gap:13px; width:100%; text-align:left;
+  padding:13px 15px; border-radius:14px 14px 14px 4px;
+  border:1px solid color-mix(in srgb, var(--primary) 40%, var(--border));
+  background:linear-gradient(120deg, color-mix(in srgb, var(--primary) 14%, var(--card)), var(--card));
+  transition:border-color .16s var(--ease-out), transform 140ms var(--ease-out), box-shadow .2s var(--ease-out);
+  animation:popIn 260ms var(--ease-out);
+}
+.doc-card:active{ transform:scale(0.99); }
+.doc-card .dc-ic{
+  width:36px; height:36px; border-radius:10px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+  color:var(--primary-foreground); background:linear-gradient(160deg, var(--primary-soft), var(--primary));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.22), 0 6px 16px -8px rgba(0,0,0,0.6);
+}
+.doc-card .dc-txt{ min-width:0; flex:1; display:flex; flex-direction:column; gap:3px; }
+.doc-card .dc-t{ font-size:var(--text-sm); font-weight:650; color:var(--text-primary); }
+.doc-card .dc-s{ font-size:var(--text-2xs); color:var(--text-muted); }
+@media (hover:hover) and (pointer:fine){
+  .doc-card:hover{ border-color:var(--primary-soft); box-shadow:0 10px 30px -16px color-mix(in srgb, var(--primary) 80%, transparent); }
+  .doc-card:hover svg.arrow{ transform:translateX(3px); }
+}
+
+/* An artifact chip that points at a real, finished document */
+.artifact-chip.live{
+  cursor:pointer; color:var(--text-primary);
+  border-color:color-mix(in srgb, var(--primary) 45%, var(--border));
+  background:color-mix(in srgb, var(--primary) 12%, var(--secondary));
+  transition:border-color .16s var(--ease-out), transform 120ms var(--ease-out);
+}
+.artifact-chip.live:active{ transform:scale(0.96); }
+.artifact-chip .ready{
+  font-size:var(--text-3xs); font-weight:700; letter-spacing:0.05em; text-transform:uppercase;
+  color:var(--primary-foreground); background:var(--primary); border-radius:var(--r-pill); padding:2px 7px;
+}
+@media (hover:hover) and (pointer:fine){
+  .artifact-chip.live:hover{ border-color:var(--primary-soft); }
+}
+
+/* ---------- DOCUMENT READER — the deliverable as a document, portaled to
+   <body> so it escapes the panel's overflow and the header's stacking
+   context. Esc closes; the same markup is what gets printed. ---------- */
+.doc-overlay{
+  position:fixed; inset:0; z-index:90; background:rgba(3,5,9,0.68); backdrop-filter:blur(3px);
+  animation:docFade 200ms var(--ease-out);
+}
+@keyframes docFade{ from{ opacity:0; } to{ opacity:1; } }
+.doc-modal{
+  position:fixed; inset:22px; max-width:1180px; margin:0 auto; z-index:91;
+  display:flex; flex-direction:column; overflow:hidden;
+  background:var(--card); border:1px solid var(--border-strong); border-radius:18px;
+  box-shadow:0 50px 120px -40px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,255,255,0.05);
+  animation:docIn 300ms var(--ease-out);
+}
+@keyframes docIn{ from{ opacity:0; transform:translateY(14px) scale(.985); } to{ opacity:1; transform:none; } }
+
+.doc-head{
+  display:flex; align-items:center; gap:var(--sp-4); flex-shrink:0;
+  padding:var(--sp-5) var(--sp-6); border-bottom:1px solid var(--border-soft);
+  background:linear-gradient(120deg, color-mix(in srgb, var(--primary) 10%, transparent), transparent 60%);
+}
+.doc-id{ min-width:0; display:flex; flex-direction:column; gap:2px; }
+.doc-id .kind{ font-size:var(--text-3xs); font-weight:700; letter-spacing:0.09em; text-transform:uppercase; color:var(--primary-soft); }
+.doc-id h2{ font-size:var(--text-xl); font-weight:650; letter-spacing:-0.3px; color:var(--text-primary); }
+.doc-id .meta{ font-size:var(--text-2xs); color:var(--text-muted); }
+.doc-actions{ margin-left:auto; display:flex; align-items:center; gap:7px; flex-shrink:0; }
+.doc-btn{
+  display:inline-flex; align-items:center; gap:6px; font-size:var(--text-2xs); font-weight:600;
+  color:var(--text-secondary); background:var(--surface-1); border:1px solid var(--border-soft);
+  border-radius:9px; padding:8px 12px;
+  transition:color .15s var(--ease-out), border-color .15s var(--ease-out), transform 120ms var(--ease-out);
+}
+.doc-btn.icon{ padding:8px; }
+.doc-btn:active{ transform:scale(0.95); }
+@media (hover:hover) and (pointer:fine){
+  .doc-btn:hover{ color:var(--text-primary); border-color:var(--border-strong); }
+}
+
+.doc-main{ flex:1; display:flex; min-height:0; }
+.doc-toc{
+  width:238px; flex-shrink:0; display:flex; flex-direction:column; gap:10px; overflow-y:auto;
+  padding:var(--sp-5) var(--sp-4) var(--sp-5) var(--sp-6); border-right:1px solid var(--border-soft);
+}
+.doc-toc .lbl{ font-size:var(--text-3xs); font-weight:700; letter-spacing:0.09em; text-transform:uppercase; color:var(--text-muted); }
+.doc-toc nav{ display:flex; flex-direction:column; gap:1px; }
+.toc-item{
+  display:flex; align-items:flex-start; gap:9px; text-align:left; width:100%;
+  font-size:var(--text-2xs); line-height:1.45; color:var(--text-muted);
+  background:transparent; border:none; border-radius:8px; padding:7px 9px;
+  transition:color .15s var(--ease-out), background-color .15s var(--ease-out);
+}
+.toc-item .tick{ width:2px; align-self:stretch; min-height:13px; border-radius:2px; background:var(--border-medium); flex-shrink:0; transition:background-color .18s var(--ease-out); }
+.toc-item.lvl2{ padding-left:16px; }
+.toc-item.on{ color:var(--text-primary); background:color-mix(in srgb, var(--primary) 11%, transparent); }
+.toc-item.on .tick{ background:var(--primary); }
+.toc-empty{ font-size:var(--text-2xs); color:var(--text-muted); }
+@media (hover:hover) and (pointer:fine){
+  .toc-item:hover{ color:var(--text-primary); }
+}
+.doc-stats{ margin-top:auto; display:flex; gap:var(--sp-5); padding-top:var(--sp-4); border-top:1px solid var(--border-soft); }
+.doc-stats div{ display:flex; flex-direction:column; }
+.doc-stats b{ font-size:var(--text-sm); font-weight:650; color:var(--text-primary); font-variant-numeric:tabular-nums; }
+.doc-stats span{ font-size:var(--text-3xs); color:var(--text-muted); }
+
+/* The paper itself. Typography is set here rather than in the markdown
+   renderer, so the same generated markdown reads as a chat bubble in the
+   panel and as a document in here. */
+.doc-paper{ position:relative; flex:1; overflow-y:auto; padding:var(--sp-6) var(--sp-7) var(--sp-7); background:var(--background); }
+.doc-sheet{
+  max-width:760px; margin:0 auto; padding:44px 52px 34px; border-radius:14px;
+  background:var(--popover); border:1px solid var(--border-soft);
+  box-shadow:0 30px 70px -40px rgba(0,0,0,0.8);
+  animation:docSheetIn 380ms var(--ease-out) both;
+}
+@keyframes docSheetIn{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:none; } }
+
+.doc-body h1{
+  font-size:27px; font-weight:680; letter-spacing:-0.5px; line-height:1.2; color:var(--text-primary);
+  margin:0 0 var(--sp-5); padding-bottom:var(--sp-4); border-bottom:1px solid var(--border-soft);
+}
+.doc-body h2{
+  position:relative; font-size:17px; font-weight:650; letter-spacing:-0.15px; color:var(--text-primary);
+  margin:var(--sp-7) 0 var(--sp-3); padding-left:13px;
+}
+.doc-body h2::before{
+  content:""; position:absolute; left:0; top:3px; bottom:3px; width:3px; border-radius:2px;
+  background:linear-gradient(180deg, var(--primary-soft), var(--primary));
+}
+.doc-body h3{
+  font-size:var(--text-2xs); font-weight:700; letter-spacing:0.08em; text-transform:uppercase;
+  color:var(--primary-soft); margin:var(--sp-5) 0 var(--sp-2);
+}
+.doc-body h4{ font-size:var(--text-sm); font-weight:650; color:var(--text-primary); margin:var(--sp-4) 0 6px; }
+.doc-body p{ font-size:var(--text-sm); line-height:1.78; color:var(--text-secondary); margin:0 0 var(--sp-3); }
+.doc-body strong{ color:var(--text-primary); font-weight:650; }
+.doc-body ul, .doc-body ol{ margin:0 0 var(--sp-4); padding-left:22px; }
+.doc-body ul{ list-style:disc; }
+.doc-body ol{ list-style:decimal; }
+.doc-body li{ font-size:var(--text-sm); line-height:1.72; color:var(--text-secondary); margin-bottom:5px; }
+.doc-body li::marker{ color:var(--primary-soft); }
+.doc-body hr{ border:none; border-top:1px solid var(--border-soft); margin:var(--sp-6) 0; }
+.doc-body > div:empty, .doc-body > div[class~="h-2"]{ height:4px; }
+.doc-body table{ width:100%; border-collapse:collapse; margin:0; font-size:var(--text-xs); }
+.doc-body thead{ background:color-mix(in srgb, var(--primary) 10%, transparent); }
+.doc-body th{ padding:10px 13px; text-align:left; font-size:var(--text-3xs); font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-primary); }
+.doc-body td{ padding:10px 13px; font-size:var(--text-xs); line-height:1.6; color:var(--text-secondary); border-top:1px solid var(--border-soft); }
+.doc-body table + *{ margin-top:var(--sp-4); }
+.doc-body > div:has(> table){ margin:var(--sp-3) 0 var(--sp-5); border:1px solid var(--border-soft); border-radius:11px; overflow:hidden; }
+.doc-body code{ font-size:var(--text-2xs); background:var(--secondary); color:var(--text-primary); border-radius:5px; padding:2px 5px; }
+.doc-body pre{ margin:var(--sp-3) 0 var(--sp-5); }
+.doc-foot{
+  display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between;
+  margin-top:var(--sp-7); padding-top:var(--sp-4); border-top:1px solid var(--border-soft);
+  font-size:var(--text-3xs); color:var(--text-muted);
+}
+
+/* Narrow screens: the table of contents would eat the page */
+@media (max-width:900px){
+  .doc-modal{ inset:0; border-radius:0; max-width:none; }
+  .doc-toc{ display:none; }
+  .doc-sheet{ padding:28px 22px 24px; }
+  .doc-actions .doc-btn:not(.icon) span{ display:none; }
+}
+
+/* Print / Save as PDF: only the sheet, on white, no chrome */
+@media print{
+  body > *:not(.doc-portal){ display:none !important; }
+  .doc-overlay, .doc-head, .doc-toc, .doc-foot{ display:none !important; }
+  .doc-modal{ position:static; inset:auto; max-width:none; border:none; border-radius:0; box-shadow:none; background:#fff; animation:none; }
+  .doc-main{ display:block; }
+  .doc-paper{ overflow:visible; padding:0; background:#fff; }
+  .doc-sheet{ max-width:none; margin:0; padding:0; border:none; border-radius:0; box-shadow:none; background:#fff; animation:none; }
+  .doc-body, .doc-body *{ color:#111 !important; background:transparent !important; }
+  .doc-body thead{ background:#f1f3f6 !important; }
+  .doc-body h1, .doc-body h2, .doc-body h3{ break-after:avoid; }
+  .doc-body table, .doc-body li{ break-inside:avoid; }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .doc-modal, .doc-overlay, .doc-sheet, .doc-card{ animation:none !important; }
+  .deliv-rail.ready .dr-cta{ animation:none !important; }
+  .dr-bar > span{ transition:none !important; }
+}
