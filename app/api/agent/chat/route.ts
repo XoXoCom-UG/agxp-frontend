@@ -88,6 +88,9 @@ interface ChatBody {
   agentType: AgentType;
   agentName: string;
   messages: { role: "user" | "assistant"; content: string }[];
+  // Standard = the usual call. Extended turns on the model's extended
+  // thinking for that one request — a real difference, not a cosmetic label.
+  effort?: "Standard" | "Extended";
 }
 
 export async function POST(req: NextRequest) {
@@ -102,11 +105,13 @@ export async function POST(req: NextRequest) {
   }
 
   const anthropic = new Anthropic({ apiKey });
+  const extended = body.effort === "Extended";
 
   try {
     const response = await anthropic.messages.create({
       model: MODEL,
-      max_tokens: 8192,
+      max_tokens: extended ? 12288 : 8192,
+      ...(extended ? { thinking: { type: "enabled" as const, budget_tokens: 4096 } } : {}),
       system: SYSTEM_PROMPTS[body.agentType](body.agentName || "dein Agent"),
       messages: body.messages.map(m => ({ role: m.role, content: m.content })),
     });
