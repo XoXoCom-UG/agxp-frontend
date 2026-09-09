@@ -502,13 +502,20 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 
 /* Empty-conversation hero — vertically centered greeting + composer +
    suggestion list, shown only while messages.length === 0. Collapses back
-   to the plain top-anchored message list + bottom .chat-input otherwise. */
-.chat-hero{ flex:1; min-height:0; width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; }
-.chat-hero-inner{ width:100%; max-width:520px; display:flex; flex-direction:column; align-items:stretch; gap:var(--sp-5); }
+   to the plain top-anchored message list + bottom .chat-input otherwise.
+   The soft blue halo behind it (Gemini-style) only ever shows here — the
+   rest of the app stays graphite/neutral. */
+.chat-hero{ position:relative; flex:1; min-height:0; width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.chat-hero::before{
+  content:""; position:absolute; top:50%; left:50%; width:560px; height:360px; transform:translate(-50%,-50%);
+  background:radial-gradient(circle, color-mix(in srgb, var(--primary) 22%, transparent), transparent 70%);
+  filter:blur(40px); pointer-events:none; z-index:0;
+}
+.chat-hero-inner{ position:relative; z-index:1; width:100%; max-width:520px; display:flex; flex-direction:column; align-items:stretch; gap:var(--sp-5); }
 .chat-hero-greet{ font-size:var(--text-xl); font-weight:650; color:var(--text-primary); text-align:center; line-height:1.4; }
 
 /* Composer reused as-is via .chat-input; only placement chrome differs. */
-.chat-input.chat-input--hero{ border-top:none; padding:0; width:100%; }
+.chat-input.chat-input--hero{ border-top:none; margin:0; width:100%; }
 
 /* Suggestions: plain single-line rows (icon tile + label), not boxed cards.
    The blurb moves to a native title="" tooltip so the info isn't lost, just
@@ -531,22 +538,48 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 .assess-segs span.done{ background:var(--magenta); }
 .assess-segs span.current{ background:var(--blush); }
 
-.chat-input{ display:flex; gap:var(--sp-3); padding:var(--sp-4) var(--sp-6); border-top:1px solid var(--border-soft); flex-shrink:0; align-items:flex-end; }
-.chat-input textarea{ flex:1; background:var(--surface-2); border:1px solid var(--border-medium); border-radius:12px; padding:11px 14px; color:var(--text-primary); font-size:var(--text-xs); outline:none; transition:box-shadow .16s ease, border-color .16s ease; resize:none; font-family:inherit; line-height:1.5; max-height:100px; }
-.chat-input textarea:focus{ border-color:var(--border-strong); box-shadow:0 0 0 3px color-mix(in srgb, var(--ring) 13%, transparent); }
+/* ChatGPT-style composer: one rounded card carries the border/background/
+   focus-ring now (not the textarea) — a text row on top, a toolbar row
+   underneath with attach/effort on the left, mic/send on the right. */
+.chat-input{
+  display:flex; flex-direction:column; gap:var(--sp-2);
+  background:var(--surface-2); border:1px solid var(--border-medium); border-radius:18px;
+  padding:var(--sp-3) var(--sp-3) var(--sp-2); flex-shrink:0;
+  margin:var(--sp-4) var(--sp-6);
+  transition:box-shadow .16s ease, border-color .16s ease;
+}
+.chat-input:focus-within{ border-color:var(--border-strong); box-shadow:0 0 0 3px color-mix(in srgb, var(--ring) 13%, transparent); }
+.chat-input textarea{ background:transparent; border:none; outline:none; resize:none; color:var(--text-primary); font-size:var(--text-sm); font-family:inherit; line-height:1.5; max-height:160px; padding:4px 6px; }
 .chat-input textarea::placeholder{ color:var(--text-muted); }
-.chat-input button{
-  border:1px solid rgba(255,255,255,0.08); color:#fff; width:42px; height:42px; border-radius:var(--r-md);
-  display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:inset 0 1px 0 rgba(255,255,255,0.18); position:relative;
-  transition:filter .16s var(--ease-out), transform 120ms var(--ease-out), opacity .16s var(--ease-out);
+
+.attach-chips{ display:flex; flex-wrap:wrap; gap:6px; padding:0 6px; }
+.attach-chip{ display:inline-flex; align-items:center; gap:6px; font-size:var(--text-2xs); color:var(--text-secondary); background:var(--surface-1); border:1px solid var(--border-soft); border-radius:var(--r-pill); padding:4px 6px 4px 10px; }
+.attach-chip button{ width:14px; height:14px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); }
+@media (hover:hover) and (pointer:fine){ .attach-chip button:hover{ color:var(--text-primary); } }
+
+.composer-toolbar{ display:flex; align-items:center; justify-content:space-between; gap:var(--sp-2); }
+.composer-left, .composer-right{ display:flex; align-items:center; gap:6px; }
+.composer-icon-btn{
+  width:32px; height:32px; border-radius:50%; border:1px solid var(--border-soft); background:var(--surface-1); color:var(--text-muted);
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  transition:color .15s var(--ease-out), border-color .15s var(--ease-out), background-color .15s var(--ease-out);
 }
-.panel.coach .chat-input button{ background:linear-gradient(180deg, var(--indigo-light), var(--violet-dark)); }
-.panel.consultant .chat-input button{ background:linear-gradient(180deg, var(--plum-light), var(--plum-dark)); }
-.chat-input button:active:not(:disabled){ transform:scale(0.94); }
-.chat-input button:disabled{ opacity:.35; cursor:not-allowed; }
-@media (hover:hover) and (pointer:fine){
-  .chat-input button:hover:not(:disabled){ filter:brightness(1.15); transform:translateY(-1px); }
+@media (hover:hover) and (pointer:fine){ .composer-icon-btn:hover{ color:var(--text-primary); border-color:var(--border-medium); } }
+.composer-icon-btn.active{ color:var(--primary-soft); border-color:color-mix(in srgb, var(--primary) 40%, transparent); background:color-mix(in srgb, var(--primary) 12%, transparent); }
+.effort-pill{
+  display:flex; align-items:center; gap:5px; height:32px; padding:0 12px; border-radius:var(--r-pill);
+  border:1px solid var(--border-soft); background:var(--surface-1); color:var(--text-secondary); font-size:var(--text-2xs); font-weight:600;
+  transition:color .15s var(--ease-out), border-color .15s var(--ease-out);
 }
+@media (hover:hover) and (pointer:fine){ .effort-pill:hover{ color:var(--text-primary); border-color:var(--border-medium); } }
+.composer-send{
+  width:32px; height:32px; border-radius:50%; border:1px solid transparent; color:var(--primary-foreground);
+  background:var(--primary); display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.18);
+  transition:background-color .16s var(--ease-out), transform 120ms var(--ease-out), opacity .16s var(--ease-out);
+}
+.composer-send:disabled{ opacity:.35; cursor:not-allowed; }
+@media (hover:hover) and (pointer:fine){ .composer-send:hover:not(:disabled){ background:var(--primary-soft); transform:translateY(-1px); } }
 [data-tooltip]{ position:relative; }
 [data-tooltip]:hover::after{
   content:attr(data-tooltip); position:absolute; bottom:calc(100% + 7px); left:50%; transform:translateX(-50%);
@@ -675,8 +708,9 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 }
 .role-pill.confirmed{ color:var(--primary-soft); border-color:color-mix(in srgb, var(--primary) 32%, transparent); background:color-mix(in srgb, var(--primary) 12%, transparent); }
 
-/* Steckbrief — the compact agent profile above the conversation */
-.steckbrief{ padding:var(--sp-4) var(--sp-6) var(--sp-5); border-bottom:1px solid var(--border-soft); flex-shrink:0; }
+/* .sb-stats/.sb-methods/.m-chip below are shared with agent-picker-panel.tsx's
+   DetailView (and other rows there) — kept live even though the chat panel
+   itself no longer wraps them in a Steckbrief block. */
 .sb-stats{ display:flex; gap:var(--sp-7); margin-bottom:var(--sp-4); flex-wrap:wrap; }
 .sb-stats .lbl{ display:block; font-size:var(--text-3xs); color:var(--text-muted); margin-bottom:4px; }
 .sb-stats b{ font-size:var(--text-sm); font-weight:650; color:var(--text-primary); }
@@ -823,14 +857,13 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 }
 .rp-download-all{
   margin:var(--sp-4) var(--sp-5) 0; display:flex; align-items:center; justify-content:center; gap:8px; flex-shrink:0;
-  height:38px; border-radius:var(--radius-sm); background:var(--primary); color:var(--primary-foreground);
-  font-size:var(--text-xs); font-weight:600; border:1px solid transparent;
-  transition:background-color .16s var(--ease-out);
+  height:38px; border-radius:var(--radius-sm); background:var(--secondary); color:var(--secondary-foreground);
+  font-size:var(--text-xs); font-weight:600; border:1px solid var(--border);
+  transition:background-color .16s var(--ease-out), border-color .16s var(--ease-out);
 }
 @media (hover:hover) and (pointer:fine){
-  .rp-download-all:hover{ background:var(--primary-soft); }
+  .rp-download-all:hover{ border-color:var(--border-strong); background:var(--accent); }
 }
-.rp-note{ font-size:var(--text-3xs); color:var(--text-muted); line-height:1.5; padding:var(--sp-3) var(--sp-5) 0; flex-shrink:0; }
 .rp-list{ flex:1; overflow-y:auto; padding:var(--sp-4) var(--sp-5); display:flex; flex-direction:column; gap:8px; }
 .roadmap-item{
   display:flex; align-items:center; justify-content:space-between; gap:10px; padding:11px 13px;

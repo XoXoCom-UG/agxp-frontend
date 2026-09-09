@@ -6,11 +6,14 @@ import { listMessages, addMessage, touchProjectActivity, renameFromFirstMessage,
 import { askAgent } from "@/lib/ask-agent";
 import { parseMarkers } from "@/lib/message-markers";
 import { methodLabel, methodBlurb } from "@/lib/method-labels";
-import { levelFor, nextLevel, LEVEL_ORDER } from "@/lib/agent-progress";
 import { md } from "@/lib/markdown";
 import { useAuth } from "@/lib/auth-context";
 import { AgentMascot, type MascotState } from "@/components/layout/agent-mascot";
-import { IconSend, IconCheck, IconSearch, IconMore, IconDoc, IconDownload, IconX } from "@/components/layout/agxp-icons";
+import {
+  IconSend, IconCheck, IconSearch, IconMore, IconDoc, IconDownload, IconX,
+  IconAttach, IconMic, IconChevronDown,
+} from "@/components/layout/agxp-icons";
+import type { Effort } from "@/lib/ask-agent";
 
 // Personalized "welcome back" hero greeting for the empty-conversation state
 // (shown once, centered, before the first message) — not a literal "how can
@@ -56,12 +59,10 @@ function quickActions(agent: Agent) {
   return actions;
 }
 
-export function ProjectChatPanel({ project, role, agent, primary, projectCount = 0, onProjectNamed, onChangeAgent }: {
+export function ProjectChatPanel({ project, role, agent, primary, onProjectNamed, onChangeAgent }: {
   project: Project; role: AgentType; agent: Agent;
   /** Consultant leads the layout (larger). */
   primary?: boolean;
-  /** How many of the user's projects this agent has worked on, this one included. */
-  projectCount?: number;
   onProjectNamed?: (name: string) => void;
   /** Drops this agent back to the picker — reached from the ⋯ menu, never a popup at selection time. */
   onChangeAgent?: () => void;
@@ -74,10 +75,27 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
   const [menuOpen, setMenuOpen] = useState(false);
   const [roadmapOpen, setRoadmapOpen] = useState(false);
   const [processingLabel, setProcessingLabel] = useState("");
+  const [effort, setEffort] = useState<Effort>("Standard");
+  const [effortOpen, setEffortOpen] = useState(false);
+  const [attachments, setAttachments] = useState<string[]>([]);
+  const [recording, setRecording] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const speakTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const processingPool = useRef(PROCESSING_BROAD);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null);
+  // Starts false (matching the server render) and only flips after mount —
+  // checking window.SpeechRecognition during render would differ between
+  // server and client and break hydration.
+  const [micSupported, setMicSupported] = useState(false);
   const { profileName } = useAuth();
+
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    setMicSupported(!!(w.SpeechRecognition || w.webkitSpeechRecognition));
+  }, []);
 
   useEffect(() => () => { if (speakTimer.current) clearTimeout(speakTimer.current); }, []);
 
@@ -96,6 +114,43 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
     speakTimer.current = setTimeout(() => setOrb("idle"), 900);
   }
 
+  // Attachments are cosmetic — appended as plain text on send, same
+  // disclosed limitation as before: no real Supabase Storage upload exists.
+  function pickFiles() { fileInputRef.current?.click(); }
+  function onFilesPicked(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    setAttachments(prev => [...prev, ...files.map(f => f.name)]);
+    e.target.value = ""; // allow re-picking the same file
+  }
+  function removeAttachment(name: string) {
+    setAttachments(prev => prev.filter(n => n !== name));
+  }
+
+  // Voice input via the browser's native Web Speech API — feature-detected,
+  // the mic button doesn't render at all where it's unsupported (no fake
+  // control that does nothing).
+  function toggleMic() {
+    if (!micSupported) return;
+    if (recording) { recognitionRef.current?.stop(); return; }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    const SpeechRecognitionCtor = w.SpeechRecognition || w.webkitSpeechRecognition;
+    if (!SpeechRecognitionCtor) return;
+    const rec = new SpeechRecognitionCtor();
+    rec.lang = typeof navigator !== "undefined" ? navigator.language : "en-US";
+    rec.interimResults = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (e: any) => {
+      const transcript = e.results?.[0]?.[0]?.transcript ?? "";
+      if (transcript) setInput(prev => (prev ? `${prev} ${transcript}` : transcript));
+    };
+    rec.onend = () => setRecording(false);
+    rec.onerror = () => setRecording(false);
+    recognitionRef.current = rec;
+    rec.start();
+    setRecording(true);
+  }
+
   useEffect(() => {
     let alive = true;
     listMessages(project.id, role).then(m => { if (alive) { setMessages(m); setLoaded(true); } }).catch(() => setLoaded(true));
@@ -105,9 +160,12 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, sending]);
 
   async function send(text: string) {
-    const t = text.trim();
-    if (!t || sending) return;
+    const trimmed = text.trim();
+    if (!trimmed || sending) return;
+    const attachNote = attachments.length ? `\n\nAttached: ${attachments.join(", ")}` : "";
+    const t = trimmed + attachNote;
     setInput("");
+    setAttachments([]);
     const isFirstEver = messages.length === 0;
     const userMsg: ProjectMessage = { id: crypto.randomUUID(), project_id: project.id, column_type: role, role: "user", content: t, created_at: new Date().toISOString() };
     setMessages(prev => [...prev, userMsg]);
@@ -120,7 +178,7 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
         renameFromFirstMessage(project, t).then(name => { if (name) onProjectNamed?.(name); }).catch(() => {});
       }
       const history = [...messages, userMsg].map(m => ({ role: m.role, content: m.content }));
-      const reply = await askAgent(agent, history);
+      const reply = await askAgent(agent, history, effort);
       await addMessage(project.id, role, "assistant", reply);
       setMessages(prev => [...prev, { id: crypto.randomUUID(), project_id: project.id, column_type: role, role: "assistant", content: reply, created_at: new Date().toISOString() }]);
       playSpeaking();
@@ -141,18 +199,15 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
   const firstName = profileName.trim().split(/\s+/)[0] || "";
   const showHero = loaded && messages.length === 0;
 
-  // Roadmap "downloads" — a genuine client-side Markdown export of the
-  // conversation, not a backend PDF pipeline (none exists or is justified
-  // yet). There's no per-message method tagging in the data model, so a
-  // per-method download is the same conversation labeled by method, not a
-  // precise filter — an accepted, disclosed simplification.
-  function downloadMarkdown(filename: string, content: string) {
-    const blob = new Blob([content], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = filename; a.click();
-    URL.revokeObjectURL(url);
-  }
+  // Roadmap "downloads" — opens a clean, standalone document with the
+  // conversation content and triggers the browser's native print dialog, so
+  // the user picks "Save as PDF" there. No new dependency, no reuse of the
+  // .print-area/@media print rules in globals.css (those are scoped to the
+  // dead _legacy concept page's own fixed-height layout) — a fresh document
+  // avoids any interference with the main app's CSS entirely. There's still
+  // no per-message method tagging in the data model, so a per-method export
+  // is the same conversation labeled by method, not a precise filter — an
+  // accepted, disclosed simplification (the panel's own copy says so).
   function conversationMarkdown(title: string) {
     const lines = [`# ${title}`, `_${agent.name} · ${project.name}_`, ""];
     for (const m of messages) {
@@ -161,22 +216,26 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
     }
     return lines.join("\n");
   }
+  function openPrintable(title: string, markdown: string) {
+    const win = window.open("", "_blank", "width=800,height=1000");
+    if (!win) return; // popup blocked — rare given this runs from a direct click
+    win.document.write(`<!doctype html><html><head><title>${title}</title>
+      <style>
+        body{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:#18181B; padding:40px; line-height:1.6; max-width:720px; margin:0 auto; }
+        h1{ font-size:22px; margin:0 0 4px; } h2,h3{ margin-top:24px; } strong{ font-weight:600; }
+      </style></head><body>${md(markdown)}</body></html>`);
+    win.document.close();
+    win.focus();
+    win.print();
+  }
   function downloadMethod(methodName: string) {
-    downloadMarkdown(`${methodLabel(methodName)} — ${project.name}.md`, conversationMarkdown(methodLabel(methodName)));
+    openPrintable(methodLabel(methodName), conversationMarkdown(methodLabel(methodName)));
   }
   function downloadAll() {
-    downloadMarkdown(`AI Transformation Roadmap — ${project.name}.md`, conversationMarkdown("AI Transformation Roadmap"));
+    openPrintable("AI Transformation Roadmap", conversationMarkdown("AI Transformation Roadmap"));
   }
 
-  // The agent levels up on the work it has actually done for this user; this
-  // project is one of them, so compare against the count without it to know
-  // whether joining here is what pushed it up a level.
-  const totalProjects = agent.last_projects.length + projectCount;
-  const level = levelFor(totalProjects);
-  const leveledUp = levelFor(Math.max(0, totalProjects - 1)) !== level;
-  const { next, remaining } = nextLevel(totalProjects);
-
-  // Extracted once so the exact same input/button — same state, same
+  // Extracted once so the exact same input/toolbar — same state, same
   // handlers — can sit either centered in the empty-state hero or pinned at
   // the bottom, without duplicating the wiring.
   const composer = (
@@ -185,15 +244,48 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
         onChange={e => setInput(e.target.value)}
         onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }}
         placeholder={`Ask your ${role === "coach" ? "coach" : "consultant"}...`} />
-      <button data-tooltip="Send message" disabled={!input.trim() || sending} onClick={() => send(input)}>
-        <IconSend size={14} />
-      </button>
+      {attachments.length > 0 && (
+        <div className="attach-chips">
+          {attachments.map(name => (
+            <span key={name} className="attach-chip">{name}
+              <button onClick={() => removeAttachment(name)}><IconX size={10} /></button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="composer-toolbar">
+        <div className="composer-left">
+          <input ref={fileInputRef} type="file" multiple hidden onChange={onFilesPicked} />
+          <button className="composer-icon-btn" data-tooltip="Attach" onClick={pickFiles}><IconAttach size={15} /></button>
+          <div style={{ position: "relative" }} onClick={e => e.stopPropagation()}>
+            <button className="effort-pill" onClick={() => setEffortOpen(o => !o)}>{effort}<IconChevronDown size={12} /></button>
+            {effortOpen && (
+              <div className="popover" style={{ top: 36, left: 0, minWidth: 140 }}>
+                {(["Standard", "Extended"] as const).map(e => (
+                  <button key={e} className="mi" onClick={() => { setEffort(e); setEffortOpen(false); }}>{e}</button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="composer-right">
+          {micSupported && (
+            <button className={`composer-icon-btn${recording ? " active" : ""}`} data-tooltip="Voice input" onClick={toggleMic}>
+              <IconMic size={15} />
+            </button>
+          )}
+          <button className="composer-send" data-tooltip="Send message" disabled={!input.trim() || sending} onClick={() => send(input)}>
+            <IconSend size={14} />
+          </button>
+        </div>
+      </div>
     </>
   );
 
   return (
-    <section className={`panel ${role}`} style={primary ? { flex: 2.3 } : undefined} onClick={() => menuOpen && setMenuOpen(false)}>
-      {/* Head + Steckbrief: who this agent is, condensed */}
+    <section className={`panel ${role}`} style={primary ? { flex: 2.3 } : undefined}
+      onClick={() => { if (menuOpen) setMenuOpen(false); if (effortOpen) setEffortOpen(false); }}>
+      {/* Head: who this agent is, condensed */}
       <div className="chat-head">
         <AgentMascot role={role} state={orb} size={46} enter />
         <div style={{ minWidth: 0 }}>
@@ -224,7 +316,6 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
             <button className="rp-close" onClick={() => setRoadmapOpen(false)}><IconX size={13} /></button>
           </div>
           <button className="rp-download-all" onClick={downloadAll}><IconDownload size={14} />Download All</button>
-          <p className="rp-note">Each item exports this conversation as Markdown, labeled by method — the app doesn't yet split messages per method.</p>
           <div className="rp-list">
             {[...agent.primaryMethods, ...agent.secondaryMethods].map(m => (
               <div key={m.id} className="roadmap-item">
@@ -240,40 +331,6 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
           </div>
         </div>
       )}
-
-      <div className="steckbrief">
-        <div className="sb-stats">
-          <div>
-            <span className="lbl">Knowledge Level</span>
-            <div className="level">
-              <b>{level}</b>
-              <span className="level-bar">
-                {LEVEL_ORDER.map((l, i) => (
-                  <span key={l} className={`level-seg ${i <= LEVEL_ORDER.indexOf(level) ? "on" : ""}`} />
-                ))}
-              </span>
-              {leveledUp && <span className="level-up">Level up</span>}
-            </div>
-            {next && <div className="level-hint">{remaining} more project{remaining === 1 ? "" : "s"} to {next}</div>}
-          </div>
-          <div><span className="lbl">Previous Projects</span><b>{totalProjects}</b></div>
-          {agent.tagline && <div><span className="lbl">Type</span><b>{agent.tagline}</b></div>}
-        </div>
-        <div className="sb-methods">
-          {agent.primaryMethods.length > 0 && (
-            <div className="grp">
-              <span className="lbl">Primary Methods</span>
-              <div className="chips">{agent.primaryMethods.map(m => <span key={m.id} className="m-chip">{methodLabel(m.name)}</span>)}</div>
-            </div>
-          )}
-          {agent.secondaryMethods.length > 0 && (
-            <div className="grp">
-              <span className="lbl">Secondary Methods</span>
-              <div className="chips">{agent.secondaryMethods.map(m => <span key={m.id} className="m-chip secondary">{methodLabel(m.name)}</span>)}</div>
-            </div>
-          )}
-        </div>
-      </div>
 
       <div className="chat-body">
         {!loaded && <div className="spinner" style={{ margin: "0 auto", borderColor: "var(--border-strong)", borderTopColor: "var(--foreground)" }} />}
