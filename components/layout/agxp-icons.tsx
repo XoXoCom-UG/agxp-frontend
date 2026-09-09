@@ -31,10 +31,9 @@ export const IconLogout = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><path 
 export const IconSwap = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><path d="m16 3 4 4-4 4" /><path d="M20 7H4" /><path d="m8 21-4-4 4-4" /><path d="M4 17h16" /></Svg>;
 export const IconSun = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></Svg>;
 export const IconMoon = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z" /></Svg>;
-export const IconSend = (p: IconProps) => <Svg {...p} strokeWidth={2.2} className="send-icon"><path d="M22 2 11 13" /><path d="M22 2 15 22l-4-9-9-4 20-7Z" /></Svg>;
 export const IconCheck = (p: IconProps) => <Svg {...p} strokeWidth={2.5}><path d="M20 6 9 17l-5-5" /></Svg>;
 export const IconX = (p: IconProps) => <Svg {...p} strokeWidth={2}><path d="M18 6 6 18M6 6l12 12" /></Svg>;
 export const IconDoc = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /><path d="M9 13h6M9 17h6" /></Svg>;
 export const IconDownload = (p: IconProps) => <Svg {...p} strokeWidth={2}><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></Svg>;
-export const IconAttach = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><path d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></Svg>;
 export const IconMic = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><rect x="9" y="1" width="6" height="12" rx="3" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><path d="M12 19v4" /><path d="M8 23h8" /></Svg>;
+export const IconArrowUp = (p: IconProps) => <Svg {...p} strokeWidth={2.2}><path d="M12 19V5" /><path d="m5 12 7-7 7 7" /></Svg>;

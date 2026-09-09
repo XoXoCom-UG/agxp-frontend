@@ -10,8 +10,8 @@ import { md } from "@/lib/markdown";
 import { useAuth } from "@/lib/auth-context";
 import { AgentMascot, type MascotState } from "@/components/layout/agent-mascot";
 import {
-  IconSend, IconCheck, IconSearch, IconMore, IconDoc, IconDownload, IconX,
-  IconAttach, IconMic, IconChevronDown,
+  IconCheck, IconSearch, IconMore, IconDoc, IconDownload, IconX,
+  IconPlus, IconMic, IconChevronDown, IconArrowUp,
 } from "@/components/layout/agxp-icons";
 import type { Effort } from "@/lib/ask-agent";
 
@@ -256,7 +256,7 @@ export function ProjectChatPanel({ project, role, agent, primary, onProjectNamed
       <div className="composer-toolbar">
         <div className="composer-left">
           <input ref={fileInputRef} type="file" multiple hidden onChange={onFilesPicked} />
-          <button className="composer-icon-btn" data-tooltip="Attach" onClick={pickFiles}><IconAttach size={15} /></button>
+          <button className="composer-icon-btn" data-tooltip="Attach" onClick={pickFiles}><IconPlus size={15} /></button>
           <div style={{ position: "relative" }} onClick={e => e.stopPropagation()}>
             <button className="effort-pill" onClick={() => setEffortOpen(o => !o)}>{effort}<IconChevronDown size={12} /></button>
             {effortOpen && (
@@ -275,7 +275,7 @@ export function ProjectChatPanel({ project, role, agent, primary, onProjectNamed
             </button>
           )}
           <button className="composer-send" data-tooltip="Send message" disabled={!input.trim() || sending} onClick={() => send(input)}>
-            <IconSend size={14} />
+            <IconArrowUp size={16} />
           </button>
         </div>
       </div>
@@ -290,7 +290,7 @@ export function ProjectChatPanel({ project, role, agent, primary, onProjectNamed
         <AgentMascot role={role} state={orb} size={46} enter />
         <div style={{ minWidth: 0 }}>
           <div className="n">{agent.name}</div>
-          <div className="r"><span className={`role-dot ${role}`} />{role === "coach" ? "Coach" : "Consultant"}</div>
+          <div className="r">{role === "coach" ? "Coach" : "Consultant"}</div>
         </div>
         {role === "consultant" && (
           <button className="roadmap-btn" style={{ marginLeft: "auto" }} onClick={() => setRoadmapOpen(o => !o)}>

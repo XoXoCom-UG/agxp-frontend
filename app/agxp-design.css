@@ -483,20 +483,20 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 .active-method-badge button:hover{ color:var(--text-primary); }
 
 .chat-body{ flex:1; overflow-y:auto; padding:var(--sp-6); display:flex; flex-direction:column; gap:var(--sp-4); }
-/* Agent messages are proper bubbles in the approved blue template (the earlier
-   gold mockup used a bare marker + text; that read as generated output rather
-   than someone talking). */
+/* Agent messages are bare text now, no bubble — reads as someone talking to
+   you, not a card of generated output. The user's own messages stay a
+   fully-rounded gray pill (not blue — blue is reserved for small, real
+   accents like the send button, not backgrounds). */
 .msg-agent{ max-width:86%; }
 .msg-agent .txt{
-  background:var(--card); border:1px solid var(--border); border-radius:14px 14px 14px 4px;
-  padding:13px 16px; font-size:var(--text-sm); color:var(--text-primary); line-height:1.65;
+  font-size:var(--text-sm); color:var(--text-primary); line-height:1.65; padding:2px 0;
 }
 .msg-agent .txt > *:first-child{ margin-top:0; }
 .msg-agent .txt > *:last-child{ margin-bottom:0; }
 .msg-user{
-  align-self:flex-end; max-width:78%; background:var(--primary); border:1px solid transparent;
-  padding:12px 16px; border-radius:14px 14px 4px 14px; font-size:var(--text-sm); color:var(--primary-foreground);
-  line-height:1.55; box-shadow:0 6px 18px -10px rgba(30,118,240,0.7); white-space:pre-wrap;
+  align-self:flex-end; max-width:78%; background:var(--accent); border:1px solid var(--border);
+  padding:12px 18px; border-radius:var(--r-pill); font-size:var(--text-sm); color:var(--text-primary);
+  line-height:1.55; white-space:pre-wrap;
 }
 @keyframes typingSweep{ 0%{ background-position:200% 0; } 100%{ background-position:-40% 0; } }
 
@@ -546,9 +546,7 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
   background:var(--surface-2); border:1px solid var(--border-medium); border-radius:18px;
   padding:var(--sp-3) var(--sp-3) var(--sp-2); flex-shrink:0;
   margin:var(--sp-4) var(--sp-6);
-  transition:box-shadow .16s ease, border-color .16s ease;
 }
-.chat-input:focus-within{ border-color:var(--border-strong); box-shadow:0 0 0 3px color-mix(in srgb, var(--ring) 13%, transparent); }
 .chat-input textarea{ background:transparent; border:none; outline:none; resize:none; color:var(--text-primary); font-size:var(--text-sm); font-family:inherit; line-height:1.5; max-height:160px; padding:4px 6px; }
 .chat-input textarea::placeholder{ color:var(--text-muted); }
 
