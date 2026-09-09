@@ -87,7 +87,6 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
     if (project && assigned) {
       return (
         <ProjectChatPanel key={role} project={project} role={role} agent={assigned} primary={isPrimary}
-          projectCount={projectCounts[assigned.id] ?? 0}
           onProjectNamed={name => setProject(p => p && { ...p, name })}
           onChangeAgent={() => changeAgent(role)} />
       );
