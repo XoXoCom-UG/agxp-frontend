@@ -9,12 +9,18 @@ import { methodLabel, methodBlurb } from "@/lib/method-labels";
 import { levelFor, nextLevel, LEVEL_ORDER } from "@/lib/agent-progress";
 import { md } from "@/lib/markdown";
 import { AgentMascot, type MascotState } from "@/components/layout/agent-mascot";
-import { IconArrow, IconSend, IconCheck, IconSearch } from "@/components/layout/agxp-icons";
+import { IconArrow, IconSend, IconCheck, IconSearch, IconMore, IconDoc, IconDownload, IconX } from "@/components/layout/agxp-icons";
 
 const OPENING: Record<AgentType, string> = {
   consultant: "Hey, what can I do for you today?",
   coach: "Hey, what would you like to talk through today?",
 };
+
+// Contextual "thinking" labels instead of a static "is thinking..." — a
+// broader pool for the opening question, a narrower "still with you" pool
+// once the conversation is already underway.
+const PROCESSING_BROAD = ["Thinking it through", "Structuring the approach", "Weighing the options"];
+const PROCESSING_CONTINUATION = ["Following up on that", "Refining the answer", "Connecting the dots"];
 
 /** Each role's way in: the Consultant interviews, the Coach takes the temperature. */
 const OPENER_ACTION: Record<AgentType, { title: string; blurb: string; prompt: string }> = {
@@ -44,23 +50,38 @@ function quickActions(agent: Agent) {
   return actions;
 }
 
-export function ProjectChatPanel({ project, role, agent, primary, projectCount = 0, onProjectNamed }: {
+export function ProjectChatPanel({ project, role, agent, primary, projectCount = 0, onProjectNamed, onChangeAgent }: {
   project: Project; role: AgentType; agent: Agent;
   /** Consultant leads the layout (larger). */
   primary?: boolean;
   /** How many of the user's projects this agent has worked on, this one included. */
   projectCount?: number;
   onProjectNamed?: (name: string) => void;
+  /** Drops this agent back to the picker — reached from the ⋯ menu, never a popup at selection time. */
+  onChangeAgent?: () => void;
 }) {
   const [messages, setMessages] = useState<ProjectMessage[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [orb, setOrb] = useState<MascotState>("idle");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [roadmapOpen, setRoadmapOpen] = useState(false);
+  const [processingLabel, setProcessingLabel] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const speakTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const processingPool = useRef(PROCESSING_BROAD);
 
   useEffect(() => () => { if (speakTimer.current) clearTimeout(speakTimer.current); }, []);
+
+  useEffect(() => {
+    if (!sending) { setProcessingLabel(""); return; }
+    const pool = processingPool.current;
+    let i = 0;
+    setProcessingLabel(pool[0]);
+    const id = setInterval(() => { i = (i + 1) % pool.length; setProcessingLabel(pool[i]); }, 1600);
+    return () => clearInterval(id);
+  }, [sending]);
 
   function playSpeaking() {
     setOrb("speaking");
@@ -83,6 +104,7 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
     const isFirstEver = messages.length === 0;
     const userMsg: ProjectMessage = { id: crypto.randomUUID(), project_id: project.id, column_type: role, role: "user", content: t, created_at: new Date().toISOString() };
     setMessages(prev => [...prev, userMsg]);
+    processingPool.current = isFirstEver ? PROCESSING_BROAD : PROCESSING_CONTINUATION;
     setSending(true);
     setOrb("thinking");
     try {
@@ -110,6 +132,33 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
   })();
   const actions = quickActions(agent);
 
+  // Roadmap "downloads" — a genuine client-side Markdown export of the
+  // conversation, not a backend PDF pipeline (none exists or is justified
+  // yet). There's no per-message method tagging in the data model, so a
+  // per-method download is the same conversation labeled by method, not a
+  // precise filter — an accepted, disclosed simplification.
+  function downloadMarkdown(filename: string, content: string) {
+    const blob = new Blob([content], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  }
+  function conversationMarkdown(title: string) {
+    const lines = [`# ${title}`, `_${agent.name} · ${project.name}_`, ""];
+    for (const m of messages) {
+      lines.push(m.role === "user" ? `**You:** ${m.content}` : `**${agent.name}:** ${parseMarkers(m.content).text}`);
+      lines.push("");
+    }
+    return lines.join("\n");
+  }
+  function downloadMethod(methodName: string) {
+    downloadMarkdown(`${methodLabel(methodName)} — ${project.name}.md`, conversationMarkdown(methodLabel(methodName)));
+  }
+  function downloadAll() {
+    downloadMarkdown(`AI Transformation Roadmap — ${project.name}.md`, conversationMarkdown("AI Transformation Roadmap"));
+  }
+
   // The agent levels up on the work it has actually done for this user; this
   // project is one of them, so compare against the count without it to know
   // whether joining here is what pushed it up a level.
@@ -119,7 +168,7 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
   const { next, remaining } = nextLevel(totalProjects);
 
   return (
-    <section className={`panel ${role}`} style={primary ? { flex: 1.6 } : undefined}>
+    <section className={`panel ${role}`} style={primary ? { flex: 2.3 } : undefined} onClick={() => menuOpen && setMenuOpen(false)}>
       {/* Head + Steckbrief: who this agent is, condensed */}
       <div className="chat-head">
         <AgentMascot role={role} state={orb} size={46} enter />
@@ -127,7 +176,46 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
           <div className="n">{agent.name}</div>
           <div className="r"><span className={`role-dot ${role}`} />{role === "coach" ? "Coach" : "Consultant"}</div>
         </div>
+        {role === "consultant" && (
+          <button className="roadmap-btn" style={{ marginLeft: "auto" }} onClick={() => setRoadmapOpen(o => !o)}>
+            <IconDoc size={13} />Roadmap
+          </button>
+        )}
+        <div style={{ position: "relative", marginLeft: role === "consultant" ? 0 : "auto" }} onClick={e => e.stopPropagation()}>
+          <button className="chat-menu-btn" data-tooltip="More" onClick={() => setMenuOpen(o => !o)}>
+            <IconMore size={14} />
+          </button>
+          {menuOpen && (
+            <div className="popover" style={{ top: 36, right: 0, minWidth: 160 }}>
+              <button className="mi" onClick={() => { setMenuOpen(false); onChangeAgent?.(); }}>Change agent</button>
+            </div>
+          )}
+        </div>
       </div>
+
+      {roadmapOpen && (
+        <div className="roadmap-panel">
+          <div className="rp-head">
+            <h3>AI Transformation Roadmap</h3>
+            <button className="rp-close" onClick={() => setRoadmapOpen(false)}><IconX size={13} /></button>
+          </div>
+          <button className="rp-download-all" onClick={downloadAll}><IconDownload size={14} />Download All</button>
+          <p className="rp-note">Each item exports this conversation as Markdown, labeled by method — the app doesn't yet split messages per method.</p>
+          <div className="rp-list">
+            {[...agent.primaryMethods, ...agent.secondaryMethods].map(m => (
+              <div key={m.id} className="roadmap-item">
+                <span className="ri-name">{methodLabel(m.name)}</span>
+                <button className="ri-dl" data-tooltip="Download" onClick={() => downloadMethod(m.name)}><IconDownload size={13} /></button>
+              </div>
+            ))}
+            {agent.primaryMethods.length === 0 && agent.secondaryMethods.length === 0 && (
+              <div className="roadmap-item"><span className="ri-name">Transformation Concept</span>
+                <button className="ri-dl" data-tooltip="Download" onClick={downloadAll}><IconDownload size={13} /></button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="steckbrief">
         <div className="sb-stats">
@@ -202,7 +290,7 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
         })}
 
         {sending && (
-          <div className="msg-typing"><span className="tline" />{agent.name} is thinking...</div>
+          <div className="msg-processing"><span className="tline" /><span className="plabel shimmer-text">{processingLabel}</span></div>
         )}
         <div ref={bottomRef} />
       </div>
