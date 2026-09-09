@@ -548,6 +548,9 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
   margin:var(--sp-4) var(--sp-6);
 }
 .chat-input textarea{ background:transparent; border:none; outline:none; resize:none; color:var(--text-primary); font-size:var(--text-sm); font-family:inherit; line-height:1.5; max-height:160px; padding:4px 6px; }
+/* Overrides the global .app textarea:focus-visible ring (globals.css) just
+   for this composer — the card itself shouldn't grow a border on focus. */
+.chat-input textarea:focus-visible{ outline:none; box-shadow:none; }
 .chat-input textarea::placeholder{ color:var(--text-muted); }
 
 .attach-chips{ display:flex; flex-wrap:wrap; gap:6px; padding:0 6px; }
