@@ -7,7 +7,6 @@ import { assignAgent, type Project } from "@/lib/projects";
 import { levelFor, LEVEL_ORDER } from "@/lib/agent-progress";
 import { methodLabel } from "@/lib/method-labels";
 import { dateStr } from "@/lib/utils";
-import { ConfirmDialog } from "@/components/layout/confirm-dialog";
 import { AgentMascot } from "@/components/layout/agent-mascot";
 import {
   IconBack, IconPlus, IconArrow, IconSearch, IconCheck, IconChevronDown,
@@ -79,9 +78,6 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState<TypeTemplate | null>(null);
-  // Confirming a pick before it commits replaces the old "Change agent"
-  // mid-conversation button — catches a mis-click right where it happens.
-  const [pendingConfirm, setPendingConfirm] = useState<Agent | null>(null);
 
   const roleAgents = agents.filter(a => a.type === role);
   const filtered = roleAgents.filter(a => {
@@ -102,17 +98,7 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   const showBack = state !== "empty";
 
   return (
-    <section className={`panel ${role}`} style={primary ? { flex: 1.6 } : undefined}>
-      {pendingConfirm && (
-        <ConfirmDialog
-          title={`${pendingConfirm.name} as your ${ROLE_LABEL[role]}?`}
-          body="Confirm to bring this agent into the project — the conversation starts right away."
-          confirmLabel={`Confirm ${ROLE_LABEL[role]}`}
-          onConfirm={() => { const a = pendingConfirm; setPendingConfirm(null); select(a.id); }}
-          onCancel={() => setPendingConfirm(null)}
-        />
-      )}
-
+    <section className={`panel ${role}`} style={primary ? { flex: 2.3 } : undefined}>
       <div className="panel-head">
         <AgentMascot role={role} size={38} enter />
         <div style={{ minWidth: 0, flex: 1 }}>
@@ -191,7 +177,7 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
 
       ) : state === "detail" ? (
         <DetailView agent={roleAgents.find(a => a.id === detailId) ?? null} role={role} busy={busy}
-          totalProjects={totalProjects} onSelect={a => setPendingConfirm(a)} />
+          totalProjects={totalProjects} onSelect={a => select(a.id)} />
 
       ) : state === "type" ? (
         <>
@@ -216,7 +202,7 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
         </>
 
       ) : (
-        <ConfigureView role={role} template={draft} onCreated={agent => { onAgentCreated(agent); setPendingConfirm(agent); }} />
+        <ConfigureView role={role} template={draft} onCreated={agent => { onAgentCreated(agent); select(agent.id); }} />
       )}
     </section>
   );
