@@ -503,12 +503,13 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 /* Empty-conversation hero — vertically centered greeting + composer +
    suggestion list, shown only while messages.length === 0. Collapses back
    to the plain top-anchored message list + bottom .chat-input otherwise.
-   The soft blue halo behind it (Gemini-style) only ever shows here — the
-   rest of the app stays graphite/neutral. */
+   The soft glow behind it (Gemini-style placement, kept neutral rather
+   than blue — backgrounds stay graphite, blue is for buttons/accents
+   only) only ever shows here — the rest of the app stays unaffected. */
 .chat-hero{ position:relative; flex:1; min-height:0; width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; }
 .chat-hero::before{
   content:""; position:absolute; top:50%; left:50%; width:560px; height:360px; transform:translate(-50%,-50%);
-  background:radial-gradient(circle, color-mix(in srgb, var(--primary) 22%, transparent), transparent 70%);
+  background:radial-gradient(circle, rgba(255,255,255,0.06), transparent 70%);
   filter:blur(40px); pointer-events:none; z-index:0;
 }
 .chat-hero-inner{ position:relative; z-index:1; width:100%; max-width:520px; display:flex; flex-direction:column; align-items:stretch; gap:var(--sp-5); }
@@ -726,11 +727,11 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 }
 .m-chip.secondary{ border-color:var(--border); background:var(--secondary); color:var(--text-muted); }
 
-/* Quick actions get an icon tile in the blue template (not a bare number) */
+/* Quick actions get a neutral icon tile (not a bare number, not blue) */
 .qa-ic{
   width:30px; height:30px; border-radius:8px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
-  background:color-mix(in srgb, var(--primary) 12%, transparent); border:1px solid color-mix(in srgb, var(--primary) 26%, transparent);
-  color:var(--primary-soft);
+  background:var(--surface-1); border:1px solid var(--border-soft);
+  color:var(--text-secondary);
 }
 
 /* ---------- AGENT MASCOT — the only "gamified" motion in the app ----------
