@@ -11,7 +11,7 @@ import { levelFor, nextLevel, LEVEL_ORDER } from "@/lib/agent-progress";
 import { md } from "@/lib/markdown";
 import { AgentMascot, type MascotState } from "@/components/layout/agent-mascot";
 import type { DeliverableDoc } from "@/components/layout/deliverable-view";
-import { IconArrow, IconSend, IconCheck, IconSearch, IconDoc, IconSpark } from "@/components/layout/agxp-icons";
+import { IconArrow, IconSend, IconCheck, IconSearch, IconDoc, IconSpark, IconRefresh } from "@/components/layout/agxp-icons";
 
 const OPENING: Record<AgentType, string> = {
   consultant: "Hey, what can I do for you today?",
@@ -87,8 +87,8 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, sending]);
 
-  function buildDoc(content: string, title: string, createdAt: string): DeliverableDoc {
-    return { title, role, agentName: agent.name, projectName: project.name, content, createdAt };
+  function buildDoc(content: string, title: string, createdAt: string, version: number): DeliverableDoc {
+    return { title, role, agentName: agent.name, projectName: project.name, content, createdAt, version };
   }
 
   async function send(text: string) {
@@ -114,8 +114,8 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
       // The document is the moment worth showing — open it right away instead
       // of leaving the user to find a card in the scrollback.
       const parsed = parseMarkers(reply);
-      if (parsed.doc || looksLikeDocument(parsed.text)) {
-        onOpenDoc?.(buildDoc(parsed.text, parsed.doc || deliverable.title, createdAt));
+      if (parsed.doc || looksLikeDocument(parsed.text, deliverable.title)) {
+        onOpenDoc?.(buildDoc(parsed.text, parsed.doc || deliverable.title, createdAt, docs.length + 1));
       }
       touchProjectActivity(project.id, `${role === "coach" ? "Coach" : "Consultant"} replied`).catch(() => {});
     } catch (e) {
@@ -146,18 +146,20 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
     return { pct: pct ?? 0, station };
   }, [messages]);
 
-  // The finished deliverable, if the agent has already produced one.
-  const docMsg = useMemo(() => {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const m = messages[i];
-      if (m.role !== "assistant") continue;
-      const p = parseMarkers(m.content);
-      if (p.doc || looksLikeDocument(p.text)) return { m, p };
-    }
-    return null;
-  }, [messages]);
+  // Every version of the deliverable the agent has produced, oldest first —
+  // each regeneration is a full rebuild, so they are numbered versions.
+  const docs = useMemo(() =>
+    messages
+      .filter(m => m.role === "assistant")
+      .map(m => ({ m, p: parseMarkers(m.content) }))
+      .filter(({ p }) => !!p.doc || looksLikeDocument(p.text, deliverable.title)),
+    [messages, deliverable.title]);
 
-  const currentDoc = docMsg ? buildDoc(docMsg.p.text, docMsg.p.doc || deliverable.title, docMsg.m.created_at) : null;
+  const versionOf = new Map(docs.map((d, i) => [d.m.id, i + 1]));
+  const docMsg = docs.length ? docs[docs.length - 1] : null;
+  const currentDoc = docMsg
+    ? buildDoc(docMsg.p.text, docMsg.p.doc || deliverable.title, docMsg.m.created_at, docs.length)
+    : null;
 
   // Kept in refs so reporting up doesn't depend on identities that change on
   // every render (which would loop against the parent's setState).
@@ -235,15 +237,22 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
         <div className="dr-bottom">
           <span className="dr-step">
             {currentDoc
-              ? "Document generated"
+              ? docs.length > 1 ? `Version ${docs.length} generated` : "Document generated"
               : stationIdx < 0
                 ? `${deliverable.stations.length} steps · not started`
                 : `Step ${stationIdx + 1} of ${deliverable.stations.length} · ${stationLabel}`}
           </span>
           {currentDoc ? (
-            <button className="dr-cta" onClick={() => onOpenDoc?.(currentDoc)}>
-              <IconDoc size={12} />Open
-            </button>
+            <>
+              <button className="dr-cta" onClick={() => onOpenDoc?.(currentDoc)}>
+                <IconDoc size={12} />Open
+              </button>
+              <button className="dr-redo" disabled={sending} aria-label="Rebuild the document"
+                data-tooltip="Rebuild — fuller than the last version"
+                onClick={() => send(deliverable.regeneratePrompt)}>
+                <IconRefresh size={13} />
+              </button>
+            </>
           ) : (
             <button className="dr-cta" disabled={sending} onClick={() => send(deliverable.generatePrompt)}
               data-tooltip={ready ? "Everything answered — build it" : "Builds it with what the agent knows so far"}>
@@ -286,7 +295,7 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
           if (m.role === "user") return <div key={m.id} className="msg-user">{m.content}</div>;
           const parsed = parseMarkers(m.content);
           const showChoices = i === lastAssistantIdx && parsed.choices.length > 0 && !sending;
-          const isDoc = !!parsed.doc || looksLikeDocument(parsed.text);
+          const isDoc = !!parsed.doc || looksLikeDocument(parsed.text, deliverable.title);
           const choices = showChoices ? (
             <div className="choice-row" style={{ paddingLeft: 0 }}>
               {parsed.choices.map(c => (
@@ -298,14 +307,15 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
           // A generated document is a document, not a 2000-word chat bubble.
           if (isDoc) {
             const title = parsed.doc || deliverable.title;
+            const version = versionOf.get(m.id) ?? 1;
             const sections = (parsed.text.match(/^##\s+\S/gm) ?? []).length;
             const words = parsed.text.split(/\s+/).filter(Boolean).length;
             return (
               <div key={m.id} className="msg-agent">
-                <button className="doc-card" onClick={() => onOpenDoc?.(buildDoc(parsed.text, title, m.created_at))}>
+                <button className="doc-card" onClick={() => onOpenDoc?.(buildDoc(parsed.text, title, m.created_at, version))}>
                   <span className="dc-ic"><IconDoc size={17} /></span>
                   <span className="dc-txt">
-                    <span className="dc-t">{title}</span>
+                    <span className="dc-t">{title}{version > 1 && <span className="dc-v">v{version}</span>}</span>
                     <span className="dc-s">{sections} sections · {words.toLocaleString()} words · open to read</span>
                   </span>
                   <IconArrow />

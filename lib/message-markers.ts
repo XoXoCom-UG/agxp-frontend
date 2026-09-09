@@ -62,17 +62,27 @@ export function parseMarkers(raw: string): ParsedMessage {
   return { text, choices, progress, topic, doc };
 }
 
+/** Escapes a string for use inside a RegExp. */
+function reEscape(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 /**
  * The model occasionally forgets the [[DOC: ...]] marker and just answers with
- * the whole document. A long reply built out of several markdown sections is
- * the deliverable in practice, so treat it as one rather than dumping 2000
- * words into a chat bubble.
+ * the whole document. The user's rule is that the deliverable must NEVER show
+ * up as chat text, so a reply that is plainly the document gets treated as one
+ * even without the marker.
  *
- * Deliberately strict: a normal turn that happens to use a heading must NOT
- * be swallowed into a document card, because that would hide the agent's
- * question. Four sections and 1200+ characters is a document, not an answer.
+ * Two signals, either is enough:
+ *  - it opens with the deliverable's own H1 ("# Transformation Concept"), or
+ *  - it is long and built out of several "##" sections.
+ *
+ * Still deliberately strict on the second one: a normal turn that happens to
+ * use a heading must not be swallowed into a document card, because that would
+ * hide the agent's question.
  */
-export function looksLikeDocument(text: string): boolean {
+export function looksLikeDocument(text: string, title?: string): boolean {
+  if (title && new RegExp(`^#\\s*${reEscape(title)}\\s*$`, "im").test(text)) return true;
   const sections = text.match(/^##\s+\S/gm)?.length ?? 0;
-  return text.length > 1200 && sections >= 4;
+  return text.length > 1200 && sections >= 3;
 }

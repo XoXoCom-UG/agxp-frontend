@@ -41,3 +41,4 @@ export const IconDownload = (p: IconProps) => <Svg {...p} strokeWidth={1.9}><pat
 export const IconPrint = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><path d="M7 8V3h10v5" /><rect x="4" y="8" width="16" height="8" rx="2" /><path d="M7 16h10v5H7z" /></Svg>;
 export const IconCopy = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h8" /></Svg>;
 export const IconSpark = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><path d="M12 3v4M12 17v4M3 12h4M17 12h4" /><path d="M12 8.5 13.4 11l2.6 1-2.6 1L12 15.5 10.6 13 8 12l2.6-1Z" /></Svg>;
+export const IconRefresh = (p: IconProps) => <Svg {...p} strokeWidth={1.9}><path d="M20 11a8 8 0 1 0-2.3 5.7" /><path d="M20 5v6h-6" /></Svg>;

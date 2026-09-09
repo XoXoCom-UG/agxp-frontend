@@ -16,6 +16,8 @@ export interface DeliverableDoc {
   /** Markdown, markers already stripped. */
   content: string;
   createdAt: string;
+  /** 1-based: every regeneration is a full rebuild, so versions are counted. */
+  version?: number;
 }
 
 interface Heading {
@@ -55,7 +57,6 @@ function slug(s: string): string {
  * Portaled to <body> so it escapes the panel's overflow + stacking context.
  */
 export function DeliverableView({ doc, onClose }: { doc: DeliverableDoc; onClose: () => void }) {
-  const [mounted, setMounted] = useState(false);
   const [copied, setCopied] = useState(false);
   const [active, setActive] = useState(0);
   const paperRef = useRef<HTMLDivElement>(null);
@@ -66,7 +67,6 @@ export function DeliverableView({ doc, onClose }: { doc: DeliverableDoc; onClose
   const html = useMemo(() => md(doc.content), [doc.content]);
   const words = useMemo(() => doc.content.split(/\s+/).filter(Boolean).length, [doc.content]);
 
-  useEffect(() => setMounted(true), []);
   useEffect(() => () => { if (copyTimer.current) clearTimeout(copyTimer.current); }, []);
 
   // Esc closes; the page behind must not scroll while the document is open.
@@ -124,7 +124,9 @@ export function DeliverableView({ doc, onClose }: { doc: DeliverableDoc; onClose
 
   const date = new Date(doc.createdAt).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
 
-  if (!mounted) return null;
+  // Rendered only from client state (openDoc), so this never runs during
+  // prerender — but guard anyway, since createPortal needs a real document.
+  if (typeof document === "undefined") return null;
 
   return createPortal(
     <div className="doc-portal">
@@ -133,7 +135,10 @@ export function DeliverableView({ doc, onClose }: { doc: DeliverableDoc; onClose
         <header className="doc-head">
           <AgentMascot role={doc.role} state="idle" size={40} />
           <div className="doc-id">
-            <span className="kind">{doc.role === "coach" ? "Coach deliverable" : "Consultant deliverable"}</span>
+            <span className="kind">
+              {doc.role === "coach" ? "Coach deliverable" : "Consultant deliverable"}
+              {!!doc.version && doc.version > 1 && <span className="doc-ver">Version {doc.version}</span>}
+            </span>
             <h2>{doc.title}</h2>
             <span className="meta">{doc.projectName} · {doc.agentName} · {date}</span>
           </div>
