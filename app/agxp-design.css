@@ -500,18 +500,26 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 }
 @keyframes typingSweep{ 0%{ background-position:200% 0; } 100%{ background-position:-40% 0; } }
 
-.qa-list{ max-width:520px; border:1px solid var(--border-soft); border-radius:var(--r-md); overflow:hidden; }
-.qa-item{ display:flex; align-items:flex-start; gap:15px; padding:15px 17px; border-bottom:1px solid var(--border-soft); width:100%; background:transparent; text-align:left; transition:background-color .16s var(--ease-out); }
-.qa-item:last-child{ border-bottom:none; }
-.qa-item:active{ background:rgba(255,255,255,0.04); }
-.qa-item .qno{ font-size:var(--text-2xs); font-weight:700; color:var(--text-muted); width:20px; flex-shrink:0; padding-top:1px; }
-.qa-item .qtxt{ flex:1; }
-.qa-item .qt{ font-size:var(--text-sm); font-weight:600; color:var(--text-primary); }
-.qa-item .qs{ font-size:var(--text-2xs); color:var(--text-muted); margin-top:3px; }
+/* Empty-conversation hero — vertically centered greeting + composer +
+   suggestion list, shown only while messages.length === 0. Collapses back
+   to the plain top-anchored message list + bottom .chat-input otherwise. */
+.chat-hero{ flex:1; min-height:0; width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.chat-hero-inner{ width:100%; max-width:520px; display:flex; flex-direction:column; align-items:stretch; gap:var(--sp-5); }
+.chat-hero-greet{ font-size:var(--text-xl); font-weight:650; color:var(--text-primary); text-align:center; line-height:1.4; }
+
+/* Composer reused as-is via .chat-input; only placement chrome differs. */
+.chat-input.chat-input--hero{ border-top:none; padding:0; width:100%; }
+
+/* Suggestions: plain single-line rows (icon tile + label), not boxed cards.
+   The blurb moves to a native title="" tooltip so the info isn't lost, just
+   decluttered — matches the "one under another, clean" reference. */
+.hero-actions{ display:flex; flex-direction:column; width:100%; }
+.hero-action{ display:flex; align-items:center; gap:var(--sp-3); padding:10px 12px; border-radius:var(--r-md); width:100%; background:transparent; text-align:left; transition:background-color .16s var(--ease-out); }
+.hero-action:active{ background:rgba(255,255,255,0.04); }
+.hero-action .ha-label{ font-size:var(--text-sm); font-weight:550; color:var(--text-primary); }
 @media (hover:hover) and (pointer:fine){
-  .panel.consultant .qa-item:hover{ background:linear-gradient(90deg, rgba(46,41,37,0.16), transparent); }
-  .panel.coach .qa-item:hover{ background:linear-gradient(90deg, rgba(44,44,51,0.2), transparent); }
-  .qa-item:hover svg.arrow{ transform:translateX(3px); stroke:var(--text-primary); }
+  .panel.consultant .hero-action:hover{ background:linear-gradient(90deg, rgba(46,41,37,0.16), transparent); }
+  .panel.coach .hero-action:hover{ background:linear-gradient(90deg, rgba(44,44,51,0.2), transparent); }
 }
 
 .assess-strip{ display:flex; flex-direction:column; gap:8px; padding:11px 26px; border-bottom:1px solid var(--border-soft); flex-shrink:0; background:linear-gradient(90deg, rgba(46,41,37,0.08), transparent); }
@@ -689,8 +697,6 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
   background:color-mix(in srgb, var(--primary) 12%, transparent); border:1px solid color-mix(in srgb, var(--primary) 26%, transparent);
   color:var(--primary-soft);
 }
-.qa-list{ background:var(--card); }
-.qa-item{ align-items:center; }
 
 /* ---------- AGENT MASCOT — the only "gamified" motion in the app ----------
    Blinks now and then so it reads as alive, pulses its antenna and shows

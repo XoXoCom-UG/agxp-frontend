@@ -8,12 +8,18 @@ import { parseMarkers } from "@/lib/message-markers";
 import { methodLabel, methodBlurb } from "@/lib/method-labels";
 import { levelFor, nextLevel, LEVEL_ORDER } from "@/lib/agent-progress";
 import { md } from "@/lib/markdown";
+import { useAuth } from "@/lib/auth-context";
 import { AgentMascot, type MascotState } from "@/components/layout/agent-mascot";
-import { IconArrow, IconSend, IconCheck, IconSearch, IconMore, IconDoc, IconDownload, IconX } from "@/components/layout/agxp-icons";
+import { IconSend, IconCheck, IconSearch, IconMore, IconDoc, IconDownload, IconX } from "@/components/layout/agxp-icons";
 
-const OPENING: Record<AgentType, string> = {
-  consultant: "Hey, what can I do for you today?",
-  coach: "Hey, what would you like to talk through today?",
+// Personalized "welcome back" hero greeting for the empty-conversation state
+// (shown once, centered, before the first message) — not a literal "how can
+// I help" clone. Falls back cleanly when no first name has resolved yet.
+const GREETING: Record<AgentType, (firstName: string) => string> = {
+  consultant: (firstName) =>
+    firstName ? `Welcome back, ${firstName} — ready to dive in?` : "Welcome back — ready to dive in?",
+  coach: (firstName) =>
+    firstName ? `Good to have you back, ${firstName} — what's on your mind?` : "Good to have you back — what's on your mind?",
 };
 
 // Contextual "thinking" labels instead of a static "is thinking..." — a
@@ -71,6 +77,7 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
   const bottomRef = useRef<HTMLDivElement>(null);
   const speakTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const processingPool = useRef(PROCESSING_BROAD);
+  const { profileName } = useAuth();
 
   useEffect(() => () => { if (speakTimer.current) clearTimeout(speakTimer.current); }, []);
 
@@ -131,6 +138,8 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
     return -1;
   })();
   const actions = quickActions(agent);
+  const firstName = profileName.trim().split(/\s+/)[0] || "";
+  const showHero = loaded && messages.length === 0;
 
   // Roadmap "downloads" — a genuine client-side Markdown export of the
   // conversation, not a backend PDF pipeline (none exists or is justified
@@ -166,6 +175,21 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
   const level = levelFor(totalProjects);
   const leveledUp = levelFor(Math.max(0, totalProjects - 1)) !== level;
   const { next, remaining } = nextLevel(totalProjects);
+
+  // Extracted once so the exact same input/button — same state, same
+  // handlers — can sit either centered in the empty-state hero or pinned at
+  // the bottom, without duplicating the wiring.
+  const composer = (
+    <>
+      <textarea className="autosize" rows={1} disabled={sending} value={input}
+        onChange={e => setInput(e.target.value)}
+        onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }}
+        placeholder={`Ask your ${role === "coach" ? "coach" : "consultant"}...`} />
+      <button data-tooltip="Send message" disabled={!input.trim() || sending} onClick={() => send(input)}>
+        <IconSend size={14} />
+      </button>
+    </>
+  );
 
   return (
     <section className={`panel ${role}`} style={primary ? { flex: 2.3 } : undefined} onClick={() => menuOpen && setMenuOpen(false)}>
@@ -254,56 +278,54 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
       <div className="chat-body">
         {!loaded && <div className="spinner" style={{ margin: "0 auto", borderColor: "var(--border-strong)", borderTopColor: "var(--foreground)" }} />}
 
-        {loaded && (
-          <div className="msg-agent">
-            <div className="txt">{OPENING[role]}</div>
-          </div>
-        )}
-        {loaded && messages.length === 0 && (
-          <div className="qa-list">
-            {actions.map(a => (
-              <button key={a.title} className="qa-item" onClick={() => send(a.prompt)}>
-                <span className="qa-ic">{a.icon}</span>
-                <div className="qtxt"><div className="qt">{a.title}</div><div className="qs">{a.blurb}</div></div>
-                <IconArrow />
-              </button>
-            ))}
-          </div>
-        )}
-
-        {messages.map((m, i) => {
-          if (m.role === "user") return <div key={m.id} className="msg-user">{m.content}</div>;
-          const parsed = parseMarkers(m.content);
-          const showChoices = i === lastAssistantIdx && parsed.choices.length > 0 && !sending;
-          return (
-            <div key={m.id} className="msg-agent">
-              <div className="txt" dangerouslySetInnerHTML={{ __html: md(parsed.text) }} />
-              {showChoices && (
-                <div className="choice-row" style={{ paddingLeft: 0 }}>
-                  {parsed.choices.map(c => (
-                    <button key={c} className="choice-chip" disabled={sending} onClick={() => send(c)}>{c}</button>
-                  ))}
-                </div>
-              )}
+        {showHero && (
+          <div className="chat-hero">
+            <div className="chat-hero-inner">
+              <div className="chat-hero-greet">{GREETING[role](firstName)}</div>
+              <div className="chat-input chat-input--hero">{composer}</div>
+              <div className="hero-actions">
+                {actions.map(a => (
+                  <button key={a.title} className="hero-action" title={a.blurb} onClick={() => send(a.prompt)}>
+                    <span className="qa-ic">{a.icon}</span>
+                    <span className="ha-label">{a.title}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-          );
-        })}
+          </div>
+        )}
 
-        {sending && (
-          <div className="msg-processing"><span className="tline" /><span className="plabel shimmer-text">{processingLabel}</span></div>
+        {loaded && messages.length > 0 && (
+          <>
+            {messages.map((m, i) => {
+              if (m.role === "user") return <div key={m.id} className="msg-user">{m.content}</div>;
+              const parsed = parseMarkers(m.content);
+              const showChoices = i === lastAssistantIdx && parsed.choices.length > 0 && !sending;
+              return (
+                <div key={m.id} className="msg-agent">
+                  <div className="txt" dangerouslySetInnerHTML={{ __html: md(parsed.text) }} />
+                  {showChoices && (
+                    <div className="choice-row" style={{ paddingLeft: 0 }}>
+                      {parsed.choices.map(c => (
+                        <button key={c} className="choice-chip" disabled={sending} onClick={() => send(c)}>{c}</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {sending && (
+              <div className="msg-processing"><span className="tline" /><span className="plabel shimmer-text">{processingLabel}</span></div>
+            )}
+          </>
         )}
         <div ref={bottomRef} />
       </div>
 
-      <div className="chat-input">
-        <textarea className="autosize" rows={1} disabled={sending} value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }}
-          placeholder={`Ask your ${role === "coach" ? "coach" : "consultant"}...`} />
-        <button data-tooltip="Send message" disabled={!input.trim() || sending} onClick={() => send(input)}>
-          <IconSend size={14} />
-        </button>
-      </div>
+      {!showHero && (
+        <div className="chat-input">{composer}</div>
+      )}
     </section>
   );
 }
