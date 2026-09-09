@@ -60,7 +60,7 @@ export function AgentNav({ projectName, projectId }: { projectName?: string; pro
       <div style={{ display: "flex", alignItems: "center", minWidth: 0 }}>
         <button className="brand" onClick={newTask}>
           <div className="brand-mark"><IconDiamond size={12} /></div>
-          <div className="brand-text stacked"><span className="name">Agentix Projects</span><span className="sub">AGXP</span></div>
+          <div className="brand-text stacked"><span className="name">AgentiX Projects</span><span className="sub">AGXP</span></div>
         </button>
 
         <nav>
