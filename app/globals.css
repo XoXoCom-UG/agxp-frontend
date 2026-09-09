@@ -30,6 +30,11 @@
   --muted-foreground:#7C8798;
   --accent:#141E2E;
   --accent-foreground:#EDF2F8;
+  /* A distinctly-lighter-than-background gray "elevated surface" — the
+     composer and the user's own messages, matching how ChatGPT's own
+     composer clearly reads as a lighter card against a near-black page,
+     not a subtle tint like --accent. */
+  --surface-elevated:#242E3E;
 
   --destructive:#E0574A;
   --destructive-foreground:#FBEAE6;
@@ -108,6 +113,7 @@ html.light {
   --muted-foreground:#8B8B85;
   --accent:#EFEFEC;
   --accent-foreground:#18181B;
+  --surface-elevated:#EBEBE8;
 
   --destructive:#B84B3E;
   --destructive-foreground:#FBEAE6;
