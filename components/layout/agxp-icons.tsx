@@ -34,3 +34,5 @@ export const IconMoon = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><path d=
 export const IconSend = (p: IconProps) => <Svg {...p} strokeWidth={2.2} className="send-icon"><path d="M22 2 11 13" /><path d="M22 2 15 22l-4-9-9-4 20-7Z" /></Svg>;
 export const IconCheck = (p: IconProps) => <Svg {...p} strokeWidth={2.5}><path d="M20 6 9 17l-5-5" /></Svg>;
 export const IconX = (p: IconProps) => <Svg {...p} strokeWidth={2}><path d="M18 6 6 18M6 6l12 12" /></Svg>;
+export const IconDoc = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /><path d="M9 13h6M9 17h6" /></Svg>;
+export const IconDownload = (p: IconProps) => <Svg {...p} strokeWidth={2}><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></Svg>;
