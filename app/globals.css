@@ -12,29 +12,33 @@
    here ever need to move again.
    ============================================================================= */
 :root {
-  --background:#06080D;
+  /* Lighter, neutral charcoal instead of near-black — the whole dark-mode
+     surface ladder below is lifted by roughly the same amount so cards/
+     popovers/elevated surfaces still read as progressively lighter than the
+     page, not inverted. */
+  --background:#1C1D1F;
   --foreground:#EDF2F8;
 
-  --card:#0B111B;
+  --card:#1F2530;
   --card-foreground:#EDF2F8;
-  --popover:#101826;
+  --popover:#242C3A;
   --popover-foreground:#EDF2F8;
 
   --primary:#154E80;
   --primary-foreground:#F1F1F2;
   --primary-soft:#2E7BC4;
 
-  --secondary:#0E1622;
+  --secondary:#222A36;
   --secondary-foreground:#A9B4C4;
-  --muted:#0E1622;
+  --muted:#222A36;
   --muted-foreground:#7C8798;
-  --accent:#141E2E;
+  --accent:#283242;
   --accent-foreground:#EDF2F8;
   /* A distinctly-lighter-than-background gray "elevated surface" — the
      composer and the user's own messages, matching how ChatGPT's own
-     composer clearly reads as a lighter card against a near-black page,
+     composer clearly reads as a lighter card against the page,
      not a subtle tint like --accent. */
-  --surface-elevated:#242E3E;
+  --surface-elevated:#384252;
 
   --destructive:#E0574A;
   --destructive-foreground:#FBEAE6;
@@ -43,8 +47,8 @@
   /* Coach vs Consultant: near-identical graphite — v8's palette keeps the
      temperature difference to a whisper (role is carried by icon/label, not
      color), rather than ana's original blue-navy-tinted panels. */
-  --coach-1:#151920; --coach-2:#1B2029; --coach-3:#0A0C10;
-  --consultant-1:#171B22; --consultant-2:#1D222B; --consultant-3:#0B0D11;
+  --coach-1:#292D34; --coach-2:#2F343D; --coach-3:#1E2024;
+  --consultant-1:#2B2F36; --consultant-2:#31363F; --consultant-3:#1F2125;
 
   --border:rgba(255,255,255,0.10);
   --border-strong:rgba(255,255,255,0.20);
@@ -175,11 +179,6 @@ html.dark .thinking-spinner { border-color: #3f3f46; border-top-color: var(--gre
 }
 .deck-card { animation: deck-card-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
-@keyframes slide-from-right {
-  from { opacity: 0; transform: translateX(24px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-.roadmap-panel { animation: slide-from-right 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
 /* ── Choice chips ───────────────────────────────────────────────────────────── */
 .choice-chip {
