@@ -6,6 +6,7 @@ import { listMessages, addMessage, touchProjectActivity, renameFromFirstMessage,
 import { askAgent } from "@/lib/ask-agent";
 import { parseMarkers } from "@/lib/message-markers";
 import { methodLabel, methodBlurb } from "@/lib/method-labels";
+import { levelFor, nextLevel, LEVEL_ORDER } from "@/lib/agent-progress";
 import { md } from "@/lib/markdown";
 import { useAuth } from "@/lib/auth-context";
 import { AgentMascot, type MascotState } from "@/components/layout/agent-mascot";
@@ -14,6 +15,8 @@ import {
   IconPlus, IconMic, IconChevronDown, IconArrowUp,
 } from "@/components/layout/agxp-icons";
 import type { Effort } from "@/lib/ask-agent";
+
+const EFFORT_LEVELS: Effort[] = ["Instant", "Medium", "High"];
 
 // Personalized "welcome back" hero greeting for the empty-conversation state
 // (shown once, centered, before the first message) — not a literal "how can
@@ -59,10 +62,12 @@ function quickActions(agent: Agent) {
   return actions;
 }
 
-export function ProjectChatPanel({ project, role, agent, primary, onProjectNamed, onChangeAgent }: {
+export function ProjectChatPanel({ project, role, agent, primary, projectCount = 0, onProjectNamed, onChangeAgent }: {
   project: Project; role: AgentType; agent: Agent;
   /** Consultant leads the layout (larger). */
   primary?: boolean;
+  /** How many of the user's projects this agent has worked on, this one included — drives the Agent Info level. */
+  projectCount?: number;
   onProjectNamed?: (name: string) => void;
   /** Drops this agent back to the picker — reached from the ⋯ menu, never a popup at selection time. */
   onChangeAgent?: () => void;
@@ -74,8 +79,9 @@ export function ProjectChatPanel({ project, role, agent, primary, onProjectNamed
   const [orb, setOrb] = useState<MascotState>("idle");
   const [menuOpen, setMenuOpen] = useState(false);
   const [roadmapOpen, setRoadmapOpen] = useState(false);
+  const [agentInfoOpen, setAgentInfoOpen] = useState(false);
   const [processingLabel, setProcessingLabel] = useState("");
-  const [effort, setEffort] = useState<Effort>("Standard");
+  const [effort, setEffort] = useState<Effort>("Medium");
   const [effortOpen, setEffortOpen] = useState(false);
   const [attachments, setAttachments] = useState<string[]>([]);
   const [recording, setRecording] = useState(false);
@@ -199,6 +205,11 @@ export function ProjectChatPanel({ project, role, agent, primary, onProjectNamed
   const firstName = profileName.trim().split(/\s+/)[0] || "";
   const showHero = loaded && messages.length === 0;
 
+  // Shown on demand in the Agent Info panel now, not a permanent Steckbrief.
+  const totalProjects = agent.last_projects.length + projectCount;
+  const level = levelFor(totalProjects);
+  const { next, remaining } = nextLevel(totalProjects);
+
   // Roadmap "downloads" — opens a clean, standalone document with the
   // conversation content and triggers the browser's native print dialog, so
   // the user picks "Save as PDF" there. No new dependency, no reuse of the
@@ -260,10 +271,15 @@ export function ProjectChatPanel({ project, role, agent, primary, onProjectNamed
           <div style={{ position: "relative" }} onClick={e => e.stopPropagation()}>
             <button className="effort-pill" onClick={() => setEffortOpen(o => !o)}>{effort}<IconChevronDown size={12} /></button>
             {effortOpen && (
-              <div className="popover" style={{ top: 36, left: 0, minWidth: 140 }}>
-                {(["Standard", "Extended"] as const).map(e => (
-                  <button key={e} className="mi" onClick={() => { setEffort(e); setEffortOpen(false); }}>{e}</button>
-                ))}
+              <div className="popover effort-popover" style={{ top: 36, left: 0 }}>
+                <div className="effort-popover-label">{effort}</div>
+                <input type="range" className="effort-slider" min={0} max={2} step={1}
+                  style={{ ["--pct" as string]: `${(EFFORT_LEVELS.indexOf(effort) / (EFFORT_LEVELS.length - 1)) * 100}%` }}
+                  value={EFFORT_LEVELS.indexOf(effort)}
+                  onChange={e => setEffort(EFFORT_LEVELS[Number(e.target.value)])} />
+                <div className="effort-popover-ticks">
+                  {EFFORT_LEVELS.map(l => <span key={l}>{l}</span>)}
+                </div>
               </div>
             )}
           </div>
@@ -287,13 +303,17 @@ export function ProjectChatPanel({ project, role, agent, primary, onProjectNamed
       onClick={() => { if (menuOpen) setMenuOpen(false); if (effortOpen) setEffortOpen(false); }}>
       {/* Head: who this agent is, condensed */}
       <div className="chat-head">
-        <AgentMascot role={role} state={orb} size={46} enter />
+        <button className="mascot-trigger" data-tooltip="Agent info"
+          onClick={() => { setAgentInfoOpen(o => !o); setRoadmapOpen(false); }}>
+          <AgentMascot role={role} state={orb} size={46} enter />
+        </button>
         <div style={{ minWidth: 0 }}>
           <div className="n">{agent.name}</div>
           <div className="r">{role === "coach" ? "Coach" : "Consultant"}</div>
         </div>
         {role === "consultant" && (
-          <button className="roadmap-btn" style={{ marginLeft: "auto" }} onClick={() => setRoadmapOpen(o => !o)}>
+          <button className="roadmap-btn" style={{ marginLeft: "auto" }}
+            onClick={() => { setRoadmapOpen(o => !o); setAgentInfoOpen(false); }}>
             <IconDoc size={13} />Roadmap
           </button>
         )}
@@ -303,11 +323,50 @@ export function ProjectChatPanel({ project, role, agent, primary, onProjectNamed
           </button>
           {menuOpen && (
             <div className="popover" style={{ top: 36, right: 0, minWidth: 160 }}>
+              <button className="mi" onClick={() => { setMenuOpen(false); setAgentInfoOpen(true); setRoadmapOpen(false); }}>Agent info</button>
               <button className="mi" onClick={() => { setMenuOpen(false); onChangeAgent?.(); }}>Change agent</button>
             </div>
           )}
         </div>
       </div>
+
+      {agentInfoOpen && (
+        <div className="roadmap-panel">
+          <div className="rp-head">
+            <h3>{agent.name}</h3>
+            <button className="rp-close" onClick={() => setAgentInfoOpen(false)}><IconX size={13} /></button>
+          </div>
+          <div className="rp-list">
+            {agent.description && <p className="agent-info-desc">{agent.description}</p>}
+            <div className="sb-stats">
+              <div>
+                <span className="lbl">Knowledge Level</span>
+                <div className="level">
+                  <b>{level}</b>
+                  <span className="level-bar">
+                    {LEVEL_ORDER.map((l, i) => <span key={l} className={`level-seg ${i <= LEVEL_ORDER.indexOf(level) ? "on" : ""}`} />)}
+                  </span>
+                </div>
+                {next && <div className="level-hint">{remaining} more project{remaining === 1 ? "" : "s"} to {next}</div>}
+              </div>
+              <div><span className="lbl">Previous Projects</span><b>{totalProjects}</b></div>
+              {agent.tagline && <div><span className="lbl">Type</span><b>{agent.tagline}</b></div>}
+            </div>
+            <div className="sb-methods">
+              {agent.primaryMethods.length > 0 && (
+                <div className="grp"><span className="lbl">Primary Methods</span>
+                  <div className="chips">{agent.primaryMethods.map(m => <span key={m.id} className="m-chip">{methodLabel(m.name)}</span>)}</div>
+                </div>
+              )}
+              {agent.secondaryMethods.length > 0 && (
+                <div className="grp"><span className="lbl">Secondary Methods</span>
+                  <div className="chips">{agent.secondaryMethods.map(m => <span key={m.id} className="m-chip secondary">{methodLabel(m.name)}</span>)}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {roadmapOpen && (
         <div className="roadmap-panel">
@@ -340,14 +399,16 @@ export function ProjectChatPanel({ project, role, agent, primary, onProjectNamed
             <div className="chat-hero-inner">
               <div className="chat-hero-greet">{GREETING[role](firstName)}</div>
               <div className="chat-input chat-input--hero">{composer}</div>
-              <div className="hero-actions">
-                {actions.map(a => (
-                  <button key={a.title} className="hero-action" title={a.blurb} onClick={() => send(a.prompt)}>
-                    <span className="qa-ic">{a.icon}</span>
-                    <span className="ha-label">{a.title}</span>
-                  </button>
-                ))}
-              </div>
+              {role === "consultant" && (
+                <div className="hero-actions">
+                  {actions.map(a => (
+                    <button key={a.title} className="hero-action" title={a.blurb} onClick={() => send(a.prompt)}>
+                      <span className="qa-ic">{a.icon}</span>
+                      <span className="ha-label">{a.title}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}

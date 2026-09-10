@@ -512,7 +512,10 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
   background:radial-gradient(circle, rgba(255,255,255,0.06), transparent 70%);
   filter:blur(40px); pointer-events:none; z-index:0;
 }
-.chat-hero-inner{ position:relative; z-index:1; width:100%; max-width:520px; display:flex; flex-direction:column; align-items:stretch; gap:var(--sp-5); }
+/* Scales with the panel instead of a fixed cap — a fixed 520px looked tiny
+   and cramped in the middle of the much-wider Consultant panel on real
+   desktop widths, with huge empty gutters on both sides. */
+.chat-hero-inner{ position:relative; z-index:1; width:min(88%, 760px); display:flex; flex-direction:column; align-items:stretch; gap:var(--sp-5); }
 .chat-hero-greet{ font-size:var(--text-xl); font-weight:650; color:var(--text-primary); text-align:center; line-height:1.4; }
 
 /* Composer reused as-is via .chat-input; only placement chrome differs. */
@@ -579,6 +582,28 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
   transition:color .15s var(--ease-out), border-color .15s var(--ease-out);
 }
 @media (hover:hover) and (pointer:fine){ .effort-pill:hover{ color:var(--text-primary); border-color:var(--border-medium); } }
+
+/* Effort popover — a 3-stop slider (Instant/Medium/High) instead of a plain
+   dropdown list, per the reference. The fill uses a --pct custom property
+   set inline from the current value, since a plain <input type="range">
+   has no CSS hook for "how far along is it". */
+.effort-popover{ width:220px; padding:var(--sp-4); display:flex; flex-direction:column; align-items:center; gap:var(--sp-3); }
+.effort-popover-label{ font-size:var(--text-sm); font-weight:650; color:var(--text-primary); }
+.effort-slider{
+  -webkit-appearance:none; appearance:none; width:100%; height:6px; border-radius:999px; margin:6px 0; outline:none; cursor:pointer;
+  background:linear-gradient(to right, var(--primary) 0%, var(--primary) var(--pct, 50%), var(--border-medium) var(--pct, 50%), var(--border-medium) 100%);
+}
+.effort-slider::-webkit-slider-runnable-track{ height:6px; border-radius:999px; background:transparent; }
+.effort-slider::-moz-range-track{ height:6px; border-radius:999px; background:transparent; }
+.effort-slider::-webkit-slider-thumb{ -webkit-appearance:none; appearance:none; width:18px; height:18px; border-radius:50%; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.4); cursor:pointer; margin-top:-6px; }
+.effort-slider::-moz-range-thumb{ width:18px; height:18px; border-radius:50%; background:#fff; border:none; box-shadow:0 1px 4px rgba(0,0,0,0.4); cursor:pointer; }
+.effort-popover-ticks{ display:flex; justify-content:space-between; width:100%; font-size:var(--text-3xs); color:var(--text-muted); }
+
+/* Wraps AgentMascot so it's a real button (Agent Info) without changing
+   the mascot component itself. */
+.mascot-trigger{ background:none; border:none; padding:0; display:inline-flex; border-radius:50%; flex-shrink:0; }
+.agent-info-desc{ font-size:var(--text-xs); color:var(--text-secondary); line-height:1.6; margin:0 0 var(--sp-4); }
+
 .composer-send{
   width:32px; height:32px; border-radius:50%; border:1px solid transparent; color:var(--primary-foreground);
   background:var(--primary); display:flex; align-items:center; justify-content:center; flex-shrink:0;
