@@ -144,10 +144,10 @@ export function DeliverableView({ doc, onClose }: { doc: DeliverableDoc; onClose
           </div>
           <div className="doc-actions">
             <button className="doc-btn" onClick={copy}>
-              {copied ? <IconCheck size={13} /> : <IconCopy size={13} />}{copied ? "Copied" : "Copy"}
+              {copied ? <IconCheck size={13} /> : <IconCopy size={13} />}<span className="t">{copied ? "Copied" : "Copy"}</span>
             </button>
-            <button className="doc-btn" onClick={download}><IconDownload size={13} />.md</button>
-            <button className="doc-btn" onClick={() => window.print()}><IconPrint size={13} />Print / PDF</button>
+            <button className="doc-btn" onClick={download}><IconDownload size={13} /><span className="t">.md</span></button>
+            <button className="doc-btn" onClick={() => window.print()}><IconPrint size={13} /><span className="t">Print / PDF</span></button>
             <button className="doc-btn icon" onClick={onClose} data-tooltip="Close (Esc)" aria-label="Close"><IconX size={14} /></button>
           </div>
         </header>

@@ -57,7 +57,7 @@ export function AgentNav({ projectName, projectId }: { projectName?: string; pro
 
   return (
     <header onClick={e => e.stopPropagation()}>
-      <div style={{ display: "flex", alignItems: "center", minWidth: 0 }}>
+      <div className="head-left">
         <button className="brand" onClick={newTask}>
           <div className="brand-mark"><IconDiamond size={12} /></div>
           <div className="brand-text stacked"><span className="name">Agentix Projects</span><span className="sub">AGXP</span></div>

@@ -103,7 +103,7 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   const showBack = state !== "empty";
 
   return (
-    <section className={`panel ${role}`} style={primary ? { flex: 1.6 } : undefined}>
+    <section className={`panel ${role}${primary ? " primary" : ""}`}>
       {pendingConfirm && (
         <ConfirmDialog
           title={`${pendingConfirm.name} as your ${ROLE_LABEL[role]}?`}

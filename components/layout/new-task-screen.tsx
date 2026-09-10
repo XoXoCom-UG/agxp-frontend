@@ -36,7 +36,21 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
   // The finished deliverable of each panel, and the one being read right now.
   const [docs, setDocs] = useState<Record<AgentType, DeliverableDoc | null>>({ coach: null, consultant: null });
   const [openDoc, setOpenDoc] = useState<DeliverableDoc | null>(null);
+  // Below ~1000px both panels don't fit side by side, so one is on screen at a
+  // time. `unseen` marks the hidden one when its agent answers — otherwise you
+  // lose half the conversation without noticing.
+  const [pane, setPane] = useState<AgentType>("consultant");
+  const [unseen, setUnseen] = useState<Record<AgentType, boolean>>({ coach: false, consultant: false });
   const creating = useRef<Promise<Project> | null>(null);
+
+  function showPane(role: AgentType) {
+    setPane(role);
+    setUnseen(u => (u[role] ? { ...u, [role]: false } : u));
+  }
+
+  function noteActivity(role: AgentType) {
+    setUnseen(u => (role === pane || u[role] ? u : { ...u, [role]: true }));
+  }
 
   useEffect(() => { if (!authLoading && !token) router.replace("/login"); }, [token, authLoading, router]);
 
@@ -88,6 +102,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
       return (
         <ProjectChatPanel key={role} project={project} role={role} agent={assigned} primary={isPrimary}
           projectCount={projectCounts[assigned.id] ?? 0}
+          onActivity={() => noteActivity(role)}
           onOpenDoc={setOpenDoc}
           onDeliverableChange={doc => reportDoc(role, doc)}
           onProjectNamed={name => setProject(p => p && { ...p, name })} />
@@ -121,8 +136,26 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
           </div>
         </div>
 
+        {/* Only shown once the layout stacks (CSS) — both panels stay mounted,
+            so switching never loses a conversation or a half-typed message. */}
+        <div className="pane-switch" role="tablist" aria-label="Choose panel">
+          {(["coach", "consultant"] as AgentType[]).map(role => {
+            const id = role === "coach" ? project?.coach_agent_id : project?.consultant_agent_id;
+            const name = agents.find(a => a.id === id)?.name;
+            return (
+              <button key={role} role="tab" aria-selected={pane === role}
+                className={`ps-tab ${pane === role ? "on" : ""}`} onClick={() => showPane(role)}>
+                <span className={`role-dot ${role}`} />
+                {role === "coach" ? "Coach" : "Consultant"}
+                {name && <span className="who">{name}</span>}
+                {unseen[role] && <span className="ps-dot" aria-label="New reply" />}
+              </button>
+            );
+          })}
+        </div>
+
         {/* Coach supports (narrow, left) — Consultant leads (wide, right). */}
-        <main className="workspace">
+        <main className="workspace" data-active={pane}>
           {panelFor("coach")}
           {panelFor("consultant")}
         </main>

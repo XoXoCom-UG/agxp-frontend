@@ -8,7 +8,9 @@
    matches exactly instead of being re-derived.
    ============================================================================= */
 
-.app{ height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; position:relative;
+/* 100dvh so mobile browser chrome doesn't cut the composer off the bottom;
+   100vh stays as the fallback. width:100% avoids the 100vw scrollbar overflow. */
+.app{ height:100vh; height:100dvh; width:100%; overflow:hidden; display:flex; flex-direction:column; position:relative;
   background:
     radial-gradient(70% 60% at 10% -10%, color-mix(in srgb, var(--coach-1) 55%, transparent), transparent 65%),
     radial-gradient(50% 50% at 100% 100%, color-mix(in srgb, var(--consultant-1) 45%, transparent), transparent 65%),
@@ -33,8 +35,11 @@
   .spinner{ animation-duration:0.01ms !important; }
 }
 
-/* ---------- HEADER ---------- */
-header{
+/* ---------- HEADER ----------
+   Scoped to the app's own top bar: a bare `header` selector also hit the
+   document reader's <header class="doc-head">, which forced it to 60px and
+   pushed its meta line outside the box. */
+.app > header{
   height:60px; flex-shrink:0; display:flex; align-items:center; justify-content:space-between;
   padding:0 24px; background:color-mix(in srgb, var(--background) 82%, transparent); border-bottom:1px solid var(--border-soft); backdrop-filter:blur(8px);
   position:relative; z-index:40;
@@ -52,6 +57,7 @@ header{
 .brand-text .name{ font-size:var(--text-lg); font-weight:600; color:var(--text-primary); letter-spacing:-0.1px; }
 .brand-text .sub{ font-size:var(--text-3xs); color:var(--text-muted); letter-spacing:0.14em; font-weight:700; }
 
+.head-left{ display:flex; align-items:center; min-width:0; }
 nav{ display:flex; align-items:center; gap:3px; margin-left:28px; }
 nav button{ position:relative; font-size:var(--text-xs); color:var(--text-muted); background:none; border:none; padding:9px 13px; font-weight:500; border-radius:var(--r-xs); transition:color .15s ease, background .15s ease; }
 nav button:hover{ color:var(--text-secondary); }
@@ -275,6 +281,7 @@ svg.arrow{ width:12px; height:12px; stroke:currentColor; flex-shrink:0; transiti
 /* ---------- MAIN WORKSPACE (setup) ---------- */
 main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var(--sp-6); min-height:0; }
 .panel{ flex:1; min-width:0; border-radius:16px; display:flex; flex-direction:column; overflow:hidden; position:relative; border:1px solid var(--border-soft); box-shadow:inset 0 1px 0 rgba(255,255,255,0.03), 0 14px 40px -18px rgba(0,0,0,0.6); }
+.panel.primary{ flex:1.6; }
 .panel.coach{ background:linear-gradient(175deg, var(--coach-3) 0%, var(--background) 100%); }
 .panel.consultant{ background:linear-gradient(175deg, var(--consultant-3) 0%, var(--background) 100%); }
 .panel::before{ content:""; position:absolute; top:0; left:20px; right:20px; height:1px; background:linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent); }
@@ -916,7 +923,7 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
   padding:var(--sp-5) var(--sp-6); border-bottom:1px solid var(--border-soft);
   background:linear-gradient(120deg, color-mix(in srgb, var(--primary) 10%, transparent), transparent 60%);
 }
-.doc-id{ min-width:0; display:flex; flex-direction:column; gap:2px; }
+.doc-id{ min-width:0; flex:1; display:flex; flex-direction:column; gap:2px; }
 .doc-id .kind{ font-size:var(--text-3xs); font-weight:700; letter-spacing:0.09em; text-transform:uppercase; color:var(--primary-soft); }
 .doc-id h2{ font-size:var(--text-xl); font-weight:650; letter-spacing:-0.3px; color:var(--text-primary); }
 .doc-id .meta{ font-size:var(--text-2xs); color:var(--text-muted); }
@@ -1251,3 +1258,160 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 }
 /* Room to breathe where the layout allows it (agent dashboard detail) */
 .mem-chip.wide{ max-width:none; white-space:normal; text-align:left; padding:7px 13px; }
+
+/* =============================================================================
+   RESPONSIVE — the workspace is built for two panels side by side, which stops
+   working below ~1000px. There it becomes one panel at a time with a switcher
+   (.pane-switch, hidden on desktop). Both panels stay mounted, so switching
+   never drops a conversation or a half-typed message.
+   ============================================================================= */
+
+.pane-switch{ display:none; }
+
+@media (max-width:1000px){
+  .pane-switch{
+    display:flex; gap:6px; flex-shrink:0; padding:0 var(--sp-6) var(--sp-4);
+  }
+  .ps-tab{
+    flex:1; min-width:0; display:flex; align-items:center; justify-content:center; gap:7px; position:relative;
+    padding:11px 12px; border-radius:11px; border:1px solid var(--border-soft); background:var(--surface-1);
+    font-size:var(--text-2xs); font-weight:600; color:var(--text-muted);
+    transition:color .16s var(--ease-out), border-color .16s var(--ease-out), background-color .16s var(--ease-out);
+  }
+  .ps-tab .who{
+    color:var(--text-muted); font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0;
+  }
+  .ps-tab .who::before{ content:"· "; }
+  .ps-tab.on{
+    color:var(--text-primary); border-color:color-mix(in srgb, var(--primary) 45%, transparent);
+    background:color-mix(in srgb, var(--primary) 12%, transparent);
+  }
+  .ps-dot{
+    position:absolute; top:7px; right:8px; width:7px; height:7px; border-radius:50%;
+    background:var(--primary); box-shadow:0 0 0 2px var(--background);
+    animation:psPing 1.6s var(--ease-out) infinite;
+  }
+  @keyframes psPing{
+    0%, 100%{ box-shadow:0 0 0 2px var(--background), 0 0 0 0 color-mix(in srgb, var(--primary) 55%, transparent); }
+    60%{ box-shadow:0 0 0 2px var(--background), 0 0 0 6px transparent; }
+  }
+
+  /* One panel at a time — the hidden one keeps its state, it just isn't drawn */
+  main.workspace[data-active="coach"] .panel.consultant,
+  main.workspace[data-active="consultant"] .panel.coach{ display:none; }
+  .panel, .panel.primary{ flex:1; }
+
+  /* Header: the brand shrinks to the mark, the nav scrolls if it has to */
+  .app > header{ padding:0 var(--sp-5); gap:10px; }
+  .brand-text{ display:none; }
+  nav{ margin-left:10px; gap:0; }
+  nav button{ padding:9px 9px; }
+  .workspace-pill{ max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .page-head{ padding:var(--sp-4) var(--sp-5) var(--sp-3); }
+  main.workspace{ padding:0 var(--sp-5) var(--sp-5); }
+  .artifact-bar{ padding:var(--sp-3) var(--sp-5); }
+}
+
+@media (max-width:640px){
+  /* Phones: the description under the title is noise, the numbers are not */
+  .page-head{ padding:var(--sp-4) var(--sp-4) var(--sp-3); }
+  .page-head h1{ font-size:var(--text-xl); }
+  .page-head p{ display:none; }
+  main.workspace{ padding:0 var(--sp-4) var(--sp-4); }
+  .pane-switch{ padding:0 var(--sp-4) var(--sp-3); }
+  .ps-tab .who{ display:none; }
+
+  .chat-head{ padding:var(--sp-3) var(--sp-4); }
+  .chat-body{ padding:var(--sp-4); gap:var(--sp-3); }
+  .msg-agent{ max-width:96%; }
+  .msg-user{ max-width:88%; }
+
+  .steckbrief{ padding:var(--sp-3) var(--sp-4) var(--sp-4); }
+  .sb-stats{ gap:var(--sp-5); margin-bottom:var(--sp-3); }
+  .mem-chip{ max-width:100%; }
+
+  .deliv-rail{ padding:9px var(--sp-4) 10px; }
+  .dr-step{ font-size:var(--text-3xs); }
+
+  /* A 16px input is the only way iOS won't zoom the page on focus */
+  .chat-input{ padding:var(--sp-3) var(--sp-4); }
+  .chat-input textarea{ font-size:16px; }
+  .chat-input button{ width:44px; height:44px; }
+
+  /* The artifact strip scrolls instead of stacking into three rows */
+  .artifact-bar{
+    flex-wrap:nowrap; overflow-x:auto; gap:7px; padding:var(--sp-3) var(--sp-4);
+    scrollbar-width:none;
+  }
+  .artifact-bar::-webkit-scrollbar{ display:none; }
+  .artifact-bar .lbl{ display:none; }
+  .artifact-chip{ flex-shrink:0; }
+
+  /* Picker panel: cards and rows need the full width */
+  .pick-empty{ padding:var(--sp-5) var(--sp-4); }
+  .panel-head{ padding:var(--sp-4); }
+  .type-card{ padding:13px 14px; }
+  .configure{ padding:var(--sp-4); }
+  .qa-list{ max-width:none; }
+  .agenda-peek{ max-width:none; }
+
+  /* Document reader: icons only, and the sheet uses the whole width */
+  .doc-head{ padding:var(--sp-4); gap:var(--sp-3); }
+  .doc-id h2{ font-size:var(--text-lg); }
+  .doc-actions{ gap:5px; }
+  .doc-btn .t{ display:none; }
+  .doc-btn{ padding:9px; }
+  .doc-sheet{ padding:22px 16px 20px; border-radius:10px; }
+  .doc-body h1{ font-size:22px; }
+  .v-kpi{ grid-template-columns:repeat(auto-fit, minmax(104px, 1fr)); gap:8px; }
+  .v-tile b{ font-size:21px; }
+  .v-flow-lane{ flex-direction:column; gap:6px; }
+  .v-flow-lane .k{ width:auto; padding-top:0; }
+  .v-legend{ padding-left:0; }
+  .v-risk .grid{ grid-auto-rows:42px; }
+  .v-risk .ax-y, .v-risk .y-ticks{ height:134px; }
+}
+
+@media (max-width:640px){
+  /* Header on a phone: brand mark, tabs that scroll instead of wrapping, and
+     the workspace pill goes — the project name is already in the page title. */
+  .app > header{ padding:0 var(--sp-4); }
+  .head-left{ flex:1; overflow-x:auto; scrollbar-width:none; }
+  .head-left::-webkit-scrollbar{ display:none; }
+  /* Fades the cut edge so a scrolled-off tab reads as "there is more",
+     not as broken text. */
+  .head-left{
+    -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 20px), transparent);
+    mask-image:linear-gradient(90deg, #000 calc(100% - 20px), transparent);
+  }
+  nav{ margin-left:8px; }
+  nav button{ white-space:nowrap; font-size:var(--text-2xs); padding:8px 8px; }
+  .workspace-pill{ display:none; }
+  .util{ gap:8px; flex-shrink:0; }
+
+  /* The chat is the point on a phone. The Steckbrief keeps one compact row of
+     numbers; methods and remembered lessons live in the Agent Dashboard. */
+  .steckbrief{ padding:var(--sp-3) var(--sp-4); }
+  .sb-methods{ display:none; }
+  .sb-stats{ gap:var(--sp-5); margin-bottom:0; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; }
+  .sb-stats::-webkit-scrollbar{ display:none; }
+  .sb-stats > div{ flex-shrink:0; }
+  .sb-stats .lbl{ margin-bottom:2px; }
+  .level-hint{ display:none; }
+  .level-bar{ display:none; }
+}
+
+@media (max-width:640px){
+  /* Document header on a phone: the mascot already says which agent wrote it,
+     so the eyebrow goes and the meta line stays on one line. */
+  .doc-head{ align-items:flex-start; }
+  .doc-id .kind{ display:none; }
+  .doc-id .meta{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .doc-body h2{ margin-top:var(--sp-5); }
+  .doc-body > div[class~="h-2"]{ height:2px; }
+}
+
+/* Belt and braces: the reader's header sizes to its content, whatever the
+   app's top-bar rules say. */
+.doc-head{ height:auto; justify-content:flex-start; }

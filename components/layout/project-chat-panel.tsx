@@ -50,13 +50,16 @@ function quickActions(agent: Agent) {
   return actions;
 }
 
-export function ProjectChatPanel({ project, role, agent, primary, projectCount = 0, onProjectNamed, onOpenDoc, onDeliverableChange }: {
+export function ProjectChatPanel({ project, role, agent, primary, projectCount = 0, onProjectNamed, onActivity, onOpenDoc, onDeliverableChange }: {
   project: Project; role: AgentType; agent: Agent;
   /** Consultant leads the layout (larger). */
   primary?: boolean;
   /** How many of the user's projects this agent has worked on, this one included. */
   projectCount?: number;
   onProjectNamed?: (name: string) => void;
+  /** Fires when a reply lands — the screen marks the tab on stacked layouts,
+   *  where only one panel is on screen at a time. */
+  onActivity?: () => void;
   /** Opens the finished deliverable in the full document view (owned by the screen). */
   onOpenDoc?: (doc: DeliverableDoc) => void;
   /** Reports this panel's finished deliverable so the artifact bar can link to it. */
@@ -126,6 +129,7 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
       const createdAt = new Date().toISOString();
       setMessages(prev => [...prev, { id: crypto.randomUUID(), project_id: project.id, column_type: role, role: "assistant", content: reply, created_at: createdAt }]);
       playSpeaking();
+      onActivity?.();
       // The document is the moment worth showing — open it right away instead
       // of leaving the user to find a card in the scrollback.
       const parsed = parseMarkers(reply);
@@ -220,7 +224,7 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
   const { next, remaining } = nextLevel(totalProjects);
 
   return (
-    <section className={`panel ${role}`} style={primary ? { flex: 1.6 } : undefined}>
+    <section className={`panel ${role}${primary ? " primary" : ""}`}>
       {/* Head + Steckbrief: who this agent is, condensed */}
       <div className="chat-head">
         <AgentMascot role={role} state={orb} size={46} enter />
