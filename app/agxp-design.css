@@ -568,7 +568,8 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 @media (hover:hover) and (pointer:fine){ .attach-chip button:hover{ color:var(--text-primary); } }
 
 .composer-toolbar{ display:flex; align-items:center; justify-content:space-between; gap:var(--sp-2); }
-.composer-left, .composer-right{ display:flex; align-items:center; gap:6px; }
+.composer-left{ display:flex; align-items:center; gap:6px; min-width:0; flex-shrink:1; }
+.composer-right{ display:flex; align-items:center; gap:6px; flex-shrink:0; }
 .composer-icon-btn{
   width:32px; height:32px; border-radius:50%; border:1px solid var(--border-soft); background:var(--surface-1); color:var(--text-muted);
   display:flex; align-items:center; justify-content:center; flex-shrink:0;
@@ -577,27 +578,35 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 @media (hover:hover) and (pointer:fine){ .composer-icon-btn:hover{ color:var(--text-primary); border-color:var(--border-medium); } }
 .composer-icon-btn.active{ color:var(--primary-soft); border-color:color-mix(in srgb, var(--primary) 40%, transparent); background:color-mix(in srgb, var(--primary) 12%, transparent); }
 .effort-pill{
-  display:flex; align-items:center; gap:5px; height:32px; padding:0 12px; border-radius:var(--r-pill);
+  display:flex; align-items:center; gap:5px; height:32px; padding:0 12px; border-radius:var(--r-pill); min-width:56px; max-width:100%;
   border:1px solid var(--border-soft); background:var(--surface-1); color:var(--text-secondary); font-size:var(--text-2xs); font-weight:600;
   transition:color .15s var(--ease-out), border-color .15s var(--ease-out);
 }
+.effort-pill-label{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.effort-pill svg{ flex-shrink:0; }
 @media (hover:hover) and (pointer:fine){ .effort-pill:hover{ color:var(--text-primary); border-color:var(--border-medium); } }
 
-/* Effort popover — a 3-stop slider (Instant/Medium/High) instead of a plain
-   dropdown list, per the reference. The fill uses a --pct custom property
-   set inline from the current value, since a plain <input type="range">
-   has no CSS hook for "how far along is it". */
-.effort-popover{ width:220px; padding:var(--sp-4); display:flex; flex-direction:column; align-items:center; gap:var(--sp-3); }
-.effort-popover-label{ font-size:var(--text-sm); font-weight:650; color:var(--text-primary); }
+/* Effort popover — a 3-stop slider (Instant/Medium/High), per the exact
+   reference: the trigger pill always reads "Thinking effort", the popover
+   shows only the current value (+ a decorative chevron) above the slider —
+   no separate row of level names underneath. The fill uses a --pct custom
+   property set inline from the current value, since a plain
+   <input type="range"> has no CSS hook for "how far along is it". */
+.effort-popover{ width:240px; padding:var(--sp-5) var(--sp-4); display:flex; flex-direction:column; align-items:center; gap:var(--sp-4); }
+.effort-popover-label{ display:flex; align-items:center; gap:2px; font-size:var(--text-base); font-weight:650; color:var(--text-primary); }
+.effort-popover-label svg{ color:var(--text-muted); }
+.effort-slider-wrap{ position:relative; width:100%; display:flex; align-items:center; }
+.effort-slider-dot{ position:absolute; top:50%; width:4px; height:4px; border-radius:50%; transform:translateY(-50%); pointer-events:none; z-index:1; }
+.effort-slider-dot.left{ left:9px; background:rgba(255,255,255,0.6); }
+.effort-slider-dot.right{ right:9px; background:var(--text-muted); }
 .effort-slider{
-  -webkit-appearance:none; appearance:none; width:100%; height:6px; border-radius:999px; margin:6px 0; outline:none; cursor:pointer;
+  -webkit-appearance:none; appearance:none; width:100%; height:8px; border-radius:999px; margin:0; outline:none; cursor:pointer;
   background:linear-gradient(to right, var(--primary) 0%, var(--primary) var(--pct, 50%), var(--border-medium) var(--pct, 50%), var(--border-medium) 100%);
 }
-.effort-slider::-webkit-slider-runnable-track{ height:6px; border-radius:999px; background:transparent; }
-.effort-slider::-moz-range-track{ height:6px; border-radius:999px; background:transparent; }
-.effort-slider::-webkit-slider-thumb{ -webkit-appearance:none; appearance:none; width:18px; height:18px; border-radius:50%; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.4); cursor:pointer; margin-top:-6px; }
-.effort-slider::-moz-range-thumb{ width:18px; height:18px; border-radius:50%; background:#fff; border:none; box-shadow:0 1px 4px rgba(0,0,0,0.4); cursor:pointer; }
-.effort-popover-ticks{ display:flex; justify-content:space-between; width:100%; font-size:var(--text-3xs); color:var(--text-muted); }
+.effort-slider::-webkit-slider-runnable-track{ height:8px; border-radius:999px; background:transparent; }
+.effort-slider::-moz-range-track{ height:8px; border-radius:999px; background:transparent; }
+.effort-slider::-webkit-slider-thumb{ -webkit-appearance:none; appearance:none; width:22px; height:22px; border-radius:50%; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.4); cursor:pointer; margin-top:-7px; }
+.effort-slider::-moz-range-thumb{ width:22px; height:22px; border-radius:50%; background:#fff; border:none; box-shadow:0 1px 4px rgba(0,0,0,0.4); cursor:pointer; }
 
 /* Wraps AgentMascot so it's a real button (Agent Info) without changing
    the mascot component itself. */

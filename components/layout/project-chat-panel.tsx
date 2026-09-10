@@ -12,7 +12,7 @@ import { useAuth } from "@/lib/auth-context";
 import { AgentMascot, type MascotState } from "@/components/layout/agent-mascot";
 import {
   IconCheck, IconSearch, IconMore, IconDoc, IconDownload, IconX,
-  IconPlus, IconMic, IconChevronDown, IconArrowUp,
+  IconPlus, IconMic, IconChevronDown, IconArrowUp, IconArrow,
 } from "@/components/layout/agxp-icons";
 import type { Effort } from "@/lib/ask-agent";
 
@@ -268,17 +268,20 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
         <div className="composer-left">
           <input ref={fileInputRef} type="file" multiple hidden onChange={onFilesPicked} />
           <button className="composer-icon-btn" data-tooltip="Attach" onClick={pickFiles}><IconPlus size={15} /></button>
-          <div style={{ position: "relative" }} onClick={e => e.stopPropagation()}>
-            <button className="effort-pill" onClick={() => setEffortOpen(o => !o)}>{effort}<IconChevronDown size={12} /></button>
+          <div style={{ position: "relative", minWidth: 0 }} onClick={e => e.stopPropagation()}>
+            <button className="effort-pill" onClick={() => setEffortOpen(o => !o)}>
+              <span className="effort-pill-label">Thinking effort</span><IconChevronDown size={12} />
+            </button>
             {effortOpen && (
               <div className="popover effort-popover" style={{ top: 36, left: 0 }}>
-                <div className="effort-popover-label">{effort}</div>
-                <input type="range" className="effort-slider" min={0} max={2} step={1}
-                  style={{ ["--pct" as string]: `${(EFFORT_LEVELS.indexOf(effort) / (EFFORT_LEVELS.length - 1)) * 100}%` }}
-                  value={EFFORT_LEVELS.indexOf(effort)}
-                  onChange={e => setEffort(EFFORT_LEVELS[Number(e.target.value)])} />
-                <div className="effort-popover-ticks">
-                  {EFFORT_LEVELS.map(l => <span key={l}>{l}</span>)}
+                <div className="effort-popover-label">{effort}<IconArrow size={13} /></div>
+                <div className="effort-slider-wrap">
+                  <span className="effort-slider-dot left" />
+                  <input type="range" className="effort-slider" min={0} max={2} step={1}
+                    style={{ ["--pct" as string]: `${(EFFORT_LEVELS.indexOf(effort) / (EFFORT_LEVELS.length - 1)) * 100}%` }}
+                    value={EFFORT_LEVELS.indexOf(effort)}
+                    onChange={e => setEffort(EFFORT_LEVELS[Number(e.target.value)])} />
+                  <span className="effort-slider-dot right" />
                 </div>
               </div>
             )}
