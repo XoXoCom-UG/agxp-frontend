@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Agent, AgentType } from "@/lib/agents";
 import { listMessages, addMessage, touchProjectActivity, renameFromFirstMessage, type Project, type ProjectMessage } from "@/lib/projects";
 import { askAgent } from "@/lib/ask-agent";
-import { parseMarkers, looksLikeDocument, type TopicMarker } from "@/lib/message-markers";
+import { parseMarkers, looksLikeDocument, type TopicMarker, type MemoryNote } from "@/lib/message-markers";
+import { loadAgentMemory, memoryLines, EMPTY_MEMORY, type AgentMemory } from "@/lib/agent-memory";
 import { DELIVERABLES } from "@/lib/deliverables";
 import { methodLabel, methodBlurb } from "@/lib/method-labels";
 import { levelFor, nextLevel, LEVEL_ORDER } from "@/lib/agent-progress";
@@ -66,6 +67,10 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [orb, setOrb] = useState<MascotState>("idle");
+  // What the agent brings from this user's earlier projects, plus what it
+  // picked up during this session.
+  const [memory, setMemory] = useState<AgentMemory>(EMPTY_MEMORY);
+  const [learned, setLearned] = useState<MemoryNote[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const speakTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -84,6 +89,16 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
     listMessages(project.id, role).then(m => { if (alive) { setMessages(m); setLoaded(true); } }).catch(() => setLoaded(true));
     return () => { alive = false; };
   }, [project.id, role]);
+
+  // Memory is read from the user's other projects with this agent, so the
+  // current one is excluded — an agent should not "remember" today's answers.
+  useEffect(() => {
+    let alive = true;
+    loadAgentMemory(agent.id, role, project.id)
+      .then(m => { if (alive) setMemory(m); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [agent.id, role, project.id]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, sending]);
 
@@ -106,7 +121,7 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
         renameFromFirstMessage(project, t).then(name => { if (name) onProjectNamed?.(name); }).catch(() => {});
       }
       const history = [...messages, userMsg].map(m => ({ role: m.role, content: m.content }));
-      const reply = await askAgent(agent, history);
+      const reply = await askAgent(agent, history, memoryLines(memory, learned));
       await addMessage(project.id, role, "assistant", reply);
       const createdAt = new Date().toISOString();
       setMessages(prev => [...prev, { id: crypto.randomUUID(), project_id: project.id, column_type: role, role: "assistant", content: reply, created_at: createdAt }]);
@@ -114,6 +129,9 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
       // The document is the moment worth showing — open it right away instead
       // of leaving the user to find a card in the scrollback.
       const parsed = parseMarkers(reply);
+      // Anything the agent decided to remember shows up in the Steckbrief
+      // right away, and travels with it into the next project.
+      if (parsed.memories.length) setLearned(prev => [...prev, ...parsed.memories]);
       if (parsed.doc || looksLikeDocument(parsed.text, deliverable.title)) {
         onOpenDoc?.(buildDoc(parsed.text, parsed.doc || deliverable.title, createdAt, docs.length + 1));
       }
@@ -169,6 +187,26 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
   reportRef.current = onDeliverableChange;
   useEffect(() => { reportRef.current?.(docRef.current); }, [docMsg]);
 
+  // What to show in the Steckbrief: this session's lessons first (they are the
+  // new thing), then the older ones, deduplicated by fact.
+  const shownLessons = (() => {
+    const seen = new Set<string>();
+    const out: { kind: string; fact: string; fresh: boolean; project?: string }[] = [];
+    for (const l of [...learned].reverse()) {
+      const key = l.fact.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ kind: l.kind, fact: l.fact, fresh: true });
+    }
+    for (const l of memory.lessons) {
+      const key = l.fact.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ kind: l.kind, fact: l.fact, fresh: false, project: l.project });
+    }
+    return out;
+  })();
+
   const stationIdx = station ? station.index - 1 : (messages.length > 0 ? 0 : -1);
   const stationLabel = station?.label || deliverable.stations[Math.max(0, stationIdx)]?.label || "";
   const ready = pct >= 100;
@@ -208,9 +246,27 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
             {next && <div className="level-hint">{remaining} more project{remaining === 1 ? "" : "s"} to {next}</div>}
           </div>
           <div><span className="lbl">Previous Projects</span><b>{totalProjects}</b></div>
+          <div>
+            <span className="lbl">Remembers</span>
+            <b>{shownLessons.length}{learned.length > 0 && <span className="mem-new">+{learned.length}</span>}</b>
+          </div>
           {agent.tagline && <div><span className="lbl">Type</span><b>{agent.tagline}</b></div>}
         </div>
         <div className="sb-methods">
+          {shownLessons.length > 0 && (
+            <div className="grp">
+              <span className="lbl">From earlier projects</span>
+              <div className="chips">
+                {shownLessons.slice(0, 4).map(l => (
+                  <span key={l.fact} className={`mem-chip${l.fresh ? " fresh" : ""}`}
+                    title={l.project ? `${l.kind} · learned in ${l.project}` : `${l.kind} · learned just now`}>
+                    {l.fact}
+                  </span>
+                ))}
+                {shownLessons.length > 4 && <span className="mem-chip more">+{shownLessons.length - 4}</span>}
+              </div>
+            </div>
+          )}
           {agent.primaryMethods.length > 0 && (
             <div className="grp">
               <span className="lbl">Primary Methods</span>

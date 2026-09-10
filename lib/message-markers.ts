@@ -5,6 +5,13 @@ export interface TopicMarker {
   label: string;
 }
 
+/** Something the agent learned that also holds in the user's future projects. */
+export interface MemoryNote {
+  /** branche | systeme | budget | entscheidung | widerstand | vorliebe | note */
+  kind: string;
+  fact: string;
+}
+
 export interface ParsedMessage {
   text: string;
   choices: string[];
@@ -13,6 +20,8 @@ export interface ParsedMessage {
   topic: TopicMarker | null;
   /** Set when this message IS the finished deliverable ([[DOC: Change Plan]]). */
   doc: string | null;
+  /** Lessons the agent wants to carry into later projects ([[MEMORY: ...]]). */
+  memories: MemoryNote[];
 }
 
 /**
@@ -58,8 +67,20 @@ export function parseMarkers(raw: string): ParsedMessage {
     text = text.replace(docMatch[0], "");
   }
 
+  // Unlike the others, MEMORY can appear more than once in one answer.
+  const memories: MemoryNote[] = [];
+  const raws = text.match(/\[\[MEMORY:\s*[^\]]*\]\]/gi) ?? [];
+  for (const raw of raws) {
+    const inner = raw.replace(/^\[\[MEMORY:\s*/i, "").replace(/\]\]$/, "");
+    const parts = inner.split("|");
+    const fact = (parts.length > 1 ? parts.slice(1).join("|") : parts[0]).trim();
+    const kind = parts.length > 1 ? parts[0].trim().toLowerCase() : "note";
+    if (fact) memories.push({ kind, fact });
+    text = text.replace(raw, "");
+  }
+
   text = text.replace(/\n{3,}/g, "\n\n").trim();
-  return { text, choices, progress, topic, doc };
+  return { text, choices, progress, topic, doc, memories };
 }
 
 /** Escapes a string for use inside a RegExp. */
