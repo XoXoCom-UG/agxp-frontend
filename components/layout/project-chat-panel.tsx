@@ -9,9 +9,13 @@ import { methodLabel, methodBlurb } from "@/lib/method-labels";
 import { levelFor, nextLevel, LEVEL_ORDER } from "@/lib/agent-progress";
 import { md } from "@/lib/markdown";
 import { useAuth } from "@/lib/auth-context";
+import { useOpenClose } from "@/lib/use-open-close";
 import { AgentMascot, type MascotState } from "@/components/layout/agent-mascot";
+import { LoadingState, LoaderGrid } from "@/components/layout/loading-state";
+import { ThinkingState } from "@/components/layout/thinking-state";
+import { StreamingText } from "@/components/layout/streaming-text";
 import {
-  IconCheck, IconSearch, IconMore, IconDoc, IconDownload, IconX,
+  IconCheck, IconSearch, IconMore, IconDownload, IconX,
   IconPlus, IconMic, IconChevronDown, IconArrowUp, IconArrow,
 } from "@/components/layout/agxp-icons";
 import type { Effort } from "@/lib/ask-agent";
@@ -77,14 +81,22 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [orb, setOrb] = useState<MascotState>("idle");
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [roadmapOpen, setRoadmapOpen] = useState(false);
-  const [agentInfoOpen, setAgentInfoOpen] = useState(false);
+  const menu = useOpenClose();
+  const roadmap = useOpenClose();
+  const agentInfo = useOpenClose();
   const [processingLabel, setProcessingLabel] = useState("");
   const [effort, setEffort] = useState<Effort>("Medium");
   const [effortOpen, setEffortOpen] = useState(false);
   const [attachments, setAttachments] = useState<string[]>([]);
   const [recording, setRecording] = useState(false);
+  // Real extended-thinking text, keyed by message id — client-side only, not
+  // persisted (no schema migration available), so it's lost on reload.
+  const [reasoningByMessage, setReasoningByMessage] = useState<Record<string, string[]>>({});
+  // Message ids that should render plain (already animated, or loaded from
+  // history) rather than through the word-by-word StreamingText reveal.
+  const [animatedIds, setAnimatedIds] = useState<Set<string>>(() => new Set());
+  // Which Roadmap download is mid-"generating" (a method name, or "all").
+  const [pdfBusy, setPdfBusy] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const speakTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const processingPool = useRef(PROCESSING_BROAD);
@@ -159,7 +171,12 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
 
   useEffect(() => {
     let alive = true;
-    listMessages(project.id, role).then(m => { if (alive) { setMessages(m); setLoaded(true); } }).catch(() => setLoaded(true));
+    listMessages(project.id, role).then(m => {
+      if (!alive) return;
+      setMessages(m);
+      setAnimatedIds(new Set(m.map(msg => msg.id))); // history never replays the reveal
+      setLoaded(true);
+    }).catch(() => setLoaded(true));
     return () => { alive = false; };
   }, [project.id, role]);
 
@@ -185,8 +202,13 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
       }
       const history = [...messages, userMsg].map(m => ({ role: m.role, content: m.content }));
       const reply = await askAgent(agent, history, effort);
-      await addMessage(project.id, role, "assistant", reply);
-      setMessages(prev => [...prev, { id: crypto.randomUUID(), project_id: project.id, column_type: role, role: "assistant", content: reply, created_at: new Date().toISOString() }]);
+      await addMessage(project.id, role, "assistant", reply.content);
+      const replyId = crypto.randomUUID();
+      setMessages(prev => [...prev, { id: replyId, project_id: project.id, column_type: role, role: "assistant", content: reply.content, created_at: new Date().toISOString() }]);
+      if (reply.thinking) {
+        const paragraphs = reply.thinking.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+        setReasoningByMessage(prev => ({ ...prev, [replyId]: paragraphs }));
+      }
       playSpeaking();
       touchProjectActivity(project.id, `${role === "coach" ? "Coach" : "Consultant"} replied`).catch(() => {});
     } catch (e) {
@@ -239,11 +261,22 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
     win.focus();
     win.print();
   }
+  // The print pipeline itself is near-instant — a deliberate minimum delay
+  // gives the "generating" state (the LoaderGrid swapped in for the button's
+  // icon) something real to show instead of flashing for one frame.
   function downloadMethod(methodName: string) {
-    openPrintable(methodLabel(methodName), conversationMarkdown(methodLabel(methodName)));
+    setPdfBusy(methodName);
+    setTimeout(() => {
+      openPrintable(methodLabel(methodName), conversationMarkdown(methodLabel(methodName)));
+      setPdfBusy(null);
+    }, 600);
   }
   function downloadAll() {
-    openPrintable("AI Transformation Roadmap", conversationMarkdown("AI Transformation Roadmap"));
+    setPdfBusy("all");
+    setTimeout(() => {
+      openPrintable("AI Transformation Roadmap", conversationMarkdown("AI Transformation Roadmap"));
+      setPdfBusy(null);
+    }, 600);
   }
 
   // Extracted once so the exact same input/toolbar — same state, same
@@ -270,10 +303,11 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
           <button className="composer-icon-btn" data-tooltip="Attach" onClick={pickFiles}><IconPlus size={15} /></button>
           <div style={{ position: "relative", minWidth: 0 }} onClick={e => e.stopPropagation()}>
             <button className="effort-pill" onClick={() => setEffortOpen(o => !o)}>
-              <span className="effort-pill-label">Thinking effort</span><IconChevronDown size={12} />
+              <span className="effort-pill-label">{effort}</span><IconChevronDown size={12} />
             </button>
             {effortOpen && (
               <div className="popover effort-popover" style={{ top: 36, left: 0 }}>
+                <div className="effort-popover-title">Thinking effort</div>
                 <div className="effort-popover-label">{effort}<IconArrow size={13} /></div>
                 <div className="effort-slider-wrap">
                   <span className="effort-slider-dot left" />
@@ -303,11 +337,11 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
 
   return (
     <section className={`panel ${role}`} style={primary ? { flex: 2.3 } : undefined}
-      onClick={() => { if (menuOpen) setMenuOpen(false); if (effortOpen) setEffortOpen(false); }}>
+      onClick={() => { menu.close(); if (effortOpen) setEffortOpen(false); }}>
       {/* Head: who this agent is, condensed */}
       <div className="chat-head">
         <button className="mascot-trigger" data-tooltip="Agent info"
-          onClick={() => { setAgentInfoOpen(o => !o); setRoadmapOpen(false); }}>
+          onClick={() => { agentInfo.toggle(); roadmap.close(); }}>
           <AgentMascot role={role} state={orb} size={46} enter />
         </button>
         <div style={{ minWidth: 0 }}>
@@ -316,28 +350,28 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
         </div>
         {role === "consultant" && (
           <button className="roadmap-btn" style={{ marginLeft: "auto" }}
-            onClick={() => { setRoadmapOpen(o => !o); setAgentInfoOpen(false); }}>
-            <IconDoc size={13} />Roadmap
+            onClick={() => { roadmap.toggle(); agentInfo.close(); }}>
+            Method Group
           </button>
         )}
         <div style={{ position: "relative", marginLeft: role === "consultant" ? 0 : "auto" }} onClick={e => e.stopPropagation()}>
-          <button className="chat-menu-btn" data-tooltip="More" onClick={() => setMenuOpen(o => !o)}>
+          <button className="chat-menu-btn" data-tooltip="More" onClick={() => menu.toggle()}>
             <IconMore size={14} />
           </button>
-          {menuOpen && (
-            <div className="popover" style={{ top: 36, right: 0, minWidth: 160 }}>
-              <button className="mi" onClick={() => { setMenuOpen(false); setAgentInfoOpen(true); setRoadmapOpen(false); }}>Agent info</button>
-              <button className="mi" onClick={() => { setMenuOpen(false); onChangeAgent?.(); }}>Change agent</button>
+          {menu.mounted && (
+            <div className={`popover t-dropdown ${menu.className}`} data-origin="top-right" style={{ top: 36, right: 0, minWidth: 160 }}>
+              <button className="mi" onClick={() => { menu.close(); agentInfo.open(); roadmap.close(); }}>Agent info</button>
+              <button className="mi" onClick={() => { menu.close(); onChangeAgent?.(); }}>Change agent</button>
             </div>
           )}
         </div>
       </div>
 
-      {agentInfoOpen && (
-        <div className="roadmap-panel">
+      {agentInfo.mounted && (
+        <div className={`roadmap-panel t-dropdown ${agentInfo.className}`} data-origin="top-right">
           <div className="rp-head">
             <h3>{agent.name}</h3>
-            <button className="rp-close" onClick={() => setAgentInfoOpen(false)}><IconX size={13} /></button>
+            <button className="rp-close" onClick={() => agentInfo.close()}><IconX size={13} /></button>
           </div>
           <div className="rp-list">
             {agent.description && <p className="agent-info-desc">{agent.description}</p>}
@@ -371,23 +405,29 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
         </div>
       )}
 
-      {roadmapOpen && (
-        <div className="roadmap-panel">
+      {roadmap.mounted && (
+        <div className={`roadmap-panel t-dropdown ${roadmap.className}`} data-origin="top-right">
           <div className="rp-head">
-            <h3>AI Transformation Roadmap</h3>
-            <button className="rp-close" onClick={() => setRoadmapOpen(false)}><IconX size={13} /></button>
+            <h3>Method Group</h3>
+            <button className="rp-close" onClick={() => roadmap.close()}><IconX size={13} /></button>
           </div>
-          <button className="rp-download-all" onClick={downloadAll}><IconDownload size={14} />Download All</button>
+          <button className="rp-download-all" disabled={pdfBusy !== null} onClick={downloadAll}>
+            {pdfBusy === "all" ? <LoaderGrid /> : <IconDownload size={14} />}Download All
+          </button>
           <div className="rp-list">
             {[...agent.primaryMethods, ...agent.secondaryMethods].map(m => (
               <div key={m.id} className="roadmap-item">
                 <span className="ri-name">{methodLabel(m.name)}</span>
-                <button className="ri-dl" data-tooltip="Download" onClick={() => downloadMethod(m.name)}><IconDownload size={13} /></button>
+                <button className="ri-dl" data-tooltip="Download" disabled={pdfBusy !== null} onClick={() => downloadMethod(m.name)}>
+                  {pdfBusy === m.name ? <LoaderGrid /> : <IconDownload size={13} />}
+                </button>
               </div>
             ))}
             {agent.primaryMethods.length === 0 && agent.secondaryMethods.length === 0 && (
               <div className="roadmap-item"><span className="ri-name">Transformation Concept</span>
-                <button className="ri-dl" data-tooltip="Download" onClick={downloadAll}><IconDownload size={13} /></button>
+                <button className="ri-dl" data-tooltip="Download" disabled={pdfBusy !== null} onClick={downloadAll}>
+                  {pdfBusy === "all" ? <LoaderGrid /> : <IconDownload size={13} />}
+                </button>
               </div>
             )}
           </div>
@@ -422,9 +462,18 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
               if (m.role === "user") return <div key={m.id} className="msg-user">{m.content}</div>;
               const parsed = parseMarkers(m.content);
               const showChoices = i === lastAssistantIdx && parsed.choices.length > 0 && !sending;
+              const reasoning = reasoningByMessage[m.id];
+              const isNew = !animatedIds.has(m.id);
               return (
                 <div key={m.id} className="msg-agent">
-                  <div className="txt" dangerouslySetInnerHTML={{ __html: md(parsed.text) }} />
+                  {reasoning && <ThinkingState paragraphs={reasoning} />}
+                  {isNew ? (
+                    <div className="txt">
+                      <StreamingText text={parsed.text} onDone={() => setAnimatedIds(prev => new Set(prev).add(m.id))} />
+                    </div>
+                  ) : (
+                    <div className="txt" dangerouslySetInnerHTML={{ __html: md(parsed.text) }} />
+                  )}
                   {showChoices && (
                     <div className="choice-row" style={{ paddingLeft: 0 }}>
                       {parsed.choices.map(c => (
@@ -436,9 +485,7 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
               );
             })}
 
-            {sending && (
-              <div className="msg-processing"><span className="tline" /><span className="plabel shimmer-text">{processingLabel}</span></div>
-            )}
+            {sending && <LoadingState label={processingLabel} />}
           </>
         )}
         <div ref={bottomRef} />

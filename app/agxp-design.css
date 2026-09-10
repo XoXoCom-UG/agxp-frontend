@@ -29,7 +29,7 @@
 }
 
 @media (prefers-reduced-motion: reduce){
-  .msg-processing .tline{ animation:none !important; opacity:.6; }
+  .loading-cell{ animation:none !important; opacity:.15 !important; }
   .spinner{ animation-duration:0.01ms !important; }
 }
 
@@ -498,8 +498,6 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
   padding:12px 18px; border-radius:var(--r-pill); font-size:var(--text-sm); color:var(--text-primary);
   line-height:1.55; white-space:pre-wrap;
 }
-@keyframes typingSweep{ 0%{ background-position:200% 0; } 100%{ background-position:-40% 0; } }
-
 /* Empty-conversation hero — vertically centered greeting + composer +
    suggestion list, shown only while messages.length === 0. Collapses back
    to the plain top-anchored message list + bottom .chat-input otherwise.
@@ -593,6 +591,7 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
    property set inline from the current value, since a plain
    <input type="range"> has no CSS hook for "how far along is it". */
 .effort-popover{ width:240px; padding:var(--sp-5) var(--sp-4); display:flex; flex-direction:column; align-items:center; gap:var(--sp-4); }
+.effort-popover-title{ font-size:var(--text-3xs); font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-muted); margin-bottom:calc(-1 * var(--sp-2)); }
 .effort-popover-label{ display:flex; align-items:center; gap:2px; font-size:var(--text-base); font-weight:650; color:var(--text-primary); }
 .effort-popover-label svg{ color:var(--text-muted); }
 .effort-slider-wrap{ position:relative; width:100%; display:flex; align-items:center; }
@@ -857,8 +856,6 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 
 /* ---------- SHIMMER TEXT — ported from v8, used for the contextual
    "thinking" label so it reads as live activity, not a stuck static line. ---------- */
-.msg-processing{ display:flex; align-items:center; gap:8px; font-size:var(--text-2xs); color:var(--text-muted); }
-.msg-processing .tline{ width:34px; height:2px; border-radius:2px; flex-shrink:0; background:linear-gradient(90deg, var(--primary), transparent); background-size:200% 100%; animation:typingSweep 1.1s ease-in-out infinite; }
 .shimmer-text{
   background:linear-gradient(90deg, var(--text-muted) 0%, var(--text-primary) 50%, var(--text-muted) 100%);
   background-size:200% 100%; -webkit-background-clip:text; background-clip:text; color:transparent;
@@ -875,19 +872,23 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
    meeting (Ana's explicit call: keep it). ---------- */
 .roadmap-btn{
   display:flex; align-items:center; gap:7px; font-size:var(--text-2xs); font-weight:600; color:var(--text-secondary);
-  background:var(--surface-1); border:1px solid var(--border-soft); border-radius:var(--r-pill); padding:7px 13px; flex-shrink:0;
-  transition:color .15s var(--ease-out), border-color .15s var(--ease-out);
+  background:var(--surface-1); border:none; border-radius:var(--r-pill); padding:7px 13px; flex-shrink:0;
+  transition:color .15s var(--ease-out), background-color .15s var(--ease-out);
 }
 @media (hover:hover) and (pointer:fine){
-  .roadmap-btn:hover{ color:var(--text-primary); border-color:var(--border-medium); }
+  .roadmap-btn:hover{ color:var(--text-primary); background:var(--accent); }
 }
+/* A floating card (like the ⋯ menu's .popover), not a full-height drawer —
+   anchored just below the button that opened it, over the content rather
+   than pushing it. */
 .roadmap-panel{
-  position:absolute; top:0; right:0; bottom:0; width:320px; max-width:88%; background:var(--popover);
-  border-left:1px solid var(--border-medium); box-shadow:-20px 0 50px -24px rgba(0,0,0,0.6); z-index:20;
-  display:flex; flex-direction:column;
+  position:absolute; top:36px; right:0; width:300px; max-width:88%; max-height:min(70vh, 420px);
+  background:var(--popover); border:1px solid var(--border-medium); border-radius:12px;
+  box-shadow:0 20px 50px -14px rgba(0,0,0,0.65); z-index:60;
+  display:flex; flex-direction:column; overflow:hidden;
 }
 .rp-head{ display:flex; align-items:center; justify-content:space-between; padding:var(--sp-5) var(--sp-5) var(--sp-4); border-bottom:1px solid var(--border-soft); flex-shrink:0; }
-.rp-head h3{ font-size:var(--text-sm); font-weight:650; color:var(--text-primary); }
+.rp-head h3{ font-size:var(--text-lg); font-weight:650; color:var(--text-primary); }
 .rp-close{
   width:26px; height:26px; border-radius:8px; border:1px solid var(--border-soft); background:var(--surface-1); color:var(--text-muted);
   display:flex; align-items:center; justify-content:center; flex-shrink:0;
@@ -903,8 +904,9 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
   transition:background-color .16s var(--ease-out), border-color .16s var(--ease-out);
 }
 @media (hover:hover) and (pointer:fine){
-  .rp-download-all:hover{ border-color:var(--border-strong); background:var(--accent); }
+  .rp-download-all:hover:not(:disabled){ border-color:var(--border-strong); background:var(--accent); }
 }
+.rp-download-all:disabled{ opacity:.7; cursor:default; }
 .rp-list{ flex:1; overflow-y:auto; padding:var(--sp-4) var(--sp-5); display:flex; flex-direction:column; gap:8px; }
 .roadmap-item{
   display:flex; align-items:center; justify-content:space-between; gap:10px; padding:11px 13px;
@@ -917,5 +919,75 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
   transition:color .15s var(--ease-out), border-color .15s var(--ease-out);
 }
 @media (hover:hover) and (pointer:fine){
-  .roadmap-item .ri-dl:hover{ color:var(--text-primary); border-color:var(--border-medium); }
+  .roadmap-item .ri-dl:hover:not(:disabled){ color:var(--text-primary); border-color:var(--border-medium); }
+}
+.roadmap-item .ri-dl:disabled{ opacity:.7; cursor:default; }
+
+/* ---------- DROPDOWN OPEN/CLOSE — ported from transitions.dev, applied to
+   the chat-head ⋯ menu and the Roadmap/Agent-Info side panels. A real
+   closing phase (scale+fade out) instead of an instant unmount. The effort
+   popover deliberately keeps its plain instant show/hide. ---------- */
+/* .popover's own one-shot entrance animation would otherwise fight with
+   .t-dropdown's opacity/transform transition on the same properties. */
+.popover.t-dropdown{ animation:none; }
+:root {
+  --dropdown-open-dur: 250ms;
+  --dropdown-close-dur: 150ms;
+  --dropdown-pre-scale: 0.97;
+  --dropdown-closing-scale: 0.99;
+  --dropdown-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+.t-dropdown {
+  transform-origin: top left;
+  transform: scale(var(--dropdown-pre-scale));
+  opacity: 0;
+  pointer-events: none;
+  transition: transform var(--dropdown-open-dur) var(--dropdown-ease), opacity var(--dropdown-open-dur) var(--dropdown-ease);
+  will-change: transform, opacity;
+}
+.t-dropdown[data-origin="top-right"] { transform-origin: top right; }
+.t-dropdown[data-origin="top-center"] { transform-origin: top center; }
+.t-dropdown.is-open {
+  transform: scale(1);
+  opacity: 1;
+  pointer-events: auto;
+}
+.t-dropdown.is-closing {
+  transform: scale(var(--dropdown-closing-scale));
+  opacity: 0;
+  pointer-events: none;
+  transition: transform var(--dropdown-close-dur) var(--dropdown-ease), opacity var(--dropdown-close-dur) var(--dropdown-ease);
+}
+@media (prefers-reduced-motion: reduce) {
+  .t-dropdown { transition: none !important; }
+}
+
+/* ---------- LOADING STATE — pixel-grid wavefront + shimmer label + elapsed
+   timer, replacing the old shimmer-line "thinking" indicator; the bare
+   LoaderGrid (no label/timer) also sits inside the Roadmap's small download
+   buttons while a PDF is "generating". ---------- */
+.loading-state{ display:flex; align-items:center; gap:9px; }
+.loading-grid{ display:grid; grid-template-columns:repeat(3, 4px); gap:1.5px; flex-shrink:0; }
+.loading-cell{ width:4px; height:4px; border-radius:1px; background:var(--text-primary); opacity:.15; animation-name:pixel-on; animation-timing-function:ease-in-out; animation-iteration-count:infinite; }
+@keyframes pixel-on{ 0%,100%{ opacity:.15; } 50%{ opacity:.9; } }
+.loading-label{ font-size:var(--text-2xs); }
+.loading-timer{ font-family:ui-monospace, "SF Mono", Menlo, monospace; font-size:var(--text-3xs); color:var(--text-muted); font-variant-numeric:tabular-nums; }
+
+/* ---------- THINKING STATE — collapsed-by-default "Show reasoning" trace
+   for the model's real extended-thinking text (High effort only). ---------- */
+.thinking-state{ margin-bottom:var(--sp-2); }
+.thinking-header{ display:flex; align-items:center; gap:6px; background:none; border:none; padding:4px 2px; color:var(--text-muted); font-size:var(--text-2xs); font-weight:600; }
+@media (hover:hover) and (pointer:fine){ .thinking-header:hover{ color:var(--text-secondary); } }
+.thinking-chevron{ transition:transform 200ms var(--ease-out); }
+.thinking-chevron.open{ transform:rotate(180deg); }
+.thinking-trace{ position:relative; margin:6px 0 0 2px; padding-left:14px; border-left:1px solid var(--border-soft); display:flex; flex-direction:column; gap:8px; }
+.thinking-row{ font-size:var(--text-xs); color:var(--text-secondary); line-height:1.6; margin:0; animation:fade-up 260ms var(--ease-out) both; }
+
+/* ---------- STREAMING TEXT — visual-only word-by-word reveal of a reply
+   that has already fully arrived (no real network streaming). ---------- */
+.streaming-text{ white-space:pre-wrap; }
+.streaming-cursor{ display:inline-block; width:2px; height:1em; margin-left:2px; vertical-align:text-bottom; background:var(--text-primary); animation:cursor-blink 800ms steps(1) infinite; }
+@keyframes cursor-blink{ 0%,49%{ opacity:1; } 50%,100%{ opacity:0; } }
+@media (prefers-reduced-motion: reduce){
+  .streaming-cursor{ animation:none !important; opacity:.6; }
 }
