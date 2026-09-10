@@ -88,10 +88,19 @@ interface ChatBody {
   agentType: AgentType;
   agentName: string;
   messages: { role: "user" | "assistant"; content: string }[];
-  // Standard = the usual call. Extended turns on the model's extended
-  // thinking for that one request — a real difference, not a cosmetic label.
-  effort?: "Standard" | "Extended";
+  // Three real, distinct request shapes, not cosmetic labels — see the
+  // EFFORT_CONFIG map below.
+  effort?: "Instant" | "Medium" | "High";
 }
+
+// Instant trims max_tokens for a snappier reply. Medium is today's default
+// (unchanged from the old flat max_tokens:8192 call). High turns on the
+// model's extended thinking with a larger budget.
+const EFFORT_CONFIG: Record<"Instant" | "Medium" | "High", { max_tokens: number; thinking?: { type: "enabled"; budget_tokens: number } }> = {
+  Instant: { max_tokens: 4096 },
+  Medium: { max_tokens: 8192 },
+  High: { max_tokens: 12288, thinking: { type: "enabled", budget_tokens: 4096 } },
+};
 
 export async function POST(req: NextRequest) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -105,13 +114,12 @@ export async function POST(req: NextRequest) {
   }
 
   const anthropic = new Anthropic({ apiKey });
-  const extended = body.effort === "Extended";
+  const effortConfig = EFFORT_CONFIG[body.effort ?? "Medium"];
 
   try {
     const response = await anthropic.messages.create({
       model: MODEL,
-      max_tokens: extended ? 12288 : 8192,
-      ...(extended ? { thinking: { type: "enabled" as const, budget_tokens: 4096 } } : {}),
+      ...effortConfig,
       system: SYSTEM_PROMPTS[body.agentType](body.agentName || "dein Agent"),
       messages: body.messages.map(m => ({ role: m.role, content: m.content })),
     });
