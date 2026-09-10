@@ -11,7 +11,13 @@ export interface ChatTurn {
 // thinking with a larger token budget.
 export type Effort = "Instant" | "Medium" | "High";
 
-export async function askAgent(agent: Agent, messages: ChatTurn[], effort: Effort = "Medium"): Promise<string> {
+export interface AgentReply {
+  content: string;
+  /** Real extended-thinking text, only ever present at effort:"High". */
+  thinking?: string;
+}
+
+export async function askAgent(agent: Agent, messages: ChatTurn[], effort: Effort = "Medium"): Promise<AgentReply> {
   const res = await fetch("/api/agent/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -19,5 +25,5 @@ export async function askAgent(agent: Agent, messages: ChatTurn[], effort: Effor
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Anfrage fehlgeschlagen.");
-  return data.content as string;
+  return { content: data.content as string, thinking: data.thinking as string | undefined };
 }

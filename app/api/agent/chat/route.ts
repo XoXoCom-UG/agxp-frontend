@@ -130,7 +130,16 @@ export async function POST(req: NextRequest) {
       .join("\n")
       .trim();
 
-    return NextResponse.json({ content: text || "…" });
+    // Only ever populated at High effort (the only case thinking is turned
+    // on) — the model's real extended-thinking text, shown client-side as an
+    // expandable "reasoning" trace instead of being discarded.
+    const thinking = response.content
+      .filter(b => b.type === "thinking")
+      .map(b => (b as { thinking: string }).thinking)
+      .join("\n\n")
+      .trim();
+
+    return NextResponse.json({ content: text || "…", thinking: thinking || undefined });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unbekannter Fehler bei der Anfrage an Claude.";
     return NextResponse.json({ error: message }, { status: 502 });
