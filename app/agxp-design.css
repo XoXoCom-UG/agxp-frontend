@@ -397,8 +397,8 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 .detail-section{ margin-bottom:var(--sp-5); }
 .detail-section .lbl{ font-size:var(--text-3xs); font-weight:700; letter-spacing:0.09em; color:var(--text-muted); text-transform:uppercase; display:block; margin-bottom:9px; }
 .detail-section .val{ font-size:var(--text-xs); color:var(--text-secondary); }
-.num-list{ display:flex; flex-direction:column; gap:7px; }
-.num-list li{ font-size:var(--text-sm); color:var(--text-primary); display:flex; gap:11px; align-items:baseline; }
+
+
 .num-list li .no{ font-size:var(--text-3xs); color:var(--magenta-soft); font-weight:700; width:17px; flex-shrink:0; }
 .detail-row-inline{ display:flex; gap:var(--sp-7); margin-bottom:var(--sp-5); }
 .detail-row-inline .lbl{ font-size:var(--text-3xs); font-weight:700; letter-spacing:0.09em; color:var(--text-muted); text-transform:uppercase; display:block; margin-bottom:7px; }
@@ -453,13 +453,9 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 .field input, .field textarea{ width:100%; background:var(--surface-1); border:1px solid var(--border-medium); border-radius:10px; padding:11px 13px; color:var(--text-primary); font-size:var(--text-xs); outline:none; font-family:inherit; resize:none; box-shadow:inset 0 1px 2px rgba(0,0,0,0.2); transition:border-color .16s ease, box-shadow .16s ease; }
 .field input:focus, .field textarea:focus{ border-color:var(--border-strong); box-shadow:inset 0 1px 2px rgba(0,0,0,0.2), 0 0 0 3px color-mix(in srgb, var(--ring) 13%, transparent); }
 .method-select{ display:flex; gap:7px; flex-wrap:wrap; }
-.method-chip{
-  font-size:var(--text-2xs); font-weight:500; padding:7px 12px; border-radius:8px; border:1px solid var(--border-medium);
-  color:var(--text-muted); background:var(--surface-1);
-  transition:color .14s var(--ease-out), border-color .14s var(--ease-out), background-color .14s var(--ease-out), transform 120ms var(--ease-out);
-}
+
 .method-chip:active{ transform:scale(0.96); }
-.method-chip.on{ color:var(--text-primary); background:rgba(255,255,255,0.06); border-color:color-mix(in srgb, var(--ring) 45%, transparent); }
+
 .field-err{ font-size:var(--text-3xs); color:var(--destructive); margin-top:6px; }
 .configure-actions{ margin-top:auto; display:flex; gap:10px; padding-top:8px; }
 .btn-solid{ flex:1; justify-content:center; }
@@ -562,14 +558,8 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 /* ---------- CHOICE CHIPS — clickable quick-replies under an agent question,
    parsed from a [[CHOICES: ...]] marker. Same visual language as method-chip
    but the state is "answered", not "toggled on". ---------- */
-.choice-row{ display:flex; flex-wrap:wrap; gap:7px; margin-top:9px; padding-left:11px; }
-.choice-chip{
-  font-size:var(--text-2xs); font-weight:500; padding:8px 13px; border-radius:var(--r-pill);
-  border:1px solid var(--border-medium); color:var(--text-secondary); background:var(--surface-1);
-  transition:color .14s var(--ease-out), border-color .14s var(--ease-out), background-color .14s var(--ease-out), transform 120ms var(--ease-out);
-}
-.choice-chip:active:not(:disabled){ transform:scale(0.96); }
-.choice-chip:disabled{ opacity:.5; cursor:default; }
+
+
 @media (hover:hover) and (pointer:fine){
   .choice-chip:hover:not(:disabled){ color:var(--text-primary); border-color:color-mix(in srgb, var(--ring) 45%, transparent); background:rgba(255,255,255,0.06); }
 }
@@ -664,33 +654,18 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 }
 
 /* Suggested roles — agent types, with rollout status */
-.suggested{ padding:var(--sp-5) var(--sp-6) var(--sp-6); border-top:1px solid var(--border-soft); flex-shrink:0; }
-.suggested .lbl{ font-size:var(--text-3xs); font-weight:700; letter-spacing:0.09em; text-transform:uppercase; color:var(--text-muted); margin-bottom:var(--sp-3); }
-.suggested ul{ display:flex; flex-direction:column; gap:11px; }
-.suggested li{ display:flex; align-items:center; gap:10px; font-size:var(--text-xs); color:var(--text-secondary); }
+
+
 .suggested li .dot{ width:4px; height:4px; border-radius:50%; background:var(--text-muted); flex-shrink:0; }
 .suggested li .nm{ flex:1; }
-.role-pill{
-  font-size:var(--text-3xs); font-weight:600; padding:3px 9px; border-radius:var(--r-pill);
-  border:1px solid var(--border); color:var(--text-muted); background:var(--secondary); flex-shrink:0;
-}
-.role-pill.confirmed{ color:var(--primary-soft); border-color:color-mix(in srgb, var(--primary) 32%, transparent); background:color-mix(in srgb, var(--primary) 12%, transparent); }
+
 
 /* Steckbrief — the compact agent profile above the conversation */
 .steckbrief{ padding:var(--sp-4) var(--sp-6) var(--sp-5); border-bottom:1px solid var(--border-soft); flex-shrink:0; }
 .sb-stats{ display:flex; gap:var(--sp-7); margin-bottom:var(--sp-4); flex-wrap:wrap; }
 .sb-stats .lbl{ display:block; font-size:var(--text-3xs); color:var(--text-muted); margin-bottom:4px; }
 .sb-stats b{ font-size:var(--text-sm); font-weight:650; color:var(--text-primary); }
-.sb-methods{ display:flex; gap:var(--sp-6); flex-wrap:wrap; }
-.sb-methods .grp{ min-width:0; }
-.sb-methods .lbl{ display:block; font-size:var(--text-3xs); font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px; }
-.sb-methods .chips{ display:flex; gap:7px; flex-wrap:wrap; }
-.m-chip{
-  font-size:var(--text-2xs); font-weight:500; padding:5px 11px; border-radius:var(--r-pill);
-  border:1px solid color-mix(in srgb, var(--primary) 28%, transparent);
-  background:color-mix(in srgb, var(--primary) 12%, transparent); color:var(--primary-soft);
-}
-.m-chip.secondary{ border-color:var(--border); background:var(--secondary); color:var(--text-muted); }
+
 
 /* Quick actions get an icon tile in the blue template (not a bare number) */
 .qa-ic{
@@ -767,21 +742,13 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 .level-seg.on{ background:var(--primary); }
 .level-hint{ font-size:var(--text-3xs); color:var(--text-muted); }
 .level-up{
-  font-size:var(--text-3xs); font-weight:700; letter-spacing:0.06em; text-transform:uppercase;
-  color:var(--primary-foreground); background:var(--primary); border-radius:var(--r-pill); padding:2px 9px;
+  font-size:var(--text-2xs); font-weight:650; color:var(--primary-soft);
   animation:levelUp 600ms var(--ease-out);
 }
 @keyframes levelUp{ 0%{ opacity:0; transform:translateY(5px) scale(.9); } 60%{ transform:translateY(0) scale(1.07); } 100%{ opacity:1; transform:none; } }
 
 /* Project artifacts — the downloadable method outputs, not built yet */
-.artifact-bar{ display:flex; align-items:center; gap:var(--sp-3); padding:var(--sp-4) var(--sp-6); flex-shrink:0; flex-wrap:wrap; }
-.artifact-bar .lbl{ font-size:var(--text-3xs); font-weight:700; letter-spacing:0.09em; text-transform:uppercase; color:var(--text-muted); }
-.artifact-chip{
-  display:inline-flex; align-items:center; gap:8px; font-size:var(--text-2xs); color:var(--text-muted);
-  border:1px solid var(--border); background:var(--secondary); border-radius:var(--r-pill); padding:6px 12px;
-  cursor:not-allowed;
-}
-.artifact-chip .soon{ font-size:var(--text-3xs); color:var(--primary-soft); background:color-mix(in srgb, var(--primary) 14%, transparent); border-radius:var(--r-pill); padding:2px 7px; }
+
 
 /* =============================================================================
    DELIVERABLE — what each panel is building (Transformation Concept / Change
@@ -802,10 +769,7 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
   letter-spacing:0.09em; text-transform:uppercase; color:var(--primary-soft);
 }
 .dr-pct{ margin-left:auto; font-size:var(--text-2xs); font-weight:650; color:var(--text-primary); font-variant-numeric:tabular-nums; }
-.dr-badge{
-  margin-left:auto; font-size:var(--text-3xs); font-weight:700; letter-spacing:0.06em; text-transform:uppercase;
-  color:var(--primary-foreground); background:var(--success); border-radius:var(--r-pill); padding:2px 9px;
-}
+
 .dr-bar{
   position:relative; height:5px; border-radius:3px; overflow:hidden; background:var(--border-medium);
   background-image:repeating-linear-gradient(90deg,
@@ -850,17 +814,7 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
   display:block; font-size:var(--text-3xs); font-weight:700; letter-spacing:0.09em;
   text-transform:uppercase; color:var(--text-muted); margin-bottom:9px;
 }
-.agenda-peek ol{ list-style:none; display:flex; flex-wrap:wrap; gap:6px; counter-reset:ag; }
-.agenda-peek li{
-  counter-increment:ag; display:inline-flex; align-items:center; gap:7px;
-  font-size:var(--text-2xs); color:var(--text-secondary);
-  border:1px solid var(--border-soft); border-radius:var(--r-pill); padding:5px 11px 5px 6px;
-}
-.agenda-peek li::before{
-  content:counter(ag); display:flex; align-items:center; justify-content:center;
-  width:17px; height:17px; border-radius:50%; font-size:var(--text-3xs); font-weight:700;
-  color:var(--primary-soft); background:color-mix(in srgb, var(--primary) 16%, transparent);
-}
+.agenda-peek .plist{ margin:0; }
 
 /* The generated document, as it appears in the conversation */
 .doc-card{
@@ -886,17 +840,8 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 }
 
 /* An artifact chip that points at a real, finished document */
-.artifact-chip.live{
-  cursor:pointer; color:var(--text-primary);
-  border-color:color-mix(in srgb, var(--primary) 45%, var(--border));
-  background:color-mix(in srgb, var(--primary) 12%, var(--secondary));
-  transition:border-color .16s var(--ease-out), transform 120ms var(--ease-out);
-}
-.artifact-chip.live:active{ transform:scale(0.96); }
-.artifact-chip .ready{
-  font-size:var(--text-3xs); font-weight:700; letter-spacing:0.05em; text-transform:uppercase;
-  color:var(--primary-foreground); background:var(--primary); border-radius:var(--r-pill); padding:2px 7px;
-}
+
+
 @media (hover:hover) and (pointer:fine){
   .artifact-chip.live:hover{ border-color:var(--primary-soft); }
 }
@@ -924,7 +869,7 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
   background:linear-gradient(120deg, color-mix(in srgb, var(--primary) 10%, transparent), transparent 60%);
 }
 .doc-id{ min-width:0; flex:1; display:flex; flex-direction:column; gap:2px; }
-.doc-id .kind{ font-size:var(--text-3xs); font-weight:700; letter-spacing:0.09em; text-transform:uppercase; color:var(--primary-soft); }
+
 .doc-id h2{ font-size:var(--text-xl); font-weight:650; letter-spacing:-0.3px; color:var(--text-primary); }
 .doc-id .meta{ font-size:var(--text-2xs); color:var(--text-muted); }
 .doc-actions{ margin-left:auto; display:flex; align-items:center; gap:7px; flex-shrink:0; }
@@ -1059,16 +1004,7 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 @media (hover:hover) and (pointer:fine){
   .dr-redo:hover:not(:disabled){ color:var(--text-primary); border-color:color-mix(in srgb, var(--ring) 55%, transparent); }
 }
-.doc-card .dc-v{
-  margin-left:7px; font-size:var(--text-3xs); font-weight:700; letter-spacing:0.04em;
-  color:var(--primary-foreground); background:var(--primary); border-radius:var(--r-pill); padding:1px 7px;
-}
-.doc-id .kind{ display:flex; align-items:center; gap:8px; }
-.doc-id .doc-ver{
-  font-size:var(--text-3xs); font-weight:700; letter-spacing:0.04em; text-transform:none;
-  color:var(--text-secondary); background:var(--secondary); border:1px solid var(--border-soft);
-  border-radius:var(--r-pill); padding:1px 8px;
-}
+
 
 /* =============================================================================
    DOCUMENT VISUALS — the graphics of the deliverable, drawn from the agent's
@@ -1223,41 +1159,25 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
   .v-tile.t-good b{ color:#2f7a58 !important; }
 }
 
-/* ---------- AGENT MEMORY — what the agent carries between projects. Reads as
-   remembered knowledge, not as a configured method: dotted edge, softer type,
-   and a brief highlight the moment something new is learned. ---------- */
-.mem-chip{
-  position:relative; display:inline-flex; align-items:center; gap:7px; max-width:260px;
-  font-size:var(--text-2xs); line-height:1.4; color:var(--text-secondary);
-  border:1px dashed var(--border-medium); border-radius:var(--r-pill); padding:5px 11px;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-}
-.mem-chip::before{
-  content:""; width:5px; height:5px; border-radius:50%; background:var(--primary-soft); flex-shrink:0; opacity:.75;
-}
-.mem-chip.more{ color:var(--text-muted); border-style:solid; }
-.mem-chip.more::before{ display:none; }
-.mem-chip.fresh{
-  color:var(--text-primary); border-style:solid;
-  border-color:color-mix(in srgb, var(--primary) 45%, transparent);
-  background:color-mix(in srgb, var(--primary) 10%, transparent);
-  animation:memLearn 900ms var(--ease-out);
-}
+/* ---------- AGENT MEMORY — the highlight when the agent learns something
+   new. The list itself lives with the other plain lists (.plist). ---------- */
+
+
 @keyframes memLearn{
   0%{ opacity:0; transform:translateY(4px); box-shadow:0 0 0 0 color-mix(in srgb, var(--primary) 45%, transparent); }
   55%{ box-shadow:0 0 0 5px transparent; }
   100%{ opacity:1; transform:none; }
 }
 .mem-new{
-  margin-left:6px; font-size:var(--text-3xs); font-weight:700; letter-spacing:0.03em;
-  color:var(--primary-foreground); background:var(--primary); border-radius:var(--r-pill); padding:1px 6px;
+  margin-left:7px; font-style:normal; font-size:var(--text-3xs); font-weight:650;
+  letter-spacing:normal; text-transform:none; color:var(--primary-soft);
   animation:memLearn 900ms var(--ease-out);
 }
 @media (prefers-reduced-motion:reduce){
-  .mem-chip.fresh, .mem-new{ animation:none !important; }
+  .plist li.fresh, .mem-new{ animation:none !important; }
 }
 /* Room to breathe where the layout allows it (agent dashboard detail) */
-.mem-chip.wide{ max-width:none; white-space:normal; text-align:left; padding:7px 13px; }
+
 
 /* =============================================================================
    RESPONSIVE — the workspace is built for two panels side by side, which stops
@@ -1310,7 +1230,7 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 
   .page-head{ padding:var(--sp-4) var(--sp-5) var(--sp-3); }
   main.workspace{ padding:0 var(--sp-5) var(--sp-5); }
-  .artifact-bar{ padding:var(--sp-3) var(--sp-5); }
+  
 }
 
 @media (max-width:640px){
@@ -1329,7 +1249,7 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 
   .steckbrief{ padding:var(--sp-3) var(--sp-4) var(--sp-4); }
   .sb-stats{ gap:var(--sp-5); margin-bottom:var(--sp-3); }
-  .mem-chip{ max-width:100%; }
+  
 
   .deliv-rail{ padding:9px var(--sp-4) 10px; }
   .dr-step{ font-size:var(--text-3xs); }
@@ -1340,13 +1260,10 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
   .chat-input button{ width:44px; height:44px; }
 
   /* The artifact strip scrolls instead of stacking into three rows */
-  .artifact-bar{
-    flex-wrap:nowrap; overflow-x:auto; gap:7px; padding:var(--sp-3) var(--sp-4);
-    scrollbar-width:none;
-  }
+  
   .artifact-bar::-webkit-scrollbar{ display:none; }
-  .artifact-bar .lbl{ display:none; }
-  .artifact-chip{ flex-shrink:0; }
+  
+  
 
   /* Picker panel: cards and rows need the full width */
   .pick-empty{ padding:var(--sp-5) var(--sp-4); }
@@ -1393,7 +1310,7 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
   /* The chat is the point on a phone. The Steckbrief keeps one compact row of
      numbers; methods and remembered lessons live in the Agent Dashboard. */
   .steckbrief{ padding:var(--sp-3) var(--sp-4); }
-  .sb-methods{ display:none; }
+  
   .sb-stats{ gap:var(--sp-5); margin-bottom:0; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; }
   .sb-stats::-webkit-scrollbar{ display:none; }
   .sb-stats > div{ flex-shrink:0; }
@@ -1406,7 +1323,7 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
   /* Document header on a phone: the mascot already says which agent wrote it,
      so the eyebrow goes and the meta line stays on one line. */
   .doc-head{ align-items:flex-start; }
-  .doc-id .kind{ display:none; }
+  
   .doc-id .meta{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .doc-body h2{ margin-top:var(--sp-5); }
   .doc-body > div[class~="h-2"]{ height:2px; }
@@ -1415,3 +1332,71 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 /* Belt and braces: the reader's header sizes to its content, whatever the
    app's top-bar rules say. */
 .doc-head{ height:auto; justify-content:flex-start; }
+
+/* =============================================================================
+   LISTS INSTEAD OF PILLS — Patryk's review (2026-09-10): "Überall sehe ich
+   diese Kreise mit Wörtern drin. Können wir davon bitte komplett wegkommen...
+   Unser Beispiel dafür wäre via Liste im Chat für Vorschläge."
+
+   So there is now ONE way to present a set of things: a list. Suggestions in
+   the chat are tappable rows (.sugg-list), everything else is plain text
+   (.plist). No badges, no capsules, no status pills.
+   ============================================================================= */
+
+/* Plain list: what an agent can help with, what it remembers, the agenda */
+.plist{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:5px; }
+.plist li{
+  position:relative; padding-left:13px; font-size:var(--text-2xs); line-height:1.5; color:var(--text-secondary);
+}
+.plist li::before{
+  content:""; position:absolute; left:0; top:0.62em; width:4px; height:4px; border-radius:50%;
+  background:var(--primary-soft); opacity:.7;
+}
+.plist li.muted{ color:var(--text-muted); }
+.plist li.muted::before{ background:var(--text-muted); opacity:.5; }
+.plist.mem li{ color:var(--text-secondary); }
+.plist li.fresh{ color:var(--text-primary); animation:memLearn 900ms var(--ease-out); }
+.plist li.fresh::before{ opacity:1; }
+/* Numbered variant for the agenda — the number replaces the dot */
+.plist.numbered{ counter-reset:pl; gap:6px; }
+.plist.numbered li{ counter-increment:pl; padding-left:21px; }
+.plist.numbered li::before{
+  content:counter(pl); position:absolute; left:0; top:0; width:auto; height:auto; border-radius:0;
+  background:none; font-size:var(--text-3xs); font-weight:700; color:var(--primary-soft); opacity:1;
+}
+
+/* The Steckbrief's lists sit under the numbers */
+.sb-lists{ display:flex; flex-direction:column; gap:var(--sp-4); }
+.sb-lists .grp .lbl{
+  display:block; font-size:var(--text-3xs); font-weight:700; letter-spacing:0.09em;
+  text-transform:uppercase; color:var(--text-muted); margin-bottom:8px;
+}
+
+/* Suggested answers in the chat: rows you tap, the same shape as the opening
+   actions right above them (.qa-list) — one pattern, learned once. */
+.sugg-list{
+  display:flex; flex-direction:column; margin-top:9px; max-width:440px;
+  border:1px solid var(--border-soft); border-radius:var(--r-md); overflow:hidden;
+}
+.sugg-item{
+  display:flex; align-items:center; gap:12px; width:100%; text-align:left;
+  padding:11px 14px; border-bottom:1px solid var(--border-soft); background:transparent;
+  font-size:var(--text-2xs); color:var(--text-secondary); line-height:1.45;
+  transition:background-color .16s var(--ease-out), color .16s var(--ease-out);
+}
+.sugg-item:last-child{ border-bottom:none; }
+.sugg-item .s{ flex:1; min-width:0; }
+.sugg-item svg.arrow{ flex-shrink:0; opacity:.5; transition:transform .16s var(--ease-out), opacity .16s var(--ease-out); }
+.sugg-item:active:not(:disabled){ background:color-mix(in srgb, var(--primary) 10%, transparent); }
+.sugg-item:disabled{ opacity:.5; cursor:default; }
+@media (hover:hover) and (pointer:fine){
+  .sugg-item:hover:not(:disabled){ color:var(--text-primary); background:color-mix(in srgb, var(--primary) 9%, transparent); }
+  .sugg-item:hover:not(:disabled) svg.arrow{ transform:translateX(3px); opacity:1; }
+}
+
+/* "ready" on the deliverable rail, and the document's origin line */
+.dr-done{ margin-left:auto; font-size:var(--text-2xs); font-weight:650; color:var(--success); }
+.doc-id .kind{
+  font-size:var(--text-3xs); font-weight:700; letter-spacing:0.09em; text-transform:uppercase;
+  color:var(--primary-soft);
+}

@@ -17,18 +17,21 @@ import {
 type PanelState = "empty" | "list" | "detail" | "type" | "configure";
 
 const ROLE_LABEL: Record<AgentType, string> = { consultant: "Consultant", coach: "Coach" };
+// Plain words only. Patryk's review (2026-09-10): someone with no IT or
+// consulting background must not meet jargon on the first screen, or they
+// lose interest before the conversation starts.
 const ROLE_HEAD: Record<AgentType, { title: string; sub: string; emptyTitle: string; emptyDesc: string }> = {
   coach: {
-    title: "Personal AI Coach",
-    sub: "Select or create a coaching agent for this project.",
-    emptyTitle: "No coaching agent selected",
-    emptyDesc: "Create a new agent tailored to this engagement, or choose one from your existing AI team.",
+    title: "Your coach",
+    sub: "Keeps an eye on the people side of your project.",
+    emptyTitle: "No coach yet",
+    emptyDesc: "Make a new one, or pick a coach you have worked with before.",
   },
   consultant: {
-    title: "Personal AI Consultant",
-    sub: "Select or create the consultant who leads this engagement.",
-    emptyTitle: "No consulting agent selected",
-    emptyDesc: "Create a new agent tailored to this engagement, or choose one from your existing AI team.",
+    title: "Your consultant",
+    sub: "Works out what to change and how.",
+    emptyTitle: "No consultant yet",
+    emptyDesc: "Make a new one, or pick a consultant you have worked with before.",
   },
 };
 
@@ -107,7 +110,7 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
       {pendingConfirm && (
         <ConfirmDialog
           title={`${pendingConfirm.name} as your ${ROLE_LABEL[role]}?`}
-          body="Confirm to bring this agent into the project — the conversation starts right away."
+          body="They join the project and the conversation starts right away."
           confirmLabel={`Confirm ${ROLE_LABEL[role]}`}
           onConfirm={() => { const a = pendingConfirm; setPendingConfirm(null); select(a.id); }}
           onCancel={() => setPendingConfirm(null)}
@@ -128,47 +131,36 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
       </div>
 
       {state === "empty" ? (
-        <>
-          <div className="pick-empty">
-            <button className="pick-plus" onClick={() => setState("type")} aria-label="Create new agent">
-              <IconPlus size={22} />
+        // Two ways in, nothing else. The "Suggested roles" list that used to
+        // sit under this was cut on Patryk's review (2026-09-10): it repeated
+        // what the next screen already shows.
+        <div className="pick-empty">
+          <button className="pick-plus" onClick={() => setState("type")} aria-label="Create new agent">
+            <IconPlus size={22} />
+          </button>
+          <div className="t">{head.emptyTitle}</div>
+          <div className="d">{head.emptyDesc}</div>
+          <div className="pick-actions">
+            <button className="btn-primary-wide" onClick={() => setState("type")}><IconPlus size={13} />Create new</button>
+            <button className="choose-row" onClick={() => setState("list")}>
+              Pick someone you know
+              <IconChevronDown size={18} style={{ transform: "rotate(-90deg)" }} />
             </button>
-            <div className="t">{head.emptyTitle}</div>
-            <div className="d">{head.emptyDesc}</div>
-            <div className="pick-actions">
-              <button className="btn-primary-wide" onClick={() => setState("type")}><IconPlus size={13} />Create new</button>
-              <button className="choose-row" onClick={() => setState("list")}>
-                Choose from existing AI team
-                <IconChevronDown size={18} style={{ transform: "rotate(-90deg)" }} />
-              </button>
-            </div>
           </div>
-          <div className="suggested">
-            <div className="lbl">Suggested {ROLE_LABEL[role]} roles</div>
-            <ul>
-              {TYPE_CATALOG[role].map(t => (
-                <li key={t.type}>
-                  <span className="dot" />
-                  <span className="nm">{t.type}</span>
-                  <span className={`role-pill ${t.status}`}>{t.status}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </>
+        </div>
 
       ) : state === "list" ? (
         <>
           <div className="list-toolbar">
             <div className="search-box"><IconSearch size={13} />
-              <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by agent, type or method..." />
+              <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name or what they do..." />
             </div>
           </div>
-          <div className="list-section-label">Existing AI Team</div>
+          <div className="list-section-label">People you have worked with</div>
           {filtered.length === 0 ? (
             <div className="empty-search">
               <div className="t">No agents found</div>
-              <div className="d">Try another role, method or expertise.</div>
+              <div className="d">Try another name, or make a new one.</div>
               <button className="btn btn-ghost" onClick={() => setSearch("")}>Clear search</button>
             </div>
           ) : (
@@ -196,7 +188,7 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
 
       ) : state === "type" ? (
         <>
-          <div className="step-eyebrow">Step 1 / 2 — Choose agent type</div>
+          <div className="step-eyebrow">Step 1 of 2 — what kind of help?</div>
           <div className="type-wrap">
             {TYPE_CATALOG[role].map(t => (
               <div key={t.type} className="type-card">
@@ -205,11 +197,10 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
                   <button className="btn btn-ghost" onClick={() => { setDraft(t); setState("configure"); }}>Select <IconArrow /></button>
                 </div>
                 <div className="detail-section" style={{ marginBottom: 0 }}>
-                  <span className="lbl">Methods</span>
-                  <div className="sb-methods">
-                    <div className="grp"><div className="chips">{t.primary.map(m => <span key={m} className="m-chip">{m}</span>)}</div></div>
-                    <div className="grp"><div className="chips">{t.secondary.map(m => <span key={m} className="m-chip secondary">{m}</span>)}</div></div>
-                  </div>
+                  <span className="lbl">Can help with</span>
+                  <ul className="plist">
+                    {[...t.primary, ...t.secondary].map(m => <li key={m}>{methodLabel(m)}</li>)}
+                  </ul>
                 </div>
               </div>
             ))}
@@ -238,7 +229,7 @@ function DetailView({ agent, role, busy, totalProjects, onSelect }: {
       {agent.description && <div className="detail-desc">{agent.description}</div>}
       <div className="sb-stats">
         <div>
-          <span className="lbl">Knowledge Level</span>
+          <span className="lbl">Experience</span>
           <div className="level">
             <b>{level}</b>
             <span className="level-bar">
@@ -246,21 +237,19 @@ function DetailView({ agent, role, busy, totalProjects, onSelect }: {
             </span>
           </div>
         </div>
-        <div><span className="lbl">Previous Projects</span><b>{total}</b></div>
-        {agent.tagline && <div><span className="lbl">Type</span><b>{agent.tagline}</b></div>}
+        <div><span className="lbl">Projects together</span><b>{total}</b></div>
+        {agent.tagline && <div><span className="lbl">Role</span><b>{agent.tagline}</b></div>}
       </div>
-      <div className="sb-methods" style={{ marginBottom: "var(--sp-5)" }}>
-        {agent.primaryMethods.length > 0 && (
-          <div className="grp"><span className="lbl">Primary Methods</span>
-            <div className="chips">{agent.primaryMethods.map(m => <span key={m.id} className="m-chip">{methodLabel(m.name)}</span>)}</div>
-          </div>
-        )}
-        {agent.secondaryMethods.length > 0 && (
-          <div className="grp"><span className="lbl">Secondary Methods</span>
-            <div className="chips">{agent.secondaryMethods.map(m => <span key={m.id} className="m-chip secondary">{methodLabel(m.name)}</span>)}</div>
-          </div>
-        )}
-      </div>
+      {agent.methods.length > 0 && (
+        <div className="detail-section">
+          <span className="lbl">Can help with</span>
+          <ul className="plist">
+            {[...agent.primaryMethods, ...agent.secondaryMethods].map(m => (
+              <li key={m.id}>{methodLabel(m.name)}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       {agent.last_projects.length > 0 && (
         <div className="detail-section"><span className="lbl">Recent Projects</span>
           <div className="timeline">{agent.last_projects.map(p => (
@@ -307,26 +296,23 @@ function ConfigureView({ role, template, onCreated }: { role: AgentType; templat
 
   return (
     <>
-      <div className="step-eyebrow">Step 2 / 2 — Configure Agent</div>
+      <div className="step-eyebrow">Step 2 of 2 — give them a name</div>
       <div className="configure">
         <div className="field">
-          <label>Agent Name</label>
+          <label>Name</label>
           <input type="text" value={name} onChange={e => setName(e.target.value)} />
           {touched && !name.trim() && <div className="field-err">Agent name is required.</div>}
         </div>
         <div className="field"><label>Description</label><textarea rows={3} value={description} onChange={e => setDescription(e.target.value)} /></div>
         <div className="field">
-          <label>Methods (fixed by type)</label>
-          <div className="sb-methods">
-            <div className="grp"><div className="chips">{t.primary.map(m => <span key={m} className="m-chip">{m}</span>)}</div></div>
-            <div className="grp"><div className="chips">{t.secondary.map(m => <span key={m} className="m-chip secondary">{m}</span>)}</div></div>
-          </div>
+          <label>Can help with</label>
+          <ul className="plist">{[...t.primary, ...t.secondary].map(m => <li key={m}>{methodLabel(m)}</li>)}</ul>
         </div>
-        <div className="field"><label>Knowledge Level</label><div className="val" style={{ fontSize: "var(--text-xs)", color: "var(--text-secondary)" }}>New (no project history yet)</div></div>
+        <div className="field"><label>Experience</label><div className="val" style={{ fontSize: "var(--text-xs)", color: "var(--text-secondary)" }}>New — you two have not worked together yet</div></div>
         {error && <div className="field-err">{error}</div>}
         <div className="configure-actions">
           <button className="btn btn-solid" disabled={!valid || saving} onClick={submit}>
-            {saving ? <span className="spinner" /> : (<><IconCheck size={13} />Create Agent</>)}
+            {saving ? <span className="spinner" /> : (<><IconCheck size={13} />Create</>)}
           </button>
         </div>
       </div>

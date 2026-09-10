@@ -22,11 +22,11 @@ const OPENING: Record<AgentType, string> = {
 /** Each role's way in: the Consultant interviews, the Coach takes the temperature. */
 const OPENER_ACTION: Record<AgentType, { title: string; prompt: string }> = {
   consultant: {
-    title: "Full Assessment",
+    title: "Take me through it step by step",
     prompt: "Let's do a full assessment with the standardized interview process.",
   },
   coach: {
-    title: "Change Readiness Check",
+    title: "See how the team is doing",
     prompt: "Let's check how ready the team is for this change.",
   },
 };
@@ -36,7 +36,7 @@ function quickActions(agent: Agent) {
   const deliverable = DELIVERABLES[agent.type];
   const actions = [{
     ...OPENER_ACTION[agent.type],
-    blurb: `${deliverable.stations.length} guided steps toward your ${deliverable.title}.`,
+    blurb: `${deliverable.stations.length} short questions, then you get your ${deliverable.title}.`,
     icon: <IconCheck size={14} />,
   }];
   for (const m of agent.primaryMethods.slice(0, 3)) {
@@ -50,7 +50,7 @@ function quickActions(agent: Agent) {
   return actions;
 }
 
-export function ProjectChatPanel({ project, role, agent, primary, projectCount = 0, onProjectNamed, onActivity, onOpenDoc, onDeliverableChange }: {
+export function ProjectChatPanel({ project, role, agent, primary, projectCount = 0, onProjectNamed, onActivity, onOpenDoc }: {
   project: Project; role: AgentType; agent: Agent;
   /** Consultant leads the layout (larger). */
   primary?: boolean;
@@ -62,8 +62,6 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
   onActivity?: () => void;
   /** Opens the finished deliverable in the full document view (owned by the screen). */
   onOpenDoc?: (doc: DeliverableDoc) => void;
-  /** Reports this panel's finished deliverable so the artifact bar can link to it. */
-  onDeliverableChange?: (doc: DeliverableDoc | null) => void;
 }) {
   const [messages, setMessages] = useState<ProjectMessage[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -183,14 +181,6 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
     ? buildDoc(docMsg.p.text, docMsg.p.doc || deliverable.title, docMsg.m.created_at, docs.length)
     : null;
 
-  // Kept in refs so reporting up doesn't depend on identities that change on
-  // every render (which would loop against the parent's setState).
-  const docRef = useRef(currentDoc);
-  docRef.current = currentDoc;
-  const reportRef = useRef(onDeliverableChange);
-  reportRef.current = onDeliverableChange;
-  useEffect(() => { reportRef.current?.(docRef.current); }, [docMsg]);
-
   // What to show in the Steckbrief: this session's lessons first (they are the
   // new thing), then the older ones, deduplicated by fact.
   const shownLessons = (() => {
@@ -237,7 +227,7 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
       <div className="steckbrief">
         <div className="sb-stats">
           <div>
-            <span className="lbl">Knowledge Level</span>
+            <span className="lbl">Experience</span>
             <div className="level">
               <b>{level}</b>
               <span className="level-bar">
@@ -245,42 +235,38 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
                   <span key={l} className={`level-seg ${i <= LEVEL_ORDER.indexOf(level) ? "on" : ""}`} />
                 ))}
               </span>
-              {leveledUp && <span className="level-up">Level up</span>}
+              {leveledUp && <span className="level-up">Level up!</span>}
             </div>
             {next && <div className="level-hint">{remaining} more project{remaining === 1 ? "" : "s"} to {next}</div>}
           </div>
-          <div><span className="lbl">Previous Projects</span><b>{totalProjects}</b></div>
-          <div>
-            <span className="lbl">Remembers</span>
-            <b>{shownLessons.length}{learned.length > 0 && <span className="mem-new">+{learned.length}</span>}</b>
-          </div>
-          {agent.tagline && <div><span className="lbl">Type</span><b>{agent.tagline}</b></div>}
+          <div><span className="lbl">Projects together</span><b>{totalProjects}</b></div>
+          {agent.tagline && <div><span className="lbl">Role</span><b>{agent.tagline}</b></div>}
         </div>
-        <div className="sb-methods">
+        {/* Lists, not chips: Patryk's review (2026-09-10) asked for the pills
+            to go everywhere in favour of plain lists. */}
+        <div className="sb-lists">
           {shownLessons.length > 0 && (
             <div className="grp">
-              <span className="lbl">From earlier projects</span>
-              <div className="chips">
-                {shownLessons.slice(0, 4).map(l => (
-                  <span key={l.fact} className={`mem-chip${l.fresh ? " fresh" : ""}`}
-                    title={l.project ? `${l.kind} · learned in ${l.project}` : `${l.kind} · learned just now`}>
-                    {l.fact}
-                  </span>
+              <span className="lbl">
+                Remembers about you
+                {learned.length > 0 && <em className="mem-new">+{learned.length} new</em>}
+              </span>
+              <ul className="plist mem">
+                {shownLessons.slice(0, 3).map(l => (
+                  <li key={l.fact} className={l.fresh ? "fresh" : undefined}>{l.fact}</li>
                 ))}
-                {shownLessons.length > 4 && <span className="mem-chip more">+{shownLessons.length - 4}</span>}
-              </div>
+                {shownLessons.length > 3 && <li className="muted">and {shownLessons.length - 3} more</li>}
+              </ul>
             </div>
           )}
           {agent.primaryMethods.length > 0 && (
             <div className="grp">
-              <span className="lbl">Primary Methods</span>
-              <div className="chips">{agent.primaryMethods.map(m => <span key={m.id} className="m-chip">{methodLabel(m.name)}</span>)}</div>
-            </div>
-          )}
-          {agent.secondaryMethods.length > 0 && (
-            <div className="grp">
-              <span className="lbl">Secondary Methods</span>
-              <div className="chips">{agent.secondaryMethods.map(m => <span key={m.id} className="m-chip secondary">{methodLabel(m.name)}</span>)}</div>
+              <span className="lbl">Can help with</span>
+              <ul className="plist">
+                {[...agent.primaryMethods, ...agent.secondaryMethods].map(m => (
+                  <li key={m.id}>{methodLabel(m.name)}</li>
+                ))}
+              </ul>
             </div>
           )}
         </div>
@@ -291,7 +277,7 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
         style={{ ["--dr-steps" as string]: deliverable.stations.length }}>
         <div className="dr-top">
           <span className="dr-kind"><IconDoc size={12} />{deliverable.title}</span>
-          {currentDoc ? <span className="dr-badge">Ready</span> : <span className="dr-pct">{pct}%</span>}
+          {currentDoc ? <span className="dr-done">ready</span> : <span className="dr-pct">{pct}%</span>}
         </div>
         <div className="dr-bar"><span style={{ width: `${currentDoc ? 100 : pct}%` }} /></div>
         <div className="dr-bottom">
@@ -341,10 +327,10 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
                 </button>
               ))}
             </div>
-            {/* What the interview will actually ask, so the first click isn't blind */}
+            {/* What the conversation will cover, so the first click isn't blind */}
             <div className="agenda-peek">
-              <span className="lbl">The road to your {deliverable.title}</span>
-              <ol>
+              <span className="lbl">What we will talk about</span>
+              <ol className="plist numbered">
                 {deliverable.stations.map(s => <li key={s.label}>{s.label}</li>)}
               </ol>
             </div>
@@ -357,9 +343,12 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
           const showChoices = i === lastAssistantIdx && parsed.choices.length > 0 && !sending;
           const isDoc = !!parsed.doc || looksLikeDocument(parsed.text, deliverable.title);
           const choices = showChoices ? (
-            <div className="choice-row" style={{ paddingLeft: 0 }}>
+            <div className="sugg-list">
               {parsed.choices.map(c => (
-                <button key={c} className="choice-chip" disabled={sending} onClick={() => send(c)}>{c}</button>
+                <button key={c} className="sugg-item" disabled={sending} onClick={() => send(c)}>
+                  <span className="s">{c}</span>
+                  <IconArrow />
+                </button>
               ))}
             </div>
           ) : null;
@@ -375,8 +364,10 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
                 <button className="doc-card" onClick={() => onOpenDoc?.(buildDoc(parsed.text, title, m.created_at, version))}>
                   <span className="dc-ic"><IconDoc size={17} /></span>
                   <span className="dc-txt">
-                    <span className="dc-t">{title}{version > 1 && <span className="dc-v">v{version}</span>}</span>
-                    <span className="dc-s">{sections} sections · {words.toLocaleString()} words · open to read</span>
+                    <span className="dc-t">{title}</span>
+                    <span className="dc-s">
+                      {version > 1 && `Version ${version} · `}{sections} sections · {words.toLocaleString()} words · open to read
+                    </span>
                   </span>
                   <IconArrow />
                 </button>

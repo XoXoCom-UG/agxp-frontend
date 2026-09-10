@@ -135,12 +135,12 @@ export function DeliverableView({ doc, onClose }: { doc: DeliverableDoc; onClose
         <header className="doc-head">
           <AgentMascot role={doc.role} state="idle" size={40} />
           <div className="doc-id">
-            <span className="kind">
-              {doc.role === "coach" ? "Coach deliverable" : "Consultant deliverable"}
-              {!!doc.version && doc.version > 1 && <span className="doc-ver">Version {doc.version}</span>}
-            </span>
+            <span className="kind">{doc.role === "coach" ? "From your coach" : "From your consultant"}</span>
             <h2>{doc.title}</h2>
-            <span className="meta">{doc.projectName} · {doc.agentName} · {date}</span>
+            <span className="meta">
+              {doc.projectName} · {doc.agentName} · {date}
+              {!!doc.version && doc.version > 1 && ` · version ${doc.version}`}
+            </span>
           </div>
           <div className="doc-actions">
             <button className="doc-btn" onClick={copy}>

@@ -1,17 +1,21 @@
-// The seeded method rows carry German-ish names ("Gap-Analyse"); the approved
-// UI template labels them in English. Display-only mapping — no migration, the
-// DB stays the single source of truth for what a method *is*.
+// The seeded method rows carry consulting jargon ("Gap-Analyse"). Patryk's
+// review (2026-09-10): someone with no IT or consulting background must not
+// hit foreign words on the first screen. So the DB keeps the technical name
+// and this is where it turns into something anyone understands.
 const LABELS: Record<string, string> = {
-  "As-Is/To-Be": "As-Is / To-Be",
-  "Gap-Analyse": "Gap Analysis",
+  "As-Is/To-Be": "Where you are, where you want to be",
+  "Gap-Analyse": "What is missing",
+  "Requirements Engineering": "What you actually need",
+  "Process Mapping": "Your steps, written down",
+  "Impact Mapping": "What will change",
 };
 
 const BLURBS: Record<string, string> = {
-  "As-Is/To-Be": "Map current vs. target state.",
-  "Gap-Analyse": "Compare current vs. target state.",
-  "Requirements Engineering": "Structure project requirements.",
-  "Process Mapping": "Visualize the existing process flow.",
-  "Impact Mapping": "Link goals to measurable impact.",
+  "As-Is/To-Be": "Compare today with your goal.",
+  "Gap-Analyse": "Find what stands between the two.",
+  "Requirements Engineering": "Turn wishes into clear requirements.",
+  "Process Mapping": "Write down how the work runs today.",
+  "Impact Mapping": "See who and what a change touches.",
 };
 
 export function methodLabel(name: string): string {
@@ -19,5 +23,5 @@ export function methodLabel(name: string): string {
 }
 
 export function methodBlurb(name: string): string {
-  return BLURBS[name] ?? "Apply this method to the project.";
+  return BLURBS[name] ?? "Work through this together.";
 }
