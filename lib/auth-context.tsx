@@ -3,16 +3,15 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase";
-import { api } from "@/lib/api";
 
 interface AuthContextType {
   session: Session | null;
   user: User | null;
   token: string | null;
   loading: boolean;
-  // The display name, sourced from the backend profile (scoped to the
-  // authenticated account via the token) — never cached in a global place,
-  // so it can't leak between accounts sharing a browser.
+  // The display name, taken from the signed-in account's own metadata (set at
+  // sign-up, editable in settings). Keyed to the user id below, so it can't
+  // leak between accounts sharing a browser.
   profileName: string;
   setProfileName: (n: string) => void;
   signOut: () => Promise<void>;
@@ -61,23 +60,22 @@ function clearStaleAuthCookies(): number {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [profileName, setProfileName] = useState("");
+  // An edit made in settings, before the session carries it. Stored with the
+  // user id it belongs to, so switching accounts can never show the wrong name
+  // and no effect is needed to clear it.
+  const [nameEdit, setNameEdit] = useState<{ uid: string; name: string } | null>(null);
   const supabase = createClient();
 
   const userId = session?.user?.id ?? null;
   const token = session?.access_token ?? null;
 
-  // Fetch the display name from the backend profile whenever the signed-in
-  // account changes. The backend resolves the profile from the token, so this
-  // is always scoped to the correct account — no cross-account leakage.
-  useEffect(() => {
-    if (!token || !userId) { setProfileName(""); return; }
-    let alive = true;
-    api.getProfile(token)
-      .then(p => { if (alive) setProfileName(p.display_name || p.name || ""); })
-      .catch(() => { if (alive) setProfileName(""); });
-    return () => { alive = false; };
-  }, [token, userId]);
+  // The name comes straight from the account: sign-up writes it into user
+  // metadata. This used to call /api/profile on the old Modal backend, which
+  // no longer exists — the request 404'd on every sign-in and the name was
+  // always empty.
+  const metaName = (((session?.user?.user_metadata as { full_name?: string } | undefined)?.full_name) ?? "").trim();
+  const profileName = nameEdit && nameEdit.uid === userId ? nameEdit.name : metaName;
+  const setProfileName = (n: string) => { if (userId) setNameEdit({ uid: userId, name: n }); };
 
   useEffect(() => {
     // Always resolve loading — even on error — so the app never hangs on the

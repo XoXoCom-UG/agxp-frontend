@@ -1,55 +1,89 @@
 "use client";
-import { useState } from "react";
-import { createClient } from "@/lib/supabase";
-import { useRouter } from "next/navigation";
 
-// Landing page for the "Passwort zurücksetzen" email link. The Supabase browser
-// client auto-establishes a recovery session from the URL on load; here the user
-// sets a new password via updateUser.
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase";
+import { IconDiamond, IconArrow, IconCheck, IconBack } from "@/components/layout/agxp-icons";
+
+/**
+ * Landing page for the password-reset email link. The Supabase browser client
+ * establishes a recovery session from the URL on load, so all that is left is
+ * to set the new password.
+ */
 export default function ResetPage() {
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
-  const supabase = createClient();
   const router = useRouter();
+  const supabase = createClient();
+  const [password, setPassword] = useState("");
+  const [again, setAgain] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<{ text: string; ok: boolean } | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (password.length < 8) { setMsg({ text: "Passwort muss mindestens 8 Zeichen lang sein.", ok: false }); return; }
-    setLoading(true); setMsg(null);
+    if (busy) return;
+    setNote(null);
+
+    if (password.length < 8) { setNote({ text: "Use at least 8 characters.", ok: false }); return; }
+    if (password !== again) { setNote({ text: "The two passwords are not the same.", ok: false }); return; }
+
+    setBusy(true);
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
-      setMsg({ text: "Link ungültig oder abgelaufen. Bitte fordere einen neuen an.", ok: false });
-      setLoading(false);
-    } else {
-      setMsg({ text: "Passwort geändert! Du wirst weitergeleitet…", ok: true });
-      setTimeout(() => router.push("/chat"), 1200);
+      setBusy(false);
+      setNote({ text: "This link is invalid or has expired. Ask for a new one.", ok: false });
+      return;
     }
+    setNote({ text: "Password changed. Taking you in…", ok: true });
+    // Straight into the app — the old code sent people to /chat, which stopped
+    // existing when the workspace replaced it.
+    setTimeout(() => router.replace("/dashboard"), 1100);
   }
 
-  const inp: React.CSSProperties = { width: "100%", height: 42, borderRadius: 10, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", padding: "0 13px", fontSize: 14, fontFamily: "inherit", outline: "none" };
-
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, background: "#fff" }}>
-      <div style={{ maxWidth: 380, width: "100%" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 1, marginBottom: 8 }}>
-          <span style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text)" }}>matfit</span>
-          <span style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em", color: "var(--green)" }}>.ai</span>
+    <div className="auth">
+      <div className="auth-form-col">
+        <div className="auth-card">
+          <div className="auth-brand">
+            <span className="brand-mark"><IconDiamond size={12} /></span>
+            <span className="brand-text stacked">
+              <span className="name">Agentix Projects</span>
+              <span className="sub">AGXP</span>
+            </span>
+          </div>
+
+          <h1>Set a new password</h1>
+          <p className="auth-sub">Pick something you can remember — at least 8 characters.</p>
+
+          <form onSubmit={submit}>
+            <div className="field">
+              <label htmlFor="pw1">New password</label>
+              <input id="pw1" type="password" required minLength={8} value={password}
+                autoComplete="new-password" placeholder="••••••••"
+                onChange={e => setPassword(e.target.value)} />
+            </div>
+            <div className="field">
+              <label htmlFor="pw2">Repeat it</label>
+              <input id="pw2" type="password" required minLength={8} value={again}
+                autoComplete="new-password" placeholder="••••••••"
+                onChange={e => setAgain(e.target.value)} />
+            </div>
+
+            {note && (
+              <div className={`auth-note ${note.ok ? "ok" : "bad"}`} role="status">
+                {note.ok ? <IconCheck size={13} /> : <span className="mark">!</span>}
+                <span>{note.text}</span>
+              </div>
+            )}
+
+            <button className="btn-primary-wide" type="submit" disabled={busy}>
+              {busy ? <span className="spinner" /> : <>Save password<IconArrow /></>}
+            </button>
+          </form>
+
+          <div className="auth-legal" style={{ marginTop: "var(--sp-5)" }}>
+            <a className="auth-back" href="/login"><IconBack size={10} />Back to sign in</a>
+          </div>
         </div>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.02em", marginBottom: 6 }}>Neues Passwort setzen</h1>
-        <p style={{ fontSize: 14, color: "var(--text-3)", marginBottom: 24 }}>Wähle ein neues Passwort für dein Konto.</p>
-        <form onSubmit={submit}>
-          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 6 }}>
-            Neues Passwort <span style={{ fontWeight: 400, color: "var(--text-3)" }}>· min. 8 Zeichen</span>
-          </label>
-          <input type="password" required minLength={8} value={password} autoComplete="new-password"
-            onChange={e => setPassword(e.target.value)} placeholder="••••••••" style={inp} />
-          {msg && <div style={{ padding: "9px 13px", borderRadius: 9, margin: "14px 0", fontSize: 13, background: msg.ok ? "var(--green-light)" : "var(--red-bg)", color: msg.ok ? "var(--green-dark)" : "var(--red)", border: `1px solid ${msg.ok ? "var(--green-mid)" : "#fca5a5"}` }}>{msg.text}</div>}
-          <button type="submit" disabled={loading} style={{ width: "100%", height: 44, borderRadius: 10, border: "none", background: "var(--green)", color: "#fff", fontWeight: 700, fontSize: 14, cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1, fontFamily: "inherit", marginTop: 14 }}>
-            {loading ? "Bitte warten…" : "Passwort speichern →"}
-          </button>
-        </form>
-        <a href="/login" style={{ display: "inline-block", marginTop: 20, fontSize: 12, color: "var(--text-3)", textDecoration: "none" }}>← Zurück zum Login</a>
       </div>
     </div>
   );

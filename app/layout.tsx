@@ -8,18 +8,17 @@ import { StaleBuildRecovery } from "@/components/layout/stale-build-recovery";
 
 export const metadata: Metadata = {
   title: {
-    default: "matfit.ai — IT Consulting Agent",
-    template: "%s · matfit.ai",
+    default: "Agentix Projects — Train your AI Project-Agents",
+    template: "%s · AgXP",
   },
   description:
-    "KI-gestützte IT-Beratung: Transformation Concepts, Roadmaps und fundiertes IT-Know-how in Minuten statt Wochen.",
-  applicationName: "matfit.ai",
+    "Pair an AI consultant with an AI coach and talk to both about your transformation project. They ask the questions and produce the documents.",
+  applicationName: "Agentix Projects",
   robots: { index: false, follow: false }, // private app — keep out of search engines
   openGraph: {
-    title: "matfit.ai — IT Consulting Agent",
-    description: "Transformation Concepts in Minuten, nicht Wochen.",
+    title: "Agentix Projects — Train your AI Project-Agents",
+    description: "An AI consultant and an AI coach, working your project through with you.",
     type: "website",
-    locale: "de_DE",
   },
 };
 
@@ -27,14 +26,14 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#09090b" },
+    { media: "(prefers-color-scheme: light)", color: "#FAFAF9" },
+    { media: "(prefers-color-scheme: dark)", color: "#06080D" },
   ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="de" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           <StaleBuildRecovery />

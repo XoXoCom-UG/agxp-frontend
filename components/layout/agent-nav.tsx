@@ -23,7 +23,7 @@ export function AgentNav({ projectName, projectId }: { projectName?: string; pro
   const { user, profileName, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
+  const { setTheme } = useTheme();
   const [popover, setPopover] = useState<PopoverName>(null);
   const [switcherProjects, setSwitcherProjects] = useState<Project[] | null>(null);
   const ref = useRef<HTMLDivElement>(null);
@@ -76,9 +76,12 @@ export function AgentNav({ projectName, projectId }: { projectName?: string; pro
           <IconChevronDown size={10} />
         </button>
 
-        <button className="icon-btn" data-tooltip={theme === "light" ? "Switch to dark theme" : "Switch to light theme"}
-          onClick={e => { e.stopPropagation(); setTheme(theme === "light" ? "dark" : "light"); }}>
-          {theme === "light" ? <IconMoon /> : <IconSun />}
+        <button className="icon-btn" data-tooltip="Switch light or dark theme"
+          onClick={e => { e.stopPropagation(); setTheme(document.documentElement.classList.contains("light") ? "dark" : "light"); }}>
+          {/* Both icons, one hidden by the theme class — picking in JS made the
+              server and client markup differ, which broke hydration. */}
+          <IconSun className="ico-when-dark" />
+          <IconMoon className="ico-when-light" />
         </button>
 
         <button className="avatar" onClick={e => { e.stopPropagation(); toggle("avatar"); }}>

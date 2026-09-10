@@ -1,23 +1,27 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useTheme } from "next-themes";
 import { X, User, Palette, Sun, Moon, Monitor, LogOut } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuth } from "@/lib/auth-context";
-import { api } from "@/lib/api";
+import { createClient } from "@/lib/supabase";
 import { useChatStore } from "@/lib/chat-store";
 import { cn } from "@/lib/utils";
 
 type Tab = "profil" | "darstellung";
 
-export function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function SettingsModal({ open, onClose: requestClose }: { open: boolean; onClose: () => void }) {
   const [tab, setTab] = useState<Tab>("profil");
   const { theme, setTheme } = useTheme();
   const { user, signOut, token, profileName, setProfileName } = useAuth();
   const startTour = useChatStore(s => s.startTour);
   const persona = useChatStore(s => s.persona);
   const setPersona = useChatStore(s => s.setPersona);
-  const [name, setName] = useState("");
+  // The field shows the saved name until it is actually edited. Holding the
+  // edit as null instead of copying the name in on open means no effect has to
+  // sync the two (and no cascading render when the modal opens).
+  const [nameDraft, setNameDraft] = useState<string | null>(null);
+  const name = nameDraft ?? profileName;
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -32,29 +36,26 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
     }
   }
 
-  useEffect(() => {
-    if (open) setName(profileName);
-  }, [open, profileName]);
-
   async function saveName() {
     const n = name.trim();
     setSaveError(false);
-    // Persist to the backend profile — the single source of truth, scoped to
-    // this account via the token. Read-merge-write: the save endpoint
-    // overwrites every field, so sending only {name} would wipe what the
-    // agent has learned about the user.
-    if (token) {
-      try {
-        const current = await api.getProfile(token).catch(() => ({} as Record<string, string>));
-        // Write both name fields — the backend's canonical "display name"
-        // field isn't fully pinned down, so cover both to avoid silently
-        // saving to a field nothing reads back from.
-        await api.saveProfile(token, { ...current, name: n, display_name: n });
-        setProfileName(n);
-        setSaved(true);
-        setTimeout(() => setSaved(false), 1800);
-      } catch { setSaveError(true); }
-    }
+    if (!token) return;
+    // The name lives on the account itself, the same place sign-up writes it.
+    // This used to POST to /api/profile on the old Modal backend, which no
+    // longer exists, so every save failed.
+    const { error } = await createClient().auth.updateUser({ data: { full_name: n } });
+    if (error) { setSaveError(true); return; }
+    setProfileName(n);
+    setNameDraft(null);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1800);
+  }
+
+  /** Closing throws away an unsaved edit, the way reopening used to reset it. */
+  function onClose() {
+    setNameDraft(null);
+    setSaveError(false);
+    requestClose();
   }
 
   const TABS: { id: Tab; label: string; Icon: React.ElementType }[] = [
@@ -179,7 +180,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                           <div className="flex gap-2">
                             <input
                               value={name}
-                              onChange={e => setName(e.target.value)}
+                              onChange={e => setNameDraft(e.target.value)}
                               onKeyDown={e => e.key === "Enter" && saveName()}
                               placeholder="Dein Name"
                               className="flex-1 h-9 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-green-500/30 focus:border-green-400 transition-all duration-150"

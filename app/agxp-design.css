@@ -696,6 +696,15 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 .m-tie path{ fill:var(--primary); opacity:.9; }
 .m-headset path{ stroke:var(--primary); fill:none; }
 .m-headset rect{ fill:var(--primary); }
+/* Light mode: the head tokens go near-white, so the face needs its own
+   colours or the eyes and mouth vanish into it. */
+html.light .m-eye{ fill:#12233A; }
+html.light .m-mouth{ fill:var(--primary); }
+html.light .m-face{ stroke:rgba(0,0,0,0.10); }
+html.light .mascot-consultant{ --m-head:#DCE5F1; --m-head-2:#F1F5FA; }
+html.light .mascot-coach{ --m-head:#DEE4EC; --m-head-2:#F3F6F9; }
+html.light .m-antenna{ stroke:color-mix(in srgb, var(--primary) 45%, transparent); }
+
 .mascot-consultant .m-headset{ display:none; }
 .mascot-coach .m-tie{ display:none; }
 
@@ -1223,7 +1232,9 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 
   /* Header: the brand shrinks to the mark, the nav scrolls if it has to */
   .app > header{ padding:0 var(--sp-5); gap:10px; }
-  .brand-text{ display:none; }
+  /* Scoped to the app header on purpose: the login page is the one place where
+     the product name has to stay visible. */
+  header .brand-text{ display:none; }
   nav{ margin-left:10px; gap:0; }
   nav button{ padding:9px 9px; }
   .workspace-pill{ max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -1400,3 +1411,158 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
   font-size:var(--text-3xs); font-weight:700; letter-spacing:0.09em; text-transform:uppercase;
   color:var(--primary-soft);
 }
+
+/* =============================================================================
+   AUTH — login, sign-up, password reset and the e-mail callback. Same shell for
+   all four, so the first screen already looks like the app.
+   ============================================================================= */
+.auth{
+  min-height:100vh; min-height:100dvh; display:flex; position:relative;
+  background:
+    radial-gradient(70% 60% at 8% -10%, color-mix(in srgb, var(--coach-1) 60%, transparent), transparent 62%),
+    radial-gradient(55% 55% at 100% 100%, color-mix(in srgb, var(--consultant-1) 50%, transparent), transparent 62%),
+    var(--background);
+}
+.auth-theme{ position:absolute; top:20px; right:20px; z-index:2; }
+
+.auth-form-col{
+  flex:1; min-width:0; display:flex; align-items:center; justify-content:center;
+  padding:var(--sp-7) var(--sp-6);
+}
+.auth-card{ width:100%; max-width:392px; animation:viewIn 340ms var(--ease-out) both; }
+
+.auth-brand{ display:flex; align-items:center; gap:10px; margin-bottom:var(--sp-7); }
+.auth-brand .brand-mark{ background:linear-gradient(150deg, var(--primary-soft), var(--primary)); }
+.auth-card h1{ font-size:var(--text-2xl); font-weight:650; letter-spacing:-0.4px; color:var(--text-primary); }
+.auth-sub{ font-size:var(--text-sm); color:var(--text-secondary); margin:7px 0 var(--sp-6); line-height:1.55; }
+
+/* Two text tabs with an underline — the same shape as the header nav, and no
+   pill in sight (Patryk, 2026-09-10) */
+.auth-tabs{ display:flex; gap:var(--sp-5); border-bottom:1px solid var(--border-soft); margin-bottom:var(--sp-6); }
+.auth-tabs button{
+  position:relative; padding:0 0 11px; background:none; border:none;
+  font-size:var(--text-sm); font-weight:500; color:var(--text-muted);
+  transition:color .16s var(--ease-out);
+}
+.auth-tabs button.on{ color:var(--text-primary); font-weight:600; }
+.auth-tabs button.on::after{
+  content:""; position:absolute; left:0; right:0; bottom:-1px; height:2px; border-radius:2px;
+  background:linear-gradient(90deg, var(--primary), var(--primary-soft));
+}
+@media (hover:hover) and (pointer:fine){
+  .auth-tabs button:hover{ color:var(--text-secondary); }
+}
+
+.auth-card .field{ margin-bottom:var(--sp-4); }
+.auth-card .field input{ height:44px; font-size:var(--text-sm); padding:0 14px; }
+.auth-label-row{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+.auth-label-row label{ margin-bottom:8px; }
+.auth-label-row .hint{
+  margin-left:7px; font-weight:500; letter-spacing:normal; text-transform:none; color:var(--text-muted);
+}
+.auth-link{
+  background:none; border:none; padding:0; font-size:var(--text-2xs); color:var(--primary-soft);
+  margin-bottom:8px; transition:color .15s var(--ease-out);
+}
+.auth-link:disabled{ opacity:.5; }
+@media (hover:hover) and (pointer:fine){
+  .auth-link:hover:not(:disabled){ color:var(--primary); text-decoration:underline; }
+}
+.auth-pw{ position:relative; }
+.auth-pw input{ padding-right:46px !important; }
+.auth-pw button{
+  position:absolute; right:6px; top:50%; transform:translateY(-50%);
+  width:32px; height:32px; border:none; background:none; border-radius:8px;
+  display:flex; align-items:center; justify-content:center; color:var(--text-muted);
+  transition:color .15s var(--ease-out);
+}
+@media (hover:hover) and (pointer:fine){
+  .auth-pw button:hover{ color:var(--text-primary); }
+}
+
+/* Result of an attempt: a strip, not a badge */
+.auth-note{
+  display:flex; align-items:flex-start; gap:9px; margin:0 0 var(--sp-4);
+  padding:10px 13px; border-radius:10px; font-size:var(--text-2xs); line-height:1.5;
+  border:1px solid var(--border-medium); background:var(--surface-1); color:var(--text-secondary);
+  animation:popIn 220ms var(--ease-out);
+}
+.auth-note .mark{
+  flex-shrink:0; width:15px; height:15px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:10px; font-weight:700; color:var(--destructive);
+  border:1px solid color-mix(in srgb, var(--destructive) 55%, transparent);
+}
+.auth-note svg{ flex-shrink:0; margin-top:1px; color:var(--success); }
+.auth-note.bad{ border-color:color-mix(in srgb, var(--destructive) 40%, transparent); background:color-mix(in srgb, var(--destructive) 9%, transparent); }
+.auth-note.ok{ border-color:color-mix(in srgb, var(--success) 40%, transparent); background:color-mix(in srgb, var(--success) 9%, transparent); }
+
+.auth-card .btn-primary-wide{ height:46px; margin-top:var(--sp-5); }
+.auth-card .btn-primary-wide svg{ width:13px; height:13px; }
+
+.auth-sep{ display:flex; align-items:center; margin:var(--sp-5) 0; }
+.auth-sep::before, .auth-sep::after{ content:""; flex:1; height:1px; background:var(--border-soft); }
+.auth-sep span{ padding:0 12px; font-size:var(--text-2xs); color:var(--text-muted); }
+
+.btn-google{
+  width:100%; height:46px; border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center; gap:10px;
+  border:1px solid var(--border-medium); background:var(--surface-1); color:var(--text-primary);
+  font-size:var(--text-sm); font-weight:600;
+  transition:border-color .16s var(--ease-out), background-color .16s var(--ease-out), transform 120ms var(--ease-out);
+}
+.btn-google:active:not(:disabled){ transform:scale(0.98); }
+.btn-google:disabled{ opacity:.55; cursor:not-allowed; }
+.btn-google .spinner{ border-color:var(--border-strong); border-top-color:var(--text-primary); }
+@media (hover:hover) and (pointer:fine){
+  .btn-google:hover:not(:disabled){ border-color:var(--border-strong); background:var(--surface-2); }
+}
+
+.auth-legal{ display:flex; gap:var(--sp-5); margin-top:var(--sp-6); }
+.auth-legal a{ font-size:var(--text-2xs); color:var(--text-muted); text-decoration:none; transition:color .15s var(--ease-out); }
+@media (hover:hover) and (pointer:fine){
+  .auth-legal a:hover{ color:var(--text-secondary); text-decoration:underline; }
+}
+
+/* Right half: who you are about to work with */
+.auth-hero{
+  flex:1; min-width:0; display:flex; align-items:center; justify-content:center;
+  padding:var(--sp-7); border-left:1px solid var(--border-soft);
+  background:linear-gradient(160deg, color-mix(in srgb, var(--primary) 7%, transparent), transparent 65%);
+}
+.auth-hero-inner{ max-width:400px; animation:viewIn 460ms var(--ease-out) both; }
+.auth-mascots{ display:flex; gap:var(--sp-6); margin-bottom:var(--sp-7); }
+.auth-mascots .am{ display:flex; flex-direction:column; align-items:center; gap:9px; }
+.auth-mascots .am span{
+  font-size:var(--text-3xs); font-weight:700; letter-spacing:0.09em; text-transform:uppercase; color:var(--text-muted);
+}
+.auth-hero .eyebrow{
+  display:block; font-size:var(--text-3xs); font-weight:700; letter-spacing:0.11em;
+  text-transform:uppercase; color:var(--primary-soft); margin-bottom:var(--sp-4);
+}
+.auth-hero h2{
+  font-size:26px; font-weight:650; letter-spacing:-0.5px; line-height:1.25;
+  color:var(--text-primary); margin-bottom:var(--sp-5);
+}
+.auth-hero .plist li{ font-size:var(--text-sm); line-height:1.6; margin-bottom:4px; }
+
+/* Below 900px the hero is the first thing cut — the form is what matters */
+@media (max-width:900px){
+  .auth-hero{ display:none; }
+  .auth-form-col{ padding:var(--sp-6) var(--sp-5); align-items:flex-start; }
+  .auth-card{ margin-top:var(--sp-6); }
+}
+@media (max-width:640px){
+  .auth-card h1{ font-size:var(--text-xl); }
+  .auth-card .field input{ font-size:16px; }
+  .auth-theme{ top:14px; right:14px; }
+}
+@media (prefers-reduced-motion:reduce){
+  .auth-card, .auth-hero-inner, .auth-note{ animation:none !important; }
+}
+
+/* Theme toggle icons — rendered both at once and picked by the theme class.
+   Choosing in JS (theme === "light" ? ... ) made the server and the client
+   render different markup, which is a hydration error on every page. */
+.ico-when-light{ display:none; }
+html.light .ico-when-light{ display:block; }
+html.light .ico-when-dark{ display:none; }
+.auth-back{ display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
