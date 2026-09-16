@@ -3,18 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { getProject, createBlankProject, clearAgent, PLACEHOLDER_PROJECT_NAME, type Project } from "@/lib/projects";
+import { getProject, createBlankProject, clearAgent, type Project } from "@/lib/projects";
 import { listAgents, type Agent, type AgentType } from "@/lib/agents";
 import { projectCountsByAgent } from "@/lib/agent-progress";
 import { AgentNav } from "@/components/layout/agent-nav";
 import { AgentPickerPanel } from "@/components/layout/agent-picker-panel";
 import { ProjectChatPanel } from "@/components/layout/project-chat-panel";
-
-// What the two panels are working toward: the Consultant's Transformation
-// Concept and the Coach's Change Plan, plus the smaller outputs. Both
-// documents are generated in the conversation today; these chips are the
-// future one-click/downloadable versions.
-const ARTIFACTS = ["Transformation Concept", "Change Plan", "User Stories", "AI & IT Glossary", "Roadmap", "PDF"];
+import { IconArrow } from "@/components/layout/agxp-icons";
+import { usePanelSizeStore } from "@/lib/panel-size-store";
 
 /**
  * The start screen: a narrow Coach panel beside a wide Consultant panel.
@@ -33,6 +29,11 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
   const [projectCounts, setProjectCounts] = useState<Record<string, number>>({});
   const [loadingData, setLoadingData] = useState(true);
   const creating = useRef<Promise<Project> | null>(null);
+  // Gates entering the live chat until the Consultant is picked — a single
+  // Start button instead of the panel jumping to chat on its own. Coach can
+  // join later, mid-conversation, via its own still-independent picker.
+  const [started, setStarted] = useState(false);
+  const { swapped } = usePanelSizeStore();
 
   useEffect(() => { if (!authLoading && !token) router.replace("/login"); }, [token, authLoading, router]);
 
@@ -44,7 +45,13 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
       listAgents(),
       projectCountsByAgent().catch(() => ({} as Record<string, number>)),
     ])
-      .then(([p, a, counts]) => { if (!alive) return; setProject(p); setAgents(a); setProjectCounts(counts); })
+      .then(([p, a, counts]) => {
+        if (!alive) return;
+        setProject(p); setAgents(a); setProjectCounts(counts);
+        // Resuming an already-fully-assigned project (opened from Project
+        // History) skips the Start gate — it only guards a fresh selection.
+        if (p?.coach_agent_id && p?.consultant_agent_id) setStarted(true);
+      })
       .catch(() => {})
       .finally(() => { if (alive) setLoadingData(false); });
     return () => { alive = false; };
@@ -82,20 +89,31 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
   function panelFor(role: AgentType) {
     const assignedId = role === "coach" ? project?.coach_agent_id : project?.consultant_agent_id;
     const assigned = agents.find(a => a.id === assignedId) ?? null;
-    const isPrimary = role === "consultant";
+    // Consultant leads (70%) by default. Two ways that flips to Coach-led:
+    // the manual toggle in the Coach chat-head (lib/panel-size-store.ts),
+    // or — pre-Start only — Coach growing to invite picking it once the
+    // Consultant alone has been chosen. Either way resets to normal the
+    // moment the live chat opens (`started`), so the nudge never lingers.
+    const consultantOnly = !!project?.consultant_agent_id && !project?.coach_agent_id;
+    const coachLeads = swapped || (!started && consultantOnly);
+    const flexGrow = coachLeads
+      ? (role === "consultant" ? 1 : 2.3)
+      : (role === "consultant" ? 2.3 : 1);
 
-    if (project && assigned) {
+    if (project && assigned && started) {
       return (
-        <ProjectChatPanel key={role} project={project} role={role} agent={assigned} primary={isPrimary}
+        <ProjectChatPanel key={role} project={project} role={role} agent={assigned} flexGrow={flexGrow}
           projectCount={projectCounts[assigned.id] ?? 0}
           onProjectNamed={name => setProject(p => p && { ...p, name })}
           onChangeAgent={() => changeAgent(role)} />
       );
     }
     return (
-      <AgentPickerPanel key={role} role={role} project={project} agents={agents} primary={isPrimary}
+      <AgentPickerPanel key={role} role={role} project={project} agents={agents} flexGrow={flexGrow}
         ensureProject={ensureProject}
         projectCounts={projectCounts}
+        assignedAgent={assigned}
+        onChangeAgent={assigned ? () => changeAgent(role) : undefined}
         onAssigned={handleAssigned}
         onAgentCreated={a => setAgents(prev => [...prev, a])} />
     );
@@ -107,31 +125,24 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
     </div>
   );
 
-  const named = !!project && project.name !== PLACEHOLDER_PROJECT_NAME;
+  const consultantAssigned = !!project?.consultant_agent_id;
 
   return (
     <div className="app">
-      <AgentNav projectName={project?.name} projectId={project?.id} />
+      <AgentNav />
       <div className="view-root view-enter">
-        <div className="page-head">
-          <div>
-            <h1>{named ? project!.name : "New Task"}</h1>
-            <p>Assemble your project team — pair a Coach with a Consultant. Choose from your existing AI team or create a new agent.</p>
+        {!started && (
+          <div className="start-bar">
+            <button className="btn btn-hero" disabled={!consultantAssigned} onClick={() => setStarted(true)}>
+              Start <IconArrow />
+            </button>
           </div>
-        </div>
-
+        )}
         {/* Consultant leads (wide, left) — Coach supports (narrow, right). */}
         <main className="workspace">
           {panelFor("consultant")}
           {panelFor("coach")}
         </main>
-
-        <div className="artifact-bar">
-          <span className="lbl">Project artifacts</span>
-          {ARTIFACTS.map(a => (
-            <span key={a} className="artifact-chip" title="Coming soon">{a}<span className="soon">soon</span></span>
-          ))}
-        </div>
       </div>
     </div>
   );
