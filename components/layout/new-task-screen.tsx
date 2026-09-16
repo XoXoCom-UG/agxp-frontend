@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { getProject, createBlankProject, PLACEHOLDER_PROJECT_NAME, type Project } from "@/lib/projects";
+import { getProject, createBlankProject, type Project } from "@/lib/projects";
 import { listAgents, type Agent, type AgentType } from "@/lib/agents";
 import { projectCountsByAgent } from "@/lib/agent-progress";
 import { AgentNav } from "@/components/layout/agent-nav";
@@ -111,23 +111,17 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
     </div>
   );
 
-  const named = !!project && project.name !== PLACEHOLDER_PROJECT_NAME;
-
   return (
     <div className="app">
       <AgentNav projectName={project?.name} projectId={project?.id} />
+      {/* No page title and no description: clicking "New Task" should show the
+          two agents and nothing else (Patryk, 2026-09-11 — "wenn es so clean
+          ist, weiß der User sofort, was als nächstes zu tun ist"). */}
       <div className="view-root view-enter">
-        <div className="page-head">
-          <div>
-            <h1>{named ? project!.name : "New Task"}</h1>
-            <p>Pick a coach and a consultant. They ask the questions, you get the answers.</p>
-          </div>
-        </div>
-
         {/* Only shown once the layout stacks (CSS) — both panels stay mounted,
             so switching never loses a conversation or a half-typed message. */}
         <div className="pane-switch" role="tablist" aria-label="Choose panel">
-          {(["coach", "consultant"] as AgentType[]).map(role => {
+          {(["consultant", "coach"] as AgentType[]).map(role => {
             const id = role === "coach" ? project?.coach_agent_id : project?.consultant_agent_id;
             const name = agents.find(a => a.id === id)?.name;
             return (
@@ -142,10 +136,10 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
           })}
         </div>
 
-        {/* Coach supports (narrow, left) — Consultant leads (wide, right). */}
+        {/* Consultant leads (left, wide) — Coach supports (right). */}
         <main className="workspace" data-active={pane}>
-          {panelFor("coach")}
           {panelFor("consultant")}
+          {panelFor("coach")}
         </main>
 
       </div>

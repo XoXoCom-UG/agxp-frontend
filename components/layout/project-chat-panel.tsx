@@ -7,48 +7,17 @@ import { askAgent } from "@/lib/ask-agent";
 import { parseMarkers, looksLikeDocument, type TopicMarker, type MemoryNote } from "@/lib/message-markers";
 import { loadAgentMemory, memoryLines, EMPTY_MEMORY, type AgentMemory } from "@/lib/agent-memory";
 import { DELIVERABLES } from "@/lib/deliverables";
-import { methodLabel, methodBlurb } from "@/lib/method-labels";
+import { methodLabel } from "@/lib/method-labels";
 import { levelFor, nextLevel, LEVEL_ORDER } from "@/lib/agent-progress";
 import { md } from "@/lib/markdown";
 import { AgentMascot, type MascotState } from "@/components/layout/agent-mascot";
 import type { DeliverableDoc } from "@/components/layout/deliverable-view";
-import { IconArrow, IconSend, IconCheck, IconSearch, IconDoc, IconSpark, IconRefresh } from "@/components/layout/agxp-icons";
+import { IconArrow, IconSend, IconDoc, IconSpark, IconRefresh } from "@/components/layout/agxp-icons";
 
 const OPENING: Record<AgentType, string> = {
   consultant: "Hey, what can I do for you today?",
   coach: "Hey, what would you like to talk through today?",
 };
-
-/** Each role's way in: the Consultant interviews, the Coach takes the temperature. */
-const OPENER_ACTION: Record<AgentType, { title: string; prompt: string }> = {
-  consultant: {
-    title: "Take me through it step by step",
-    prompt: "Let's do a full assessment with the standardized interview process.",
-  },
-  coach: {
-    title: "See how the team is doing",
-    prompt: "Let's check how ready the team is for this change.",
-  },
-};
-
-/** The agent offers what it knows: the guided interview, or one of its methods. */
-function quickActions(agent: Agent) {
-  const deliverable = DELIVERABLES[agent.type];
-  const actions = [{
-    ...OPENER_ACTION[agent.type],
-    blurb: `${deliverable.stations.length} short questions, then you get your ${deliverable.title}.`,
-    icon: <IconCheck size={14} />,
-  }];
-  for (const m of agent.primaryMethods.slice(0, 3)) {
-    actions.push({
-      title: methodLabel(m.name),
-      blurb: methodBlurb(m.name),
-      prompt: `Let's work through the ${methodLabel(m.name)} method together.`,
-      icon: <IconSearch size={14} />,
-    });
-  }
-  return actions;
-}
 
 export function ProjectChatPanel({ project, role, agent, primary, projectCount = 0, onProjectNamed, onActivity, onOpenDoc }: {
   project: Project; role: AgentType; agent: Agent;
@@ -150,7 +119,6 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
     for (let i = messages.length - 1; i >= 0; i--) if (messages[i].role === "assistant") return i;
     return -1;
   })();
-  const actions = quickActions(agent);
 
   // How far the interview has got: the newest assistant message that carries
   // each marker wins, so reloading history rebuilds the same rail.
@@ -315,26 +283,6 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
           <div className="msg-agent">
             <div className="txt">{OPENING[role]}</div>
           </div>
-        )}
-        {loaded && messages.length === 0 && (
-          <>
-            <div className="qa-list">
-              {actions.map(a => (
-                <button key={a.title} className="qa-item" onClick={() => send(a.prompt)}>
-                  <span className="qa-ic">{a.icon}</span>
-                  <div className="qtxt"><div className="qt">{a.title}</div><div className="qs">{a.blurb}</div></div>
-                  <IconArrow />
-                </button>
-              ))}
-            </div>
-            {/* What the conversation will cover, so the first click isn't blind */}
-            <div className="agenda-peek">
-              <span className="lbl">What we will talk about</span>
-              <ol className="plist numbered">
-                {deliverable.stations.map(s => <li key={s.label}>{s.label}</li>)}
-              </ol>
-            </div>
-          </>
         )}
 
         {messages.map((m, i) => {
