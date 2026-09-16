@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import "./agxp-design.css";
 import { ThemeProvider } from "@/components/layout/theme-provider";
@@ -8,16 +9,16 @@ import { StaleBuildRecovery } from "@/components/layout/stale-build-recovery";
 
 export const metadata: Metadata = {
   title: {
-    default: "matfit.ai — IT Consulting Agent",
-    template: "%s · matfit.ai",
+    default: "AgentiX Projects",
+    template: "%s · AgentiX Projects",
   },
   description:
-    "KI-gestützte IT-Beratung: Transformation Concepts, Roadmaps und fundiertes IT-Know-how in Minuten statt Wochen.",
-  applicationName: "matfit.ai",
+    "Train your AI Project-Agents: Coach und Consultant arbeiten gleichzeitig an deinem IT-Projekt — Ist-Analyse, Anforderungen und Roadmap KI-gestützt.",
+  applicationName: "AgentiX Projects",
   robots: { index: false, follow: false }, // private app — keep out of search engines
   openGraph: {
-    title: "matfit.ai — IT Consulting Agent",
-    description: "Transformation Concepts in Minuten, nicht Wochen.",
+    title: "AgentiX Projects",
+    description: "Train your AI Project-Agents.",
     type: "website",
     locale: "de_DE",
   },
@@ -32,10 +33,12 @@ export const viewport: Viewport = {
   ],
 };
 
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="de" suppressHydrationWarning>
-      <body>
+    <html lang="de" suppressHydrationWarning className={inter.variable}>
+      <body suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           <StaleBuildRecovery />
           <AuthProvider>{children}</AuthProvider>
