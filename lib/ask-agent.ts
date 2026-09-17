@@ -24,19 +24,24 @@ async function accessToken(): Promise<string> {
  *
  * `memory` carries what this agent learned in the user's earlier projects.
  */
-export async function askAgent(
-  agent: Agent,
-  messages: ChatTurn[],
-  memory: string[] = [],
-  onDelta?: (soFar: string) => void,
-): Promise<string> {
+export interface AskOptions {
+  agent: Agent;
+  messages: ChatTurn[];
+  /** What this agent learned in the user's earlier projects. */
+  memory?: string[];
+  /** How much history the two of them have — the agent's tone follows it. */
+  experience?: { level: string; projects: number };
+  onDelta?: (soFar: string) => void;
+}
+
+export async function askAgent({ agent, messages, memory = [], experience, onDelta }: AskOptions): Promise<string> {
   const res = await fetch("/api/agent/chat", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${await accessToken()}`,
     },
-    body: JSON.stringify({ agentType: agent.type, agentName: agent.name, messages, memory }),
+    body: JSON.stringify({ agentType: agent.type, agentName: agent.name, messages, memory, experience }),
   });
 
   // Everything that fails before the answer starts still answers in JSON.

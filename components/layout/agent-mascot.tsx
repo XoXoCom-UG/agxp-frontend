@@ -1,34 +1,59 @@
 "use client";
 
 import type { AgentType } from "@/lib/agents";
+import type { KnowledgeLevel } from "@/lib/agent-progress";
 
 export type MascotState = "idle" | "thinking" | "speaking";
 
 /**
+ * A short reaction to something that just happened, played once and then
+ * dropped. Reactions are what make the character read as alive — idle motion
+ * only makes it read as busy.
+ */
+export type MascotMood = "nod" | "curious" | "pleased" | "proud" | null;
+
+/**
  * The agent's face. A geometric little character rather than a cartoon
  * animal — the audience is IT consulting — but it has actual eyes, blinks,
- * and moves its mouth when it talks, so you can tell it's alive at a glance.
+ * breathes, looks at the thing you are doing, and reacts to what it just said.
  *
- * Consultant wears a tie, Coach wears a headset; everything else is shared.
+ * Consultant wears a tie, Coach wears a headset. The antenna picks up a ring
+ * for every experience level, so an agent you have worked with looks different
+ * from a new one — the only visual "score" in the app.
+ *
  * All motion lives in CSS (agxp-design.css, ".mascot" block) so a single
  * prefers-reduced-motion rule can switch it all off.
  */
-export function AgentMascot({ role, state = "idle", size = 44, enter = false }: {
+export function AgentMascot({ role, state = "idle", size = 44, enter = false, attentive = false, mood = null, level }: {
   role: AgentType;
   state?: MascotState;
   size?: number;
   /** Play the pop-in (used when the agent joins the project). */
   enter?: boolean;
+  /** The user is typing to this agent — it looks towards the composer. */
+  attentive?: boolean;
+  /** One-off reaction, cleared by the caller after it has played. */
+  mood?: MascotMood;
+  /** Drives the rank rings on the antenna. */
+  level?: KnowledgeLevel;
 }) {
+  const cls = [
+    "mascot",
+    `mascot-${role}`,
+    `is-${state}`,
+    enter ? "mascot-enter" : "",
+    attentive ? "is-attentive" : "",
+    mood ? `mood-${mood}` : "",
+    level ? `lvl-${level.toLowerCase()}` : "",
+  ].filter(Boolean).join(" ");
+
   return (
-    <span
-      className={`mascot mascot-${role} is-${state}${enter ? " mascot-enter" : ""}`}
-      style={{ width: size, height: size }}
-      aria-hidden="true"
-    >
+    <span className={cls} style={{ width: size, height: size }} aria-hidden="true">
       <svg viewBox="0 0 48 48" fill="none">
-        {/* antenna */}
+        {/* antenna, with a rank ring per level earned */}
         <path className="m-antenna" d="M24 12 V7" strokeWidth="2" strokeLinecap="round" />
+        <circle className="m-rank r1" cx="24" cy="5" r="4.4" strokeWidth="1" />
+        <circle className="m-rank r2" cx="24" cy="5" r="6.2" strokeWidth="1" />
         <circle className="m-antenna-dot" cx="24" cy="5" r="2.6" />
 
         {/* coach headset — a band over the head with an ear pad each side */}

@@ -10,7 +10,7 @@ import { DELIVERABLES } from "@/lib/deliverables";
 import { methodLabel } from "@/lib/method-labels";
 import { levelFor, nextLevel, LEVEL_ORDER } from "@/lib/agent-progress";
 import { md } from "@/lib/markdown";
-import { AgentMascot, type MascotState } from "@/components/layout/agent-mascot";
+import { AgentMascot, type MascotState, type MascotMood } from "@/components/layout/agent-mascot";
 import type { DeliverableDoc } from "@/components/layout/deliverable-view";
 import { IconArrow, IconSend, IconDoc, IconSpark, IconRefresh, IconChevronDown } from "@/components/layout/agxp-icons";
 
@@ -39,6 +39,11 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
   const [orb, setOrb] = useState<MascotState>("idle");
   /** The answer as it arrives, before it is saved and becomes a message. */
   const [streamText, setStreamText] = useState("");
+  /** The agent looks at the composer while you are writing to it. */
+  const [attentive, setAttentive] = useState(false);
+  /** A one-off reaction to what just happened, cleared after it has played. */
+  const [mood, setMood] = useState<MascotMood>(null);
+  const moodTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // What the agent brings from this user's earlier projects, plus what it
   // picked up during this session.
   const [memory, setMemory] = useState<AgentMemory>(EMPTY_MEMORY);
@@ -51,7 +56,18 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
 
   const deliverable = DELIVERABLES[role];
 
-  useEffect(() => () => { if (speakTimer.current) clearTimeout(speakTimer.current); }, []);
+  useEffect(() => () => {
+    if (speakTimer.current) clearTimeout(speakTimer.current);
+    if (moodTimer.current) clearTimeout(moodTimer.current);
+  }, []);
+
+  /** Plays a reaction once. Reactions are what read as alive — they have to
+   *  end, or they turn into noise in the corner of the eye. */
+  function react(next: Exclude<MascotMood, null>, ms = 1000) {
+    setMood(next);
+    if (moodTimer.current) clearTimeout(moodTimer.current);
+    moodTimer.current = setTimeout(() => setMood(null), ms);
+  }
 
   // Click anywhere else, or press Escape, and the head popover closes.
   useEffect(() => {
@@ -105,15 +121,19 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
     setMessages(prev => [...prev, userMsg]);
     setSending(true);
     setOrb("thinking");
+    react("nod", 450);   // "got it" — answered before the answer exists
     try {
       await addMessage(project.id, role, "user", t);
       if (isFirstEver) {
         renameFromFirstMessage(project, t).then(name => { if (name) onProjectNamed?.(name); }).catch(() => {});
       }
       const history = [...messages, userMsg].map(m => ({ role: m.role, content: m.content }));
-      const reply = await askAgent(agent, history, memoryLines(memory, learned), soFar => {
-        setStreamText(soFar);
-        setOrb("speaking");
+      const reply = await askAgent({
+        agent,
+        messages: history,
+        memory: memoryLines(memory, learned),
+        experience: { level, projects: totalProjects },
+        onDelta: soFar => { setStreamText(soFar); setOrb("speaking"); },
       });
       setStreamText("");
       await addMessage(project.id, role, "assistant", reply);
@@ -127,9 +147,15 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
       // Anything the agent decided to remember shows up in the Steckbrief
       // right away, and travels with it into the next project.
       if (parsed.memories.length) setLearned(prev => [...prev, ...parsed.memories]);
-      if (parsed.doc || looksLikeDocument(parsed.text, deliverable.title)) {
+      const isDocReply = parsed.doc || looksLikeDocument(parsed.text, deliverable.title);
+      if (isDocReply) {
         onOpenDoc?.(buildDoc(parsed.text, parsed.doc || deliverable.title, createdAt, docs.length + 1));
       }
+      // The reaction comes from what the reply IS, not from asking the model
+      // for a mood: a finished document, real progress, or a question back.
+      if (isDocReply) react("proud", 1200);
+      else if (parsed.progress !== null && parsed.progress - pct >= 10) react("pleased", 900);
+      else if (/[?？]\s*$/.test(parsed.text)) react("curious", 1800);
       touchProjectActivity(project.id, `${role === "coach" ? "Coach" : "Consultant"} replied`).catch(() => {});
     } catch (e) {
       setStreamText("");
@@ -214,7 +240,8 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
       <div className="chat-head" ref={headRef}>
         <button className="who-btn" aria-expanded={pop === "agent"}
           onClick={() => setPop(p => (p === "agent" ? null : "agent"))}>
-          <AgentMascot role={role} state={orb} size={40} enter />
+          <AgentMascot role={role} state={orb} size={40} enter
+            attentive={attentive} mood={mood} level={level} />
           <span className="who-txt">
             <span className="n">{agent.name}</span>
             <span className="r"><span className={`role-dot ${role}`} />{role === "coach" ? "Coach" : "Consultant"}</span>
@@ -401,6 +428,8 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
       <div className="chat-input">
         <textarea className="autosize" rows={1} disabled={sending} value={input}
           onChange={e => setInput(e.target.value)}
+          onFocus={() => setAttentive(true)}
+          onBlur={() => setAttentive(false)}
           onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }}
           placeholder={`Ask your ${role === "coach" ? "coach" : "consultant"}...`} />
         <button data-tooltip="Send message" disabled={!input.trim() || sending} onClick={() => send(input)}>

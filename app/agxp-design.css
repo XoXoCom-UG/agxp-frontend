@@ -693,14 +693,6 @@ html.light .m-antenna{ stroke:color-mix(in srgb, var(--primary) 45%, transparent
 /* SVG parts need an explicit box before transforms behave predictably */
 .m-eye, .m-mouth, .m-antenna-dot, .m-head, .m-dot{ transform-box:fill-box; transform-origin:center; }
 
-/* Idle: a rare blink — the smallest possible signal that someone's home */
-.m-eye{ animation:mBlink 5.5s var(--ease-out) infinite; }
-@keyframes mBlink{
-  0%, 92%, 100%{ transform:scaleY(1); }
-  95%{ transform:scaleY(0.12); }
-  97%{ transform:scaleY(1); }
-}
-
 /* Thinking: antenna pulses, mouth turns into a travelling "…" */
 .is-thinking .m-antenna-dot{ animation:mPulse .95s ease-in-out infinite; }
 @keyframes mPulse{ 0%,100%{ transform:scale(1); opacity:1; } 50%{ transform:scale(1.45); opacity:.55; } }
@@ -1785,4 +1777,82 @@ main.workspace.swapping > .panel:last-child{ animation:swapFromLeft 400ms var(--
     animation:none !important;
   }
   .swap-panels svg{ transition:none !important; }
+}
+
+/* =============================================================================
+   CHARACTER — what makes the mascot read as someone rather than an icon.
+   The rule throughout: motion is a REACTION to something the user did, it is
+   under half a second, and it settles back to still. Idle movement in the
+   corner of the eye is what steals attention, so there is almost none of it.
+   ============================================================================= */
+
+/* Breathing — the only always-on motion, and deliberately almost invisible
+   (1.5% over six seconds). Without it the character reads as a frozen icon. */
+.mascot{ transform-origin:center bottom; animation:mBreathe 6s ease-in-out infinite; }
+@keyframes mBreathe{
+  0%, 100%{ transform:scale(1); }
+  50%{ transform:scale(1.015); }
+}
+/* A reaction takes over from breathing while it plays. */
+.mascot.mood-nod{ animation:mNodOnce 420ms var(--ease-out); }
+.mascot.mood-pleased{ animation:mBounce 620ms var(--ease-out); }
+.mascot.mood-proud{ animation:mProud 900ms var(--ease-out); }
+@keyframes mNodOnce{
+  0%{ transform:translateY(0) scale(1); }
+  40%{ transform:translateY(2.5px) scale(0.985); }
+  100%{ transform:translateY(0) scale(1); }
+}
+@keyframes mBounce{
+  0%{ transform:translateY(0); }
+  35%{ transform:translateY(-4px); }
+  60%{ transform:translateY(0.5px); }
+  100%{ transform:translateY(0); }
+}
+@keyframes mProud{
+  0%{ transform:scale(1) rotate(0deg); }
+  30%{ transform:scale(1.08) rotate(-3deg); }
+  55%{ transform:scale(1.04) rotate(2deg); }
+  100%{ transform:scale(1) rotate(0deg); }
+}
+
+/* Blinking with a rhythm, not a metronome: one blink, a pause, a double
+   blink, a long pause. A regular blink is the thing that reads as machine. */
+.m-eye{ animation:mBlinkSet 7.4s var(--ease-out) infinite; }
+@keyframes mBlinkSet{
+  0%, 20%, 100%{ transform:scaleY(1); }
+  21.5%{ transform:scaleY(0.1); }
+  23%{ transform:scaleY(1); }
+  62%{ transform:scaleY(1); }
+  63.5%{ transform:scaleY(0.1); }
+  65%{ transform:scaleY(1); }
+  68%{ transform:scaleY(1); }
+  69.5%{ transform:scaleY(0.1); }
+  71%{ transform:scaleY(1); }
+}
+
+/* Looking at what you are doing: while you type, the eyes drop towards the
+   composer and the head tips a little. This is the single strongest "it is
+   paying attention to me" signal, and it costs one class. */
+.is-attentive .m-eyes{ transform:translateY(1.3px); transition:transform 260ms var(--ease-out); }
+.is-attentive .m-head{ transform:rotate(1.5deg); transition:transform 320ms var(--ease-out); }
+.m-eyes, .m-head{ transition:transform 320ms var(--ease-out); }
+/* A question tips the head the other way — curiosity, held briefly. */
+.mood-curious .m-head{ animation:mTilt 1.6s var(--ease-out); }
+@keyframes mTilt{
+  0%{ transform:rotate(0deg); }
+  25%{ transform:rotate(-7deg); }
+  75%{ transform:rotate(-6deg); }
+  100%{ transform:rotate(0deg); }
+}
+
+/* Rank: the antenna gains a ring per level. Small, permanent, and the only
+   thing in the app that says "we have history" without a number. */
+.m-rank{ stroke:var(--primary); fill:none; opacity:0; transition:opacity .4s var(--ease-out); }
+.lvl-medium .m-rank.r1, .lvl-high .m-rank.r1{ opacity:.45; }
+.lvl-high .m-rank.r2{ opacity:.3; }
+
+@media (prefers-reduced-motion:reduce){
+  .mascot, .mascot.mood-nod, .mascot.mood-pleased, .mascot.mood-proud,
+  .m-eye, .mood-curious .m-head{ animation:none !important; }
+  .is-attentive .m-eyes, .is-attentive .m-head, .m-eyes, .m-head{ transition:none !important; }
 }

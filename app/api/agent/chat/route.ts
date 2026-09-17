@@ -125,7 +125,33 @@ function memoryPrompt(memory: string[]): string {
   );
 }
 
-function systemPrompt(type: AgentType, name: string, memory: string[]): string {
+/**
+ * The tone follows the shared history. A first meeting and a fourth one should
+ * not sound the same — that, more than any badge, is what makes the agent feel
+ * like someone you know.
+ */
+function experiencePrompt(exp?: { level?: string; projects?: number }): string {
+  const projects = Number(exp?.projects ?? 0);
+  if (projects <= 0) {
+    return `
+
+Ihr arbeitet zum ERSTEN MAL zusammen. Sag das einmal kurz und freundlich am Anfang, ` +
+      `erkläre Fachbegriffe, wenn du sie brauchst, und frag lieber einmal mehr nach, bevor du etwas annimmst.`;
+  }
+  if (projects < 3) {
+    return `
+
+Ihr habt schon ${projects} Projekt(e) zusammen gemacht. Du darfst auf Bekanntes verweisen ` +
+      `und etwas direkter sein, aber prüfe weiterhin nach, statt Dinge vorauszusetzen.`;
+  }
+  return `
+
+Ihr arbeitet seit ${projects} Projekten zusammen. Rede wie mit jemandem, den du kennst: ` +
+    `direkt, ohne Grundlagen zu erklären, und beziehe dich selbstverständlich auf das, was du über ihn weißt. ` +
+    `Kein Duzen-Wechsel, kein neuer Small Talk — steig ein, wo ihr aufgehört habt.`;
+}
+
+function systemPrompt(type: AgentType, name: string, memory: string[], experience?: { level?: string; projects?: number }): string {
   return (
     ROLE_PROMPTS[type](name) +
     CONVERSATIONAL_STYLE +
@@ -134,7 +160,8 @@ function systemPrompt(type: AgentType, name: string, memory: string[]): string {
     // so the prompt and the progress rail in the UI can't drift apart.
     agendaPrompt(DELIVERABLES[type]) +
     LEARNING_INSTRUCTION +
-    memoryPrompt(memory)
+    memoryPrompt(memory) +
+    experiencePrompt(experience)
   );
 }
 
@@ -144,6 +171,8 @@ interface ChatBody {
   messages: { role: "user" | "assistant"; content: string }[];
   /** "kind: fact" lines from this agent's earlier projects with this user. */
   memory?: string[];
+  /** How many projects the two have done together, which sets the tone. */
+  experience?: { level?: string; projects?: number };
 }
 
 export async function POST(req: NextRequest) {
@@ -177,6 +206,7 @@ export async function POST(req: NextRequest) {
       body.agentType,
       body.agentName || "dein Agent",
       (body.memory ?? []).filter(m => typeof m === "string").slice(0, 20),
+      body.experience,
     ),
     messages: body.messages.map(m => ({ role: m.role, content: m.content })),
   });
