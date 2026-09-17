@@ -11,7 +11,6 @@ import { AgentPickerPanel } from "@/components/layout/agent-picker-panel";
 import { ProjectChatPanel } from "@/components/layout/project-chat-panel";
 import { DeliverableView, type DeliverableDoc } from "@/components/layout/deliverable-view";
 import { IconSwap } from "@/components/layout/agxp-icons";
-import { usePanelSizeStore } from "@/lib/panel-size-store";
 
 /**
  * The start screen: a narrow Coach panel beside a wide Consultant panel.
@@ -36,11 +35,24 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
   // lose half the conversation without noticing.
   const [pane, setPane] = useState<AgentType>("consultant");
   const [unseen, setUnseen] = useState<Record<AgentType, boolean>>({ coach: false, consultant: false });
-  // Gates entering the live chat until the Consultant is picked — a single
-  // Start button instead of the panel jumping to chat on its own. Coach can
-  // join later, mid-conversation, via its own still-independent picker.
+  /** Gates the live chat behind one Start button instead of the panel jumping
+   *  into the conversation the moment an agent is picked (Patryk, 2026-09-11;
+   *  built this way in Ana's repo). */
   const [started, setStarted] = useState(false);
-  const { swapped, toggle: toggleSwap } = usePanelSizeStore();
+  /** Manual override of the split: give the Coach the room instead. */
+  const [swapped, setSwapped] = useState(false);
+  /** True for the length of the swap, so the panels can animate across. */
+  const [swapping, setSwapping] = useState(false);
+  const swapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => { if (swapTimer.current) clearTimeout(swapTimer.current); }, []);
+
+  function swapSides() {
+    setSwapped(v => !v);
+    setSwapping(true);
+    if (swapTimer.current) clearTimeout(swapTimer.current);
+    swapTimer.current = setTimeout(() => setSwapping(false), 420);
+  }
   const creating = useRef<Promise<Project> | null>(null);
 
   function showPane(role: AgentType) {
@@ -65,8 +77,8 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
       .then(([p, a, counts]) => {
         if (!alive) return;
         setProject(p); setAgents(a); setProjectCounts(counts);
-        // Resuming an already-fully-assigned project (opened from Project
-        // History) skips the Start gate — it only guards a fresh selection.
+        // Opened from Project History with both agents already on it — the
+        // Start gate guards a fresh selection, not a return visit.
         if (p?.coach_agent_id && p?.consultant_agent_id) setStarted(true);
       })
       .catch(() => {})
@@ -79,14 +91,6 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
   function handleAssigned(p: Project) {
     setProject(p);
     projectCountsByAgent().then(setProjectCounts).catch(() => {});
-  }
-
-  // "Change agent" (reached from the chat panel's own ⋯ menu, not a popup at
-  // selection time — Ana's call, matching v8) drops the assignment so
-  // panelFor falls back to the picker for that role.
-  async function changeAgent(role: AgentType) {
-    if (!project) return;
-    setProject(await clearAgent(project.id, role));
   }
 
   // Creates the row on first real use and points the URL at it without
@@ -103,14 +107,19 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
     return creating.current;
   }
 
+  /** Drops the assignment so the panel falls back to its picker. */
+  async function changeAgent(role: AgentType) {
+    if (!project) return;
+    setProject(await clearAgent(project.id, role));
+  }
+
   function panelFor(role: AgentType) {
     const assignedId = role === "coach" ? project?.coach_agent_id : project?.consultant_agent_id;
     const assigned = agents.find(a => a.id === assignedId) ?? null;
-    // Consultant leads (70%) by default. Two ways that flips to Coach-led:
-    // the manual toggle in the Coach chat-head (lib/panel-size-store.ts),
-    // or — pre-Start only — Coach growing to invite picking it once the
-    // Consultant alone has been chosen. Either way resets to normal the
-    // moment the live chat opens (`started`), so the nudge never lingers.
+
+    // The Consultant leads. Two things hand the room to the Coach: the manual
+    // toggle, or — before Start — having picked the Consultant and not the
+    // Coach, which is the screen inviting you to finish the pair.
     const consultantOnly = !!project?.consultant_agent_id && !project?.coach_agent_id;
     const coachLeads = swapped || (!started && consultantOnly);
     const grow = coachLeads
@@ -123,8 +132,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
           projectCount={projectCounts[assigned.id] ?? 0}
           onActivity={() => noteActivity(role)}
           onOpenDoc={setOpenDoc}
-          onProjectNamed={name => setProject(p => p && { ...p, name })}
-          onChangeAgent={() => changeAgent(role)} />
+          onProjectNamed={name => setProject(p => p && { ...p, name })} />
       );
     }
     return (
@@ -144,11 +152,14 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
     </div>
   );
 
-  const consultantAssigned = !!project?.consultant_agent_id;
-
   return (
     <div className="app">
-      <AgentNav startEnabled={consultantAssigned} onStart={!started ? () => setStarted(true) : undefined} />
+      <AgentNav projectName={project?.name} projectId={project?.id}
+        startEnabled={!!project?.consultant_agent_id}
+        onStart={started ? undefined : () => setStarted(true)} />
+      {/* No page title and no description: clicking "New Task" should show the
+          two agents and nothing else (Patryk, 2026-09-11 — "wenn es so clean
+          ist, weiß der User sofort, was als nächstes zu tun ist"). */}
       <div className="view-root view-enter">
         {/* Only shown once the layout stacks (CSS) — both panels stay mounted,
             so switching never loses a conversation or a half-typed message. */}
@@ -168,16 +179,17 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
           })}
         </div>
 
-        {/* Consultant leads (wide, left) — Coach supports (narrow, right). */}
-        <main className="workspace" data-active={pane}>
+        {/* Consultant leads (left, wide) — Coach supports (right). */}
+        <main className={`workspace${swapping ? " swapping" : ""}`} data-active={pane}>
           {panelFor("consultant")}
-          <button className="icon-btn workspace-swap-btn"
-            data-tooltip={swapped ? "Reset panel sizes" : "Give Coach more room"}
-            onClick={() => toggleSwap()}>
+          <button className={`swap-panels${swapped ? " flipped" : ""}`} onClick={swapSides}
+            data-tooltip={swapped ? "Give the Consultant the room" : "Give the Coach the room"}
+            aria-label="Change how the room is split">
             <IconSwap size={13} />
           </button>
           {panelFor("coach")}
         </main>
+
       </div>
 
       {openDoc && <DeliverableView doc={openDoc} onClose={() => setOpenDoc(null)} />}

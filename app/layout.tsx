@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import "./agxp-design.css";
 import { ThemeProvider } from "@/components/layout/theme-provider";
@@ -32,12 +31,10 @@ export const viewport: Viewport = {
   ],
 };
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="de" suppressHydrationWarning className={inter.variable}>
-      <body suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
+      <body>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           <StaleBuildRecovery />
           <AuthProvider>{children}</AuthProvider>

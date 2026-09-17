@@ -12,10 +12,6 @@
    here ever need to move again.
    ============================================================================= */
 :root {
-  /* Lighter, neutral charcoal instead of near-black — the whole dark-mode
-     surface ladder below is lifted by roughly the same amount so cards/
-     popovers/elevated surfaces still read as progressively lighter than the
-     page, not inverted. */
   --background:#1C1D1F;
   --foreground:#EDF2F8;
 
@@ -34,19 +30,16 @@
   --muted-foreground:#7C8798;
   --accent:#283242;
   --accent-foreground:#EDF2F8;
-  /* A distinctly-lighter-than-background gray "elevated surface" — the
-     composer and the user's own messages, matching how ChatGPT's own
-     composer clearly reads as a lighter card against the page,
-     not a subtle tint like --accent. */
+  /* Ana's palette: a surface that is clearly lighter than the page, for the
+     composer and the user's own messages — not a subtle tint like --accent. */
   --surface-elevated:#384252;
 
   --destructive:#E0574A;
   --destructive-foreground:#FBEAE6;
   --success:#3FB27F;
 
-  /* Coach vs Consultant: near-identical graphite — v8's palette keeps the
-     temperature difference to a whisper (role is carried by icon/label, not
-     color), rather than ana's original blue-navy-tinted panels. */
+  /* Coach vs Consultant: both on the same blue-dark scale — the Consultant
+     side sits a step brighter because it leads the screen. */
   --coach-1:#292D34; --coach-2:#2F343D; --coach-3:#1E2024;
   --consultant-1:#2B2F36; --consultant-2:#31363F; --consultant-3:#1F2125;
 
@@ -179,6 +172,11 @@ html.dark .thinking-spinner { border-color: #3f3f46; border-top-color: var(--gre
 }
 .deck-card { animation: deck-card-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
+@keyframes slide-from-right {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.roadmap-panel { animation: slide-from-right 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
 /* ── Choice chips ───────────────────────────────────────────────────────────── */
 .choice-chip {
