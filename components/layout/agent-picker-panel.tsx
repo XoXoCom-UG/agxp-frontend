@@ -158,11 +158,8 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
 
   return (
     <section className={`panel ${role}`} style={{ flexGrow: grow }}>
-      {/* On the entry screen the agent is the screen: one big head, centred.
-          Once you are picking from a list it shrinks back into a normal row
-          so the list gets the room. */}
-      <div className={`panel-head${state === "empty" ? " head-hero" : ""}`}>
-        <AgentMascot role={role} size={state === "empty" ? 78 : 46} enter level={trainedLevel} />
+      <div className="panel-head">
+        <AgentMascot role={role} size={40} enter level={trainedLevel} />
         <div style={{ minWidth: 0, flex: 1 }}>
           <h2>{head.title}</h2>
           <div className="sub">{head.sub}</div>

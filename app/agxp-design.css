@@ -678,12 +678,6 @@ html.light .chat-input{ box-shadow:0 12px 28px -14px rgba(24,39,60,0.30), 0 2px 
 
 /* Panel header — icon tile + title + one-line purpose */
 .panel-head{ display:flex; align-items:flex-start; gap:var(--sp-3); padding:var(--sp-5) var(--sp-6); border-bottom:1px solid var(--border-soft); flex-shrink:0; }
-.head-hero{
-  flex-direction:column; align-items:center; text-align:center; gap:var(--sp-3);
-  padding:var(--sp-7) var(--sp-6) var(--sp-6); border-bottom:none;
-}
-.head-hero .mascot{ flex-shrink:0; }
-.head-hero > div{ flex:0 1 auto !important; }
 .panel-head .ic{
   width:34px; height:34px; border-radius:var(--r-xs); flex-shrink:0; display:flex; align-items:center; justify-content:center;
   background:color-mix(in srgb, var(--primary) 14%, transparent); border:1px solid color-mix(in srgb, var(--primary) 28%, transparent);
