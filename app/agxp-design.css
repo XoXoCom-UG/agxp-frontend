@@ -486,22 +486,33 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 .active-method-badge button:hover{ color:var(--text-primary); }
 
 .chat-body{ flex:1; overflow-y:auto; padding:var(--sp-6); display:flex; flex-direction:column; gap:var(--sp-4); }
-/* Agent messages are proper bubbles in the approved blue template (the earlier
-   gold mockup used a bare marker + text; that read as generated output rather
-   than someone talking). */
-.msg-agent{ max-width:86%; }
+/* Ana's call (agxp-frontend-ana): the agent's words are bare text, not a card.
+   A bubble reads as generated output; plain text reads as someone talking to
+   you. The user's own message stays a pill — grey, not blue, because blue is
+   kept for small real accents like the send button, never for backgrounds. */
+.msg-agent{ max-width:100%; }
 .msg-agent .txt{
-  background:var(--card); border:1px solid var(--border); border-radius:14px 14px 14px 4px;
-  padding:13px 16px; font-size:var(--text-sm); color:var(--text-primary); line-height:1.65;
+  font-size:var(--text-sm); color:var(--text-primary); line-height:1.65; padding:2px 0;
 }
 .msg-agent .txt > *:first-child{ margin-top:0; }
 .msg-agent .txt > *:last-child{ margin-bottom:0; }
 .msg-user{
-  align-self:flex-end; max-width:78%; background:var(--primary); border:1px solid transparent;
-  padding:12px 16px; border-radius:14px 14px 4px 14px; font-size:var(--text-sm); color:var(--primary-foreground);
-  line-height:1.55; box-shadow:0 6px 18px -10px rgba(30,118,240,0.7); white-space:pre-wrap;
+  align-self:flex-end; max-width:78%; background:var(--surface-elevated);
+  padding:12px 18px; border-radius:var(--r-pill); font-size:var(--text-sm); color:var(--text-primary);
+  line-height:1.55; white-space:pre-wrap;
 }
 .msg-typing{ display:flex; align-items:center; gap:8px; font-size:var(--text-2xs); color:var(--text-muted); }
+/* Ported from Ana's repo: the waiting label sweeps, so it reads as live
+   activity rather than a line that got stuck. */
+.shimmer-text{
+  background:linear-gradient(90deg, var(--text-muted) 0%, var(--text-primary) 50%, var(--text-muted) 100%);
+  background-size:200% 100%; -webkit-background-clip:text; background-clip:text; color:transparent;
+  animation:shimmerSweep 1.8s linear infinite;
+}
+@keyframes shimmerSweep{ 0%{ background-position:200% 0; } 100%{ background-position:-40% 0; } }
+@media (prefers-reduced-motion:reduce){
+  .shimmer-text{ animation:none !important; color:var(--text-muted); background:none; }
+}
 .msg-typing .tline{ width:34px; height:2px; border-radius:2px; background:linear-gradient(90deg, var(--magenta), transparent); background-size:200% 100%; animation:typingSweep 1.1s ease-in-out infinite; }
 @keyframes typingSweep{ 0%{ background-position:200% 0; } 100%{ background-position:-40% 0; } }
 
@@ -519,7 +530,7 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 .assess-segs span.current{ background:var(--blush); }
 
 .chat-input{ display:flex; gap:var(--sp-3); padding:var(--sp-4) var(--sp-6); border-top:1px solid var(--border-soft); flex-shrink:0; align-items:flex-end; }
-.chat-input textarea{ flex:1; background:var(--surface-2); border:1px solid var(--border-medium); border-radius:12px; padding:11px 14px; color:var(--text-primary); font-size:var(--text-xs); outline:none; transition:box-shadow .16s ease, border-color .16s ease; resize:none; font-family:inherit; line-height:1.5; max-height:100px; }
+.chat-input textarea{ flex:1; background:var(--surface-elevated); border:1px solid var(--border-medium); border-radius:12px; padding:11px 14px; color:var(--text-primary); font-size:var(--text-xs); outline:none; transition:box-shadow .16s ease, border-color .16s ease; resize:none; font-family:inherit; line-height:1.5; max-height:100px; }
 .chat-input textarea:focus{ border-color:var(--border-strong); box-shadow:0 0 0 3px color-mix(in srgb, var(--ring) 13%, transparent); }
 .chat-input textarea::placeholder{ color:var(--text-muted); }
 .chat-input button{
@@ -623,7 +634,7 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
   width:100%; height:42px; border-radius:var(--radius-sm); border:1px solid transparent; background:var(--primary);
   color:var(--primary-foreground); font-size:var(--text-sm); font-weight:600;
   display:flex; align-items:center; justify-content:center; gap:8px;
-  box-shadow:0 8px 20px -12px rgba(30,118,240,0.9);
+  box-shadow:0 8px 20px -12px color-mix(in srgb, var(--primary) 90%, transparent);
   transition:background-color .16s var(--ease-out), transform 120ms var(--ease-out);
 }
 .btn-primary-wide:active{ transform:scale(0.98); }
@@ -1124,12 +1135,12 @@ html.light .m-antenna{ stroke:color-mix(in srgb, var(--primary) 45%, transparent
 /* Visuals in print: keep them, drop the glow, never split one across pages */
 @media print{
   .v-kpi, .v-gap-row, .v-flow, .v-road, .v-risk, .v-stake-card{ break-inside:avoid; }
-  .v-gap-row .goal{ box-shadow:none !important; background:#1E76F0 !important; }
+  .v-gap-row .goal{ box-shadow:none !important; background:#154E80 !important; }
   .v-gap-row .now{ background:#9aa3ad !important; }
   .v-tile, .v-flow .step, .v-road-col .it, .v-risk .cell, .v-stake-card{
     border-color:#d5d8dd !important; background:#fff !important;
   }
-  .v-flow .step.auto{ background:#eaf2fe !important; border-color:#1E76F0 !important; color:#0d4a9c !important; }
+  .v-flow .step.auto{ background:#e9eff6 !important; border-color:#154E80 !important; color:#0f3d66 !important; }
   .v-risk .cell.hot{ background:#fdeceb !important; }
   .v-risk .cell.warm{ background:#fdf5e7 !important; }
   .v-tile b{ color:#111 !important; }

@@ -420,7 +420,9 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
           )
         )}
         {sending && !streamText && (
-          <div className="msg-typing"><span className="tline" />{agent.name} is thinking...</div>
+          <div className="msg-typing"><span className="tline" />
+            <span className="shimmer-text">{agent.name} is thinking…</span>
+          </div>
         )}
         <div ref={bottomRef} />
       </div>
