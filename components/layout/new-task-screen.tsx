@@ -10,6 +10,7 @@ import { AgentNav } from "@/components/layout/agent-nav";
 import { AgentPickerPanel } from "@/components/layout/agent-picker-panel";
 import { ProjectChatPanel } from "@/components/layout/project-chat-panel";
 import { DeliverableView, type DeliverableDoc } from "@/components/layout/deliverable-view";
+import { IconSwap } from "@/components/layout/agxp-icons";
 
 /**
  * The start screen: a narrow Coach panel beside a wide Consultant panel.
@@ -34,6 +35,9 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
   // lose half the conversation without noticing.
   const [pane, setPane] = useState<AgentType>("consultant");
   const [unseen, setUnseen] = useState<Record<AgentType, boolean>>({ coach: false, consultant: false });
+  /** Which side each agent sits on. Consultant left by default; the button on
+   *  the seam swaps them (Patryk, 2026-09-11). */
+  const [swapped, setSwapped] = useState(false);
   const creating = useRef<Promise<Project> | null>(null);
 
   function showPane(role: AgentType) {
@@ -138,8 +142,12 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
 
         {/* Consultant leads (left, wide) — Coach supports (right). */}
         <main className="workspace" data-active={pane}>
-          {panelFor("consultant")}
-          {panelFor("coach")}
+          {swapped ? panelFor("coach") : panelFor("consultant")}
+          <button className="swap-panels" onClick={() => setSwapped(v => !v)}
+            data-tooltip="Swap sides" aria-label="Swap the two panels">
+            <IconSwap size={13} />
+          </button>
+          {swapped ? panelFor("consultant") : panelFor("coach")}
         </main>
 
       </div>

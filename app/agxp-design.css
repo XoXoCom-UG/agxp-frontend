@@ -650,8 +650,6 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 .suggested li .nm{ flex:1; }
 
 
-/* Steckbrief — the compact agent profile above the conversation */
-.steckbrief{ padding:var(--sp-4) var(--sp-6) var(--sp-5); border-bottom:1px solid var(--border-soft); flex-shrink:0; }
 .sb-stats{ display:flex; gap:var(--sp-7); margin-bottom:var(--sp-4); flex-wrap:wrap; }
 .sb-stats .lbl{ display:block; font-size:var(--text-3xs); color:var(--text-muted); margin-bottom:4px; }
 .sb-stats b{ font-size:var(--text-sm); font-weight:650; color:var(--text-primary); }
@@ -1237,7 +1235,6 @@ html.light .m-antenna{ stroke:color-mix(in srgb, var(--primary) 45%, transparent
   .msg-agent{ max-width:96%; }
   .msg-user{ max-width:88%; }
 
-  .steckbrief{ padding:var(--sp-3) var(--sp-4) var(--sp-4); }
   .sb-stats{ gap:var(--sp-5); margin-bottom:var(--sp-3); }
   
 
@@ -1299,7 +1296,6 @@ html.light .m-antenna{ stroke:color-mix(in srgb, var(--primary) 45%, transparent
 
   /* The chat is the point on a phone. The Steckbrief keeps one compact row of
      numbers; methods and remembered lessons live in the Agent Dashboard. */
-  .steckbrief{ padding:var(--sp-3) var(--sp-4); }
   
   .sb-stats{ gap:var(--sp-5); margin-bottom:0; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; }
   .sb-stats::-webkit-scrollbar{ display:none; }
@@ -1540,3 +1536,74 @@ html.light .m-antenna{ stroke:color-mix(in srgb, var(--primary) 45%, transparent
 html.light .ico-when-light{ display:block; }
 html.light .ico-when-dark{ display:none; }
 .auth-back{ display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+
+/* ---------- CHAT HEAD — the whole agent profile and the whole document
+   live behind these two buttons, so the panel is the conversation. ---------- */
+.chat-head{ gap:var(--sp-3); }
+.who-btn{
+  display:flex; align-items:center; gap:var(--sp-3); min-width:0; flex:1; text-align:left;
+  padding:4px 8px 4px 4px; margin:-4px; border-radius:12px; background:none; border:none;
+  transition:background-color .16s var(--ease-out);
+}
+.who-btn .who-txt{ min-width:0; display:flex; flex-direction:column; }
+.who-btn svg{ flex-shrink:0; color:var(--text-muted); transition:transform .18s var(--ease-out); }
+.who-btn[aria-expanded="true"] svg{ transform:rotate(180deg); }
+@media (hover:hover) and (pointer:fine){
+  .who-btn:hover{ background:rgba(255,255,255,0.04); }
+  .who-btn:hover svg{ color:var(--text-secondary); }
+}
+
+/* The document button: the colour fills up with the progress */
+.doc-pill{
+  flex-shrink:0; display:inline-flex; align-items:center; gap:6px; position:relative;
+  padding:7px 12px; border-radius:var(--r-pill); font-size:var(--text-2xs); font-weight:600;
+  color:var(--text-secondary); border:1px solid var(--border-medium); overflow:hidden;
+  transition:color .16s var(--ease-out), border-color .16s var(--ease-out);
+}
+.doc-pill::before{
+  content:""; position:absolute; inset:0; width:var(--fill, 0%);
+  background:color-mix(in srgb, var(--primary) 30%, transparent);
+  transition:width .45s var(--ease-out);
+}
+.doc-pill > *{ position:relative; }
+.doc-pill.ready{ color:var(--text-primary); border-color:color-mix(in srgb, var(--primary) 55%, transparent); }
+.doc-pill.done::before{ background:color-mix(in srgb, var(--success) 30%, transparent); }
+.doc-pill.done{ color:var(--text-primary); border-color:color-mix(in srgb, var(--success) 50%, transparent); }
+@media (hover:hover) and (pointer:fine){
+  .doc-pill:hover{ color:var(--text-primary); border-color:var(--border-strong); }
+}
+
+/* Both head popovers hang off the head, which is already positioned */
+.head-pop{
+  top:calc(100% - 4px); left:var(--sp-6); right:var(--sp-6); min-width:0;
+  display:flex; flex-direction:column; gap:var(--sp-4); padding:var(--sp-5);
+  max-height:60vh; overflow-y:auto;
+}
+.head-pop.deliv-pop{ padding:0; overflow:hidden; }
+.head-pop .deliv-rail{ border-bottom:none; background:none; }
+.hp-stats{ display:flex; gap:var(--sp-6); flex-wrap:wrap; }
+.hp-stats .lbl, .hp-grp .lbl{
+  display:block; font-size:var(--text-3xs); color:var(--text-muted); margin-bottom:5px;
+}
+.hp-stats b{ font-size:var(--text-sm); font-weight:650; color:var(--text-primary); }
+.hp-grp .val{ font-size:var(--text-2xs); color:var(--text-secondary); }
+
+/* The seam button that swaps the two panels. It is a flex item between them,
+   not an absolutely positioned overlay: the panels have different widths, so
+   "50% of the workspace" is not where the seam actually is. */
+.swap-panels{
+  flex:0 0 auto; align-self:center;
+  width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  color:var(--text-muted); background:var(--surface-2); border:1px solid var(--border-medium);
+  box-shadow:0 6px 18px -8px rgba(0,0,0,0.7);
+  transition:color .16s var(--ease-out), border-color .16s var(--ease-out), transform 140ms var(--ease-out);
+}
+.swap-panels:active{ transform:scale(0.92); }
+@media (hover:hover) and (pointer:fine){
+  .swap-panels:hover{ color:var(--text-primary); border-color:color-mix(in srgb, var(--ring) 55%, transparent); }
+}
+/* Stacked layout has the tab switcher already — a swap makes no sense there */
+@media (max-width:1000px){
+  .swap-panels{ display:none; }
+  .head-pop{ left:var(--sp-5); right:var(--sp-5); }
+}

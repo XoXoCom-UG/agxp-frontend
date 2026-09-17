@@ -12,7 +12,7 @@ import { levelFor, nextLevel, LEVEL_ORDER } from "@/lib/agent-progress";
 import { md } from "@/lib/markdown";
 import { AgentMascot, type MascotState } from "@/components/layout/agent-mascot";
 import type { DeliverableDoc } from "@/components/layout/deliverable-view";
-import { IconArrow, IconSend, IconDoc, IconSpark, IconRefresh } from "@/components/layout/agxp-icons";
+import { IconArrow, IconSend, IconDoc, IconSpark, IconRefresh, IconChevronDown } from "@/components/layout/agxp-icons";
 
 const OPENING: Record<AgentType, string> = {
   consultant: "Hey, what can I do for you today?",
@@ -41,12 +41,26 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
   // picked up during this session.
   const [memory, setMemory] = useState<AgentMemory>(EMPTY_MEMORY);
   const [learned, setLearned] = useState<MemoryNote[]>([]);
+  /** Which head popover is open: the agent profile, or the document. */
+  const [pop, setPop] = useState<"agent" | "doc" | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const headRef = useRef<HTMLDivElement>(null);
   const speakTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const deliverable = DELIVERABLES[role];
 
   useEffect(() => () => { if (speakTimer.current) clearTimeout(speakTimer.current); }, []);
+
+  // Click anywhere else, or press Escape, and the head popover closes.
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (headRef.current && !headRef.current.contains(e.target as Node)) setPop(null);
+    }
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") setPop(null); }
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
+  }, []);
 
   function playSpeaking() {
     setOrb("speaking");
@@ -183,97 +197,112 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
 
   return (
     <section className={`panel ${role}${primary ? " primary" : ""}`}>
-      {/* Head + Steckbrief: who this agent is, condensed */}
-      <div className="chat-head">
-        <AgentMascot role={role} state={orb} size={46} enter />
-        <div style={{ minWidth: 0 }}>
-          <div className="n">{agent.name}</div>
-          <div className="r"><span className={`role-dot ${role}`} />{role === "coach" ? "Coach" : "Consultant"}</div>
-        </div>
-      </div>
-
-      <div className="steckbrief">
-        <div className="sb-stats">
-          <div>
-            <span className="lbl">Experience</span>
-            <div className="level">
-              <b>{level}</b>
-              <span className="level-bar">
-                {LEVEL_ORDER.map((l, i) => (
-                  <span key={l} className={`level-seg ${i <= LEVEL_ORDER.indexOf(level) ? "on" : ""}`} />
-                ))}
-              </span>
-              {leveledUp && <span className="level-up">Level up!</span>}
-            </div>
-            {next && <div className="level-hint">{remaining} more project{remaining === 1 ? "" : "s"} to {next}</div>}
-          </div>
-          <div><span className="lbl">Projects together</span><b>{totalProjects}</b></div>
-          {agent.tagline && <div><span className="lbl">Role</span><b>{agent.tagline}</b></div>}
-        </div>
-        {/* Lists, not chips: Patryk's review (2026-09-10) asked for the pills
-            to go everywhere in favour of plain lists. */}
-        <div className="sb-lists">
-          {shownLessons.length > 0 && (
-            <div className="grp">
-              <span className="lbl">
-                Remembers about you
-                {learned.length > 0 && <em className="mem-new">+{learned.length} new</em>}
-              </span>
-              <ul className="plist mem">
-                {shownLessons.slice(0, 3).map(l => (
-                  <li key={l.fact} className={l.fresh ? "fresh" : undefined}>{l.fact}</li>
-                ))}
-                {shownLessons.length > 3 && <li className="muted">and {shownLessons.length - 3} more</li>}
-              </ul>
-            </div>
-          )}
-          {agent.primaryMethods.length > 0 && (
-            <div className="grp">
-              <span className="lbl">Can help with</span>
-              <ul className="plist">
-                {[...agent.primaryMethods, ...agent.secondaryMethods].map(m => (
-                  <li key={m.id}>{methodLabel(m.name)}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* The deliverable rail: what this panel is building, and how far along it is */}
-      <div className={`deliv-rail${ready ? " ready" : ""}${currentDoc ? " done" : ""}`}
-        style={{ ["--dr-steps" as string]: deliverable.stations.length }}>
-        <div className="dr-top">
-          <span className="dr-kind"><IconDoc size={12} />{deliverable.title}</span>
-          {currentDoc ? <span className="dr-done">ready</span> : <span className="dr-pct">{pct}%</span>}
-        </div>
-        <div className="dr-bar"><span style={{ width: `${currentDoc ? 100 : pct}%` }} /></div>
-        <div className="dr-bottom">
-          <span className="dr-step">
-            {currentDoc
-              ? docs.length > 1 ? `Version ${docs.length} generated` : "Document generated"
-              : stationIdx < 0
-                ? `${deliverable.stations.length} steps · not started`
-                : `Step ${stationIdx + 1} of ${deliverable.stations.length} · ${stationLabel}`}
+      {/* Everything about the agent and the document lives behind these two
+          small buttons — the panel itself is the conversation and nothing else
+          (Patryk, 2026-09-11: "das Gespräch muss im Vordergrund stehen"). */}
+      <div className="chat-head" ref={headRef}>
+        <button className="who-btn" aria-expanded={pop === "agent"}
+          onClick={() => setPop(p => (p === "agent" ? null : "agent"))}>
+          <AgentMascot role={role} state={orb} size={40} enter />
+          <span className="who-txt">
+            <span className="n">{agent.name}</span>
+            <span className="r"><span className={`role-dot ${role}`} />{role === "coach" ? "Coach" : "Consultant"}</span>
           </span>
-          {currentDoc ? (
-            <>
-              <button className="dr-cta" onClick={() => onOpenDoc?.(currentDoc)}>
-                <IconDoc size={12} />Open
-              </button>
-              <button className="dr-redo" disabled={sending} aria-label="Rebuild the document"
-                data-tooltip="Rebuild — fuller than the last version"
-                onClick={() => send(deliverable.regeneratePrompt)}>
-                <IconRefresh size={13} />
-              </button>
-            </>
-          ) : (
-            <button className="dr-cta" disabled={sending} onClick={() => send(deliverable.generatePrompt)}
-              data-tooltip={ready ? "Everything answered — build it" : "Builds it with what the agent knows so far"}>
-              <IconSpark size={12} />Generate
-            </button>
-          )}
-        </div>
+          <IconChevronDown size={11} />
+        </button>
+
+        {/* The fill IS the progress — no bar, no label taking up the panel */}
+        <button className={`doc-pill${ready ? " ready" : ""}${currentDoc ? " done" : ""}`}
+          style={{ ["--fill" as string]: `${currentDoc ? 100 : pct}%` }}
+          aria-expanded={pop === "doc"} data-tooltip={deliverable.title}
+          onClick={() => setPop(p => (p === "doc" ? null : "doc"))}>
+          <IconDoc size={12} />
+          <span>{currentDoc ? "ready" : `${pct}%`}</span>
+        </button>
+
+        {pop === "agent" && (
+          <div className="popover head-pop" onClick={e => e.stopPropagation()}>
+            <div className="hp-stats">
+              <div>
+                <span className="lbl">Experience</span>
+                <div className="level">
+                  <b>{level}</b>
+                  <span className="level-bar">
+                    {LEVEL_ORDER.map((l, i) => (
+                      <span key={l} className={`level-seg ${i <= LEVEL_ORDER.indexOf(level) ? "on" : ""}`} />
+                    ))}
+                  </span>
+                  {leveledUp && <span className="level-up">Level up!</span>}
+                </div>
+                {next && <div className="level-hint">{remaining} more project{remaining === 1 ? "" : "s"} to {next}</div>}
+              </div>
+              <div><span className="lbl">Projects together</span><b>{totalProjects}</b></div>
+            </div>
+            {agent.tagline && <div className="hp-grp"><span className="lbl">Role</span><div className="val">{agent.tagline}</div></div>}
+            {shownLessons.length > 0 && (
+              <div className="hp-grp">
+                <span className="lbl">
+                  Remembers about you
+                  {learned.length > 0 && <em className="mem-new">+{learned.length} new</em>}
+                </span>
+                <ul className="plist mem">
+                  {shownLessons.slice(0, 3).map(l => (
+                    <li key={l.fact} className={l.fresh ? "fresh" : undefined}>{l.fact}</li>
+                  ))}
+                  {shownLessons.length > 3 && <li className="muted">and {shownLessons.length - 3} more</li>}
+                </ul>
+              </div>
+            )}
+            {agent.primaryMethods.length > 0 && (
+              <div className="hp-grp">
+                <span className="lbl">Can help with</span>
+                <ul className="plist">
+                  {[...agent.primaryMethods, ...agent.secondaryMethods].map(m => (
+                    <li key={m.id}>{methodLabel(m.name)}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
+        {pop === "doc" && (
+          <div className="popover head-pop deliv-pop" onClick={e => e.stopPropagation()}>
+            <div className={`deliv-rail${ready ? " ready" : ""}${currentDoc ? " done" : ""}`}
+              style={{ ["--dr-steps" as string]: deliverable.stations.length }}>
+              <div className="dr-top">
+                <span className="dr-kind"><IconDoc size={12} />{deliverable.title}</span>
+                {currentDoc ? <span className="dr-done">ready</span> : <span className="dr-pct">{pct}%</span>}
+              </div>
+              <div className="dr-bar"><span style={{ width: `${currentDoc ? 100 : pct}%` }} /></div>
+              <div className="dr-bottom">
+                <span className="dr-step">
+                  {currentDoc
+                    ? docs.length > 1 ? `Version ${docs.length} generated` : "Document generated"
+                    : stationIdx < 0
+                      ? `${deliverable.stations.length} steps · not started`
+                      : `Step ${stationIdx + 1} of ${deliverable.stations.length} · ${stationLabel}`}
+                </span>
+                {currentDoc ? (
+                  <>
+                    <button className="dr-cta" onClick={() => { setPop(null); onOpenDoc?.(currentDoc); }}>
+                      <IconDoc size={12} />Open
+                    </button>
+                    <button className="dr-redo" disabled={sending} aria-label="Rebuild the document"
+                      onClick={() => { setPop(null); send(deliverable.regeneratePrompt); }}>
+                      <IconRefresh size={13} />
+                    </button>
+                  </>
+                ) : (
+                  <button className="dr-cta" disabled={sending}
+                    onClick={() => { setPop(null); send(deliverable.generatePrompt); }}>
+                    <IconSpark size={12} />Generate
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="chat-body">
