@@ -282,8 +282,32 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
      animated, because it changes when the Coach is invited in. */
   transition:flex-grow 340ms var(--ease-out); container-type:inline-size; container-name:panel; }
 .panel.primary{ flex:1.6; }
-.panel.coach{ background:linear-gradient(175deg, var(--coach-3) 0%, var(--background) 100%); }
-.panel.consultant{ background:linear-gradient(175deg, var(--consultant-3) 0%, var(--background) 100%); }
+/* Ambient light in the panel: a faint blue bloom behind the agent's head and
+   a fainter one rising off the composer, so the big empty area reads as lit
+   rather than as flat black. Extra background layers rather than an overlay
+   element — a positioned overlay is what put the popover under the messages
+   last time. */
+.panel{
+  --bloom-top:color-mix(in srgb, var(--primary-soft) 7%, transparent);
+  --bloom-bottom:color-mix(in srgb, var(--primary) 5%, transparent);
+}
+.panel.coach{
+  background:
+    radial-gradient(135% 52% at 50% 0%, var(--bloom-top), transparent 66%),
+    radial-gradient(95% 42% at 50% 100%, var(--bloom-bottom), transparent 70%),
+    linear-gradient(175deg, var(--coach-3) 0%, var(--background) 100%);
+}
+.panel.consultant{
+  background:
+    radial-gradient(135% 52% at 50% 0%, var(--bloom-top), transparent 66%),
+    radial-gradient(95% 42% at 50% 100%, var(--bloom-bottom), transparent 70%),
+    linear-gradient(175deg, var(--consultant-3) 0%, var(--background) 100%);
+}
+/* On white the same percentages turn muddy grey, so the blue is thinner. */
+html.light .panel{
+  --bloom-top:color-mix(in srgb, var(--primary-soft) 5%, transparent);
+  --bloom-bottom:color-mix(in srgb, var(--primary) 3%, transparent);
+}
 .panel::before{ content:""; position:absolute; top:0; left:20px; right:20px; height:1px; background:linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent); }
 
 .pane-head{ padding:var(--sp-5) var(--sp-6) var(--sp-4); border-bottom:1px solid var(--border-soft); flex-shrink:0; }
@@ -596,7 +620,6 @@ html.light .chat-input{ box-shadow:0 12px 28px -14px rgba(24,39,60,0.30), 0 2px 
 @media (prefers-reduced-motion:reduce){
   .btn-start.is-ready{ animation:none; }
   .start-nudge{ animation:none; }
-  .is-tracking .m-eyes{ transform:none; }
 }
 
 [data-tooltip]{ position:relative; }
@@ -1781,8 +1804,6 @@ main.workspace.swapping > .panel:last-child{ animation:swapFromLeft 400ms var(--
 /* --- The mascot thinks visibly: the head tips, the eyes wander, the antenna
        keeps time. Speaking starts with a small nod so the switch is felt. --- */
 .m-eyes, .m-head{ transform-box:fill-box; transform-origin:center; }
-.is-tracking .m-eyes{ transform:translate(var(--gaze-x, 0), var(--gaze-y, 0)); }
-.is-tracking.is-attentive .m-eyes{ transform:translate(var(--gaze-x, 0), calc(var(--gaze-y, 0px) + 1.3px)); }
 .is-thinking .m-head{ animation:mThinkTilt 2.6s ease-in-out infinite; }
 .is-thinking .m-eyes{ animation:mLookAround 2.6s ease-in-out infinite; }
 @keyframes mThinkTilt{
@@ -2020,7 +2041,7 @@ html.light .picker-card::after{ background:linear-gradient(100deg, transparent, 
   .pick-cards{ flex-direction:row; max-width:640px; }
   .picker-card{
     flex:1 1 0; align-items:center; text-align:center;
-    min-height:250px; padding:var(--sp-6) var(--sp-5); gap:var(--sp-6);
+    min-height:210px; padding:var(--sp-6) var(--sp-5); gap:var(--sp-6);
   }
   .picker-card-head{ align-items:center; }
   .picker-card-cta{ height:52px; }
