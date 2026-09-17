@@ -1,9 +1,54 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import type { AgentType } from "@/lib/agents";
 import { DELIVERABLES, agendaPrompt } from "@/lib/deliverables";
 
 const MODEL = "claude-sonnet-5";
+
+/**
+ * Who is calling. This route used to be open to the internet — the proxy only
+ * guards /dashboard, and nothing here checked a session — so anyone who knew
+ * the URL could send prompts and spend our Anthropic budget. The browser sends
+ * its Supabase access token, which is verified against Supabase here.
+ */
+async function callerId(req: NextRequest): Promise<string | null> {
+  const header = req.headers.get("authorization") ?? "";
+  const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+  if (!token) return null;
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
+
+  const supabase = createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data, error } = await supabase.auth.getUser(token);
+  return error || !data.user ? null : data.user.id;
+}
+
+/**
+ * A seatbelt against a runaway loop, not a wall: serverless instances don't
+ * share memory, so a determined caller spread over instances gets more than
+ * this. It does stop one client hammering one instance, which is the realistic
+ * accident.
+ */
+const WINDOW_MS = 60_000;
+const MAX_PER_WINDOW = 20;
+const hits = new Map<string, number[]>();
+
+function overLimit(userId: string): boolean {
+  const now = Date.now();
+  const recent = (hits.get(userId) ?? []).filter(t => now - t < WINDOW_MS);
+  recent.push(now);
+  hits.set(userId, recent);
+  // Keep the map from growing forever on a long-lived instance.
+  if (hits.size > 500) {
+    for (const [k, v] of hits) if (!v.some(t => now - t < WINDOW_MS)) hits.delete(k);
+  }
+  return recent.length > MAX_PER_WINDOW;
+}
 
 // The user wants EVERY question to end with pickable options — no free-text
 // guessing, no exceptions. This is a hard requirement, not a "when it makes
@@ -102,6 +147,14 @@ interface ChatBody {
 }
 
 export async function POST(req: NextRequest) {
+  const userId = await callerId(req);
+  if (!userId) {
+    return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+  }
+  if (overLimit(userId)) {
+    return NextResponse.json({ error: "Too many messages in a row. Wait a minute." }, { status: 429 });
+  }
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: "ANTHROPIC_API_KEY ist nicht konfiguriert." }, { status: 500 });
