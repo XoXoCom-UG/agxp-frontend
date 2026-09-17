@@ -9,6 +9,7 @@ import { methodLabel } from "@/lib/method-labels";
 import { dateStr } from "@/lib/utils";
 import { describeDbError } from "@/lib/db-error";
 import { AgentMascot } from "@/components/layout/agent-mascot";
+import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/layout/ui-card";
 import {
   IconBack, IconArrow, IconSearch, IconCheck,
 } from "@/components/layout/agxp-icons";
@@ -16,25 +17,6 @@ import {
 type PanelState = "empty" | "list" | "detail" | "type" | "configure";
 
 const ROLE_LABEL: Record<AgentType, string> = { consultant: "Consultant", coach: "Coach" };
-// Plain words only. Patryk's review (2026-09-10): someone with no IT or
-// consulting background must not meet jargon on the first screen, or they
-// lose interest before the conversation starts.
-const ROLE_HEAD: Record<AgentType, { title: string; sub: string; emptyTitle: string; emptyDesc: string }> = {
-  coach: {
-    title: "Your coach",
-    sub: "Keeps an eye on the people side of your project.",
-    emptyTitle: "No coach yet",
-    emptyDesc: "Make a new one, or pick a coach you have worked with before.",
-  },
-  consultant: {
-    title: "Your consultant",
-    sub: "Works out what to change and how.",
-    emptyTitle: "No consultant yet",
-    emptyDesc: "Make a new one, or pick a consultant you have worked with before.",
-  },
-};
-
-/** Ana's two ways in (agxp-frontend-ana): make one, or train one you have. */
 const PICKER_COPY: Record<AgentType, { createDesc: string; trainDesc: string }> = {
   consultant: {
     createDesc: "Set up a new AI consultant tailored to your needs.",
@@ -49,27 +31,27 @@ const PICKER_COPY: Record<AgentType, { createDesc: string; trainDesc: string }> 
 // Agent "type" catalog — a type carries fixed methods (Patryk, 2026-09-02:
 // the user shouldn't pick methods à la carte, the type decides them), all
 // grounded in methods that actually exist in the DB.
-interface TypeTemplate { type: string; sub: string; description: string; primary: string[]; secondary: string[]; status: "confirmed" | "preview"; }
+interface TypeTemplate { type: string; sub: string; description: string; primary: string[]; secondary: string[]; }
 const TYPE_CATALOG: Record<AgentType, TypeTemplate[]> = {
   consultant: [
-    { type: "AI Strategy Consultant", sub: "Strategy & AI Transformation", status: "confirmed",
+    { type: "AI Strategy Consultant", sub: "Strategy & AI Transformation",
       description: "Strategic analysis and structured guidance for AI and IT transformation projects.",
       primary: ["As-Is/To-Be", "Gap-Analyse", "Requirements Engineering"], secondary: ["Process Mapping", "Impact Mapping"] },
-    { type: "Solution Architect", sub: "Systems & Integration", status: "preview",
+    { type: "Solution Architect", sub: "Systems & Integration",
       description: "Designs target-state systems and integration blueprints.",
       primary: ["Gap-Analyse", "Process Mapping"], secondary: ["Impact Mapping"] },
-    { type: "Digital Transformation Manager", sub: "Roadmap & Adoption", status: "preview",
+    { type: "Digital Transformation Manager", sub: "Roadmap & Adoption",
       description: "Coordinates roadmap execution and change adoption across teams.",
       primary: ["Impact Mapping", "Process Mapping"], secondary: ["Requirements Engineering"] },
   ],
   coach: [
-    { type: "AI Business Analyst", sub: "Process & Requirements", status: "confirmed",
+    { type: "AI Business Analyst", sub: "Process & Requirements",
       description: "Supports structured project discovery, requirements clarification and project execution.",
       primary: ["Requirements Engineering", "Process Mapping"], secondary: ["As-Is/To-Be"] },
-    { type: "Agile Coach / Scrum Master", sub: "Delivery & Team Flow", status: "preview",
+    { type: "Agile Coach / Scrum Master", sub: "Delivery & Team Flow",
       description: "Coaches delivery teams on flow, ceremonies and iterative planning.",
       primary: ["Process Mapping"], secondary: ["Impact Mapping"] },
-    { type: "Change Manager", sub: "Change & Adoption", status: "preview",
+    { type: "Change Manager", sub: "Change & Adoption",
       description: "Guides teams through the human side of AI/IT transformations.",
       primary: ["Impact Mapping", "As-Is/To-Be"], secondary: ["Gap-Analyse"] },
   ],
@@ -92,7 +74,6 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   onChangeAgent?: () => void;
 }) {
   const totalProjects = (a: Agent) => a.last_projects.length + (projectCounts[a.id] ?? 0);
-  const head = ROLE_HEAD[role];
   const [state, setState] = useState<PanelState>("empty");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -118,23 +99,24 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   }
 
   const showBack = state !== "empty";
-  // Ana's rule: the Coach can only be picked once a Consultant exists. It
-  // answers "when does the Coach appear" without a timer or a popup.
-  const locked = role === "coach" && !project?.consultant_agent_id;
+  // Coach comes second — its picker stays idle until a Consultant is
+  // assigned, so the two agents are always picked in a fixed order.
+  const coachLocked = role === "coach" && !project?.consultant_agent_id;
 
   // Chosen, waiting for Start. Showing who it is beats an empty panel, and
   // this is the one place changing your mind is free.
   if (assignedAgent) {
     const total = totalProjects(assignedAgent);
+    const level = levelFor(total);
     return (
-      <section className={`panel ${role}`} style={{ flexGrow: grow }}>
+      <section className={`panel panel-picker ${role}`} style={{ flexGrow: grow }}>
         <div className="panel-head">
-          <AgentMascot role={role} size={38} enter level={levelFor(total)} />
+          <AgentMascot role={role} size={38} enter level={level} />
         </div>
         <div className="selected-summary">
           <div className="sel-name">{assignedAgent.name}</div>
           {assignedAgent.tagline && <div className="sel-type">{assignedAgent.tagline}</div>}
-          <div className="sel-type">{levelFor(total)} · {total} {total === 1 ? "project" : "projects"} together</div>
+          <div className="sel-type">{level} · {total} {total === 1 ? "project" : "projects"} together</div>
           {assignedAgent.primaryMethods.length > 0 && (
             <div className="sel-methods">{assignedAgent.primaryMethods.map(m => methodLabel(m.name)).join(" · ")}</div>
           )}
@@ -145,13 +127,9 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   }
 
   return (
-    <section className={`panel ${role}`} style={{ flexGrow: grow }}>
+    <section className={`panel panel-picker ${role}`} style={{ flexGrow: grow }}>
       <div className="panel-head">
         <AgentMascot role={role} size={38} enter />
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <h2>{head.title}</h2>
-          <div className="sub">{head.sub}</div>
-        </div>
         {showBack && (
           <button className="back-link" onClick={() => setState(state === "detail" ? "list" : state === "configure" ? "type" : "empty")}>
             <IconBack size={11} /> Back
@@ -165,32 +143,32 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
         // follows the panel's own width, not the window's.
         <div className="pick-empty">
           <div className="pick-cards">
-            <div className="picker-card">
-              <div className="picker-card-head">
-                <h3 className="picker-card-title">Create new AI {ROLE_LABEL[role]}</h3>
-                <p className="picker-card-desc">{PICKER_COPY[role].createDesc}</p>
-              </div>
-              <div className="picker-card-footer">
-                <button className="btn" disabled={locked}
-                  data-tooltip={locked ? "Pick a Consultant first" : undefined}
+            <Card>
+              <CardHeader>
+                <CardTitle>Create new AI {ROLE_LABEL[role]}</CardTitle>
+                <CardDescription>{PICKER_COPY[role].createDesc}</CardDescription>
+              </CardHeader>
+              <CardFooter>
+                <button className="btn" disabled={coachLocked}
+                  data-tooltip={coachLocked ? "Pick a Consultant first" : undefined}
                   onClick={() => setState("type")}>
                   <span>Create new agent</span><span className="btn-arrow-end">→</span>
                 </button>
-              </div>
-            </div>
-            <div className="picker-card">
-              <div className="picker-card-head">
-                <h3 className="picker-card-title">Train existing AI {ROLE_LABEL[role]}</h3>
-                <p className="picker-card-desc">{PICKER_COPY[role].trainDesc}</p>
-              </div>
-              <div className="picker-card-footer">
-                <button className="btn" disabled={locked}
-                  data-tooltip={locked ? "Pick a Consultant first" : undefined}
+              </CardFooter>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Train existing AI {ROLE_LABEL[role]}</CardTitle>
+                <CardDescription>{PICKER_COPY[role].trainDesc}</CardDescription>
+              </CardHeader>
+              <CardFooter>
+                <button className="btn" disabled={coachLocked}
+                  data-tooltip={coachLocked ? "Pick a Consultant first" : undefined}
                   onClick={() => setState("list")}>
                   <span>Train existing agent</span><span className="btn-arrow-end">→</span>
                 </button>
-              </div>
-            </div>
+              </CardFooter>
+            </Card>
           </div>
         </div>
 
@@ -282,8 +260,20 @@ function DetailView({ agent, role, busy, totalProjects, onSelect }: {
             </span>
           </div>
         </div>
-        <div><span className="lbl">Projects together</span><b>{total}</b></div>
-        {agent.tagline && <div><span className="lbl">Role</span><b>{agent.tagline}</b></div>}
+        <div><span className="lbl">Previous Projects</span><b>{total}</b></div>
+        {agent.tagline && <div><span className="lbl">Type</span><b>{agent.tagline}</b></div>}
+      </div>
+      <div className="sb-methods" style={{ marginBottom: "var(--sp-5)" }}>
+        {agent.primaryMethods.length > 0 && (
+          <div className="grp"><span className="lbl">Primary Methods</span>
+            <div className="chips">{agent.primaryMethods.map(m => <span key={m.id} className="m-chip shimmer-text">{methodLabel(m.name)}</span>)}</div>
+          </div>
+        )}
+        {agent.secondaryMethods.length > 0 && (
+          <div className="grp"><span className="lbl">Secondary Methods</span>
+            <div className="chips">{agent.secondaryMethods.map(m => <span key={m.id} className="m-chip secondary shimmer-text">{methodLabel(m.name)}</span>)}</div>
+          </div>
+        )}
       </div>
       {agent.methods.length > 0 && (
         <div className="detail-section">
@@ -350,8 +340,11 @@ function ConfigureView({ role, template, onCreated }: { role: AgentType; templat
         </div>
         <div className="field"><label>Description</label><textarea rows={3} value={description} onChange={e => setDescription(e.target.value)} /></div>
         <div className="field">
-          <label>Can help with</label>
-          <ul className="plist">{[...t.primary, ...t.secondary].map(m => <li key={m}>{methodLabel(m)}</li>)}</ul>
+          <label>Methods (fixed by type)</label>
+          <div className="sb-methods">
+            <div className="grp"><div className="chips">{t.primary.map(m => <span key={m} className="m-chip shimmer-text">{methodLabel(m)}</span>)}</div></div>
+            <div className="grp"><div className="chips">{t.secondary.map(m => <span key={m} className="m-chip secondary shimmer-text">{methodLabel(m)}</span>)}</div></div>
+          </div>
         </div>
         <div className="field"><label>Experience</label><div className="val" style={{ fontSize: "var(--text-xs)", color: "var(--text-secondary)" }}>New — you two have not worked together yet</div></div>
         {error && <div className="field-err">{error}</div>}
