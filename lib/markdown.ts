@@ -49,37 +49,55 @@ function renderTable(rows: string[]): string {
   return `<div class="overflow-x-auto my-3 rounded-lg border border-zinc-200 dark:border-zinc-700"><table class="w-full"><thead class="bg-zinc-50 dark:bg-zinc-800/60"><tr>${ths}</tr></thead><tbody>${trs}</tbody></table></div>`;
 }
 
-export function md(raw: string): string {
-  // Escape ALL HTML first (XSS protection), then normalize line endings
-  const lines = escapeHtml(raw).replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+// A block of text between (or around) fenced code blocks — kept as RAW,
+// unescaped source, same as the rest of `raw` before `md()`/`mdBlocks()`
+// walk it. Splitting on the fence lines first (rather than inside the single
+// escape-then-parse loop `parseBlocks` used to be) is what lets `mdBlocks()`
+// hand real, un-escaped source off to `CodeBlock`/prism-react-renderer,
+// which token-highlights and escapes it itself via JSX — not HTML strings.
+type Segment = { type: "text"; raw: string } | { type: "code"; lang: string; code: string };
+
+function splitFences(raw: string): Segment[] {
+  const lines = raw.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+  const segments: Segment[] = [];
+  let textLines: string[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const trimmed = lines[i].trim();
+    if (trimmed.startsWith("```")) {
+      if (textLines.length) { segments.push({ type: "text", raw: textLines.join("\n") }); textLines = []; }
+      const lang = trimmed.slice(3).trim();
+      const codeLines: string[] = [];
+      i++;
+      while (i < lines.length && !lines[i].trim().startsWith("```")) { codeLines.push(lines[i]); i++; }
+      i++; // skip closing ```
+      segments.push({ type: "code", lang, code: codeLines.join("\n") });
+      continue;
+    }
+    textLines.push(lines[i]);
+    i++;
+  }
+  if (textLines.length) segments.push({ type: "text", raw: textLines.join("\n") });
+  return segments;
+}
+
+// Renders one already-HTML-escaped, fence-free text segment (headings,
+// lists, tables, paragraphs — everything `md()` handled directly before code
+// fences were split out above). `lines` have already been through
+// `escapeHtml()`, matching the original `md()`'s single upfront pass.
+function parseBlocks(escapedLines: string[]): string {
   const out: string[] = [];
   let i = 0;
 
-  while (i < lines.length) {
-    const line = lines[i];
+  while (i < escapedLines.length) {
+    const line = escapedLines[i];
     const trimmed = line.trim();
-
-    // Fenced code block (``` or ```lang)
-    if (trimmed.startsWith("```")) {
-      const codeLines: string[] = [];
-      i++;
-      while (i < lines.length && !lines[i].trim().startsWith("```")) {
-        codeLines.push(lines[i]);
-        i++;
-      }
-      i++; // skip closing ```
-      const escaped = codeLines.join("\n"); // already HTML-escaped globally
-      out.push(
-        `<pre class="bg-zinc-950 dark:bg-zinc-950 text-zinc-100 rounded-xl p-4 overflow-x-auto my-4 text-[12.5px] font-mono leading-relaxed border border-zinc-800"><code>${escaped}</code></pre>`
-      );
-      continue;
-    }
 
     // Table
     if (trimmed.startsWith("|")) {
       const tableLines: string[] = [];
-      while (i < lines.length && lines[i].trim().startsWith("|")) {
-        tableLines.push(lines[i]);
+      while (i < escapedLines.length && escapedLines[i].trim().startsWith("|")) {
+        tableLines.push(escapedLines[i]);
         i++;
       }
       out.push(renderTable(tableLines));
@@ -110,8 +128,8 @@ export function md(raw: string): string {
     // Unordered list
     if (/^[-*•]\s/.test(trimmed)) {
       const items: string[] = [];
-      while (i < lines.length && /^[-*•]\s/.test(lines[i].trim())) {
-        items.push(`<li class="leading-relaxed">${inlineFmt(lines[i].trim().replace(/^[-*•]\s/, ""))}</li>`);
+      while (i < escapedLines.length && /^[-*•]\s/.test(escapedLines[i].trim())) {
+        items.push(`<li class="leading-relaxed">${inlineFmt(escapedLines[i].trim().replace(/^[-*•]\s/, ""))}</li>`);
         i++;
       }
       out.push(`<ul class="my-2.5 ml-5 list-disc space-y-1 text-[13px] text-zinc-700 dark:text-zinc-300">${items.join("")}</ul>`);
@@ -121,8 +139,8 @@ export function md(raw: string): string {
     // Ordered list
     if (/^\d+\.\s/.test(trimmed)) {
       const items: string[] = [];
-      while (i < lines.length && /^\d+\.\s/.test(lines[i].trim())) {
-        items.push(`<li class="leading-relaxed">${inlineFmt(lines[i].trim().replace(/^\d+\.\s/, ""))}</li>`);
+      while (i < escapedLines.length && /^\d+\.\s/.test(escapedLines[i].trim())) {
+        items.push(`<li class="leading-relaxed">${inlineFmt(escapedLines[i].trim().replace(/^\d+\.\s/, ""))}</li>`);
         i++;
       }
       out.push(`<ol class="my-2.5 ml-5 list-decimal space-y-1 text-[13px] text-zinc-700 dark:text-zinc-300">${items.join("")}</ol>`);
@@ -141,4 +159,41 @@ export function md(raw: string): string {
   }
 
   return out.join("");
+}
+
+// Same `<pre><code>` chrome `md()` has always emitted for a fenced block —
+// kept byte-for-byte so the printable/export path (which still calls `md()`
+// directly, not `mdBlocks()`) is unaffected by the CodeBlock/highlighting
+// work below.
+function renderCodeHtml(code: string): string {
+  const escaped = escapeHtml(code);
+  return `<pre class="bg-zinc-950 dark:bg-zinc-950 text-zinc-100 rounded-xl p-4 overflow-x-auto my-4 text-[12.5px] font-mono leading-relaxed border border-zinc-800"><code>${escaped}</code></pre>`;
+}
+
+/** Full markdown → HTML string, for callers that render via
+ * `dangerouslySetInnerHTML` and don't need interactive code blocks (the
+ * print/export path, the legacy chat page, the right-side help panel). */
+export function md(raw: string): string {
+  return splitFences(raw).map(seg =>
+    seg.type === "code"
+      ? renderCodeHtml(seg.code)
+      : parseBlocks(escapeHtml(seg.raw).split("\n"))
+  ).join("");
+}
+
+/** One rendered chunk of a message: prose (already-safe HTML, for
+ * `dangerouslySetInnerHTML`) or a fenced code block (raw source + language,
+ * for a real `<CodeBlock>` — not HTML, so it can stay interactive). */
+export type MdBlock = { type: "html"; html: string } | { type: "code"; lang: string; code: string };
+
+/** Same parse as `md()`, but keeps fenced code blocks as raw source instead
+ * of flattening everything into one HTML string — lets the chat panel render
+ * real `<CodeBlock>` components (copy button, syntax highlighting) inline
+ * with the rest of the prose. */
+export function mdBlocks(raw: string): MdBlock[] {
+  return splitFences(raw).map(seg =>
+    seg.type === "code"
+      ? { type: "code" as const, lang: seg.lang, code: seg.code }
+      : { type: "html" as const, html: parseBlocks(escapeHtml(seg.raw).split("\n")) }
+  );
 }

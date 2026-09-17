@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/lib/auth-context";
 import {
-  IconDiamond, IconSun, IconMoon, IconUser, IconLogout,
+  IconDiamond, IconSun, IconMoon, IconUser, IconLogout, IconArrow,
 } from "@/components/layout/agxp-icons";
 
 type Tab = "newtask" | "history" | "agents";
@@ -16,7 +16,7 @@ function activeTab(pathname: string): Tab {
   return "newtask";
 }
 
-export function AgentNav() {
+export function AgentNav({ startEnabled, onStart }: { startEnabled?: boolean; onStart?: () => void } = {}) {
   const { user, profileName, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -63,6 +63,10 @@ export function AgentNav() {
         <button className="avatar" onClick={e => { e.stopPropagation(); setAvatarOpen(o => !o); }}>
           {(profileName || user?.email || "U").slice(0, 2).toUpperCase()}
         </button>
+
+        {onStart && (
+          <button className="btn btn-hero" disabled={!startEnabled} onClick={onStart}>Start <IconArrow /></button>
+        )}
 
         {avatarOpen && (
           <div className="popover" onClick={e => e.stopPropagation()}>

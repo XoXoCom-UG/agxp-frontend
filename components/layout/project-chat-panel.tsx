@@ -7,15 +7,14 @@ import { askAgent } from "@/lib/ask-agent";
 import { parseMarkers } from "@/lib/message-markers";
 import { methodLabel, methodBlurb } from "@/lib/method-labels";
 import { levelFor, nextLevel, LEVEL_ORDER } from "@/lib/agent-progress";
-import { md } from "@/lib/markdown";
-import { useAuth } from "@/lib/auth-context";
+import { md, mdBlocks } from "@/lib/markdown";
 import { useOpenClose } from "@/lib/use-open-close";
-import { usePanelSizeStore } from "@/lib/panel-size-store";
 import { Progress } from "@/components/ui/progress";
 import { AgentMascot, type MascotState } from "@/components/layout/agent-mascot";
-import { LoadingState, LoaderGrid } from "@/components/layout/loading-state";
+import { LoaderGrid } from "@/components/layout/loading-state";
 import { ThinkingState } from "@/components/layout/thinking-state";
 import { StreamingText } from "@/components/layout/streaming-text";
+import { CodeBlock } from "@/components/layout/code-block";
 import {
   IconCheck, IconSearch, IconMore, IconDownload, IconX,
   IconAttach, IconMic, IconArrowUp, IconArrow,
@@ -25,15 +24,13 @@ import {
 // the panel under its trigger button when it first opens.
 const METHOD_PANEL_WIDTH = 520;
 
-// Personalized "welcome back" hero greeting for the empty-conversation state
-// (shown once, centered, before the first message) — not a literal "how can
-// I help" clone. Falls back cleanly when no first name has resolved yet.
-const GREETING: Record<AgentType, (firstName: string) => string> = {
-  consultant: (firstName) =>
-    firstName ? `Welcome back, ${firstName} — ready to dive in?` : "Welcome back — ready to dive in?",
-  coach: (firstName) =>
-    firstName ? `Good to have you back, ${firstName} — what's on your mind?` : "Good to have you back — what's on your mind?",
-};
+// The agent's opening line — a real introduction, not a generic "welcome
+// back". Rendered as a normal message bubble (not persisted via addMessage,
+// same as the greeting this replaces) so nothing changes about history/storage.
+function agentGreeting(role: AgentType, agent: Agent): string {
+  const specialty = agent.expertise || agent.tagline || "this area";
+  return `Hey, I'm ${agent.name}, your AI Agent ${role === "coach" ? "Coach" : "Consultant"}. I am specialized in ${specialty}. How can I support you today?`;
+}
 
 // Contextual "thinking" labels instead of a static "is thinking..." — a
 // broader pool for the opening question, a narrower "still with you" pool
@@ -87,7 +84,6 @@ export function ProjectChatPanel({ project, role, agent, flexGrow, projectCount 
   const menu = useOpenClose();
   const roadmap = useOpenClose();
   const agentInfo = useOpenClose();
-  const { swapped, toggle: toggleSwap } = usePanelSizeStore();
   // Method Group floats near its trigger button rather than at a fixed CSS
   // offset, and can be dragged anywhere afterward — position lives in state
   // (not transform, which the t-dropdown pop animation already owns) so the
@@ -116,7 +112,6 @@ export function ProjectChatPanel({ project, role, agent, flexGrow, projectCount 
   // checking window.SpeechRecognition during render would differ between
   // server and client and break hydration.
   const [micSupported, setMicSupported] = useState(false);
-  const { profileName } = useAuth();
 
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -262,8 +257,7 @@ export function ProjectChatPanel({ project, role, agent, flexGrow, projectCount 
     return -1;
   })();
   const actions = quickActions(agent);
-  const firstName = profileName.trim().split(/\s+/)[0] || "";
-  const showHero = loaded && messages.length === 0;
+  const noMessagesYet = loaded && messages.length === 0;
 
   // Shown on demand in the Agent Info panel now, not a permanent Steckbrief.
   const totalProjects = agent.last_projects.length + projectCount;
@@ -380,18 +374,11 @@ export function ProjectChatPanel({ project, role, agent, flexGrow, projectCount 
         {role === "consultant" && (
           <button ref={roadmapBtnRef} className="roadmap-btn roadmap-btn-lg" style={{ marginLeft: "auto" }}
             onClick={() => { roadmap.toggle(); agentInfo.close(); }}>
-            <span>Method Group</span>
+            <span>Transformation Concept</span>
             <Progress value={availabilityPct} />
           </button>
         )}
-        {role === "coach" && (
-          <button className="icon-btn" style={{ marginLeft: "auto" }}
-            data-tooltip={swapped ? "Reset panel sizes" : "Give Coach more room"}
-            onClick={e => { e.stopPropagation(); toggleSwap(); }}>
-            <IconArrow style={{ transform: swapped ? "none" : "rotate(180deg)" }} />
-          </button>
-        )}
-        <div style={{ position: "relative" }} onClick={e => e.stopPropagation()}>
+        <div style={{ position: "relative", marginLeft: role === "consultant" ? 0 : "auto" }} onClick={e => e.stopPropagation()}>
           <button className="chat-menu-btn" data-tooltip="More" onClick={() => menu.toggle()}>
             <IconMore size={14} />
           </button>
@@ -446,7 +433,7 @@ export function ProjectChatPanel({ project, role, agent, flexGrow, projectCount 
         <div className={`roadmap-panel method-panel t-dropdown ${roadmap.className}`}
           style={roadmapPos ? { top: roadmapPos.top, left: roadmapPos.left } : undefined}>
           <div className="rp-head" onMouseDown={startRoadmapDrag} style={{ cursor: "grab" }}>
-            <h3>Method Group</h3>
+            <h3>Transformation Concept</h3>
             <button className="rp-close" onMouseDown={e => e.stopPropagation()} onClick={() => roadmap.close()}><IconX size={13} /></button>
           </div>
           <button className="rp-download-all" disabled={pdfBusy !== null} onClick={downloadAll}>
@@ -476,27 +463,21 @@ export function ProjectChatPanel({ project, role, agent, flexGrow, projectCount 
       <div className="chat-body">
         {!loaded && <div className="spinner" style={{ margin: "0 auto", borderColor: "var(--border-strong)", borderTopColor: "var(--foreground)" }} />}
 
-        {showHero && (
-          <div className="chat-hero">
-            <div className="chat-hero-inner">
-              <div className="chat-hero-greet">{GREETING[role](firstName)}</div>
-              <div className="chat-input chat-input--hero">{composer}</div>
-              {role === "consultant" && (
-                <div className="hero-actions">
-                  {actions.map(a => (
-                    <button key={a.title} className="hero-action" onClick={() => send(a.prompt)}>
-                      <span className="qa-ic">{a.icon}</span>
-                      <span className="ha-label">{a.title}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {loaded && messages.length > 0 && (
+        {loaded && (
           <>
+            <div className="msg-agent"><div className="txt">{agentGreeting(role, agent)}</div></div>
+
+            {noMessagesYet && role === "consultant" && (
+              <div className="hero-actions">
+                {actions.map(a => (
+                  <button key={a.title} className="hero-action" onClick={() => send(a.prompt)}>
+                    <span className="qa-ic">{a.icon}</span>
+                    <span className="ha-label">{a.title}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
             {messages.map((m, i) => {
               if (m.role === "user") return <div key={m.id} className="msg-user">{m.content}</div>;
               const parsed = parseMarkers(m.content);
@@ -511,12 +492,20 @@ export function ProjectChatPanel({ project, role, agent, flexGrow, projectCount 
                       <StreamingText text={parsed.text} onDone={() => setAnimatedIds(prev => new Set(prev).add(m.id))} />
                     </div>
                   ) : (
-                    <div className="txt" dangerouslySetInnerHTML={{ __html: md(parsed.text) }} />
+                    <div className="txt">
+                      {mdBlocks(parsed.text).map((block, bi) =>
+                        block.type === "code"
+                          ? <CodeBlock key={bi} code={block.code} language={block.lang} />
+                          : <div key={bi} dangerouslySetInnerHTML={{ __html: block.html }} />
+                      )}
+                    </div>
                   )}
                   {showChoices && (
                     <div className="choice-row" style={{ paddingLeft: 0 }}>
                       {parsed.choices.map(c => (
-                        <button key={c} className="choice-chip" disabled={sending} onClick={() => send(c)}>{c}</button>
+                        <button key={c} className="choice-chip" disabled={sending} onClick={() => send(c)}>
+                          <IconArrow size={11} />{c}
+                        </button>
                       ))}
                     </div>
                   )}
@@ -524,15 +513,18 @@ export function ProjectChatPanel({ project, role, agent, flexGrow, projectCount 
               );
             })}
 
-            {sending && <LoadingState label={processingLabel} />}
+            {sending && (
+              <div className="msg-processing" role="status">
+                <span className="tline" aria-hidden />
+                <span className="shimmer-text">{processingLabel}</span>
+              </div>
+            )}
           </>
         )}
         <div ref={bottomRef} />
       </div>
 
-      {!showHero && (
-        <div className="chat-input">{composer}</div>
-      )}
+      {loaded && <div className="chat-input">{composer}</div>}
     </section>
   );
 }

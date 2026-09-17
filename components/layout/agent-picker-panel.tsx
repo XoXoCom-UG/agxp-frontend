@@ -8,22 +8,22 @@ import { levelFor, LEVEL_ORDER } from "@/lib/agent-progress";
 import { methodLabel } from "@/lib/method-labels";
 import { dateStr } from "@/lib/utils";
 import { AgentMascot } from "@/components/layout/agent-mascot";
-import { Card, CardHeader, CardTitle, CardFooter } from "@/components/layout/ui-card";
+import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/layout/ui-card";
 import {
-  IconBack, IconPlus, IconArrow, IconSearch, IconCheck,
+  IconBack, IconArrow, IconSearch, IconCheck,
 } from "@/components/layout/agxp-icons";
 
 type PanelState = "empty" | "list" | "detail" | "type" | "configure";
 
 const ROLE_LABEL: Record<AgentType, string> = { consultant: "Consultant", coach: "Coach" };
-const ROLE_HEAD: Record<AgentType, { title: string; emptyTitle: string }> = {
-  coach: {
-    title: "Personal AI Coach",
-    emptyTitle: "No coaching agent selected",
-  },
+const PICKER_COPY: Record<AgentType, { createDesc: string; trainDesc: string }> = {
   consultant: {
-    title: "Personal AI Consultant",
-    emptyTitle: "No consulting agent selected",
+    createDesc: "Set up a new AI consultant tailored to your needs.",
+    trainDesc: "Improve your consultant with new knowledge and context.",
+  },
+  coach: {
+    createDesc: "Start a new AI coach for your personal growth.",
+    trainDesc: "Enhance your coach with new insights and goals.",
   },
 };
 
@@ -72,7 +72,6 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   projectCounts?: Record<string, number>;
 }) {
   const totalProjects = (a: Agent) => a.last_projects.length + (projectCounts[a.id] ?? 0);
-  const head = ROLE_HEAD[role];
   const [state, setState] = useState<PanelState>("empty");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -96,6 +95,9 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   }
 
   const showBack = state !== "empty";
+  // Coach comes second — its picker stays idle until a Consultant is
+  // assigned, so the two agents are always picked in a fixed order.
+  const coachLocked = role === "coach" && !project?.consultant_agent_id;
 
   if (assignedAgent) {
     const total = totalProjects(assignedAgent);
@@ -104,7 +106,6 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
       <section className={`panel panel-picker ${role}`} style={{ flex: flexGrow }}>
         <div className="panel-head">
           <AgentMascot role={role} size={38} enter />
-          <div style={{ minWidth: 0, flex: 1 }}><h2>{head.title}</h2></div>
         </div>
         <div className="selected-summary">
           <div className="sel-name">{assignedAgent.name}</div>
@@ -113,8 +114,7 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
           {assignedAgent.primaryMethods.length > 0 && (
             <div className="sel-methods">{assignedAgent.primaryMethods.map(m => m.name).join(" · ")}</div>
           )}
-          <div className="ready-badge"><span className="rd" />Ready for project</div>
-          {onChangeAgent && <button className="change-link" onClick={onChangeAgent}>Change agent</button>}
+          {onChangeAgent && <button className="btn btn-hero" onClick={onChangeAgent}>Change agent</button>}
         </div>
       </section>
     );
@@ -124,9 +124,6 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
     <section className={`panel panel-picker ${role}`} style={{ flex: flexGrow }}>
       <div className="panel-head">
         <AgentMascot role={role} size={38} enter />
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <h2>{head.title}</h2>
-        </div>
         {showBack && (
           <button className="back-link" onClick={() => setState(state === "detail" ? "list" : state === "configure" ? "type" : "empty")}>
             <IconBack size={11} /> Back
@@ -140,17 +137,27 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
             <Card>
               <CardHeader>
                 <CardTitle>Create new AI {ROLE_LABEL[role]}</CardTitle>
+                <CardDescription>{PICKER_COPY[role].createDesc}</CardDescription>
               </CardHeader>
               <CardFooter>
-                <button className="btn btn-ghost" onClick={() => setState("type")}><IconPlus size={13} />Create new agent</button>
+                <button className="btn" disabled={coachLocked}
+                  data-tooltip={coachLocked ? "Pick a Consultant first" : undefined}
+                  onClick={() => setState("type")}>
+                  <span>Create new agent</span><span className="btn-arrow-end">→</span>
+                </button>
               </CardFooter>
             </Card>
             <Card>
               <CardHeader>
                 <CardTitle>Train existing AI {ROLE_LABEL[role]}</CardTitle>
+                <CardDescription>{PICKER_COPY[role].trainDesc}</CardDescription>
               </CardHeader>
               <CardFooter>
-                <button className="btn btn-ghost" onClick={() => setState("list")}>Train existing agent <IconArrow /></button>
+                <button className="btn" disabled={coachLocked}
+                  data-tooltip={coachLocked ? "Pick a Consultant first" : undefined}
+                  onClick={() => setState("list")}>
+                  <span>Train existing agent</span><span className="btn-arrow-end">→</span>
+                </button>
               </CardFooter>
             </Card>
           </div>

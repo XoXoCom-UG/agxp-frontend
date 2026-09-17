@@ -33,7 +33,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
   // Start button instead of the panel jumping to chat on its own. Coach can
   // join later, mid-conversation, via its own still-independent picker.
   const [started, setStarted] = useState(false);
-  const { swapped } = usePanelSizeStore();
+  const { swapped, toggle: toggleSwap } = usePanelSizeStore();
 
   useEffect(() => { if (!authLoading && !token) router.replace("/login"); }, [token, authLoading, router]);
 
@@ -129,18 +129,16 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
 
   return (
     <div className="app">
-      <AgentNav />
+      <AgentNav startEnabled={consultantAssigned} onStart={!started ? () => setStarted(true) : undefined} />
       <div className="view-root view-enter">
-        {!started && (
-          <div className="start-bar">
-            <button className="btn btn-hero" disabled={!consultantAssigned} onClick={() => setStarted(true)}>
-              Start <IconArrow />
-            </button>
-          </div>
-        )}
         {/* Consultant leads (wide, left) — Coach supports (narrow, right). */}
         <main className="workspace">
           {panelFor("consultant")}
+          <button className="icon-btn workspace-swap-btn"
+            data-tooltip={swapped ? "Reset panel sizes" : "Give Coach more room"}
+            onClick={() => toggleSwap()}>
+            <IconArrow style={{ transform: swapped ? "none" : "rotate(180deg)" }} />
+          </button>
           {panelFor("coach")}
         </main>
       </div>
