@@ -31,7 +31,6 @@ export const IconLogout = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><path 
 export const IconSwap = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><path d="m16 3 4 4-4 4" /><path d="M20 7H4" /><path d="m8 21-4-4 4-4" /><path d="M4 17h16" /></Svg>;
 export const IconSun = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></Svg>;
 export const IconMoon = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z" /></Svg>;
-export const IconSend = (p: IconProps) => <Svg {...p} strokeWidth={2.2} className="send-icon"><path d="M22 2 11 13" /><path d="M22 2 15 22l-4-9-9-4 20-7Z" /></Svg>;
 export const IconCheck = (p: IconProps) => <Svg {...p} strokeWidth={2.5}><path d="M20 6 9 17l-5-5" /></Svg>;
 export const IconX = (p: IconProps) => <Svg {...p} strokeWidth={2}><path d="M18 6 6 18M6 6l12 12" /></Svg>;
 
@@ -42,3 +41,7 @@ export const IconPrint = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><path d
 export const IconCopy = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h8" /></Svg>;
 export const IconSpark = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><path d="M12 3v4M12 17v4M3 12h4M17 12h4" /><path d="M12 8.5 13.4 11l2.6 1-2.6 1L12 15.5 10.6 13 8 12l2.6-1Z" /></Svg>;
 export const IconRefresh = (p: IconProps) => <Svg {...p} strokeWidth={1.9}><path d="M20 11a8 8 0 1 0-2.3 5.7" /><path d="M20 5v6h-6" /></Svg>;
+
+// --- Composer (agxp-frontend-ana) ---
+export const IconMic = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><rect x="9" y="1" width="6" height="12" rx="3" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><path d="M12 19v4" /><path d="M8 23h8" /></Svg>;
+export const IconArrowUp = (p: IconProps) => <Svg {...p} strokeWidth={2.2}><path d="M12 19V5" /><path d="m5 12 7-7 7 7" /></Svg>;

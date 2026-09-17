@@ -518,22 +518,62 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 .assess-segs span.done{ background:var(--magenta); }
 .assess-segs span.current{ background:var(--blush); }
 
-.chat-input{ display:flex; gap:var(--sp-3); padding:var(--sp-4) var(--sp-6); border-top:1px solid var(--border-soft); flex-shrink:0; align-items:flex-end; }
-.chat-input textarea{ flex:1; background:var(--surface-elevated); border:1px solid var(--border-medium); border-radius:12px; padding:11px 14px; color:var(--text-primary); font-size:var(--text-xs); outline:none; transition:box-shadow .16s ease, border-color .16s ease; resize:none; font-family:inherit; line-height:1.5; max-height:100px; }
-.chat-input textarea:focus{ border-color:var(--border-strong); box-shadow:0 0 0 3px color-mix(in srgb, var(--ring) 13%, transparent); }
+/* Ana's composer (agxp-frontend-ana): one solid raised card, no border line
+   at all — the shadow lifts it off the panel. Same tone as .msg-user, so the
+   user's bubbles and the box they are written in read as one family. The
+   text row sits on top, the buttons in a toolbar underneath. */
+.chat-input{
+  display:flex; flex-direction:column; gap:var(--sp-2);
+  background:var(--surface-elevated); border:none; border-radius:22px;
+  padding:var(--sp-3) var(--sp-3) var(--sp-2); flex-shrink:0;
+  margin:var(--sp-4) var(--sp-6);
+  box-shadow:0 14px 32px -12px rgba(0,0,0,0.55), 0 2px 10px -4px rgba(0,0,0,0.35);
+}
+html.light .chat-input{ box-shadow:0 12px 28px -14px rgba(24,39,60,0.30), 0 2px 8px -4px rgba(24,39,60,0.16); }
+.chat-input textarea{
+  background:transparent; border:none; outline:none; resize:none; color:var(--text-primary);
+  font-size:var(--text-sm); font-family:inherit; line-height:1.5; max-height:160px; padding:4px 6px;
+}
+/* Overrides the app-wide textarea focus ring from globals.css: the card is
+   the control here, and it shouldn't grow a second outline inside itself. */
+.chat-input textarea:focus-visible{ outline:none; box-shadow:none; }
 .chat-input textarea::placeholder{ color:var(--text-muted); }
-.chat-input button{
-  border:1px solid rgba(255,255,255,0.08); color:#fff; width:42px; height:42px; border-radius:var(--r-md);
-  display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:inset 0 1px 0 rgba(255,255,255,0.18); position:relative;
-  transition:filter .16s var(--ease-out), transform 120ms var(--ease-out), opacity .16s var(--ease-out);
+
+.composer-toolbar{ display:flex; align-items:center; justify-content:space-between; gap:var(--sp-2); }
+.composer-left{ display:flex; align-items:center; gap:6px; min-width:0; flex-shrink:1; }
+.composer-right{ display:flex; align-items:center; gap:6px; flex-shrink:0; }
+.composer-icon-btn{
+  width:32px; height:32px; border-radius:50%; border:1px solid var(--border-soft);
+  background:var(--surface-1); color:var(--text-muted);
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  transition:color .15s var(--ease-out), border-color .15s var(--ease-out), background-color .15s var(--ease-out);
 }
-.panel.coach .chat-input button{ background:linear-gradient(180deg, var(--indigo-light), var(--violet-dark)); }
-.panel.consultant .chat-input button{ background:linear-gradient(180deg, var(--plum-light), var(--plum-dark)); }
-.chat-input button:active:not(:disabled){ transform:scale(0.94); }
-.chat-input button:disabled{ opacity:.35; cursor:not-allowed; }
+/* Recording. A 12% tint on this card is invisible, and "is it listening?" is
+   not a question to leave open — so the mic goes solid, in the red every
+   recording indicator uses, with a halo around it. */
+.composer-icon-btn.active{
+  color:var(--destructive-foreground); background:var(--destructive);
+  border-color:color-mix(in srgb, var(--destructive) 70%, transparent);
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--destructive) 24%, transparent);
+}
+.composer-icon-btn.active svg{ animation:micPulse 1.4s var(--ease-out) infinite; }
+@keyframes micPulse{ 0%,100%{ opacity:1; transform:none; } 50%{ opacity:.55; transform:scale(0.9); } }
+.composer-send{
+  width:32px; height:32px; border-radius:50%; border:1px solid transparent; color:var(--primary-foreground);
+  background:var(--primary); display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.18);
+  transition:background-color .16s var(--ease-out), transform 120ms var(--ease-out), opacity .16s var(--ease-out);
+}
+.composer-send:disabled{ opacity:.35; cursor:not-allowed; }
+.composer-send:active:not(:disabled){ transform:scale(0.92); }
 @media (hover:hover) and (pointer:fine){
-  .chat-input button:hover:not(:disabled){ filter:brightness(1.15); transform:translateY(-1px); }
+  .composer-icon-btn:hover:not(.active){ color:var(--text-primary); border-color:var(--border-medium); }
+  .composer-send:hover:not(:disabled){ background:var(--primary-soft); transform:translateY(-1px); }
 }
+@media (prefers-reduced-motion:reduce){
+  .composer-icon-btn.active svg{ animation:none; }
+}
+
 [data-tooltip]{ position:relative; }
 [data-tooltip]:hover::after{
   content:attr(data-tooltip); position:absolute; bottom:calc(100% + 7px); left:50%; transform:translateX(-50%);
@@ -1212,9 +1252,9 @@ html.light .m-antenna{ stroke:color-mix(in srgb, var(--primary) 45%, transparent
   .dr-step{ font-size:var(--text-3xs); }
 
   /* A 16px input is the only way iOS won't zoom the page on focus */
-  .chat-input{ padding:var(--sp-3) var(--sp-4); }
+  .chat-input{ margin:var(--sp-3) var(--sp-4); }
   .chat-input textarea{ font-size:16px; }
-  .chat-input button{ width:44px; height:44px; }
+  .composer-icon-btn, .composer-send{ width:36px; height:36px; }
 
   /* The artifact strip scrolls instead of stacking into three rows */
   

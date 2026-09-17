@@ -12,7 +12,7 @@ import { levelFor, nextLevel, LEVEL_ORDER } from "@/lib/agent-progress";
 import { md } from "@/lib/markdown";
 import { AgentMascot, type MascotState, type MascotMood } from "@/components/layout/agent-mascot";
 import type { DeliverableDoc } from "@/components/layout/deliverable-view";
-import { IconArrow, IconSend, IconDoc, IconSpark, IconRefresh, IconChevronDown } from "@/components/layout/agxp-icons";
+import { IconArrow, IconMic, IconArrowUp, IconDoc, IconSpark, IconRefresh, IconChevronDown } from "@/components/layout/agxp-icons";
 
 const OPENING: Record<AgentType, string> = {
   consultant: "Hey, what can I do for you today?",
@@ -54,12 +54,49 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
   const headRef = useRef<HTMLDivElement>(null);
   const speakTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Voice input, via the browser's own Web Speech API — nothing is uploaded
+  // and no key is needed. Feature-detected after mount, because reading
+  // window during render would make the server and client markup differ.
+  const [recording, setRecording] = useState(false);
+  const [micSupported, setMicSupported] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null);
+
   const deliverable = DELIVERABLES[role];
 
   useEffect(() => () => {
     if (speakTimer.current) clearTimeout(speakTimer.current);
     if (moodTimer.current) clearTimeout(moodTimer.current);
   }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    setMicSupported(!!(w.SpeechRecognition || w.webkitSpeechRecognition));
+  }, []);
+
+  /** The button isn't rendered at all where the API is missing — a mic that
+   *  does nothing is worse than no mic. */
+  function toggleMic() {
+    if (recording) { recognitionRef.current?.stop(); return; }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    const Recognition = w.SpeechRecognition || w.webkitSpeechRecognition;
+    if (!Recognition) return;
+    const rec = new Recognition();
+    rec.lang = navigator.language || "en-US";
+    rec.interimResults = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (e: any) => {
+      const said = e.results?.[0]?.[0]?.transcript ?? "";
+      if (said) setInput(prev => (prev ? `${prev} ${said}` : said));
+    };
+    rec.onend = () => setRecording(false);
+    rec.onerror = () => setRecording(false);
+    recognitionRef.current = rec;
+    rec.start();
+    setRecording(true);
+  }
 
   /** Plays a reaction once. Reactions are what read as alive — they have to
    *  end, or they turn into noise in the corner of the eye. */
@@ -427,6 +464,9 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
         <div ref={bottomRef} />
       </div>
 
+      {/* Ana's composer (agxp-frontend-ana): one raised card holds the text
+          row and a toolbar under it, instead of a bordered box with a square
+          button beside it. */}
       <div className="chat-input">
         <textarea className="autosize" rows={1} disabled={sending} value={input}
           onChange={e => setInput(e.target.value)}
@@ -434,9 +474,21 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
           onBlur={() => setAttentive(false)}
           onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }}
           placeholder={`Ask your ${role === "coach" ? "coach" : "consultant"}...`} />
-        <button data-tooltip="Send message" disabled={!input.trim() || sending} onClick={() => send(input)}>
-          <IconSend size={14} />
-        </button>
+        <div className="composer-toolbar">
+          <div className="composer-left" />
+          <div className="composer-right">
+            {micSupported && (
+              <button className={`composer-icon-btn${recording ? " active" : ""}`}
+                data-tooltip={recording ? "Stop" : "Speak instead of typing"} onClick={toggleMic}>
+                <IconMic size={15} />
+              </button>
+            )}
+            <button className="composer-send" data-tooltip="Send message"
+              disabled={!input.trim() || sending} onClick={() => send(input)}>
+              <IconArrowUp size={16} />
+            </button>
+          </div>
+        </div>
       </div>
     </section>
   );
