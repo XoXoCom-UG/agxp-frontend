@@ -11,7 +11,7 @@ import type { NextRequest } from "next/server";
  * This is defense-in-depth / UX only. Real authorization happens on the
  * backend: every API call is validated against the Bearer token server-side.
  */
-const PROTECTED_PREFIXES = ["/chat", "/concept", "/dashboard"];
+const PROTECTED_PREFIXES = ["/dashboard"];
 
 function hasSupabaseSession(req: NextRequest): boolean {
   return req.cookies
@@ -33,19 +33,19 @@ export function proxy(req: NextRequest) {
   // NOTE: there used to be an "already logged in → skip /login" redirect here.
   // It was removed because it closed a redirect loop with no exit:
   //
-  //   proxy sees the cookie      → "authed" → lets /chat render
+  //   proxy sees the cookie      → "authed" → lets /dashboard render
   //   client resolves no session → no token → redirects to /login
-  //   proxy sees the cookie      → "authed" → redirects back to /chat        ↺
+  //   proxy sees the cookie      → "authed" → redirects back to /dashboard   ↺
   //
   // The two disagree whenever the cookie is present but its session is expired
   // or invalid, which this check cannot detect (see "Optimistic" above). The app
   // then sat on its loading skeleton forever, burning CPU, and a hard reload
   // could not escape it because the cookie survived. Landing a signed-in user on
   // /login is a cosmetic issue; an inescapable loop is not. The client redirects
-  // to /chat on its own anyway (app/page.tsx, and the login form after sign-in).
+  // to /dashboard on its own anyway (app/page.tsx, and the login form after sign-in).
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/chat/:path*", "/concept/:path*", "/dashboard/:path*", "/login"],
+  matcher: ["/dashboard/:path*", "/login"],
 };
