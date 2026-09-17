@@ -113,11 +113,6 @@ nav button.active::after{ content:""; position:absolute; left:13px; right:13px; 
 .popover button.mi:active{ background:rgba(255,255,255,0.07); }
 .popover button.mi svg{ width:13px; height:13px; stroke:var(--text-muted); flex-shrink:0; }
 .popover hr{ border:none; border-top:1px solid var(--border-soft); margin:6px 4px; }
-.popover.switcher{ min-width:270px; }
-.switcher-row{ display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:8px; transition:background-color .14s var(--ease-out); }
-.switcher-row:hover{ background:rgba(255,255,255,0.04); }
-.switcher-row .sn{ font-size:var(--text-xs); color:var(--text-primary); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.switcher-row .cur{ width:6px; height:6px; border-radius:50%; background:var(--magenta); flex-shrink:0; }
 
 /* ---------- BUTTONS ---------- */
 .btn{
@@ -548,16 +543,10 @@ html.light .chat-input{ box-shadow:0 12px 28px -14px rgba(24,39,60,0.30), 0 2px 
   display:flex; align-items:center; justify-content:center; flex-shrink:0;
   transition:color .15s var(--ease-out), border-color .15s var(--ease-out), background-color .15s var(--ease-out);
 }
-/* Recording. A 12% tint on this card is invisible, and "is it listening?" is
-   not a question to leave open — so the mic goes solid, in the red every
-   recording indicator uses, with a halo around it. */
-.composer-icon-btn.active{
-  color:var(--destructive-foreground); background:var(--destructive);
-  border-color:color-mix(in srgb, var(--destructive) 70%, transparent);
-  box-shadow:0 0 0 3px color-mix(in srgb, var(--destructive) 24%, transparent);
-}
-.composer-icon-btn.active svg{ animation:micPulse 1.4s var(--ease-out) infinite; }
-@keyframes micPulse{ 0%,100%{ opacity:1; transform:none; } 50%{ opacity:.55; transform:scale(0.9); } }
+/* The attach button is here but not built. A dashed outline and a dimmed
+   icon say "planned", where a normal-looking button would just look broken
+   when nothing happens. */
+.composer-icon-btn:disabled{ opacity:.5; cursor:not-allowed; border-style:dashed; }
 .composer-send{
   width:32px; height:32px; border-radius:50%; border:1px solid transparent; color:var(--primary-foreground);
   background:var(--primary); display:flex; align-items:center; justify-content:center; flex-shrink:0;
@@ -567,11 +556,47 @@ html.light .chat-input{ box-shadow:0 12px 28px -14px rgba(24,39,60,0.30), 0 2px 
 .composer-send:disabled{ opacity:.35; cursor:not-allowed; }
 .composer-send:active:not(:disabled){ transform:scale(0.92); }
 @media (hover:hover) and (pointer:fine){
-  .composer-icon-btn:hover:not(.active){ color:var(--text-primary); border-color:var(--border-medium); }
+  .composer-icon-btn:hover:not(:disabled){ color:var(--text-primary); border-color:var(--border-medium); }
   .composer-send:hover:not(:disabled){ background:var(--primary-soft); transform:translateY(-1px); }
 }
+/* The only green in the app. Everything else is blue or grey, so "go" is
+   never confused with "one more control". */
+.start-wrap{ position:relative; display:flex; align-items:center; }
+.btn-start{
+  height:38px; padding:0 var(--sp-5); font-size:var(--text-sm); font-weight:650;
+  color:#08130D; background:var(--success); border:1px solid transparent;
+  box-shadow:0 1px 2px rgba(0,0,0,0.3), 0 0 0 0 color-mix(in srgb, var(--success) 45%, transparent);
+  transition:background-color .16s var(--ease-out), transform 120ms var(--ease-out), box-shadow .3s var(--ease-out);
+}
+.btn-start svg{ width:13px; height:13px; stroke-width:2.6; }
+.btn-start:disabled{ background:var(--secondary); border-color:var(--border); color:var(--text-muted); box-shadow:none; }
+.btn-start:active:not(:disabled){ transform:scale(0.97); }
+@media (hover:hover) and (pointer:fine){
+  .btn-start:hover:not(:disabled){ background:color-mix(in srgb, var(--success) 82%, #FFFFFF); transform:translateY(-1px); }
+}
+/* Both picked, nothing started: the button breathes and says so once. */
+.btn-start.is-ready{ animation:startReady 2.2s var(--ease-out) infinite; }
+@keyframes startReady{
+  0%, 100%{ box-shadow:0 1px 2px rgba(0,0,0,0.3), 0 0 0 0 color-mix(in srgb, var(--success) 45%, transparent); }
+  50%{ box-shadow:0 1px 2px rgba(0,0,0,0.3), 0 0 0 7px color-mix(in srgb, var(--success) 0%, transparent); }
+}
+.start-nudge{
+  position:absolute; top:calc(100% + 9px); right:0; white-space:nowrap; z-index:40;
+  font-size:var(--text-3xs); font-weight:600; color:var(--success);
+  background:color-mix(in srgb, var(--success) 13%, var(--card));
+  border:1px solid color-mix(in srgb, var(--success) 38%, transparent);
+  padding:6px 11px; border-radius:var(--r-xs); pointer-events:none;
+  animation:nudgeIn 420ms var(--ease-out) 260ms backwards;
+}
+.start-nudge::before{
+  content:""; position:absolute; bottom:100%; right:22px; border:5px solid transparent;
+  border-bottom-color:color-mix(in srgb, var(--success) 38%, transparent);
+}
+@keyframes nudgeIn{ from{ opacity:0; transform:translateY(-5px); } to{ opacity:1; transform:none; } }
 @media (prefers-reduced-motion:reduce){
-  .composer-icon-btn.active svg{ animation:none; }
+  .btn-start.is-ready{ animation:none; }
+  .start-nudge{ animation:none; }
+  .is-tracking .m-eyes{ transform:none; }
 }
 
 [data-tooltip]{ position:relative; }
@@ -625,16 +650,16 @@ html.light .chat-input{ box-shadow:0 12px 28px -14px rgba(24,39,60,0.30), 0 2px 
 /* Header: stacked brand (name over AGXP), workspace pill on the right */
 .brand-text.stacked{ flex-direction:column; align-items:flex-start; gap:1px; }
 .brand-text.stacked .sub{ letter-spacing:0.18em; }
-.workspace-pill{
-  display:flex; align-items:center; gap:7px; padding:7px 14px; border-radius:var(--r-pill);
-  background:transparent; border:1px solid var(--border-medium); font-size:var(--text-2xs); color:var(--text-secondary);
-  transition:border-color .15s var(--ease-out), color .15s var(--ease-out);
-}
 @media (hover:hover) and (pointer:fine){
-  .workspace-pill:hover{ border-color:var(--border-strong); color:var(--text-primary); }
 }
 
 /* Panel header — icon tile + title + one-line purpose */
+.head-hero{
+  flex-direction:column; align-items:center; text-align:center; gap:var(--sp-3);
+  padding:var(--sp-7) var(--sp-6) var(--sp-6); border-bottom:none;
+}
+.head-hero .mascot{ flex-shrink:0; }
+.head-hero > div{ flex:0 1 auto !important; }
 .panel-head{ display:flex; align-items:flex-start; gap:var(--sp-3); padding:var(--sp-5) var(--sp-6); border-bottom:1px solid var(--border-soft); flex-shrink:0; }
 .panel-head .ic{
   width:34px; height:34px; border-radius:var(--r-xs); flex-shrink:0; display:flex; align-items:center; justify-content:center;
@@ -1224,7 +1249,6 @@ html.light .m-antenna{ stroke:color-mix(in srgb, var(--primary) 45%, transparent
   header .brand-text{ display:none; }
   nav{ margin-left:10px; gap:0; }
   nav button{ padding:9px 9px; }
-  .workspace-pill{ max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
   .page-head{ padding:var(--sp-4) var(--sp-5) var(--sp-3); }
   main.workspace{ padding:0 var(--sp-5) var(--sp-5); }
@@ -1301,7 +1325,6 @@ html.light .m-antenna{ stroke:color-mix(in srgb, var(--primary) 45%, transparent
   }
   nav{ margin-left:8px; }
   nav button{ white-space:nowrap; font-size:var(--text-2xs); padding:8px 8px; }
-  .workspace-pill{ display:none; }
   .util{ gap:8px; flex-shrink:0; }
 
   /* The chat is the point on a phone. The Steckbrief keeps one compact row of
@@ -1758,6 +1781,8 @@ main.workspace.swapping > .panel:last-child{ animation:swapFromLeft 400ms var(--
 /* --- The mascot thinks visibly: the head tips, the eyes wander, the antenna
        keeps time. Speaking starts with a small nod so the switch is felt. --- */
 .m-eyes, .m-head{ transform-box:fill-box; transform-origin:center; }
+.is-tracking .m-eyes{ transform:translate(var(--gaze-x, 0), var(--gaze-y, 0)); }
+.is-tracking.is-attentive .m-eyes{ transform:translate(var(--gaze-x, 0), calc(var(--gaze-y, 0px) + 1.3px)); }
 .is-thinking .m-head{ animation:mThinkTilt 2.6s ease-in-out infinite; }
 .is-thinking .m-eyes{ animation:mLookAround 2.6s ease-in-out infinite; }
 @keyframes mThinkTilt{
@@ -1893,10 +1918,12 @@ main.workspace.swapping > .panel:last-child{ animation:swapFromLeft 400ms var(--
    panel's own width and keeps working when the split changes.
    ============================================================================= */
 .pick-empty{
-  flex:1; min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
-  text-align:center; padding:var(--sp-6);
+  flex:1; min-height:0; display:flex; flex-direction:column; align-items:center;
+  text-align:center; padding:var(--sp-6); overflow-y:auto;
 }
-.pick-cards{ display:flex; flex-direction:column; gap:var(--sp-4); width:100%; max-width:400px; }
+/* margin:auto instead of justify-content:center — centring a flex child that
+   is taller than its box clips the top off and makes it unscrollable. */
+.pick-cards{ display:flex; flex-direction:column; gap:var(--sp-4); width:100%; max-width:400px; margin:auto 0; }
 
 /* The card is the button. Everything inside is a span, because a <button>
    may not contain another button — and a card that lifts under the cursor
@@ -1928,8 +1955,6 @@ main.workspace.swapping > .panel:last-child{ animation:swapFromLeft 400ms var(--
 
 /* The agent's head, filling what was dead space between the words and the
    button. Hidden in the narrow panel, where the cards are short anyway. */
-.picker-card-art{ display:none; position:relative; z-index:1; }
-.picker-card-art .mascot{ transition:transform .32s var(--ease-out); }
 
 .picker-card-cta{
   position:relative; z-index:1; overflow:hidden; display:flex; align-items:center; height:44px; width:100%;
@@ -1989,16 +2014,15 @@ html.light .picker-card::after{ background:linear-gradient(100deg, transparent, 
   }
 }
 
-/* Wide enough for two cards side by side — and for the head to sit between
-   the words and the button, instead of 200px of nothing. */
+/* Wide enough for two cards side by side. They stay short: the agent's head
+   lives at the top of the panel now, so there is nothing to make room for. */
 @container panel (min-width: 560px){
   .pick-cards{ flex-direction:row; max-width:640px; }
   .picker-card{
     flex:1 1 0; align-items:center; text-align:center;
-    min-height:400px; padding:var(--sp-6) var(--sp-5); gap:var(--sp-5);
+    min-height:250px; padding:var(--sp-6) var(--sp-5); gap:var(--sp-6);
   }
   .picker-card-head{ align-items:center; }
-  .picker-card-art{ display:flex; flex:1; align-items:center; justify-content:center; min-height:0; }
   .picker-card-cta{ height:52px; }
 }
 

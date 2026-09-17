@@ -151,8 +151,12 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
 
   return (
     <section className={`panel ${role}`} style={{ flexGrow: grow }}>
-      <div className="panel-head">
-        <AgentMascot role={role} size={46} enter />
+      {/* On the entry screen the agent is the screen: one big head, centred,
+          watching the cursor. Once you are picking from a list it shrinks
+          back into a normal row so the list gets the room. */}
+      <div className={`panel-head${state === "empty" ? " head-hero" : ""}`}>
+        <AgentMascot role={role} size={state === "empty" ? 108 : 46} enter
+          track={state === "empty"} level={trainedLevel} />
         <div style={{ minWidth: 0, flex: 1 }}>
           <h2>{head.title}</h2>
           <div className="sub">{head.sub}</div>
@@ -181,9 +185,6 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
                 <span className="picker-card-title">Create new AI {ROLE_LABEL[role]}</span>
                 <span className="picker-card-desc">{PICKER_COPY[role].createDesc}</span>
               </span>
-              <span className="picker-card-art">
-                <AgentMascot role={role} size={128} />
-              </span>
               <span className="picker-card-cta">
                 <span>Create new agent</span><span className="btn-arrow-end">→</span>
               </span>
@@ -195,10 +196,6 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
               <span className="picker-card-head">
                 <span className="picker-card-title">Train existing AI {ROLE_LABEL[role]}</span>
                 <span className="picker-card-desc">{PICKER_COPY[role].trainDesc}</span>
-              </span>
-              {/* Rank rings: this is the one you have already worked with. */}
-              <span className="picker-card-art">
-                <AgentMascot role={role} size={128} level={trainedLevel} />
               </span>
               <span className="picker-card-cta">
                 <span>Train existing agent</span><span className="btn-arrow-end">→</span>

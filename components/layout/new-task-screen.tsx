@@ -154,8 +154,9 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
 
   return (
     <div className="app">
-      <AgentNav projectName={project?.name} projectId={project?.id}
+      <AgentNav
         startEnabled={!!project?.consultant_agent_id}
+        startHint={!started && !!project?.consultant_agent_id && !!project?.coach_agent_id}
         onStart={started ? undefined : () => setStarted(true)} />
       {/* No page title and no description: clicking "New Task" should show the
           two agents and nothing else (Patryk, 2026-09-11 — "wenn es so clean

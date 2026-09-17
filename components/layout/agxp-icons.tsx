@@ -43,5 +43,5 @@ export const IconSpark = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><path d
 export const IconRefresh = (p: IconProps) => <Svg {...p} strokeWidth={1.9}><path d="M20 11a8 8 0 1 0-2.3 5.7" /><path d="M20 5v6h-6" /></Svg>;
 
 // --- Composer (agxp-frontend-ana) ---
-export const IconMic = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><rect x="9" y="1" width="6" height="12" rx="3" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><path d="M12 19v4" /><path d="M8 23h8" /></Svg>;
+export const IconAttach = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><path d="M21.44 11.05 12.25 20.24a5 5 0 0 1-7.07-7.07l9.19-9.19a3.34 3.34 0 0 1 4.71 4.71l-9.2 9.19a1.67 1.67 0 0 1-2.35-2.35l8.49-8.48" /></Svg>;
 export const IconArrowUp = (p: IconProps) => <Svg {...p} strokeWidth={2.2}><path d="M12 19V5" /><path d="m5 12 7-7 7 7" /></Svg>;

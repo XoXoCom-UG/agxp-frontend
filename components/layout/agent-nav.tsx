@@ -4,10 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/lib/auth-context";
-import { listProjects, PLACEHOLDER_PROJECT_NAME, type Project } from "@/lib/projects";
-import {
-  IconDiamond, IconSun, IconMoon, IconChevronDown, IconUser, IconLogout, IconFolder, IconPlus, IconArrow,
-} from "@/components/layout/agxp-icons";
+import { IconDiamond, IconSun, IconMoon, IconUser, IconLogout, IconArrow } from "@/components/layout/agxp-icons";
 
 type Tab = "newtask" | "history" | "agents";
 
@@ -17,12 +14,13 @@ function activeTab(pathname: string): Tab {
   return "newtask";
 }
 
-type PopoverName = "avatar" | "switcher" | null;
+type PopoverName = "avatar" | null;
 
-export function AgentNav({ projectName, projectId, startEnabled, onStart }: {
-  projectName?: string; projectId?: string;
+export function AgentNav({ startEnabled, startHint, onStart }: {
   /** Both halves chosen? The Start button lights up. */
   startEnabled?: boolean;
+  /** Everything is picked and nothing has started — say so, once. */
+  startHint?: boolean;
   /** Omitted once the conversation has started — then there is nothing to start. */
   onStart?: () => void;
 }) {
@@ -31,7 +29,6 @@ export function AgentNav({ projectName, projectId, startEnabled, onStart }: {
   const pathname = usePathname();
   const { setTheme } = useTheme();
   const [popover, setPopover] = useState<PopoverName>(null);
-  const [switcherProjects, setSwitcherProjects] = useState<Project[] | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const tab = activeTab(pathname);
 
@@ -45,9 +42,6 @@ export function AgentNav({ projectName, projectId, startEnabled, onStart }: {
 
   function toggle(name: Exclude<PopoverName, null>) {
     setPopover(p => p === name ? null : name);
-    if (name === "switcher" && !switcherProjects) {
-      listProjects().then(setSwitcherProjects).catch(() => setSwitcherProjects([]));
-    }
   }
 
   // "New Task" is the start screen — it doesn't create anything yet. The
@@ -56,10 +50,6 @@ export function AgentNav({ projectName, projectId, startEnabled, onStart }: {
   // leave empty projects behind.
   function newTask() { setPopover(null); router.push("/dashboard"); }
 
-  function openProject(p: Project) {
-    setPopover(null);
-    router.push(`/dashboard/project/${p.id}`);
-  }
 
   return (
     <header onClick={e => e.stopPropagation()}>
@@ -77,10 +67,6 @@ export function AgentNav({ projectName, projectId, startEnabled, onStart }: {
       </div>
 
       <div className="util" ref={ref}>
-        <button className="workspace-pill" onClick={e => { e.stopPropagation(); toggle("switcher"); }}>
-          {projectName && projectName !== PLACEHOLDER_PROJECT_NAME ? projectName : "Transformation Workspace"}
-          <IconChevronDown size={10} />
-        </button>
 
         <button className="icon-btn" data-tooltip="Switch light or dark theme"
           onClick={e => { e.stopPropagation(); setTheme(document.documentElement.classList.contains("light") ? "dark" : "light"); }}>
@@ -91,10 +77,14 @@ export function AgentNav({ projectName, projectId, startEnabled, onStart }: {
         </button>
 
         {onStart && (
-          <button className="btn btn-hero" disabled={!startEnabled} onClick={onStart}
-            data-tooltip={startEnabled ? undefined : "Pick a Consultant first"}>
-            Start <IconArrow />
-          </button>
+          <div className="start-wrap">
+            <button className={`btn btn-start${startHint ? " is-ready" : ""}`}
+              disabled={!startEnabled} onClick={onStart}
+              data-tooltip={startEnabled ? undefined : "Pick a Consultant first"}>
+              Start <IconArrow />
+            </button>
+            {startHint && <span className="start-nudge">Both agents ready — press Start</span>}
+          </div>
         )}
 
         <button className="avatar" onClick={e => { e.stopPropagation(); toggle("avatar"); }}>
@@ -106,20 +96,6 @@ export function AgentNav({ projectName, projectId, startEnabled, onStart }: {
             <button className="mi"><IconUser size={13} />Profile</button>
             <hr />
             <button className="mi" onClick={() => signOut()}><IconLogout size={13} />Sign out</button>
-          </div>
-        )}
-        {popover === "switcher" && (
-          <div className="popover switcher" style={{ right: 96 }} onClick={e => e.stopPropagation()}>
-            <div className="ph">Switch Project</div>
-            {(switcherProjects ?? []).filter(p => p.status !== "Archived").map(p => (
-              <button key={p.id} className="mi switcher-row" style={{ width: "100%" }} onClick={() => openProject(p)}>
-                {p.id === projectId ? <span className="cur" /> : <span style={{ width: 6, flexShrink: 0 }} />}
-                <span className="sn">{p.name}</span>
-              </button>
-            ))}
-            <hr />
-            <button className="mi" onClick={newTask}><IconPlus size={13} />New Task</button>
-            <button className="mi" onClick={() => { setPopover(null); router.push("/dashboard/history"); }}><IconFolder size={13} />Project History</button>
           </div>
         )}
       </div>

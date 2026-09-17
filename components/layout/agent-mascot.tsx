@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import type { AgentType } from "@/lib/agents";
 import type { KnowledgeLevel } from "@/lib/agent-progress";
 
@@ -24,7 +25,7 @@ export type MascotMood = "nod" | "curious" | "pleased" | "proud" | null;
  * All motion lives in CSS (agxp-design.css, ".mascot" block) so a single
  * prefers-reduced-motion rule can switch it all off.
  */
-export function AgentMascot({ role, state = "idle", size = 44, enter = false, attentive = false, mood = null, level }: {
+export function AgentMascot({ role, state = "idle", size = 44, enter = false, attentive = false, mood = null, level, track = false }: {
   role: AgentType;
   state?: MascotState;
   size?: number;
@@ -36,7 +37,38 @@ export function AgentMascot({ role, state = "idle", size = 44, enter = false, at
   mood?: MascotMood;
   /** Drives the rank rings on the antenna. */
   level?: KnowledgeLevel;
+  /** The eyes follow the cursor around the page. */
+  track?: boolean;
 }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  // Written as CSS variables rather than a transform, so the blink, the
+  // thinking look-around and the attentive tilt all keep working on top.
+  const [gaze, setGaze] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    if (!track) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let frame = 0;
+    function onMove(e: MouseEvent) {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        const box = ref.current?.getBoundingClientRect();
+        if (!box) return;
+        const dx = e.clientX - (box.left + box.width / 2);
+        const dy = e.clientY - (box.top + box.height / 2);
+        const dist = Math.hypot(dx, dy) || 1;
+        // Eyes travel at most ~2.4 SVG units, and only look away properly
+        // once the cursor is a screen-ish distance off — otherwise they
+        // twitch at every small move near the head.
+        const reach = 2.4 * Math.min(1, dist / 240);
+        setGaze({ x: (dx / dist) * reach, y: (dy / dist) * reach });
+      });
+    }
+    window.addEventListener("mousemove", onMove);
+    return () => { window.removeEventListener("mousemove", onMove); if (frame) cancelAnimationFrame(frame); };
+  }, [track]);
+
   const cls = [
     "mascot",
     `mascot-${role}`,
@@ -44,11 +76,13 @@ export function AgentMascot({ role, state = "idle", size = 44, enter = false, at
     enter ? "mascot-enter" : "",
     attentive ? "is-attentive" : "",
     mood ? `mood-${mood}` : "",
+    track ? "is-tracking" : "",
     level ? `lvl-${level.toLowerCase()}` : "",
   ].filter(Boolean).join(" ");
 
   return (
-    <span className={cls} style={{ width: size, height: size }} aria-hidden="true">
+    <span ref={ref} className={cls} aria-hidden="true"
+      style={{ width: size, height: size, "--gaze-x": `${gaze.x}px`, "--gaze-y": `${gaze.y}px` } as React.CSSProperties}>
       <svg viewBox="0 0 48 48" fill="none">
         {/* antenna, with a rank ring per level earned */}
         <path className="m-antenna" d="M24 12 V7" strokeWidth="2" strokeLinecap="round" />
