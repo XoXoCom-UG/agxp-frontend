@@ -897,7 +897,7 @@ html.light .m-antenna{ stroke:color-mix(in srgb, var(--primary) 45%, transparent
   max-width:760px; margin:0 auto; padding:44px 52px 34px; border-radius:14px;
   background:var(--popover); border:1px solid var(--border-soft);
   box-shadow:0 30px 70px -40px rgba(0,0,0,0.8);
-  animation:docSheetIn 380ms var(--ease-out) both;
+  animation:docSheetIn 380ms var(--ease-out) backwards;
 }
 @keyframes docSheetIn{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:none; } }
 
@@ -1391,7 +1391,7 @@ html.light .m-antenna{ stroke:color-mix(in srgb, var(--primary) 45%, transparent
   flex:1; min-width:0; display:flex; align-items:center; justify-content:center;
   padding:var(--sp-7) var(--sp-6);
 }
-.auth-card{ width:100%; max-width:392px; animation:viewIn 340ms var(--ease-out) both; }
+.auth-card{ width:100%; max-width:392px; animation:viewIn 340ms var(--ease-out) backwards; }
 
 .auth-brand{ display:flex; align-items:center; gap:10px; margin-bottom:var(--sp-7); }
 .auth-brand .brand-mark{ background:linear-gradient(150deg, var(--primary-soft), var(--primary)); }
@@ -1490,7 +1490,7 @@ html.light .m-antenna{ stroke:color-mix(in srgb, var(--primary) 45%, transparent
   padding:var(--sp-7); border-left:1px solid var(--border-soft);
   background:linear-gradient(160deg, color-mix(in srgb, var(--primary) 7%, transparent), transparent 65%);
 }
-.auth-hero-inner{ max-width:400px; animation:viewIn 460ms var(--ease-out) both; }
+.auth-hero-inner{ max-width:400px; animation:viewIn 460ms var(--ease-out) backwards; }
 .auth-mascots{ display:flex; gap:var(--sp-6); margin-bottom:var(--sp-7); }
 .auth-mascots .am{ display:flex; flex-direction:column; align-items:center; gap:9px; }
 .auth-mascots .am span{
@@ -1644,7 +1644,7 @@ html.light .ico-when-dark{ display:none; }
   margin-left:auto; padding:var(--sp-5); border-radius:14px;
   background:var(--popover); border:1px solid var(--border-medium);
   box-shadow:0 24px 60px -24px rgba(0,0,0,0.75);
-  animation:cookieIn 420ms var(--ease-out) both;
+  animation:cookieIn 420ms var(--ease-out) backwards;
 }
 .cookie-note p{ font-size:var(--text-2xs); line-height:1.65; color:var(--text-secondary); margin-bottom:var(--sp-4); }
 .cookie-note a{ color:var(--primary-soft); text-decoration:underline; text-underline-offset:2px; }
@@ -1690,12 +1690,23 @@ main.workspace.swapping > .panel:last-child{ animation:swapFromLeft 400ms var(--
 .swap-panels svg{ transition:transform 400ms var(--ease-out); }
 .swap-panels.flipped svg{ transform:rotate(180deg); }
 
-/* --- Opening a chat: the panel assembles itself instead of appearing whole --- */
-.panel > .chat-head{ animation:riseIn 320ms var(--ease-out) both; }
-.panel > .chat-body{ animation:riseIn 360ms var(--ease-out) 60ms both; }
-.panel > .chat-input{ animation:riseIn 360ms var(--ease-out) 120ms both; }
-.panel > .panel-head{ animation:riseIn 320ms var(--ease-out) both; }
-.panel > .pick-empty{ animation:riseIn 380ms var(--ease-out) 70ms both; }
+/* --- Opening a chat: the panel assembles itself instead of appearing whole.
+       Fill mode is `backwards`, NOT `both`: a forwards fill keeps applying the
+       last keyframe, and a transform that lands on identity computes as
+       matrix(1,0,0,1,0,0) rather than `none`. Any transform but `none` makes a
+       stacking context, so the head kept one forever and the agent popover was
+       trapped inside it — the chat messages painted on top of it. `backwards`
+       only fills before the animation starts, which is all the delay needs. --- */
+.panel > .chat-head{ animation:riseIn 320ms var(--ease-out) backwards; }
+.panel > .chat-body{ animation:riseIn 360ms var(--ease-out) 60ms backwards; }
+.panel > .chat-input{ animation:riseIn 360ms var(--ease-out) 120ms backwards; }
+.panel > .panel-head{ animation:riseIn 320ms var(--ease-out) backwards; }
+.panel > .pick-empty{ animation:riseIn 380ms var(--ease-out) 70ms backwards; }
+
+/* And belt as well as braces: the head owns the popovers, so it stays above
+   the conversation whatever a future animation does to the stacking order. */
+.chat-head{ z-index:3; }
+.panel-head{ position:relative; z-index:3; }
 @keyframes riseIn{
   from{ opacity:0; transform:translateY(10px); }
   to{ opacity:1; transform:none; }
@@ -1710,7 +1721,7 @@ main.workspace.swapping > .panel:last-child{ animation:swapFromLeft 400ms var(--
 .msg-user{ transform-origin:bottom right; }
 
 /* --- The suggested answers drop in one after another --- */
-.sugg-item{ animation:suggIn 260ms var(--ease-out) both; animation-delay:calc(var(--i, 0) * 55ms); }
+.sugg-item{ animation:suggIn 260ms var(--ease-out) backwards; animation-delay:calc(var(--i, 0) * 55ms); }
 @keyframes suggIn{
   from{ opacity:0; transform:translateX(-8px); }
   to{ opacity:1; transform:none; }
