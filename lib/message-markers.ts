@@ -107,3 +107,25 @@ export function looksLikeDocument(text: string, title?: string): boolean {
   const sections = text.match(/^##\s+\S/gm)?.length ?? 0;
   return text.length > 1200 && sections >= 3;
 }
+
+/**
+ * What to show while the answer is still arriving. A marker can be half
+ * written at any moment ("[[CHOI"), and the raw fragment must never flash in
+ * the chat, so an unfinished one at the end is cut off.
+ */
+export function streamingText(raw: string): string {
+  const text = parseMarkers(raw).text;
+  // Every COMPLETE marker is already gone, so a remaining "[[" can only be one
+  // that is still arriving. Cutting from it needs the position, not a regex:
+  // the moment the first of the two closing brackets lands, "[[CHOICES: a|b]"
+  // no longer looks unfinished to a `[^\]]*$` pattern and the whole line
+  // flashes into the chat.
+  const open = text.lastIndexOf("[[");
+  if (open >= 0 && text.indexOf("]]", open) === -1) return text.slice(0, open).trimEnd();
+  return text.trimEnd();
+}
+
+/** True as soon as it is clear the answer is the deliverable document. */
+export function streamIsDocument(raw: string): boolean {
+  return /^\s*\[\[DOC:/i.test(raw);
+}

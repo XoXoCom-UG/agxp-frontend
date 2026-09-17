@@ -1659,3 +1659,21 @@ html.light .ico-when-dark{ display:none; }
 .cookie-note .btn-primary-wide{ height:38px; font-size:var(--text-2xs); }
 @keyframes cookieIn{ from{ opacity:0; transform:translateY(14px); } to{ opacity:1; transform:none; } }
 @media (prefers-reduced-motion:reduce){ .cookie-note{ animation:none; } }
+
+/* ---------- STREAMING — the answer as it is written ---------- */
+.msg-agent.streaming .txt > *:last-child::after{
+  content:""; display:inline-block; width:2px; height:1em; margin-left:2px;
+  vertical-align:-0.15em; background:var(--primary-soft); animation:caret 1s steps(1) infinite;
+}
+@keyframes caret{ 0%, 50%{ opacity:1; } 51%, 100%{ opacity:0; } }
+
+/* A document is not streamed into the chat — the card says what is being built */
+.doc-card.writing{ cursor:default; }
+.doc-card.writing .dc-ic{ animation:writePulse 1.5s var(--ease-out) infinite; }
+@keyframes writePulse{
+  0%, 100%{ box-shadow:inset 0 1px 0 rgba(255,255,255,0.22), 0 0 0 0 color-mix(in srgb, var(--primary) 55%, transparent); }
+  55%{ box-shadow:inset 0 1px 0 rgba(255,255,255,0.22), 0 0 0 7px transparent; }
+}
+@media (prefers-reduced-motion:reduce){
+  .msg-agent.streaming .txt > *:last-child::after, .doc-card.writing .dc-ic{ animation:none !important; }
+}

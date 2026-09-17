@@ -14,8 +14,22 @@ async function accessToken(): Promise<string> {
   return token;
 }
 
-/** `memory` carries what this agent learned in the user's earlier projects. */
-export async function askAgent(agent: Agent, messages: ChatTurn[], memory: string[] = []): Promise<string> {
+/**
+ * Asks the agent and streams the answer back.
+ *
+ * `onDelta` is called with everything received so far, every time a chunk
+ * lands — the caller renders that directly, so the reply appears as it is
+ * written instead of after a 20-second wait. The full text is returned at the
+ * end, which is what gets stored.
+ *
+ * `memory` carries what this agent learned in the user's earlier projects.
+ */
+export async function askAgent(
+  agent: Agent,
+  messages: ChatTurn[],
+  memory: string[] = [],
+  onDelta?: (soFar: string) => void,
+): Promise<string> {
   const res = await fetch("/api/agent/chat", {
     method: "POST",
     headers: {
@@ -24,7 +38,27 @@ export async function askAgent(agent: Agent, messages: ChatTurn[], memory: strin
     },
     body: JSON.stringify({ agentType: agent.type, agentName: agent.name, messages, memory }),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Anfrage fehlgeschlagen.");
-  return data.content as string;
+
+  // Everything that fails before the answer starts still answers in JSON.
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || "The request failed.");
+  }
+  if (!res.body) throw new Error("No answer came back.");
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let text = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    text += decoder.decode(value, { stream: true });
+    onDelta?.(text);
+  }
+  text += decoder.decode();
+
+  // The stream can end early if the model call breaks mid-answer; an empty
+  // body is a failure, not an answer.
+  if (!text.trim()) throw new Error("The agent didn't answer. Try again.");
+  return text;
 }

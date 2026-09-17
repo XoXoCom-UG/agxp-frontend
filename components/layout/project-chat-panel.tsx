@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Agent, AgentType } from "@/lib/agents";
 import { listMessages, addMessage, touchProjectActivity, renameFromFirstMessage, type Project, type ProjectMessage } from "@/lib/projects";
 import { askAgent } from "@/lib/ask-agent";
-import { parseMarkers, looksLikeDocument, type TopicMarker, type MemoryNote } from "@/lib/message-markers";
+import { parseMarkers, looksLikeDocument, streamingText, streamIsDocument, type TopicMarker, type MemoryNote } from "@/lib/message-markers";
 import { loadAgentMemory, memoryLines, EMPTY_MEMORY, type AgentMemory } from "@/lib/agent-memory";
 import { DELIVERABLES } from "@/lib/deliverables";
 import { methodLabel } from "@/lib/method-labels";
@@ -37,6 +37,8 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [orb, setOrb] = useState<MascotState>("idle");
+  /** The answer as it arrives, before it is saved and becomes a message. */
+  const [streamText, setStreamText] = useState("");
   // What the agent brings from this user's earlier projects, plus what it
   // picked up during this session.
   const [memory, setMemory] = useState<AgentMemory>(EMPTY_MEMORY);
@@ -84,7 +86,11 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
     return () => { alive = false; };
   }, [agent.id, role, project.id]);
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, sending]);
+  // Following a streaming answer smoothly fights itself on every chunk, so the
+  // scroll is instant while text is arriving and smooth otherwise.
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: streamText ? "auto" : "smooth" });
+  }, [messages, sending, streamText]);
 
   function buildDoc(content: string, title: string, createdAt: string, version: number): DeliverableDoc {
     return { title, role, agentName: agent.name, projectName: project.name, content, createdAt, version };
@@ -105,7 +111,11 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
         renameFromFirstMessage(project, t).then(name => { if (name) onProjectNamed?.(name); }).catch(() => {});
       }
       const history = [...messages, userMsg].map(m => ({ role: m.role, content: m.content }));
-      const reply = await askAgent(agent, history, memoryLines(memory, learned));
+      const reply = await askAgent(agent, history, memoryLines(memory, learned), soFar => {
+        setStreamText(soFar);
+        setOrb("speaking");
+      });
+      setStreamText("");
       await addMessage(project.id, role, "assistant", reply);
       const createdAt = new Date().toISOString();
       setMessages(prev => [...prev, { id: crypto.randomUUID(), project_id: project.id, column_type: role, role: "assistant", content: reply, created_at: createdAt }]);
@@ -122,6 +132,7 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
       }
       touchProjectActivity(project.id, `${role === "coach" ? "Coach" : "Consultant"} replied`).catch(() => {});
     } catch (e) {
+      setStreamText("");
       setMessages(prev => [...prev, { id: crypto.randomUUID(), project_id: project.id, column_type: role, role: "assistant", content: `Error: ${(e as Error).message}`, created_at: new Date().toISOString() }]);
       setOrb("idle");
     } finally {
@@ -361,7 +372,26 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
           );
         })}
 
-        {sending && (
+        {/* The answer as it is written. A document is not streamed into the
+            chat as a wall of text — it says what it is building instead. */}
+        {sending && streamText && (
+          streamIsDocument(streamText) ? (
+            <div className="msg-agent">
+              <div className="doc-card writing">
+                <span className="dc-ic"><IconDoc size={17} /></span>
+                <span className="dc-txt">
+                  <span className="dc-t">Writing your {deliverable.title}…</span>
+                  <span className="dc-s">{streamText.split(/\s+/).filter(Boolean).length.toLocaleString()} words so far</span>
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="msg-agent streaming">
+              <div className="txt" dangerouslySetInnerHTML={{ __html: md(streamingText(streamText)) }} />
+            </div>
+          )
+        )}
+        {sending && !streamText && (
           <div className="msg-typing"><span className="tline" />{agent.name} is thinking...</div>
         )}
         <div ref={bottomRef} />

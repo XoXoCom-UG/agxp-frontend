@@ -167,27 +167,50 @@ export async function POST(req: NextRequest) {
 
   const anthropic = new Anthropic({ apiKey });
 
-  try {
-    const response = await anthropic.messages.create({
-      model: MODEL,
-      max_tokens: 8192,
-      system: systemPrompt(
-        body.agentType,
-        body.agentName || "dein Agent",
-        (body.memory ?? []).filter(m => typeof m === "string").slice(0, 20),
-      ),
-      messages: body.messages.map(m => ({ role: m.role, content: m.content })),
-    });
+  // Streamed, not awaited whole: the answer used to appear after 15-20 seconds
+  // of "is thinking...", which is the single biggest reason the app felt slow.
+  // The body is plain text — the client appends every chunk as it lands.
+  const stream = anthropic.messages.stream({
+    model: MODEL,
+    max_tokens: 8192,
+    system: systemPrompt(
+      body.agentType,
+      body.agentName || "dein Agent",
+      (body.memory ?? []).filter(m => typeof m === "string").slice(0, 20),
+    ),
+    messages: body.messages.map(m => ({ role: m.role, content: m.content })),
+  });
 
-    const text = response.content
-      .filter(b => b.type === "text")
-      .map(b => (b as { text: string }).text)
-      .join("\n")
-      .trim();
+  const encoder = new TextEncoder();
+  const out = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      try {
+        for await (const event of stream) {
+          if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+            controller.enqueue(encoder.encode(event.delta.text));
+          }
+        }
+      } catch (err) {
+        // The response has already started, so there is no status code left to
+        // send: the client sees a short (or empty) answer and says so. Log it
+        // here, which is where it can actually be read.
+        console.error("[agent/chat] stream failed:", err);
+      } finally {
+        controller.close();
+      }
+    },
+    cancel() {
+      // The user navigated away or sent again — stop paying for the rest.
+      stream.abort();
+    },
+  });
 
-    return NextResponse.json({ content: text || "…" });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unbekannter Fehler bei der Anfrage an Claude.";
-    return NextResponse.json({ error: message }, { status: 502 });
-  }
+  return new Response(out, {
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "no-store",
+      // Tells proxies not to buffer, which would defeat the whole point.
+      "X-Accel-Buffering": "no",
+    },
+  });
 }
