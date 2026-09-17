@@ -19,10 +19,10 @@ const OPENING: Record<AgentType, string> = {
   coach: "Hey, what would you like to talk through today?",
 };
 
-export function ProjectChatPanel({ project, role, agent, primary, projectCount = 0, onProjectNamed, onActivity, onOpenDoc }: {
+export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount = 0, onProjectNamed, onActivity, onOpenDoc }: {
   project: Project; role: AgentType; agent: Agent;
-  /** Consultant leads the layout (larger). */
-  primary?: boolean;
+  /** How much of the row this panel takes (flex-grow). */
+  grow?: number;
   /** How many of the user's projects this agent has worked on, this one included. */
   projectCount?: number;
   onProjectNamed?: (name: string) => void;
@@ -233,7 +233,7 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
   const { next, remaining } = nextLevel(totalProjects);
 
   return (
-    <section className={`panel ${role}${primary ? " primary" : ""}`}>
+    <section className={`panel ${role}`} style={{ flexGrow: grow }}>
       {/* Everything about the agent and the document lives behind these two
           small buttons — the panel itself is the conversation and nothing else
           (Patryk, 2026-09-11: "das Gespräch muss im Vordergrund stehen"). */}

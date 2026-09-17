@@ -280,7 +280,12 @@ svg.arrow{ width:12px; height:12px; stroke:currentColor; flex-shrink:0; transiti
 
 /* ---------- MAIN WORKSPACE (setup) ---------- */
 main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var(--sp-6); min-height:0; }
-.panel{ flex:1; min-width:0; border-radius:16px; display:flex; flex-direction:column; overflow:hidden; position:relative; border:1px solid var(--border-soft); box-shadow:inset 0 1px 0 rgba(255,255,255,0.03), 0 14px 40px -18px rgba(0,0,0,0.6); }
+.panel{ flex:1 1 0; min-width:0; border-radius:16px; display:flex; flex-direction:column; overflow:hidden; position:relative;
+  border:1px solid var(--border-soft); box-shadow:inset 0 1px 0 rgba(255,255,255,0.03), 0 14px 40px -18px rgba(0,0,0,0.6);
+  /* A query container, so the entry cards lay themselves out against the
+     panel's width rather than the window's; and the share of the row is
+     animated, because it changes when the Coach is invited in. */
+  transition:flex-grow 340ms var(--ease-out); container-type:inline-size; container-name:panel; }
 .panel.primary{ flex:1.6; }
 .panel.coach{ background:linear-gradient(175deg, var(--coach-3) 0%, var(--background) 100%); }
 .panel.consultant{ background:linear-gradient(175deg, var(--consultant-3) 0%, var(--background) 100%); }
@@ -423,25 +428,9 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 }
 
 .selected-summary{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:26px; gap:12px; }
-.sel-badge{ width:52px; height:52px; border-radius:var(--r-lg); display:flex; align-items:center; justify-content:center; margin-bottom:2px; box-shadow:inset 0 1px 0 rgba(255,255,255,0.14), 0 8px 22px -10px rgba(0,0,0,0.6); }
-.panel.coach .sel-badge{ background:linear-gradient(160deg, var(--indigo-light), var(--violet-dark)); }
-.panel.consultant .sel-badge{ background:linear-gradient(160deg, var(--plum-light), var(--plum-dark)); }
-.sel-badge svg{ width:20px; height:20px; stroke:#fff; opacity:.9; }
 .sel-name{ font-size:var(--text-lg); font-weight:650; text-align:center; color:var(--text-primary); }
 .sel-type{ font-size:var(--text-2xs); color:var(--text-secondary); text-align:center; }
 .sel-methods{ font-size:var(--text-2xs); color:var(--text-muted); text-align:center; max-width:300px; }
-.ready-badge{ display:flex; align-items:center; gap:6px; font-size:var(--text-3xs); color:var(--text-secondary); margin-top:2px; }
-.ready-badge .rd{ width:6px; height:6px; border-radius:50%; background:var(--success); }
-.change-link{
-  font-size:var(--text-2xs); color:var(--text-muted); background:var(--surface-1); border:1px solid var(--border-soft);
-  margin-top:6px; padding:7px 13px; border-radius:8px;
-  transition:color .15s var(--ease-out), border-color .15s var(--ease-out), transform 120ms var(--ease-out);
-}
-.change-link:active{ transform:scale(0.96); }
-@media (hover:hover) and (pointer:fine){
-  .change-link:hover{ color:var(--text-primary); border-color:var(--border-medium); }
-}
-
 .step-eyebrow{ font-size:var(--text-3xs); font-weight:700; letter-spacing:0.09em; color:var(--magenta-soft); text-transform:uppercase; padding:var(--sp-4) var(--sp-6) 0; }
 .type-wrap{ flex:1; overflow-y:auto; padding:var(--sp-3) var(--sp-6) var(--sp-6); display:flex; flex-direction:column; gap:var(--sp-3); }
 .type-card{ border:1px solid var(--border-medium); border-radius:var(--r-md); padding:var(--sp-5); background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent); box-shadow:inset 0 1px 0 var(--hl); }
@@ -616,20 +605,8 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 .panel-head .sub{ font-size:var(--text-2xs); color:var(--text-muted); margin-top:3px; line-height:1.5; }
 
 /* Coach empty state — big plus, then the two ways in */
-.pick-empty{ flex:1; min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:var(--sp-6); }
-.pick-plus{
-  width:58px; height:58px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:var(--sp-5);
-  background:color-mix(in srgb, var(--primary) 12%, transparent); border:1px solid color-mix(in srgb, var(--primary) 26%, transparent);
-  color:var(--primary-soft);
-  transition:background-color .16s var(--ease-out), transform 120ms var(--ease-out);
-}
-.pick-plus:active{ transform:scale(0.95); }
 @media (hover:hover) and (pointer:fine){
-  .pick-plus:hover{ background:color-mix(in srgb, var(--primary) 22%, transparent); }
 }
-.pick-empty .t{ font-size:var(--text-base); font-weight:650; color:var(--text-primary); margin-bottom:7px; }
-.pick-empty .d{ font-size:var(--text-2xs); color:var(--text-muted); line-height:1.6; max-width:290px; margin-bottom:var(--sp-5); }
-.pick-actions{ width:100%; max-width:290px; display:flex; flex-direction:column; gap:var(--sp-3); }
 .btn-primary-wide{
   width:100%; height:42px; border-radius:var(--radius-sm); border:1px solid transparent; background:var(--primary);
   color:var(--primary-foreground); font-size:var(--text-sm); font-weight:600;
@@ -641,17 +618,7 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
 @media (hover:hover) and (pointer:fine){
   .btn-primary-wide:hover{ background:var(--primary-soft); }
 }
-.choose-row{
-  width:100%; display:flex; align-items:center; justify-content:space-between; gap:var(--sp-3);
-  padding:18px 18px; border-radius:var(--r-md); border:1px solid var(--border-medium); background:transparent;
-  font-size:var(--text-sm); font-weight:550; color:var(--text-primary); text-align:left;
-  transition:border-color .16s var(--ease-out), background-color .16s var(--ease-out), transform 120ms var(--ease-out);
-}
-.choose-row svg{ color:var(--text-muted); flex-shrink:0; transition:transform 160ms var(--ease-out), color .15s var(--ease-out); }
-.choose-row:active{ transform:scale(0.99); }
 @media (hover:hover) and (pointer:fine){
-  .choose-row:hover{ border-color:color-mix(in srgb, var(--primary) 45%, transparent); background:color-mix(in srgb, var(--primary) 7%, transparent); }
-  .choose-row:hover svg{ transform:translateX(3px); color:var(--primary-soft); }
 }
 
 /* Suggested roles — agent types, with rollout status */
@@ -1878,3 +1845,80 @@ main.workspace.swapping > .panel:last-child{ animation:swapFromLeft 400ms var(--
   .m-eye, .mood-curious .m-head{ animation:none !important; }
   .is-attentive .m-eyes, .is-attentive .m-head, .m-eyes, .m-head{ transition:none !important; }
 }
+
+/* =============================================================================
+   ENTRY CARDS — ported from Ana's repo (agxp-frontend-ana). Two ways in per
+   role: make a new agent, or train one you already have. Side by side in the
+   wide panel, stacked in the narrow one — a CONTAINER query, so it follows the
+   panel's own width and keeps working when the split changes.
+   ============================================================================= */
+.pick-empty{
+  flex:1; min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  text-align:center; padding:var(--sp-6);
+}
+.pick-cards{ display:flex; flex-direction:column; gap:var(--sp-4); width:100%; max-width:400px; }
+.picker-card{
+  position:relative; overflow:hidden; display:flex; flex-direction:column; justify-content:center;
+  padding:var(--sp-5) var(--sp-6); gap:var(--sp-4); border-radius:24px;
+  background:linear-gradient(145deg, rgba(74,88,108,0.30) 0%, rgba(51,61,77,0.24) 42%, rgba(29,34,43,0.28) 100%);
+  border:1px solid rgba(120,160,210,0.22);
+  backdrop-filter:blur(18px) saturate(120%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.10), inset 0 -1px 0 rgba(255,255,255,0.02), 0 18px 42px rgba(0,0,0,0.22);
+}
+.picker-card::before{
+  content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+  background:radial-gradient(circle at 14% 10%, rgba(111,164,232,0.07), transparent 34%),
+             radial-gradient(circle at 90% 100%, rgba(255,255,255,0.025), transparent 34%);
+}
+.picker-card-head{ position:relative; z-index:1; display:flex; flex-direction:column; gap:4px; }
+.picker-card-title{ font-size:var(--text-xl); font-weight:650; color:var(--text-primary); }
+.picker-card-desc{ font-size:var(--text-sm); color:var(--text-secondary); line-height:1.45; }
+.picker-card-footer{ position:relative; z-index:1; width:100%; margin-top:auto; }
+.picker-card-footer .btn{
+  position:relative; overflow:hidden; display:flex; align-items:center; height:44px; width:100%;
+  padding:0 var(--sp-5); gap:8px; font-size:var(--text-sm); border-radius:16px; color:#fff;
+  background:linear-gradient(180deg, rgba(77,147,239,0.96) 0%, rgba(51,120,217,0.96) 46%, rgba(36,92,171,0.98) 100%);
+  border:1px solid rgba(118,171,235,0.50);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.22), inset 0 -1px 0 rgba(0,25,65,0.20),
+             0 4px 14px rgba(34,92,175,0.20), 0 0 14px rgba(69,134,226,0.08);
+  transition:transform .2s ease, box-shadow .2s ease, background .2s ease;
+}
+.picker-card-footer .btn span:first-of-type{ flex:1; text-align:left; }
+.picker-card-footer .btn:disabled{ opacity:.45; cursor:not-allowed; }
+.btn-arrow-end{ transition:transform .2s ease; }
+@media (hover:hover) and (pointer:fine){
+  .picker-card-footer .btn:hover:not(:disabled){
+    transform:translateY(-1px);
+    background:linear-gradient(180deg, rgba(85,154,245,1) 0%, rgba(57,127,224,1) 46%, rgba(40,98,182,1) 100%);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.26), inset 0 -1px 0 rgba(0,25,65,0.18),
+               0 7px 18px rgba(34,92,175,0.24), 0 0 18px rgba(69,134,226,0.11);
+  }
+  .picker-card-footer .btn:hover:not(:disabled) .btn-arrow-end{ transform:translateX(3px); }
+}
+
+/* The glass is tinted for a dark room; on white it has to be rebuilt, not
+   dimmed, or the cards read as grey slabs. */
+html.light .picker-card{
+  background:linear-gradient(145deg, rgba(255,255,255,0.92) 0%, rgba(245,247,250,0.80) 42%, rgba(231,236,243,0.86) 100%);
+  border-color:rgba(21,78,128,0.16);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.90), 0 14px 34px rgba(24,39,60,0.09);
+}
+html.light .picker-card::before{
+  background:radial-gradient(circle at 14% 10%, rgba(46,123,196,0.07), transparent 38%),
+             radial-gradient(circle at 90% 100%, rgba(21,78,128,0.05), transparent 38%);
+}
+
+/* Wide enough for two tall cards next to each other */
+@container panel (min-width: 560px){
+  .pick-cards{ flex-direction:row; max-width:640px; }
+  .picker-card{
+    flex:1 1 0; align-items:center; text-align:center;
+    min-height:420px; padding:var(--sp-7) var(--sp-5); gap:var(--sp-6);
+  }
+  .picker-card-head{ align-items:center; }
+  .picker-card-footer .btn{ height:52px; }
+}
+
+/* Chosen, waiting for Start */
+.selected-summary .btn-hero{ margin-top:var(--sp-4); }
+

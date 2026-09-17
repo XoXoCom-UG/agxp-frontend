@@ -6,7 +6,7 @@ import { useTheme } from "next-themes";
 import { useAuth } from "@/lib/auth-context";
 import { listProjects, PLACEHOLDER_PROJECT_NAME, type Project } from "@/lib/projects";
 import {
-  IconDiamond, IconSun, IconMoon, IconChevronDown, IconUser, IconLogout, IconFolder, IconPlus,
+  IconDiamond, IconSun, IconMoon, IconChevronDown, IconUser, IconLogout, IconFolder, IconPlus, IconArrow,
 } from "@/components/layout/agxp-icons";
 
 type Tab = "newtask" | "history" | "agents";
@@ -19,7 +19,13 @@ function activeTab(pathname: string): Tab {
 
 type PopoverName = "avatar" | "switcher" | null;
 
-export function AgentNav({ projectName, projectId }: { projectName?: string; projectId?: string }) {
+export function AgentNav({ projectName, projectId, startEnabled, onStart }: {
+  projectName?: string; projectId?: string;
+  /** Both halves chosen? The Start button lights up. */
+  startEnabled?: boolean;
+  /** Omitted once the conversation has started — then there is nothing to start. */
+  onStart?: () => void;
+}) {
   const { user, profileName, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -83,6 +89,13 @@ export function AgentNav({ projectName, projectId }: { projectName?: string; pro
           <IconSun className="ico-when-dark" />
           <IconMoon className="ico-when-light" />
         </button>
+
+        {onStart && (
+          <button className="btn btn-hero" disabled={!startEnabled} onClick={onStart}
+            data-tooltip={startEnabled ? undefined : "Pick a Consultant first"}>
+            Start <IconArrow />
+          </button>
+        )}
 
         <button className="avatar" onClick={e => { e.stopPropagation(); toggle("avatar"); }}>
           {(profileName || user?.email || "U").slice(0, 2).toUpperCase()}

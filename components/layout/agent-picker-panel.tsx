@@ -10,7 +10,7 @@ import { dateStr } from "@/lib/utils";
 import { describeDbError } from "@/lib/db-error";
 import { AgentMascot } from "@/components/layout/agent-mascot";
 import {
-  IconBack, IconPlus, IconArrow, IconSearch, IconCheck, IconChevronDown,
+  IconBack, IconArrow, IconSearch, IconCheck,
 } from "@/components/layout/agxp-icons";
 
 type PanelState = "empty" | "list" | "detail" | "type" | "configure";
@@ -31,6 +31,18 @@ const ROLE_HEAD: Record<AgentType, { title: string; sub: string; emptyTitle: str
     sub: "Works out what to change and how.",
     emptyTitle: "No consultant yet",
     emptyDesc: "Make a new one, or pick a consultant you have worked with before.",
+  },
+};
+
+/** Ana's two ways in (agxp-frontend-ana): make one, or train one you have. */
+const PICKER_COPY: Record<AgentType, { createDesc: string; trainDesc: string }> = {
+  consultant: {
+    createDesc: "Set up a new AI consultant tailored to your needs.",
+    trainDesc: "Improve your consultant with new knowledge and context.",
+  },
+  coach: {
+    createDesc: "Start a new AI coach for your personal growth.",
+    trainDesc: "Enhance your coach with new insights and goals.",
   },
 };
 
@@ -63,7 +75,7 @@ const TYPE_CATALOG: Record<AgentType, TypeTemplate[]> = {
   ],
 };
 
-export function AgentPickerPanel({ role, project, agents, ensureProject, onAssigned, onAgentCreated, primary, projectCounts = {} }: {
+export function AgentPickerPanel({ role, project, agents, ensureProject, onAssigned, onAgentCreated, grow = 1, projectCounts = {}, assignedAgent, onChangeAgent }: {
   role: AgentType;
   /** Null until the project row exists — it's created lazily on the first real action. */
   project: Project | null;
@@ -71,9 +83,13 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   ensureProject: () => Promise<Project>;
   onAssigned: (project: Project) => void;
   onAgentCreated: (agent: Agent) => void;
-  primary?: boolean;
+  /** How much of the row this panel takes (flex-grow). */
+  grow?: number;
   /** Projects each agent has worked on for this user — drives its level. */
   projectCounts?: Record<string, number>;
+  /** Already chosen, but the chat has not started yet: show who it is. */
+  assignedAgent?: Agent | null;
+  onChangeAgent?: () => void;
 }) {
   const totalProjects = (a: Agent) => a.last_projects.length + (projectCounts[a.id] ?? 0);
   const head = ROLE_HEAD[role];
@@ -102,9 +118,34 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   }
 
   const showBack = state !== "empty";
+  // Ana's rule: the Coach can only be picked once a Consultant exists. It
+  // answers "when does the Coach appear" without a timer or a popup.
+  const locked = role === "coach" && !project?.consultant_agent_id;
+
+  // Chosen, waiting for Start. Showing who it is beats an empty panel, and
+  // this is the one place changing your mind is free.
+  if (assignedAgent) {
+    const total = totalProjects(assignedAgent);
+    return (
+      <section className={`panel ${role}`} style={{ flexGrow: grow }}>
+        <div className="panel-head">
+          <AgentMascot role={role} size={38} enter level={levelFor(total)} />
+        </div>
+        <div className="selected-summary">
+          <div className="sel-name">{assignedAgent.name}</div>
+          {assignedAgent.tagline && <div className="sel-type">{assignedAgent.tagline}</div>}
+          <div className="sel-type">{levelFor(total)} · {total} {total === 1 ? "project" : "projects"} together</div>
+          {assignedAgent.primaryMethods.length > 0 && (
+            <div className="sel-methods">{assignedAgent.primaryMethods.map(m => methodLabel(m.name)).join(" · ")}</div>
+          )}
+          {onChangeAgent && <button className="btn btn-hero" onClick={onChangeAgent}>Change agent</button>}
+        </div>
+      </section>
+    );
+  }
 
   return (
-    <section className={`panel ${role}${primary ? " primary" : ""}`}>
+    <section className={`panel ${role}`} style={{ flexGrow: grow }}>
       <div className="panel-head">
         <AgentMascot role={role} size={38} enter />
         <div style={{ minWidth: 0, flex: 1 }}>
@@ -119,21 +160,37 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
       </div>
 
       {state === "empty" ? (
-        // Two ways in, nothing else. The "Suggested roles" list that used to
-        // sit under this was cut on Patryk's review (2026-09-10): it repeated
-        // what the next screen already shows.
+        // Two cards, one per way in. They sit side by side in the wide panel
+        // and stack in the narrow one — a container query on .panel, so it
+        // follows the panel's own width, not the window's.
         <div className="pick-empty">
-          <button className="pick-plus" onClick={() => setState("type")} aria-label="Create new agent">
-            <IconPlus size={22} />
-          </button>
-          <div className="t">{head.emptyTitle}</div>
-          <div className="d">{head.emptyDesc}</div>
-          <div className="pick-actions">
-            <button className="btn-primary-wide" onClick={() => setState("type")}><IconPlus size={13} />Create new</button>
-            <button className="choose-row" onClick={() => setState("list")}>
-              Pick someone you know
-              <IconChevronDown size={18} style={{ transform: "rotate(-90deg)" }} />
-            </button>
+          <div className="pick-cards">
+            <div className="picker-card">
+              <div className="picker-card-head">
+                <h3 className="picker-card-title">Create new AI {ROLE_LABEL[role]}</h3>
+                <p className="picker-card-desc">{PICKER_COPY[role].createDesc}</p>
+              </div>
+              <div className="picker-card-footer">
+                <button className="btn" disabled={locked}
+                  data-tooltip={locked ? "Pick a Consultant first" : undefined}
+                  onClick={() => setState("type")}>
+                  <span>Create new agent</span><span className="btn-arrow-end">→</span>
+                </button>
+              </div>
+            </div>
+            <div className="picker-card">
+              <div className="picker-card-head">
+                <h3 className="picker-card-title">Train existing AI {ROLE_LABEL[role]}</h3>
+                <p className="picker-card-desc">{PICKER_COPY[role].trainDesc}</p>
+              </div>
+              <div className="picker-card-footer">
+                <button className="btn" disabled={locked}
+                  data-tooltip={locked ? "Pick a Consultant first" : undefined}
+                  onClick={() => setState("list")}>
+                  <span>Train existing agent</span><span className="btn-arrow-end">→</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 

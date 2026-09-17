@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { getProject, createBlankProject, type Project } from "@/lib/projects";
+import { getProject, createBlankProject, clearAgent, type Project } from "@/lib/projects";
 import { listAgents, type Agent, type AgentType } from "@/lib/agents";
 import { projectCountsByAgent } from "@/lib/agent-progress";
 import { AgentNav } from "@/components/layout/agent-nav";
@@ -35,8 +35,11 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
   // lose half the conversation without noticing.
   const [pane, setPane] = useState<AgentType>("consultant");
   const [unseen, setUnseen] = useState<Record<AgentType, boolean>>({ coach: false, consultant: false });
-  /** Which side each agent sits on. Consultant left by default; the button on
-   *  the seam swaps them (Patryk, 2026-09-11). */
+  /** Gates the live chat behind one Start button instead of the panel jumping
+   *  into the conversation the moment an agent is picked (Patryk, 2026-09-11;
+   *  built this way in Ana's repo). */
+  const [started, setStarted] = useState(false);
+  /** Manual override of the split: give the Coach the room instead. */
   const [swapped, setSwapped] = useState(false);
   /** True for the length of the swap, so the panels can animate across. */
   const [swapping, setSwapping] = useState(false);
@@ -71,7 +74,13 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
       listAgents(),
       projectCountsByAgent().catch(() => ({} as Record<string, number>)),
     ])
-      .then(([p, a, counts]) => { if (!alive) return; setProject(p); setAgents(a); setProjectCounts(counts); })
+      .then(([p, a, counts]) => {
+        if (!alive) return;
+        setProject(p); setAgents(a); setProjectCounts(counts);
+        // Opened from Project History with both agents already on it — the
+        // Start gate guards a fresh selection, not a return visit.
+        if (p?.coach_agent_id && p?.consultant_agent_id) setStarted(true);
+      })
       .catch(() => {})
       .finally(() => { if (alive) setLoadingData(false); });
     return () => { alive = false; };
@@ -98,14 +107,28 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
     return creating.current;
   }
 
+  /** Drops the assignment so the panel falls back to its picker. */
+  async function changeAgent(role: AgentType) {
+    if (!project) return;
+    setProject(await clearAgent(project.id, role));
+  }
+
   function panelFor(role: AgentType) {
     const assignedId = role === "coach" ? project?.coach_agent_id : project?.consultant_agent_id;
     const assigned = agents.find(a => a.id === assignedId) ?? null;
-    const isPrimary = role === "consultant";
 
-    if (project && assigned) {
+    // The Consultant leads. Two things hand the room to the Coach: the manual
+    // toggle, or — before Start — having picked the Consultant and not the
+    // Coach, which is the screen inviting you to finish the pair.
+    const consultantOnly = !!project?.consultant_agent_id && !project?.coach_agent_id;
+    const coachLeads = swapped || (!started && consultantOnly);
+    const grow = coachLeads
+      ? (role === "consultant" ? 1 : 2.3)
+      : (role === "consultant" ? 2.3 : 1);
+
+    if (project && assigned && started) {
       return (
-        <ProjectChatPanel key={role} project={project} role={role} agent={assigned} primary={isPrimary}
+        <ProjectChatPanel key={role} project={project} role={role} agent={assigned} grow={grow}
           projectCount={projectCounts[assigned.id] ?? 0}
           onActivity={() => noteActivity(role)}
           onOpenDoc={setOpenDoc}
@@ -113,9 +136,11 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
       );
     }
     return (
-      <AgentPickerPanel key={role} role={role} project={project} agents={agents} primary={isPrimary}
+      <AgentPickerPanel key={role} role={role} project={project} agents={agents} grow={grow}
         ensureProject={ensureProject}
         projectCounts={projectCounts}
+        assignedAgent={assigned}
+        onChangeAgent={assigned ? () => changeAgent(role) : undefined}
         onAssigned={handleAssigned}
         onAgentCreated={a => setAgents(prev => [...prev, a])} />
     );
@@ -129,7 +154,9 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
 
   return (
     <div className="app">
-      <AgentNav projectName={project?.name} projectId={project?.id} />
+      <AgentNav projectName={project?.name} projectId={project?.id}
+        startEnabled={!!project?.consultant_agent_id}
+        onStart={started ? undefined : () => setStarted(true)} />
       {/* No page title and no description: clicking "New Task" should show the
           two agents and nothing else (Patryk, 2026-09-11 — "wenn es so clean
           ist, weiß der User sofort, was als nächstes zu tun ist"). */}
@@ -154,12 +181,13 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
 
         {/* Consultant leads (left, wide) — Coach supports (right). */}
         <main className={`workspace${swapping ? " swapping" : ""}`} data-active={pane}>
-          {swapped ? panelFor("coach") : panelFor("consultant")}
+          {panelFor("consultant")}
           <button className={`swap-panels${swapped ? " flipped" : ""}`} onClick={swapSides}
-            data-tooltip="Swap sides" aria-label="Swap the two panels">
+            data-tooltip={swapped ? "Give the Consultant the room" : "Give the Coach the room"}
+            aria-label="Change how the room is split">
             <IconSwap size={13} />
           </button>
-          {swapped ? panelFor("consultant") : panelFor("coach")}
+          {panelFor("coach")}
         </main>
 
       </div>
