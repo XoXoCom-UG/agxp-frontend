@@ -1677,3 +1677,112 @@ html.light .ico-when-dark{ display:none; }
 @media (prefers-reduced-motion:reduce){
   .msg-agent.streaming .txt > *:last-child::after, .doc-card.writing .dc-ic{ animation:none !important; }
 }
+
+/* =============================================================================
+   MOTION — the app should feel like things move rather than blink into place.
+   Everything here is short (150-450ms) and never blocks input; the whole block
+   is switched off under prefers-reduced-motion at the end.
+   ============================================================================= */
+
+/* --- Swapping the two panels: each one comes in from where the other was --- */
+main.workspace.swapping > .panel:first-child{ animation:swapFromRight 400ms var(--ease-out); }
+main.workspace.swapping > .panel:last-child{ animation:swapFromLeft 400ms var(--ease-out); }
+@keyframes swapFromRight{
+  from{ opacity:.3; transform:translateX(30px); }
+  to{ opacity:1; transform:none; }
+}
+@keyframes swapFromLeft{
+  from{ opacity:.3; transform:translateX(-30px); }
+  to{ opacity:1; transform:none; }
+}
+.swap-panels svg{ transition:transform 400ms var(--ease-out); }
+.swap-panels.flipped svg{ transform:rotate(180deg); }
+
+/* --- Opening a chat: the panel assembles itself instead of appearing whole --- */
+.panel > .chat-head{ animation:riseIn 320ms var(--ease-out) both; }
+.panel > .chat-body{ animation:riseIn 360ms var(--ease-out) 60ms both; }
+.panel > .chat-input{ animation:riseIn 360ms var(--ease-out) 120ms both; }
+.panel > .panel-head{ animation:riseIn 320ms var(--ease-out) both; }
+.panel > .pick-empty{ animation:riseIn 380ms var(--ease-out) 70ms both; }
+@keyframes riseIn{
+  from{ opacity:0; transform:translateY(10px); }
+  to{ opacity:1; transform:none; }
+}
+
+/* --- Messages arrive, they don't pop into existence --- */
+.msg-agent, .msg-user{ animation:msgIn 240ms var(--ease-out); }
+@keyframes msgIn{
+  from{ opacity:0; transform:translateY(8px); }
+  to{ opacity:1; transform:none; }
+}
+.msg-user{ transform-origin:bottom right; }
+
+/* --- The suggested answers drop in one after another --- */
+.sugg-item{ animation:suggIn 260ms var(--ease-out) both; animation-delay:calc(var(--i, 0) * 55ms); }
+@keyframes suggIn{
+  from{ opacity:0; transform:translateX(-8px); }
+  to{ opacity:1; transform:none; }
+}
+
+/* --- Stacked layout: the panel you switch to slides in (a display:none
+       element restarts its animation when it becomes visible) --- */
+@media (max-width:1000px){
+  main.workspace > .panel{ animation:paneIn 300ms var(--ease-out); }
+  @keyframes paneIn{
+    from{ opacity:0; transform:translateY(8px) scale(.995); }
+    to{ opacity:1; transform:none; }
+  }
+}
+
+/* --- The mascot thinks visibly: the head tips, the eyes wander, the antenna
+       keeps time. Speaking starts with a small nod so the switch is felt. --- */
+.m-eyes, .m-head{ transform-box:fill-box; transform-origin:center; }
+.is-thinking .m-head{ animation:mThinkTilt 2.6s ease-in-out infinite; }
+.is-thinking .m-eyes{ animation:mLookAround 2.6s ease-in-out infinite; }
+@keyframes mThinkTilt{
+  0%, 100%{ transform:rotate(0deg) translateY(0); }
+  30%{ transform:rotate(-4deg) translateY(-0.6px); }
+  65%{ transform:rotate(3deg) translateY(0.4px); }
+}
+@keyframes mLookAround{
+  0%, 100%{ transform:translateX(0); }
+  28%{ transform:translateX(-1.4px); }
+  60%{ transform:translateX(1.4px); }
+}
+.is-speaking .mascot-nod, .is-speaking.mascot{ animation:mNod 420ms var(--ease-out); }
+@keyframes mNod{
+  0%{ transform:scale(1); }
+  35%{ transform:scale(1.07); }
+  100%{ transform:scale(1); }
+}
+
+/* --- Small celebrations: the level-up and the "ready" document --- */
+.level-up{ position:relative; }
+.level-up::after{
+  content:""; position:absolute; inset:-5px -9px; border-radius:var(--r-pill);
+  border:1px solid color-mix(in srgb, var(--primary) 60%, transparent);
+  animation:ringOut 900ms var(--ease-out) forwards;
+}
+@keyframes ringOut{
+  from{ opacity:.9; transform:scale(.85); }
+  to{ opacity:0; transform:scale(1.25); }
+}
+.doc-pill.ready{ animation:pillReady 2.6s var(--ease-out) infinite; }
+@keyframes pillReady{
+  0%, 100%{ box-shadow:0 0 0 0 color-mix(in srgb, var(--primary) 40%, transparent); }
+  55%{ box-shadow:0 0 0 5px transparent; }
+}
+
+/* Everything above is decoration: it all goes when the system asks for calm. */
+@media (prefers-reduced-motion:reduce){
+  main.workspace.swapping > .panel,
+  .panel > .chat-head, .panel > .chat-body, .panel > .chat-input,
+  .panel > .panel-head, .panel > .pick-empty,
+  .msg-agent, .msg-user, .sugg-item,
+  main.workspace > .panel,
+  .is-thinking .m-head, .is-thinking .m-eyes, .is-speaking.mascot,
+  .level-up::after, .doc-pill.ready{
+    animation:none !important;
+  }
+  .swap-panels svg{ transition:none !important; }
+}

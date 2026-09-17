@@ -332,8 +332,9 @@ export function ProjectChatPanel({ project, role, agent, primary, projectCount =
           const isDoc = !!parsed.doc || looksLikeDocument(parsed.text, deliverable.title);
           const choices = showChoices ? (
             <div className="sugg-list">
-              {parsed.choices.map(c => (
-                <button key={c} className="sugg-item" disabled={sending} onClick={() => send(c)}>
+              {parsed.choices.map((c, ci) => (
+                <button key={c} className="sugg-item" disabled={sending} onClick={() => send(c)}
+                  style={{ ["--i" as string]: ci }}>
                   <span className="s">{c}</span>
                   <IconArrow />
                 </button>

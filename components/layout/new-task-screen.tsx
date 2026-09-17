@@ -38,6 +38,18 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
   /** Which side each agent sits on. Consultant left by default; the button on
    *  the seam swaps them (Patryk, 2026-09-11). */
   const [swapped, setSwapped] = useState(false);
+  /** True for the length of the swap, so the panels can animate across. */
+  const [swapping, setSwapping] = useState(false);
+  const swapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => { if (swapTimer.current) clearTimeout(swapTimer.current); }, []);
+
+  function swapSides() {
+    setSwapped(v => !v);
+    setSwapping(true);
+    if (swapTimer.current) clearTimeout(swapTimer.current);
+    swapTimer.current = setTimeout(() => setSwapping(false), 420);
+  }
   const creating = useRef<Promise<Project> | null>(null);
 
   function showPane(role: AgentType) {
@@ -141,9 +153,9 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
         </div>
 
         {/* Consultant leads (left, wide) — Coach supports (right). */}
-        <main className="workspace" data-active={pane}>
+        <main className={`workspace${swapping ? " swapping" : ""}`} data-active={pane}>
           {swapped ? panelFor("coach") : panelFor("consultant")}
-          <button className="swap-panels" onClick={() => setSwapped(v => !v)}
+          <button className={`swap-panels${swapped ? " flipped" : ""}`} onClick={swapSides}
             data-tooltip="Swap sides" aria-label="Swap the two panels">
             <IconSwap size={13} />
           </button>
