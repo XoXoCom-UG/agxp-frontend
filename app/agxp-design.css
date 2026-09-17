@@ -1897,43 +1897,77 @@ main.workspace.swapping > .panel:last-child{ animation:swapFromLeft 400ms var(--
   text-align:center; padding:var(--sp-6);
 }
 .pick-cards{ display:flex; flex-direction:column; gap:var(--sp-4); width:100%; max-width:400px; }
+
+/* The card is the button. Everything inside is a span, because a <button>
+   may not contain another button — and a card that lifts under the cursor
+   but only counts a click on its last 50px is a trap. */
 .picker-card{
-  position:relative; overflow:hidden; display:flex; flex-direction:column; justify-content:center;
-  padding:var(--sp-5) var(--sp-6); gap:var(--sp-4); border-radius:24px;
+  position:relative; overflow:hidden; display:flex; flex-direction:column; text-align:left;
+  padding:var(--sp-5); gap:var(--sp-4); border-radius:24px;
   background:linear-gradient(145deg, rgba(74,88,108,0.30) 0%, rgba(51,61,77,0.24) 42%, rgba(29,34,43,0.28) 100%);
   border:1px solid rgba(120,160,210,0.22);
   backdrop-filter:blur(18px) saturate(120%);
   box-shadow:inset 0 1px 0 rgba(255,255,255,0.10), inset 0 -1px 0 rgba(255,255,255,0.02), 0 18px 42px rgba(0,0,0,0.22);
+  transition:transform .28s var(--ease-out), border-color .28s var(--ease-out), box-shadow .28s var(--ease-out);
 }
 .picker-card::before{
   content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
   background:radial-gradient(circle at 14% 10%, rgba(111,164,232,0.07), transparent 34%),
              radial-gradient(circle at 90% 100%, rgba(255,255,255,0.025), transparent 34%);
 }
-.picker-card-head{ position:relative; z-index:1; display:flex; flex-direction:column; gap:4px; }
-.picker-card-title{ font-size:var(--text-xl); font-weight:650; color:var(--text-primary); }
+/* A light that sweeps across once on hover. Parked off-card, so it costs
+   nothing until the cursor arrives. */
+.picker-card::after{
+  content:""; position:absolute; top:0; bottom:0; width:60%; left:-75%; pointer-events:none;
+  background:linear-gradient(100deg, transparent, rgba(255,255,255,0.07), transparent);
+  transition:left .75s var(--ease-out);
+}
+.picker-card-head{ position:relative; z-index:1; display:flex; flex-direction:column; gap:5px; }
+.picker-card-title{ font-size:var(--text-xl); font-weight:650; color:var(--text-primary); line-height:1.25; }
 .picker-card-desc{ font-size:var(--text-sm); color:var(--text-secondary); line-height:1.45; }
-.picker-card-footer{ position:relative; z-index:1; width:100%; margin-top:auto; }
-.picker-card-footer .btn{
-  position:relative; overflow:hidden; display:flex; align-items:center; height:44px; width:100%;
-  padding:0 var(--sp-5); gap:8px; font-size:var(--text-sm); border-radius:16px; color:#fff;
+
+/* The agent's head, filling what was dead space between the words and the
+   button. Hidden in the narrow panel, where the cards are short anyway. */
+.picker-card-art{ display:none; position:relative; z-index:1; }
+.picker-card-art .mascot{ transition:transform .32s var(--ease-out); }
+
+.picker-card-cta{
+  position:relative; z-index:1; overflow:hidden; display:flex; align-items:center; height:44px; width:100%;
+  margin-top:auto; padding:0 var(--sp-5); gap:8px; font-size:var(--text-sm); font-weight:600; color:#fff;
+  border-radius:16px;
   background:linear-gradient(180deg, rgba(77,147,239,0.96) 0%, rgba(51,120,217,0.96) 46%, rgba(36,92,171,0.98) 100%);
   border:1px solid rgba(118,171,235,0.50);
   box-shadow:inset 0 1px 0 rgba(255,255,255,0.22), inset 0 -1px 0 rgba(0,25,65,0.20),
              0 4px 14px rgba(34,92,175,0.20), 0 0 14px rgba(69,134,226,0.08);
-  transition:transform .2s ease, box-shadow .2s ease, background .2s ease;
+  transition:background .28s var(--ease-out), box-shadow .28s var(--ease-out);
 }
-.picker-card-footer .btn span:first-of-type{ flex:1; text-align:left; }
-.picker-card-footer .btn:disabled{ opacity:.45; cursor:not-allowed; }
-.btn-arrow-end{ transition:transform .2s ease; }
+.picker-card-cta span:first-of-type{ flex:1; text-align:left; }
+.btn-arrow-end{ transition:transform .28s var(--ease-out); }
+
+.picker-card:disabled{ opacity:.45; cursor:not-allowed; }
+.picker-card:active:not(:disabled){ transform:translateY(-2px) scale(0.993); }
+
 @media (hover:hover) and (pointer:fine){
-  .picker-card-footer .btn:hover:not(:disabled){
-    transform:translateY(-1px);
+  .picker-card:hover:not(:disabled){
+    transform:translateY(-6px);
+    border-color:rgba(140,185,235,0.42);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.14), 0 30px 60px -18px rgba(0,0,0,0.42),
+               0 0 0 1px rgba(111,164,232,0.10);
+  }
+  .picker-card:hover:not(:disabled)::after{ left:115%; }
+  /* The head leans up towards you — the card reacts, not just its shadow. */
+  .picker-card:hover:not(:disabled) .mascot{ transform:translateY(-6px) scale(1.07); }
+  .picker-card:hover:not(:disabled) .picker-card-cta{
     background:linear-gradient(180deg, rgba(85,154,245,1) 0%, rgba(57,127,224,1) 46%, rgba(40,98,182,1) 100%);
     box-shadow:inset 0 1px 0 rgba(255,255,255,0.26), inset 0 -1px 0 rgba(0,25,65,0.18),
                0 7px 18px rgba(34,92,175,0.24), 0 0 18px rgba(69,134,226,0.11);
   }
-  .picker-card-footer .btn:hover:not(:disabled) .btn-arrow-end{ transform:translateX(3px); }
+  .picker-card:hover:not(:disabled) .btn-arrow-end{ transform:translateX(4px); }
+}
+@media (prefers-reduced-motion:reduce){
+  .picker-card, .picker-card::after, .picker-card .mascot, .btn-arrow-end{ transition:none; }
+  .picker-card:hover:not(:disabled), .picker-card:hover:not(:disabled) .mascot{ transform:none; }
+  .picker-card:hover:not(:disabled)::after{ left:-75%; }
 }
 
 /* The glass is tinted for a dark room; on white it has to be rebuilt, not
@@ -1947,16 +1981,25 @@ html.light .picker-card::before{
   background:radial-gradient(circle at 14% 10%, rgba(46,123,196,0.07), transparent 38%),
              radial-gradient(circle at 90% 100%, rgba(21,78,128,0.05), transparent 38%);
 }
+html.light .picker-card::after{ background:linear-gradient(100deg, transparent, rgba(21,78,128,0.05), transparent); }
+@media (hover:hover) and (pointer:fine){
+  html.light .picker-card:hover:not(:disabled){
+    border-color:rgba(21,78,128,0.30);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.95), 0 26px 50px -18px rgba(24,39,60,0.20);
+  }
+}
 
-/* Wide enough for two tall cards next to each other */
+/* Wide enough for two cards side by side — and for the head to sit between
+   the words and the button, instead of 200px of nothing. */
 @container panel (min-width: 560px){
   .pick-cards{ flex-direction:row; max-width:640px; }
   .picker-card{
     flex:1 1 0; align-items:center; text-align:center;
-    min-height:420px; padding:var(--sp-7) var(--sp-5); gap:var(--sp-6);
+    min-height:400px; padding:var(--sp-6) var(--sp-5); gap:var(--sp-5);
   }
   .picker-card-head{ align-items:center; }
-  .picker-card-footer .btn{ height:52px; }
+  .picker-card-art{ display:flex; flex:1; align-items:center; justify-content:center; min-height:0; }
+  .picker-card-cta{ height:52px; }
 }
 
 /* Chosen, waiting for Start */

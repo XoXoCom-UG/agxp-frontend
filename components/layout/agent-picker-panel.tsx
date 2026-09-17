@@ -121,6 +121,11 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   // Ana's rule: the Coach can only be picked once a Consultant exists. It
   // answers "when does the Coach appear" without a timer or a popup.
   const locked = role === "coach" && !project?.consultant_agent_id;
+  // The "train existing" head wears the rank of the best agent this user
+  // already has in this role, so the two cards differ at a glance. No agents
+  // yet — plain head, no rings to brag about.
+  const bestSoFar = roleAgents.reduce((n, a) => Math.max(n, totalProjects(a)), 0);
+  const trainedLevel = bestSoFar > 0 ? levelFor(bestSoFar) : undefined;
 
   // Chosen, waiting for Start. Showing who it is beats an empty panel, and
   // this is the one place changing your mind is free.
@@ -129,7 +134,7 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
     return (
       <section className={`panel ${role}`} style={{ flexGrow: grow }}>
         <div className="panel-head">
-          <AgentMascot role={role} size={38} enter level={levelFor(total)} />
+          <AgentMascot role={role} size={54} enter level={levelFor(total)} />
         </div>
         <div className="selected-summary">
           <div className="sel-name">{assignedAgent.name}</div>
@@ -147,7 +152,7 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   return (
     <section className={`panel ${role}`} style={{ flexGrow: grow }}>
       <div className="panel-head">
-        <AgentMascot role={role} size={38} enter />
+        <AgentMascot role={role} size={46} enter />
         <div style={{ minWidth: 0, flex: 1 }}>
           <h2>{head.title}</h2>
           <div className="sub">{head.sub}</div>
@@ -165,32 +170,40 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
         // follows the panel's own width, not the window's.
         <div className="pick-empty">
           <div className="pick-cards">
-            <div className="picker-card">
-              <div className="picker-card-head">
-                <h3 className="picker-card-title">Create new AI {ROLE_LABEL[role]}</h3>
-                <p className="picker-card-desc">{PICKER_COPY[role].createDesc}</p>
-              </div>
-              <div className="picker-card-footer">
-                <button className="btn" disabled={locked}
-                  data-tooltip={locked ? "Pick a Consultant first" : undefined}
-                  onClick={() => setState("type")}>
-                  <span>Create new agent</span><span className="btn-arrow-end">→</span>
-                </button>
-              </div>
-            </div>
-            <div className="picker-card">
-              <div className="picker-card-head">
-                <h3 className="picker-card-title">Train existing AI {ROLE_LABEL[role]}</h3>
-                <p className="picker-card-desc">{PICKER_COPY[role].trainDesc}</p>
-              </div>
-              <div className="picker-card-footer">
-                <button className="btn" disabled={locked}
-                  data-tooltip={locked ? "Pick a Consultant first" : undefined}
-                  onClick={() => setState("list")}>
-                  <span>Train existing agent</span><span className="btn-arrow-end">→</span>
-                </button>
-              </div>
-            </div>
+            {/* The whole card is the control, not just the strip at the
+                bottom — a card that lifts under the cursor but only counts a
+                click on its last 50px is a trap. So the CTA is a span and the
+                card itself is the button. */}
+            <button className="picker-card" disabled={locked}
+              data-tooltip={locked ? "Pick a Consultant first" : undefined}
+              onClick={() => setState("type")}>
+              <span className="picker-card-head">
+                <span className="picker-card-title">Create new AI {ROLE_LABEL[role]}</span>
+                <span className="picker-card-desc">{PICKER_COPY[role].createDesc}</span>
+              </span>
+              <span className="picker-card-art">
+                <AgentMascot role={role} size={128} />
+              </span>
+              <span className="picker-card-cta">
+                <span>Create new agent</span><span className="btn-arrow-end">→</span>
+              </span>
+            </button>
+
+            <button className="picker-card" disabled={locked}
+              data-tooltip={locked ? "Pick a Consultant first" : undefined}
+              onClick={() => setState("list")}>
+              <span className="picker-card-head">
+                <span className="picker-card-title">Train existing AI {ROLE_LABEL[role]}</span>
+                <span className="picker-card-desc">{PICKER_COPY[role].trainDesc}</span>
+              </span>
+              {/* Rank rings: this is the one you have already worked with. */}
+              <span className="picker-card-art">
+                <AgentMascot role={role} size={128} level={trainedLevel} />
+              </span>
+              <span className="picker-card-cta">
+                <span>Train existing agent</span><span className="btn-arrow-end">→</span>
+              </span>
+            </button>
           </div>
         </div>
 

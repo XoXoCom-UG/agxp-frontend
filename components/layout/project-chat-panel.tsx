@@ -277,7 +277,7 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
       <div className="chat-head" ref={headRef}>
         <button className="who-btn" aria-expanded={pop === "agent"}
           onClick={() => setPop(p => (p === "agent" ? null : "agent"))}>
-          <AgentMascot role={role} state={orb} size={40} enter
+          <AgentMascot role={role} state={orb} size={46} enter
             attentive={attentive} mood={mood} level={level} />
           <span className="who-txt">
             <span className="n">{agent.name}</span>
