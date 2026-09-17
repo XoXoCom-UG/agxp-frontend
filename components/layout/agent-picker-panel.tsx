@@ -10,7 +10,7 @@ import { dateStr } from "@/lib/utils";
 import { describeDbError } from "@/lib/db-error";
 import { AgentMascot } from "@/components/layout/agent-mascot";
 import {
-  IconBack, IconArrow, IconSearch, IconCheck,
+  IconBack, IconArrow, IconSearch, IconCheck, IconPlus, IconSpark,
 } from "@/components/layout/agxp-icons";
 
 type PanelState = "empty" | "list" | "detail" | "type" | "configure";
@@ -117,6 +117,13 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
     } finally { setBusy(false); }
   }
 
+  /** Lights the card under the pointer. No state — this is paint, not data. */
+  function trackGlow(e: React.MouseEvent<HTMLButtonElement>) {
+    const box = e.currentTarget.getBoundingClientRect();
+    e.currentTarget.style.setProperty("--mx", `${e.clientX - box.left}px`);
+    e.currentTarget.style.setProperty("--my", `${e.clientY - box.top}px`);
+  }
+
   const showBack = state !== "empty";
   // Ana's rule: the Coach can only be picked once a Consultant exists. It
   // answers "when does the Coach appear" without a timer or a popup.
@@ -155,7 +162,7 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
           Once you are picking from a list it shrinks back into a normal row
           so the list gets the room. */}
       <div className={`panel-head${state === "empty" ? " head-hero" : ""}`}>
-        <AgentMascot role={role} size={state === "empty" ? 108 : 46} enter level={trainedLevel} />
+        <AgentMascot role={role} size={state === "empty" ? 78 : 46} enter level={trainedLevel} />
         <div style={{ minWidth: 0, flex: 1 }}>
           <h2>{head.title}</h2>
           <div className="sub">{head.sub}</div>
@@ -177,9 +184,11 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
                 bottom — a card that lifts under the cursor but only counts a
                 click on its last 50px is a trap. So the CTA is a span and the
                 card itself is the button. */}
-            <button className="picker-card" disabled={locked}
+            <button className="picker-card" disabled={locked} onMouseMove={trackGlow}
               data-tooltip={locked ? "Pick a Consultant first" : undefined}
               onClick={() => setState("type")}>
+              <span className="picker-card-glow" />
+              <span className="picker-card-icon"><IconPlus size={17} /></span>
               <span className="picker-card-head">
                 <span className="picker-card-title">Create new AI {ROLE_LABEL[role]}</span>
                 <span className="picker-card-desc">{PICKER_COPY[role].createDesc}</span>
@@ -189,9 +198,11 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
               </span>
             </button>
 
-            <button className="picker-card" disabled={locked}
+            <button className="picker-card" disabled={locked} onMouseMove={trackGlow}
               data-tooltip={locked ? "Pick a Consultant first" : undefined}
               onClick={() => setState("list")}>
+              <span className="picker-card-glow" />
+              <span className="picker-card-icon"><IconSpark size={17} /></span>
               <span className="picker-card-head">
                 <span className="picker-card-title">Train existing AI {ROLE_LABEL[role]}</span>
                 <span className="picker-card-desc">{PICKER_COPY[role].trainDesc}</span>

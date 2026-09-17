@@ -677,13 +677,13 @@ html.light .chat-input{ box-shadow:0 12px 28px -14px rgba(24,39,60,0.30), 0 2px 
 }
 
 /* Panel header — icon tile + title + one-line purpose */
+.panel-head{ display:flex; align-items:flex-start; gap:var(--sp-3); padding:var(--sp-5) var(--sp-6); border-bottom:1px solid var(--border-soft); flex-shrink:0; }
 .head-hero{
   flex-direction:column; align-items:center; text-align:center; gap:var(--sp-3);
   padding:var(--sp-7) var(--sp-6) var(--sp-6); border-bottom:none;
 }
 .head-hero .mascot{ flex-shrink:0; }
 .head-hero > div{ flex:0 1 auto !important; }
-.panel-head{ display:flex; align-items:flex-start; gap:var(--sp-3); padding:var(--sp-5) var(--sp-6); border-bottom:1px solid var(--border-soft); flex-shrink:0; }
 .panel-head .ic{
   width:34px; height:34px; border-radius:var(--r-xs); flex-shrink:0; display:flex; align-items:center; justify-content:center;
   background:color-mix(in srgb, var(--primary) 14%, transparent); border:1px solid color-mix(in srgb, var(--primary) 28%, transparent);
@@ -1970,6 +1970,37 @@ main.workspace.swapping > .panel:last-child{ animation:swapFromLeft 400ms var(--
   background:linear-gradient(100deg, transparent, rgba(255,255,255,0.07), transparent);
   transition:left .75s var(--ease-out);
 }
+/* The light under your pointer. Painted from CSS variables the card sets on
+   mousemove, so following the cursor costs a repaint and not a React render.
+   15% blue: at 8% it is below the threshold where an eye notices anything at
+   all, which is subtle to the point of not existing. It brightens under a
+   press and is gone the moment you leave. */
+.picker-card-glow{
+  position:absolute; inset:0; border-radius:inherit; pointer-events:none; z-index:0; opacity:0;
+  background:radial-gradient(190px circle at var(--mx, 50%) var(--my, 50%), rgba(125,180,245,0.15), transparent 68%);
+  transition:opacity .34s var(--ease-out);
+}
+html.light .picker-card-glow{
+  background:radial-gradient(190px circle at var(--mx, 50%) var(--my, 50%), rgba(21,78,128,0.09), transparent 68%);
+}
+.picker-card:hover:not(:disabled) .picker-card-glow{ opacity:1; }
+.picker-card:active:not(:disabled) .picker-card-glow{ opacity:1.6; transition-duration:.08s; }
+
+/* A small mark per card, so the two differ before you read a word. */
+.picker-card-icon{
+  position:relative; z-index:1; display:flex; align-items:center; justify-content:center;
+  width:38px; height:38px; border-radius:12px; flex-shrink:0;
+  color:var(--primary-soft);
+  background:color-mix(in srgb, var(--primary) 15%, transparent);
+  border:1px solid color-mix(in srgb, var(--primary) 26%, transparent);
+  transition:transform .3s var(--ease-out), background-color .3s var(--ease-out), border-color .3s var(--ease-out);
+}
+.picker-card:hover:not(:disabled) .picker-card-icon{
+  transform:translateY(-2px);
+  background:color-mix(in srgb, var(--primary) 26%, transparent);
+  border-color:color-mix(in srgb, var(--primary) 44%, transparent);
+}
+
 .picker-card-head{ position:relative; z-index:1; display:flex; flex-direction:column; gap:5px; }
 .picker-card-title{ font-size:var(--text-xl); font-weight:650; color:var(--text-primary); line-height:1.25; }
 .picker-card-desc{ font-size:var(--text-sm); color:var(--text-secondary); line-height:1.45; }
@@ -2011,7 +2042,9 @@ main.workspace.swapping > .panel:last-child{ animation:swapFromLeft 400ms var(--
   .picker-card:hover:not(:disabled) .btn-arrow-end{ transform:translateX(4px); }
 }
 @media (prefers-reduced-motion:reduce){
-  .picker-card, .picker-card::after, .picker-card .mascot, .btn-arrow-end{ transition:none; }
+  .picker-card, .picker-card::after, .picker-card .mascot, .btn-arrow-end,
+  .picker-card-glow, .picker-card-icon{ transition:none; }
+  .picker-card:hover:not(:disabled) .picker-card-icon{ transform:none; }
   .picker-card:hover:not(:disabled), .picker-card:hover:not(:disabled) .mascot{ transform:none; }
   .picker-card:hover:not(:disabled)::after{ left:-75%; }
 }
@@ -2041,9 +2074,10 @@ html.light .picker-card::after{ background:linear-gradient(100deg, transparent, 
   .pick-cards{ flex-direction:row; max-width:640px; }
   .picker-card{
     flex:1 1 0; align-items:center; text-align:center;
-    min-height:210px; padding:var(--sp-6) var(--sp-5); gap:var(--sp-6);
+    min-height:230px; padding:var(--sp-6) var(--sp-5); gap:var(--sp-4);
   }
   .picker-card-head{ align-items:center; }
+  .picker-card-icon{ margin-bottom:2px; }
   .picker-card-cta{ height:52px; }
 }
 
