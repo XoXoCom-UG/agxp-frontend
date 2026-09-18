@@ -250,11 +250,11 @@ export default function LoginPage() {
         <div className="auth-hero-inner">
           <div className="auth-mascots">
             <div className="am">
-              <AgentMascot role="coach" size={62} enter />
+              <AgentMascot role="coach" size={68} enter />
               <span>Coach</span>
             </div>
             <div className="am">
-              <AgentMascot role="consultant" size={62} enter />
+              <AgentMascot role="consultant" size={68} enter />
               <span>Consultant</span>
             </div>
           </div>

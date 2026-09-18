@@ -9,8 +9,9 @@ import { loadAgentMemory, memoryLines, EMPTY_MEMORY, type AgentMemory } from "@/
 import { DELIVERABLES } from "@/lib/deliverables";
 import { methodLabel } from "@/lib/method-labels";
 import { levelFor, nextLevel, LEVEL_ORDER } from "@/lib/agent-progress";
+import { readMascotLevel, bumpMascotLevel } from "@/lib/mascot-evolution";
 import { md } from "@/lib/markdown";
-import { AgentMascot, type MascotState, type MascotMood } from "@/components/layout/agent-mascot";
+import { AgentMascot, type MascotState, type MascotMood, type LookTarget } from "@/components/layout/agent-mascot";
 import type { DeliverableDoc } from "@/components/layout/deliverable-view";
 import { IconArrow, IconAttach, IconArrowUp, IconDoc, IconSpark, IconRefresh, IconChevronDown } from "@/components/layout/agxp-icons";
 
@@ -19,7 +20,7 @@ const OPENING: Record<AgentType, string> = {
   coach: "Hey, what would you like to talk through today?",
 };
 
-export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount = 0, onProjectNamed, onActivity, onOpenDoc }: {
+export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount = 0, onProjectNamed, onActivity, onOpenDoc, onChangeAgent }: {
   project: Project; role: AgentType; agent: Agent;
   /** How much of the row this panel takes (flex-grow). */
   grow?: number;
@@ -31,6 +32,9 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
   onActivity?: () => void;
   /** Opens the finished deliverable in the full document view (owned by the screen). */
   onOpenDoc?: (doc: DeliverableDoc) => void;
+  /** Drops this agent so the panel falls back to the picker — the same escape
+   *  hatch AgentPickerPanel offers before Start, now also reachable mid-chat. */
+  onChangeAgent?: () => void;
 }) {
   const [messages, setMessages] = useState<ProjectMessage[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -44,6 +48,12 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
   /** A one-off reaction to what just happened, cleared after it has played. */
   const [mood, setMood] = useState<MascotMood>(null);
   const moodTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** No real XP yet — a purely visual, per-agent counter (lib/mascot-evolution.ts),
+   *  remembered across reloads but not tied to any real progress. */
+  const [mascotLevel, setMascotLevel] = useState(1);
+  /** Where the mascot looks right now; null resumes following the cursor. */
+  const [lookAt, setLookAt] = useState<LookTarget>(null);
+  const lookTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // What the agent brings from this user's earlier projects, plus what it
   // picked up during this session.
   const [memory, setMemory] = useState<AgentMemory>(EMPTY_MEMORY);
@@ -60,7 +70,16 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
   useEffect(() => () => {
     if (speakTimer.current) clearTimeout(speakTimer.current);
     if (moodTimer.current) clearTimeout(moodTimer.current);
+    if (lookTimer.current) clearTimeout(lookTimer.current);
   }, []);
+
+  // What this agent's mascot has reached, remembered per agent (localStorage,
+  // not the database — there is no real XP system yet, see mascot-evolution.ts).
+  useEffect(() => {
+    let alive = true;
+    Promise.resolve().then(() => { if (alive) setMascotLevel(readMascotLevel(agent.id)); });
+    return () => { alive = false; };
+  }, [agent.id]);
 
 
 
@@ -83,10 +102,26 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
     return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
   }, []);
 
-  function playSpeaking() {
-    setOrb("speaking");
+  /** A brief, restrained flourish — antenna flash, small bounce — once the
+   *  full reply has landed, then back to idle. */
+  function playSuccess() {
+    setOrb("success");
     if (speakTimer.current) clearTimeout(speakTimer.current);
-    speakTimer.current = setTimeout(() => setOrb("idle"), 900);
+    speakTimer.current = setTimeout(() => setOrb("idle"), 700);
+  }
+
+  /** Professional, not alarmed: a brief dimmed/narrowed look, then idle. */
+  function playError() {
+    setOrb("error");
+    if (speakTimer.current) clearTimeout(speakTimer.current);
+    speakTimer.current = setTimeout(() => setOrb("idle"), 700);
+  }
+
+  /** A brief glance toward a UI region, then back to following the cursor. */
+  function glanceAt(target: Exclude<LookTarget, null>, ms = 1500) {
+    setLookAt(target);
+    if (lookTimer.current) clearTimeout(lookTimer.current);
+    lookTimer.current = setTimeout(() => setLookAt(null), ms);
   }
 
   useEffect(() => {
@@ -112,7 +147,7 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
   }, [messages, sending, streamText]);
 
   function buildDoc(content: string, title: string, createdAt: string, version: number): DeliverableDoc {
-    return { title, role, agentName: agent.name, projectName: project.name, content, createdAt, version };
+    return { title, role, agentId: agent.id, agentName: agent.name, projectName: project.name, content, createdAt, version };
   }
 
   async function send(text: string) {
@@ -123,8 +158,15 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
     const userMsg: ProjectMessage = { id: crypto.randomUUID(), project_id: project.id, column_type: role, role: "user", content: t, created_at: new Date().toISOString() };
     setMessages(prev => [...prev, userMsg]);
     setSending(true);
-    setOrb("thinking");
-    react("nod", 450);   // "got it" — answered before the answer exists
+    const isGenerating = t === deliverable.generatePrompt || t === deliverable.regeneratePrompt;
+    setOrb(isGenerating ? "working" : "thinking");
+    // No real XP yet: every message sent nudges this agent's purely visual
+    // level (see lib/mascot-evolution.ts). Persisted before the reply even
+    // starts, same as the optimistic "nod" below — the message was sent
+    // either way, regardless of how the reply turns out.
+    const newLevel = bumpMascotLevel(agent.id);
+    if (newLevel !== mascotLevel) { setMascotLevel(newLevel); react("levelUp", 1500); }
+    else react("nod", 450);   // "got it" — answered before the answer exists
     try {
       await addMessage(project.id, role, "user", t);
       if (isFirstEver) {
@@ -142,7 +184,7 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
       await addMessage(project.id, role, "assistant", reply);
       const createdAt = new Date().toISOString();
       setMessages(prev => [...prev, { id: crypto.randomUUID(), project_id: project.id, column_type: role, role: "assistant", content: reply, created_at: createdAt }]);
-      playSpeaking();
+      playSuccess();
       onActivity?.();
       // The document is the moment worth showing — open it right away instead
       // of leaving the user to find a card in the scrollback.
@@ -153,17 +195,19 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
       const isDocReply = parsed.doc || looksLikeDocument(parsed.text, deliverable.title);
       if (isDocReply) {
         onOpenDoc?.(buildDoc(parsed.text, parsed.doc || deliverable.title, createdAt, docs.length + 1));
+        glanceAt("result");
       }
       // The reaction comes from what the reply IS, not from asking the model
       // for a mood: a finished document, real progress, or a question back.
       if (isDocReply) react("proud", 1200);
       else if (parsed.progress !== null && parsed.progress - pct >= 10) react("pleased", 900);
       else if (/[?？]\s*$/.test(parsed.text)) react("curious", 1800);
+      else if (parsed.choices.length > 0) glanceAt("card");
       touchProjectActivity(project.id, `${role === "coach" ? "Coach" : "Consultant"} replied`).catch(() => {});
     } catch (e) {
       setStreamText("");
       setMessages(prev => [...prev, { id: crypto.randomUUID(), project_id: project.id, column_type: role, role: "assistant", content: `Error: ${(e as Error).message}`, created_at: new Date().toISOString() }]);
-      setOrb("idle");
+      playError();
     } finally {
       setSending(false);
     }
@@ -243,8 +287,8 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
       <div className="chat-head" ref={headRef}>
         <button className="who-btn" aria-expanded={pop === "agent"}
           onClick={() => setPop(p => (p === "agent" ? null : "agent"))}>
-          <AgentMascot role={role} state={orb} size={46} enter
-            attentive={attentive} mood={mood} level={level} />
+          <AgentMascot role={role} state={orb} size={51} enter
+            attentive={attentive} mood={mood} level={mascotLevel} lookAt={lookAt} />
           <span className="who-txt">
             <span className="n">{agent.name}</span>
             <span className="r"><span className={`role-dot ${role}`} />{role === "coach" ? "Coach" : "Consultant"}</span>
@@ -278,6 +322,11 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
                 {next && <div className="level-hint">{remaining} more project{remaining === 1 ? "" : "s"} to {next}</div>}
               </div>
               <div><span className="lbl">Projects together</span><b>{totalProjects}</b></div>
+              {onChangeAgent && (
+                <button className="change-agent-btn" onClick={() => { setPop(null); onChangeAgent(); }}>
+                  Change agent
+                </button>
+              )}
             </div>
             {agent.tagline && <div className="hp-grp"><span className="lbl">Role</span><div className="val">{agent.tagline}</div></div>}
             {shownLessons.length > 0 && (

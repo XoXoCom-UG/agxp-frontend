@@ -132,6 +132,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
           projectCount={projectCounts[assigned.id] ?? 0}
           onActivity={() => noteActivity(role)}
           onOpenDoc={setOpenDoc}
+          onChangeAgent={() => changeAgent(role)}
           onProjectNamed={name => setProject(p => p && { ...p, name })} />
       );
     }

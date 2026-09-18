@@ -5,12 +5,14 @@ import { createPortal } from "react-dom";
 import type { AgentType } from "@/lib/agents";
 import { md } from "@/lib/markdown";
 import { AgentMascot } from "@/components/layout/agent-mascot";
+import { useMascotLevel } from "@/lib/mascot-evolution";
 import { IconX, IconCopy, IconCheck, IconDownload, IconPrint } from "@/components/layout/agxp-icons";
 
 export interface DeliverableDoc {
   /** "Transformation Concept" | "Change Plan" — whatever the agent titled it. */
   title: string;
   role: AgentType;
+  agentId: string;
   agentName: string;
   projectName: string;
   /** Markdown, markers already stripped. */
@@ -66,6 +68,7 @@ export function DeliverableView({ doc, onClose }: { doc: DeliverableDoc; onClose
   const toc = useMemo(() => outline(doc.content), [doc.content]);
   const html = useMemo(() => md(doc.content), [doc.content]);
   const words = useMemo(() => doc.content.split(/\s+/).filter(Boolean).length, [doc.content]);
+  const mascotLevel = useMascotLevel(doc.agentId);
 
   useEffect(() => () => { if (copyTimer.current) clearTimeout(copyTimer.current); }, []);
 
@@ -133,7 +136,7 @@ export function DeliverableView({ doc, onClose }: { doc: DeliverableDoc; onClose
       <div className="doc-overlay" onClick={onClose} />
       <div className="doc-modal" role="dialog" aria-modal="true" aria-label={doc.title}>
         <header className="doc-head">
-          <AgentMascot role={doc.role} state="idle" size={40} />
+          <AgentMascot role={doc.role} state="idle" size={44} level={mascotLevel} />
           <div className="doc-id">
             <span className="kind">{doc.role === "coach" ? "From your coach" : "From your consultant"}</span>
             <h2>{doc.title}</h2>

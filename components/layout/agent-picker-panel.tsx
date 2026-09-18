@@ -9,6 +9,7 @@ import { methodLabel } from "@/lib/method-labels";
 import { dateStr } from "@/lib/utils";
 import { describeDbError } from "@/lib/db-error";
 import { AgentMascot } from "@/components/layout/agent-mascot";
+import { useMascotLevel } from "@/lib/mascot-evolution";
 import {
   IconBack, IconArrow, IconSearch, IconCheck, IconPlus, IconSpark,
 } from "@/components/layout/agxp-icons";
@@ -128,20 +129,23 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   // Ana's rule: the Coach can only be picked once a Consultant exists. It
   // answers "when does the Coach appear" without a timer or a popup.
   const locked = role === "coach" && !project?.consultant_agent_id;
-  // The "train existing" head wears the rank of the best agent this user
-  // already has in this role, so the two cards differ at a glance. No agents
-  // yet — plain head, no rings to brag about.
-  const bestSoFar = roleAgents.reduce((n, a) => Math.max(n, totalProjects(a)), 0);
-  const trainedLevel = bestSoFar > 0 ? levelFor(bestSoFar) : undefined;
+  // The "train existing" head wears whichever agent this user has grown the
+  // furthest in this role, so the two cards differ at a glance. No agents
+  // yet — plain head, nothing to brag about.
+  const trainedAgentId = roleAgents.length
+    ? roleAgents.reduce((best, a) => (totalProjects(a) > totalProjects(best) ? a : best)).id
+    : undefined;
+  const trainedLevel = useMascotLevel(trainedAgentId);
 
   // Chosen, waiting for Start. Showing who it is beats an empty panel, and
   // this is the one place changing your mind is free.
+  const assignedLevel = useMascotLevel(assignedAgent?.id);
   if (assignedAgent) {
     const total = totalProjects(assignedAgent);
     return (
       <section className={`panel ${role}`} style={{ flexGrow: grow }}>
         <div className="panel-head">
-          <AgentMascot role={role} size={54} enter level={levelFor(total)} />
+          <AgentMascot role={role} size={59} enter level={assignedLevel} />
         </div>
         <div className="selected-summary">
           <div className="sel-name">{assignedAgent.name}</div>
@@ -159,7 +163,7 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   return (
     <section className={`panel ${role}`} style={{ flexGrow: grow }}>
       <div className="panel-head">
-        <AgentMascot role={role} size={40} enter level={trainedLevel} />
+        <AgentMascot role={role} size={44} enter level={trainedLevel} />
         <div style={{ minWidth: 0, flex: 1 }}>
           <h2>{head.title}</h2>
           <div className="sub">{head.sub}</div>

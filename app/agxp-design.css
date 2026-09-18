@@ -728,7 +728,7 @@ html.light .chat-input{ box-shadow:0 12px 28px -14px rgba(24,39,60,0.30), 0 2px 
 .mascot-coach{ --m-head:var(--coach-2); --m-head-2:var(--coach-3); }
 
 .m-face{ fill:var(--m-head); stroke:color-mix(in srgb, #fff 14%, transparent); stroke-width:1; }
-.m-visor{ fill:var(--m-head-2); }
+.m-face-panel{ fill:var(--m-head-2); }
 .m-eye{ fill:#EAF2FF; }
 .m-mouth{ fill:color-mix(in srgb, var(--primary-soft) 85%, #fff); }
 .m-dot{ fill:var(--primary-soft); opacity:.35; }
@@ -751,7 +751,12 @@ html.light .m-antenna{ stroke:color-mix(in srgb, var(--primary) 45%, transparent
 .mascot-coach .m-tie{ display:none; }
 
 /* SVG parts need an explicit box before transforms behave predictably */
-.m-eye, .m-mouth, .m-antenna-dot, .m-head, .m-dot{ transform-box:fill-box; transform-origin:center; }
+.m-eye, .m-eye-track, .m-mouth, .m-antenna-dot, .m-head, .m-dot{ transform-box:fill-box; transform-origin:center; }
+/* Continuous eye tracking lives on this wrapper (JS-driven custom properties),
+   kept separate from the blink animation on the .m-eye circle inside it, and
+   from --eye-scale (a state snap, e.g. "focused eyes" while working) so none
+   of the three ever fight over the same `transform` declaration. */
+.m-eye-track{ transform:translate(var(--eye-x,0px), var(--eye-y,0px)) scaleY(var(--eye-scale,1)); }
 
 /* Thinking: antenna pulses, mouth turns into a travelling "…" */
 .is-thinking .m-antenna-dot{ animation:mPulse .95s ease-in-out infinite; }
@@ -769,13 +774,46 @@ html.light .m-antenna{ stroke:color-mix(in srgb, var(--primary) 45%, transparent
 .is-speaking .m-head{ animation:mBob .52s ease-in-out infinite; }
 @keyframes mBob{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-0.7px); } }
 
+/* Working: a longer task (building the document) than a quick reply — the
+   antenna gets a visible status ring on top of the usual thinking pulse, and
+   the eyes hold narrower and steadier instead of wandering. */
+.is-working .m-work-ring{ animation:mWorkRing 1.6s linear infinite; }
+@keyframes mWorkRing{
+  0%{ opacity:.55; transform:rotate(0deg); }
+  100%{ opacity:.55; transform:rotate(360deg); }
+}
+.is-working .m-antenna-dot{ animation:mPulse .7s ease-in-out infinite; }
+.is-working .m-eye-track{ --eye-scale:.82; }
+
+/* Success: restrained — a single antenna flash and a small bounce, not a
+   party. Coach adds one subtle nod; Consultant stays still otherwise. */
+.is-success .m-antenna-dot{ animation:mFlash 480ms var(--ease-out); }
+@keyframes mFlash{ 0%,100%{ opacity:1; transform:scale(1); } 40%{ opacity:1; transform:scale(1.6); } }
+.is-success{ animation:mBounce 560ms var(--ease-out); }
+.mascot-coach.is-success .m-head{ animation:mNodOnce 420ms var(--ease-out); }
+
+/* Error: professional, not alarmed — eyes narrow a touch, a brief glance
+   aside, the antenna dims for a moment. No shake, no red. */
+.is-error .m-eye-track{ --eye-scale:.7; }
+.is-error .m-eyes{ animation:mGlanceSide 700ms var(--ease-out); }
+@keyframes mGlanceSide{
+  0%, 100%{ transform:translateX(0); }
+  30%{ transform:translateX(-1.6px); }
+  60%{ transform:translateX(-1px); }
+}
+.is-error .m-antenna-dot{ animation:mDim 700ms var(--ease-out); }
+@keyframes mDim{ 0%,100%{ opacity:1; } 45%{ opacity:.35; } }
+
 /* Entrance when the agent joins the project */
 .mascot-enter{ animation:mPop 480ms var(--ease-out); }
 @keyframes mPop{ 0%{ opacity:0; transform:scale(.55) translateY(6px); } 62%{ transform:scale(1.09); } 100%{ opacity:1; transform:none; } }
 
 @media (prefers-reduced-motion: reduce){
   .m-eye, .is-thinking .m-antenna-dot, .is-thinking .m-dot,
-  .is-speaking .m-mouth, .is-speaking .m-head, .mascot-enter{ animation:none !important; }
+  .is-speaking .m-mouth, .is-speaking .m-head, .mascot-enter,
+  .is-working .m-work-ring, .is-working .m-antenna-dot,
+  .is-success .m-antenna-dot, .is-success, .mascot-coach.is-success .m-head,
+  .is-error .m-eyes, .is-error .m-antenna-dot{ animation:none !important; }
 }
 
 /* Level — the agent grows as it works on your projects */
@@ -1637,6 +1675,13 @@ html.light .ico-when-dark{ display:none; }
 }
 .hp-stats b{ font-size:var(--text-sm); font-weight:650; color:var(--text-primary); }
 .hp-grp .val{ font-size:var(--text-2xs); color:var(--text-secondary); }
+/* No border by design — this sits beside the stats, not as a form action. */
+.change-agent-btn{
+  margin-left:auto; align-self:flex-start; background:none; border:none; padding:2px;
+  font-size:var(--text-2xs); font-weight:600; color:var(--primary-soft);
+  transition:color .15s var(--ease-out);
+}
+.change-agent-btn:hover{ color:var(--primary); text-decoration:underline; }
 
 /* The seam button that swaps the two panels. It is a flex item between them,
    not an absolutely positioned overlay: the panels have different widths, so
@@ -1798,17 +1843,17 @@ main.workspace.swapping > .panel:last-child{ animation:swapFromLeft 400ms var(--
 /* --- The mascot thinks visibly: the head tips, the eyes wander, the antenna
        keeps time. Speaking starts with a small nod so the switch is felt. --- */
 .m-eyes, .m-head{ transform-box:fill-box; transform-origin:center; }
-.is-thinking .m-head{ animation:mThinkTilt 2.6s ease-in-out infinite; }
-.is-thinking .m-eyes{ animation:mLookAround 2.6s ease-in-out infinite; }
+.is-thinking .m-head, .is-working .m-head{ animation:mThinkTilt 2.6s ease-in-out infinite; }
+.is-thinking .m-eyes, .is-working .m-eyes{ animation:mLookAround 2.6s ease-in-out infinite; }
 @keyframes mThinkTilt{
   0%, 100%{ transform:rotate(0deg) translateY(0); }
   30%{ transform:rotate(-4deg) translateY(-0.6px); }
   65%{ transform:rotate(3deg) translateY(0.4px); }
 }
 @keyframes mLookAround{
-  0%, 100%{ transform:translateX(0); }
-  28%{ transform:translateX(-1.4px); }
-  60%{ transform:translateX(1.4px); }
+  0%, 100%{ transform:translate(0, -0.4px); }
+  28%{ transform:translate(-1.4px, -0.8px); }
+  60%{ transform:translate(1.4px, -0.8px); }
 }
 .is-speaking .mascot-nod, .is-speaking.mascot{ animation:mNod 420ms var(--ease-out); }
 @keyframes mNod{
@@ -1841,7 +1886,7 @@ main.workspace.swapping > .panel:last-child{ animation:swapFromLeft 400ms var(--
   .panel > .panel-head, .panel > .pick-empty,
   .msg-agent, .msg-user, .sugg-item,
   main.workspace > .panel,
-  .is-thinking .m-head, .is-thinking .m-eyes, .is-speaking.mascot,
+  .is-thinking .m-head, .is-thinking .m-eyes, .is-working .m-head, .is-working .m-eyes, .is-speaking.mascot,
   .level-up::after, .doc-pill.ready{
     animation:none !important;
   }
@@ -1866,6 +1911,7 @@ main.workspace.swapping > .panel:last-child{ animation:swapFromLeft 400ms var(--
 .mascot.mood-nod{ animation:mNodOnce 420ms var(--ease-out); }
 .mascot.mood-pleased{ animation:mBounce 620ms var(--ease-out); }
 .mascot.mood-proud{ animation:mProud 900ms var(--ease-out); }
+.mascot.mood-levelup{ animation:mLevelUp 1.4s var(--ease-out); }
 @keyframes mNodOnce{
   0%{ transform:translateY(0) scale(1); }
   40%{ transform:translateY(2.5px) scale(0.985); }
@@ -1900,10 +1946,10 @@ main.workspace.swapping > .panel:last-child{ animation:swapFromLeft 400ms var(--
 }
 
 /* Looking at what you are doing: while you type, the eyes drop towards the
-   composer and the head tips a little. This is the single strongest "it is
-   paying attention to me" signal, and it costs one class. */
-.is-attentive .m-eyes{ transform:translateY(1.3px); transition:transform 260ms var(--ease-out); }
-.is-attentive .m-head{ transform:rotate(1.5deg); transition:transform 320ms var(--ease-out); }
+   composer (via lookAt="input", the same mechanism the cursor-tracking hook
+   uses) and the head tips a little. Hovering the mascot itself tips it too —
+   both are "it is paying attention" signals, at the same small angle. */
+.is-attentive .m-head, .mascot:hover .m-head{ transform:rotate(1.5deg); transition:transform 320ms var(--ease-out); }
 .m-eyes, .m-head{ transition:transform 320ms var(--ease-out); }
 /* A question tips the head the other way — curiosity, held briefly. */
 .mood-curious .m-head{ animation:mTilt 1.6s var(--ease-out); }
@@ -1914,16 +1960,117 @@ main.workspace.swapping > .panel:last-child{ animation:swapFromLeft 400ms var(--
   100%{ transform:rotate(0deg); }
 }
 
-/* Rank: the antenna gains a ring per level. Small, permanent, and the only
-   thing in the app that says "we have history" without a number. */
+/* Rank: the antenna gains a ring at level 2 (lib/mascot-evolution.ts). Small,
+   and the only thing in the app that says "we have history" without a number
+   — see the MASCOT EVOLUTION block below for the glow and the level-3 accessory. */
 .m-rank{ stroke:var(--primary); fill:none; opacity:0; transition:opacity .4s var(--ease-out); }
-.lvl-medium .m-rank.r1, .lvl-high .m-rank.r1{ opacity:.45; }
-.lvl-high .m-rank.r2{ opacity:.3; }
 
 @media (prefers-reduced-motion:reduce){
   .mascot, .mascot.mood-nod, .mascot.mood-pleased, .mascot.mood-proud,
   .m-eye, .mood-curious .m-head{ animation:none !important; }
-  .is-attentive .m-eyes, .is-attentive .m-head, .m-eyes, .m-head{ transition:none !important; }
+  .is-attentive .m-head, .mascot:hover .m-head, .m-eyes, .m-head{ transition:none !important; }
+}
+
+/* =============================================================================
+   MASCOT EVOLUTION — the purely-visual 1-3 growth system (lib/mascot-
+   evolution.ts computes which stage; this just draws it). Level 2: a rich,
+   pulsing antenna glow, the same for both personalities. Level 3: a small
+   accessory that differs by role — a star + HUD lens for the Consultant, a
+   visor + glowing earpieces + mic for the Coach. Nothing here ever GATES a
+   feature, it only changes how the mascot looks.
+   ============================================================================= */
+
+/* Antenna glow, level 2+ — as strong as the old top-tier glow used to be: a
+   tight inner shadow plus a softer, wider bloom, breathing continuously, not
+   just during thinking/working. */
+.has-glow .m-rank{ opacity:.8; stroke-width:1.3; }
+.has-glow .m-antenna-dot{ animation:mAntennaGlow 3.2s ease-in-out infinite; }
+@keyframes mAntennaGlow{
+  0%, 100%{ filter:drop-shadow(0 0 3px var(--primary)) drop-shadow(0 0 6px var(--primary-soft)); }
+  50%{ filter:drop-shadow(0 0 6px var(--primary)) drop-shadow(0 0 11px var(--primary-soft)); }
+}
+
+/* Consultant, level 3: a small star on the tie... */
+.m-star{ opacity:0; transition:opacity .4s var(--ease-out); }
+.m-star path{ fill:var(--primary-soft); opacity:1; }
+.mascot-consultant.has-accessory .m-star{ opacity:1; }
+
+/* ...and a HUD lens over one eye: a glowing ring, a soft inner fill, a
+   bright spark at the rim, and a few scan-lines reading off to the side. */
+.m-hud-lens{ opacity:0; transition:opacity .4s var(--ease-out); }
+.mascot-consultant.has-accessory .m-hud-lens{ opacity:1; }
+.m-hud-ring{ stroke:var(--primary-soft); fill:none; animation:mHudRing 2.4s ease-in-out infinite; }
+@keyframes mHudRing{
+  0%, 100%{ filter:drop-shadow(0 0 1.5px var(--primary-soft)); }
+  50%{ filter:drop-shadow(0 0 3.5px var(--primary-soft)); }
+}
+.m-hud-inner{ fill:color-mix(in srgb, var(--primary-soft) 14%, transparent); stroke:none; }
+.m-hud-spark{ fill:#9bddff; transform-box:fill-box; transform-origin:center; animation:mHudSpark 1.7s ease-in-out infinite; }
+@keyframes mHudSpark{ 0%,100%{ opacity:.7; transform:scale(.85); } 50%{ opacity:1; transform:scale(1.15); } }
+.m-hud-scan{ stroke:var(--primary-soft); opacity:.85; animation:mHudScan 1.8s ease-in-out infinite; }
+.m-hud-scan:nth-child(4){ animation-delay:.12s; }
+.m-hud-scan:nth-child(5){ animation-delay:.24s; }
+.m-hud-scan:nth-child(6){ animation-delay:.36s; }
+@keyframes mHudScan{ 0%,100%{ opacity:.5; } 50%{ opacity:1; } }
+
+/* Coach, level 3: a small visor with a glowing strip... */
+.m-visor{ opacity:0; fill:var(--m-head-2); stroke:color-mix(in srgb, #fff 10%, transparent); stroke-width:.75; transition:opacity .4s var(--ease-out); }
+.m-visor-line{ stroke:var(--primary-soft); animation:mVisorGlow 2.7s ease-in-out infinite; }
+@keyframes mVisorGlow{ 0%,100%{ opacity:.7; } 50%{ opacity:1; } }
+.mascot-coach.has-accessory .m-visor{ opacity:1; }
+/* ...the existing earpieces glow... */
+.mascot-coach.has-accessory .m-headset rect{ fill:var(--primary-soft); filter:drop-shadow(0 0 2.5px var(--primary-soft)); }
+/* ...and a small mic arm with a glowing tip. */
+.m-mic{ opacity:0; transition:opacity .4s var(--ease-out); }
+.mascot-coach.has-accessory .m-mic{ opacity:1; }
+.m-mic-arm{ stroke:var(--border-strong); fill:none; }
+.m-mic-tip{ fill:var(--primary-soft); filter:drop-shadow(0 0 2px var(--primary-soft)); }
+
+@media (prefers-reduced-motion:reduce){
+  .m-hud-ring, .m-hud-spark, .m-visor-line, .m-hud-scan{ animation:none !important; }
+}
+
+/* Level-up: pause, glow, an expanding ring, a squash-and-stretch bounce, and
+   a shimmer across the mascot — ~1.3-1.5s, settling back to whatever state
+   was already playing. No level number, no confetti. */
+@keyframes mLevelUp{
+  0%, 12%{ transform:scale(1); }
+  38%{ transform:scale(1.14, 0.9); }
+  58%{ transform:scale(0.95, 1.07); }
+  78%{ transform:scale(1.03); }
+  100%{ transform:scale(1); }
+}
+.mood-levelup::before{
+  content:""; position:absolute; inset:-14%; border-radius:50%; pointer-events:none;
+  border:1.5px solid var(--primary); animation:mLevelRing 1.3s var(--ease-out) 120ms backwards;
+}
+@keyframes mLevelRing{
+  0%{ opacity:0; transform:scale(.6); }
+  25%{ opacity:.8; transform:scale(.85); }
+  100%{ opacity:0; transform:scale(1.5); }
+}
+.mood-levelup .m-antenna-dot{ animation:mLevelGlow 1.3s var(--ease-out) 120ms; }
+@keyframes mLevelGlow{
+  0%, 100%{ filter:drop-shadow(0 0 0 var(--primary)); }
+  45%{ filter:drop-shadow(0 0 4px var(--primary)); }
+}
+.mood-levelup::after{
+  content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; mix-blend-mode:overlay;
+  background:linear-gradient(105deg, transparent 40%, rgba(255,255,255,.55) 50%, transparent 60%);
+  background-size:280% 100%; background-position:120% 0;
+  animation:mShimmer 1.3s var(--ease-out) 300ms;
+}
+@keyframes mShimmer{
+  0%{ background-position:120% 0; opacity:0; }
+  20%{ opacity:1; }
+  70%{ opacity:1; }
+  100%{ background-position:-20% 0; opacity:0; }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .mood-levelup{ animation:none !important; }
+  .mood-levelup::before, .mood-levelup::after, .mood-levelup .m-antenna-dot,
+  .has-glow .m-antenna-dot{ animation:none !important; }
 }
 
 /* =============================================================================
