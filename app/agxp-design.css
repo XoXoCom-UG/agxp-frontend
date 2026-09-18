@@ -1675,13 +1675,6 @@ html.light .ico-when-dark{ display:none; }
 }
 .hp-stats b{ font-size:var(--text-sm); font-weight:650; color:var(--text-primary); }
 .hp-grp .val{ font-size:var(--text-2xs); color:var(--text-secondary); }
-/* No border by design — this sits beside the stats, not as a form action. */
-.change-agent-btn{
-  margin-left:auto; align-self:flex-start; background:none; border:none; padding:2px;
-  font-size:var(--text-2xs); font-weight:600; color:var(--primary-soft);
-  transition:color .15s var(--ease-out);
-}
-.change-agent-btn:hover{ color:var(--primary); text-decoration:underline; }
 
 /* The seam button that swaps the two panels. It is a flex item between them,
    not an absolutely positioned overlay: the panels have different widths, so
