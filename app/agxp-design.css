@@ -89,6 +89,7 @@ nav button.active::after{ content:""; position:absolute; left:13px; right:13px; 
 .icon-btn:active{ transform:scale(0.94); }
 .icon-btn svg{ width:14px; height:14px; }
 .notif-dot{ position:absolute; top:5px; right:6px; width:6px; height:6px; border-radius:50%; background:var(--magenta); box-shadow:0 0 0 2px var(--surface-1); }
+.avatar-wrap{ position:relative; display:flex; }
 .avatar{
   width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center;
   font-size:var(--text-3xs); font-weight:700; color:#fff; background:linear-gradient(155deg, var(--indigo-light), var(--plum));
@@ -127,6 +128,7 @@ nav button.active::after{ content:""; position:absolute; left:13px; right:13px; 
 svg.arrow{ width:12px; height:12px; stroke:currentColor; flex-shrink:0; transition:transform 160ms var(--ease-out); }
 
 .btn-ghost{ background:var(--secondary); color:var(--secondary-foreground); border:1px solid var(--border); box-shadow:0 1px 2px rgba(0,0,0,0.2); }
+.btn-sm{ height:28px; padding:0 var(--sp-3); font-size:var(--text-2xs); }
 
 .btn-hero, .btn-plum, .btn-solid{
   color:var(--primary-foreground); font-weight:600; background:var(--primary); border:1px solid transparent;
@@ -1675,6 +1677,7 @@ html.light .ico-when-dark{ display:none; }
 }
 .hp-stats b{ font-size:var(--text-sm); font-weight:650; color:var(--text-primary); }
 .hp-grp .val{ font-size:var(--text-2xs); color:var(--text-secondary); }
+.hp-change{ margin-left:auto; align-self:center; }
 
 /* The seam button that swaps the two panels. It is a flex item between them,
    not an absolutely positioned overlay: the panels have different widths, so

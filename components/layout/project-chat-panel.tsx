@@ -296,10 +296,6 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
           <IconChevronDown size={11} />
         </button>
 
-        {onChangeAgent && (
-          <button className="btn btn-hero" onClick={onChangeAgent}>Change agent</button>
-        )}
-
         {/* The fill IS the progress — no bar, no label taking up the panel */}
         <button className={`doc-pill${ready ? " ready" : ""}${currentDoc ? " done" : ""}`}
           style={{ ["--fill" as string]: `${currentDoc ? 100 : pct}%` }}
@@ -326,6 +322,11 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
                 {next && <div className="level-hint">{remaining} more project{remaining === 1 ? "" : "s"} to {next}</div>}
               </div>
               <div><span className="lbl">Projects together</span><b>{totalProjects}</b></div>
+              {onChangeAgent && (
+                <button className="btn btn-hero btn-sm hp-change" onClick={() => { setPop(null); onChangeAgent(); }}>
+                  Change agent
+                </button>
+              )}
             </div>
             {agent.tagline && <div className="hp-grp"><span className="lbl">Role</span><div className="val">{agent.tagline}</div></div>}
             {shownLessons.length > 0 && (

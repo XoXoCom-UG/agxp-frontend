@@ -76,6 +76,23 @@ export function AgentNav({ startEnabled, startHint, onStart }: {
           <IconMoon className="ico-when-light" />
         </button>
 
+        {/* Its own positioned wrapper — the popover anchors to the avatar's own
+            edge, not the whole header's, now that the avatar isn't the last
+            child of .util any more (Start sits to its right). */}
+        <div className="avatar-wrap">
+          <button className="avatar" onClick={e => { e.stopPropagation(); toggle("avatar"); }}>
+            {(profileName || user?.email || "U").slice(0, 2).toUpperCase()}
+          </button>
+
+          {popover === "avatar" && (
+            <div className="popover" onClick={e => e.stopPropagation()}>
+              <button className="mi"><IconUser size={13} />Profile</button>
+              <hr />
+              <button className="mi" onClick={() => signOut()}><IconLogout size={13} />Sign out</button>
+            </div>
+          )}
+        </div>
+
         {onStart && (
           <div className="start-wrap">
             <button className={`btn btn-start${startHint ? " is-ready" : ""}`}
@@ -84,18 +101,6 @@ export function AgentNav({ startEnabled, startHint, onStart }: {
               Start <IconArrow />
             </button>
             {startHint && <span className="start-nudge">Both agents ready — press Start</span>}
-          </div>
-        )}
-
-        <button className="avatar" onClick={e => { e.stopPropagation(); toggle("avatar"); }}>
-          {(profileName || user?.email || "U").slice(0, 2).toUpperCase()}
-        </button>
-
-        {popover === "avatar" && (
-          <div className="popover" onClick={e => e.stopPropagation()}>
-            <button className="mi"><IconUser size={13} />Profile</button>
-            <hr />
-            <button className="mi" onClick={() => signOut()}><IconLogout size={13} />Sign out</button>
           </div>
         )}
       </div>
