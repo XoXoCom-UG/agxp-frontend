@@ -9,7 +9,11 @@ import { methodLabel } from "@/lib/method-labels";
 import { loadAgentMemory, EMPTY_MEMORY, type AgentMemory } from "@/lib/agent-memory";
 import { AgentNav } from "@/components/layout/agent-nav";
 import { dateStr } from "@/lib/utils";
-import { IconCoach, IconConsultant, IconArrow, IconBack, IconFilter } from "@/components/layout/agxp-icons";
+import { IconArrow, IconBack, IconFilter } from "@/components/layout/agxp-icons";
+import { AgentMascot } from "@/components/layout/agent-mascot";
+import { stageForProjects } from "@/lib/mascot-evolution";
+import { SkeletonRows } from "@/components/layout/skeleton";
+import { EmptyState } from "@/components/layout/empty-state";
 
 type Filter = "All" | "Coach" | "Consultant";
 
@@ -107,8 +111,18 @@ export default function AgentDashboardPage() {
             {detail ? (
               <div style={{ paddingTop: 8 }}>
                 <button className="back-link" style={{ marginBottom: 16 }} onClick={() => setDetailId(null)}><IconBack size={11} />Back</button>
-                <div className="role-line"><span className={`role-dot ${detail.type}`} /><span className="role-eyebrow">{detail.type === "coach" ? "Coach" : "Consultant"}</span></div>
-                <h2 style={{ fontSize: "var(--text-xl)", fontWeight: 650, margin: "5px 0 9px" }}>{detail.name}</h2>
+                {/* This page is about the agents, so the agent itself leads —
+                    the one screen where the mascot can be big without taking
+                    attention from something else, because it IS the subject. */}
+                <div className="agent-hero">
+                  <AgentMascot role={detail.type} size={84} enter
+                    level={stageForProjects(totalProjects(detail))} />
+                  <div className="ah-text">
+                    <div className="role-line"><span className={`role-dot ${detail.type}`} /><span className="role-eyebrow">{detail.type === "coach" ? "Coach" : "Consultant"}</span></div>
+                    <h2>{detail.name}</h2>
+                    {detail.tagline && <div className="ah-tagline">{detail.tagline}</div>}
+                  </div>
+                </div>
                 {detail.description && <div className="detail-desc">{detail.description}</div>}
                 {detail.methods.length > 0 && (
                   <div className="detail-section"><span className="lbl">Can help with</span>
@@ -155,12 +169,12 @@ export default function AgentDashboardPage() {
                     </div>
                   )}
                 </div>
-                {loading && <p style={{ color: "var(--text-muted)", fontSize: "var(--text-xs)" }}>Loading…</p>}
+                {loading && <SkeletonRows count={5} avatar="round" />}
                 <div className="project-list">
                   {!loading && filtered.map(a => (
                     <div key={a.id} className="project-row" tabIndex={0} role="button" aria-label={`View ${a.name}`}
                       onClick={() => setDetailId(a.id)}>
-                      <div className="pr-icon">{a.type === "coach" ? <IconCoach /> : <IconConsultant />}</div>
+                      <div className="pr-face"><AgentMascot role={a.type} size={44} level={stageForProjects(totalProjects(a))} /></div>
                       <div className="pr-main">
                         <div className="pr-top"><span className="pr-name">{a.name}</span></div>
                         <div className="pr-meta">
@@ -173,7 +187,16 @@ export default function AgentDashboardPage() {
                     </div>
                   ))}
                 </div>
-                {!loading && filtered.length === 0 && <p style={{ color: "var(--text-muted)", fontSize: "var(--text-xs)", textAlign: "center", padding: "40px 0" }}>No agents found.</p>}
+                {!loading && filtered.length === 0 && (
+                  search.trim() || filter !== "All" ? (
+                    <EmptyState role={filter === "Coach" ? "coach" : "consultant"}
+                      title="Nobody matches that"
+                      body="Try a different word, or clear the filter to see everyone you can work with." />
+                  ) : (
+                    <EmptyState title="No agents yet"
+                      body="Agents appear here once you create one. Start a task and pick “Create new agent”, and this is where you will watch it grow." />
+                  )
+                )}
               </>
             )}
           </div>

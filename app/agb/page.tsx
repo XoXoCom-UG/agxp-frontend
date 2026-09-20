@@ -12,12 +12,12 @@ export default function AGBPage() {
       </TodoNotice>
 
       <LegalSection heading="1. Geltungsbereich">
-        <p>Diese Allgemeinen Geschäftsbedingungen gelten für die Nutzung der Plattform matfit.ai
-          („Dienst") durch registrierte Nutzer:innen.</p>
+        <p>Diese Allgemeinen Geschäftsbedingungen gelten für die Nutzung der Plattform Agentix
+          Projects („Dienst“) durch registrierte Nutzer:innen.</p>
       </LegalSection>
 
       <LegalSection heading="2. Leistungsbeschreibung">
-        <p>matfit.ai ist ein KI-gestützter IT-Beratungsassistent, der auf Basis der Eingaben der
+        <p>Agentix Projects ist ein KI-gestützter IT-Beratungsassistent, der auf Basis der Eingaben der
           Nutzer:innen Konzepte, Roadmaps und Empfehlungen erstellt. Die Ergebnisse sind
           Vorschläge und ersetzen keine individuelle fachliche oder rechtliche Beratung.</p>
       </LegalSection>

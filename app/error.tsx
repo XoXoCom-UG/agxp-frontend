@@ -4,8 +4,8 @@ export default function Error({ reset }: { error: Error & { digest?: string }; r
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-zinc-50 dark:bg-zinc-950 px-6">
       <div className="flex items-center gap-px mb-8">
-        <span className="font-bold text-xl tracking-tight text-zinc-900 dark:text-zinc-50">matfit</span>
-        <span className="font-bold text-xl tracking-tight text-green-600">.ai</span>
+        <span className="font-bold text-xl tracking-tight text-zinc-900 dark:text-zinc-50">Agentix</span>
+        <span className="font-bold text-xl tracking-tight text-blue-600">Projects</span>
       </div>
       <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50 mb-2">Etwas ist schiefgelaufen</h1>
       <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-8 text-center max-w-sm">

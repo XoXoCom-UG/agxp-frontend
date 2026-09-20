@@ -8,6 +8,9 @@ import { listAgents, type Agent } from "@/lib/agents";
 import { AgentNav } from "@/components/layout/agent-nav";
 import { ConfirmDialog } from "@/components/layout/confirm-dialog";
 import { IconFolder, IconArrow, IconMore, IconSearch, IconPlus } from "@/components/layout/agxp-icons";
+import { AgentMascot } from "@/components/layout/agent-mascot";
+import { SkeletonRows } from "@/components/layout/skeleton";
+import { EmptyState } from "@/components/layout/empty-state";
 
 function statusClass(s: Project["status"]) { return s.toLowerCase().replace(/\s+/g, "-"); }
 
@@ -32,6 +35,12 @@ export default function ProjectHistoryPage() {
   }, [token]);
 
   function agentName(id: string | null) { return id ? agents.find(a => a.id === id)?.name : null; }
+  /** Roles present on this project, consultant first — drives the face stack. */
+  function teamRoles(p: Project) {
+    return ([["consultant", p.consultant_agent_id], ["coach", p.coach_agent_id]] as const)
+      .filter(([, id]) => !!id)
+      .map(([role]) => role);
+  }
   function teamLabel(p: Project) {
     const parts = [agentName(p.consultant_agent_id), agentName(p.coach_agent_id)].filter(Boolean);
     return parts.length ? parts.join(" + ") : "No agents assigned yet";
@@ -80,21 +89,34 @@ export default function ProjectHistoryPage() {
               </div>
             </div>
 
-            {loading && <p style={{ color: "var(--text-muted)", fontSize: "var(--text-xs)" }}>Loading…</p>}
+            {loading && <SkeletonRows count={4} />}
 
             {!loading && filtered.length === 0 && (
-              <div className="projects-empty">
-                <h3>Nothing here yet</h3>
-                <p>Start a task and it shows up here automatically, with the agents that worked on it.</p>
-                <button className="btn btn-hero" onClick={() => router.push("/dashboard")}><IconPlus />New Task</button>
-              </div>
+              search.trim() ? (
+                <EmptyState title="No project by that name"
+                  body="Nothing here matches what you typed. Try a shorter word — the search looks at project names only." />
+              ) : (
+                <EmptyState title="Nothing here yet"
+                  body="Start a task and it turns up here on its own, with the agents that worked on it and everything they produced."
+                  action={<button className="btn btn-hero" onClick={() => router.push("/dashboard")}><IconPlus />New Task</button>} />
+              )
             )}
 
             <div className="project-list">
               {!loading && filtered.map(p => (
                 <div key={p.id} className="project-row" tabIndex={0} role="button" aria-label={`Open ${p.name}`}
                   onClick={() => router.push(`/dashboard/project/${p.id}`)}>
-                  <div className="pr-icon"><IconFolder /></div>
+                  {/* Who worked on it, not a folder glyph — you recognise a
+                      project by its team faster than by its name. */}
+                  {teamRoles(p).length > 0 ? (
+                    <div className="pr-team" aria-hidden="true">
+                      {teamRoles(p).map(r => (
+                        <span key={r} className={`pr-team-face ${r}`}><AgentMascot role={r} size={34} /></span>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="pr-icon"><IconFolder /></div>
+                  )}
                   <div className="pr-main">
                     <div className="pr-top">
                       <span className="pr-name">{p.name === PLACEHOLDER_PROJECT_NAME ? "Untitled task" : p.name}</span>

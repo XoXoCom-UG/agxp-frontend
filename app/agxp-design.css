@@ -2221,3 +2221,85 @@ html.light .picker-card::after{ background:linear-gradient(100deg, transparent, 
 /* Chosen, waiting for Start */
 .selected-summary .btn-hero{ margin-top:var(--sp-4); }
 
+/* ---------- LIST PAGES: History and Agent Dashboard ---------- */
+
+/* The agent's own face in a list row. On the Dashboard each row is an agent,
+   so its head replaces the generic role glyph: you recognise who it is before
+   you read the name. */
+.pr-face{
+  flex-shrink:0; display:flex; align-items:center; justify-content:center;
+  width:52px; height:52px; border-radius:14px;
+  background:color-mix(in srgb, var(--primary) 9%, transparent);
+  border:1px solid color-mix(in srgb, var(--primary) 18%, transparent);
+  transition:background-color .22s var(--ease-out), border-color .22s var(--ease-out), transform .22s var(--ease-out);
+}
+.project-row:hover .pr-face{
+  background:color-mix(in srgb, var(--primary) 16%, transparent);
+  border-color:color-mix(in srgb, var(--primary) 32%, transparent);
+  transform:translateY(-1px);
+}
+
+/* History: the team that worked on the project, overlapping like avatars. */
+.pr-team{ display:flex; align-items:center; flex-shrink:0; }
+.pr-team-face{
+  display:flex; align-items:center; justify-content:center;
+  width:40px; height:40px; border-radius:50%; flex-shrink:0;
+  background:var(--surface-1); border:1px solid var(--border-soft);
+  transition:transform .22s var(--ease-out);
+}
+/* The second head tucks under the first, so two agents read as one team
+   rather than two separate things. */
+.pr-team-face + .pr-team-face{ margin-left:-13px; }
+.project-row:hover .pr-team-face:first-child{ transform:translateX(-2px); }
+.project-row:hover .pr-team-face + .pr-team-face{ transform:translateX(2px); }
+
+/* Agent detail: the subject of the page, at the top of it. */
+.agent-hero{ display:flex; align-items:center; gap:var(--sp-5); margin-bottom:var(--sp-5); }
+.agent-hero .mascot{ flex-shrink:0; }
+.ah-text{ min-width:0; }
+.ah-text h2{ font-size:var(--text-2xl); font-weight:650; letter-spacing:-0.3px; margin:5px 0 0; color:var(--text-primary); }
+.ah-tagline{ font-size:var(--text-xs); color:var(--text-secondary); margin-top:5px; line-height:1.55; }
+
+/* ---------- EMPTY STATES ---------- */
+.empty-state{ text-align:center; padding:64px 20px 70px; display:flex; flex-direction:column; align-items:center; }
+.empty-state h3{ font-size:var(--text-lg); font-weight:650; margin-bottom:9px; color:var(--text-primary); }
+.empty-state p{ font-size:var(--text-xs); color:var(--text-secondary); max-width:380px; margin:0 auto 22px; line-height:1.65; }
+.es-art{ position:relative; margin-bottom:var(--sp-5); }
+/* A soft floor under the agent, so it stands somewhere instead of hanging. */
+.es-shadow{
+  position:absolute; left:50%; bottom:-9px; transform:translateX(-50%);
+  width:58px; height:9px; border-radius:50%; pointer-events:none;
+  background:radial-gradient(closest-side, rgba(0,0,0,0.30), transparent);
+}
+html.light .es-shadow{ background:radial-gradient(closest-side, rgba(24,39,60,0.16), transparent); }
+
+/* ---------- SKELETONS ---------- */
+/* Same height and shape as the real row, so nothing jumps when data lands. */
+.skel-row{
+  display:flex; align-items:center; gap:var(--sp-4);
+  padding:var(--sp-4) var(--sp-5); border-radius:var(--r-md);
+  border:1px solid var(--border-soft);
+  animation:skelIn 300ms var(--ease-out) backwards;
+  animation-delay:calc(var(--i, 0) * 60ms);
+}
+.skel-avatar{ flex-shrink:0; width:52px; height:52px; border-radius:14px; }
+.skel-avatar.round{ border-radius:50%; }
+.skel-lines{ flex:1; min-width:0; display:flex; flex-direction:column; gap:10px; }
+.skel-line{ height:11px; border-radius:6px; }
+.skel-line.sm{ height:9px; }
+.skel-avatar, .skel-line{
+  background:linear-gradient(90deg, var(--surface-1) 0%, var(--surface-2) 40%, var(--surface-1) 80%);
+  background-size:260% 100%;
+  animation:skelSweep 1.5s ease-in-out infinite;
+}
+@keyframes skelSweep{ from{ background-position:130% 0; } to{ background-position:-130% 0; } }
+@keyframes skelIn{ from{ opacity:0; } to{ opacity:1; } }
+
+@media (prefers-reduced-motion:reduce){
+  .skel-avatar, .skel-line{ animation:none; background:var(--surface-2); }
+  .skel-row{ animation:none; }
+  .pr-face, .pr-team-face{ transition:none; }
+  .project-row:hover .pr-face,
+  .project-row:hover .pr-team-face:first-child,
+  .project-row:hover .pr-team-face + .pr-team-face{ transform:none; }
+}
