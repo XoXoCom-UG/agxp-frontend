@@ -14,6 +14,8 @@ interface AuthContextType {
   // leak between accounts sharing a browser.
   profileName: string;
   setProfileName: (n: string) => void;
+  /** Writes the name to the account, so it survives a reload. */
+  saveProfileName: (n: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -24,6 +26,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   profileName: "",
   setProfileName: () => {},
+  saveProfileName: async () => {},
   signOut: async () => {},
 });
 
@@ -77,6 +80,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const profileName = nameEdit && nameEdit.uid === userId ? nameEdit.name : metaName;
   const setProfileName = (n: string) => { if (userId) setNameEdit({ uid: userId, name: n }); };
 
+  /** setProfileName only painted the new name on screen; it was gone on the
+   *  next reload. This is the half that actually writes it to the account. */
+  const saveProfileName = async (n: string) => {
+    const { error } = await supabase.auth.updateUser({ data: { full_name: n } });
+    if (error) throw new Error(error.message);
+  };
+
   useEffect(() => {
     // Always resolve loading — even on error — so the app never hangs on the
     // skeleton (a corrupt session cookie used to strand it forever).
@@ -117,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       profileName,
       setProfileName,
+      saveProfileName,
       signOut,
     }}>
       {children}

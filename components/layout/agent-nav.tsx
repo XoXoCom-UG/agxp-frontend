@@ -5,6 +5,8 @@ import { useRouter, usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/lib/auth-context";
 import { IconDiamond, IconSun, IconMoon, IconUser, IconLogout, IconArrow } from "@/components/layout/agxp-icons";
+import { SettingsSheet } from "@/components/layout/settings-sheet";
+import { readAccent, applyAccent } from "@/lib/accent";
 
 type Tab = "newtask" | "history" | "agents";
 
@@ -29,6 +31,22 @@ export function AgentNav({ startEnabled, startHint, onStart }: {
   const pathname = usePathname();
   const { setTheme } = useTheme();
   const [popover, setPopover] = useState<PopoverName>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Paint the saved accent before anything else renders with the default.
+  // Reading localStorage during render would differ between server and
+  // client, so it waits for mount — the default is correct in the meantime.
+  useEffect(() => { applyAccent(readAccent(), false); }, []);
+
+  // Cmd/Ctrl+, opens settings: settings.md — "people often use the standard
+  // Command-Comma shortcut to open an app's settings".
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "," && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setSettingsOpen(true); }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
   const ref = useRef<HTMLDivElement>(null);
   const tab = activeTab(pathname);
 
@@ -53,6 +71,7 @@ export function AgentNav({ startEnabled, startHint, onStart }: {
 
   return (
     <header onClick={e => e.stopPropagation()}>
+      {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} />}
       <div className="head-left">
         <button className="brand" onClick={newTask}>
           <div className="brand-mark"><IconDiamond size={12} /></div>
@@ -86,7 +105,10 @@ export function AgentNav({ startEnabled, startHint, onStart }: {
 
           {popover === "avatar" && (
             <div className="popover" onClick={e => e.stopPropagation()}>
-              <button className="mi"><IconUser size={13} />Profile</button>
+              <button className="mi" onClick={() => { setPopover(null); setSettingsOpen(true); }}>
+              <IconUser size={13} />Profile &amp; settings
+              <span className="mi-key">{"⌘,"}</span>
+            </button>
               <hr />
               <button className="mi" onClick={() => signOut()}><IconLogout size={13} />Sign out</button>
             </div>

@@ -196,10 +196,35 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
     }
   }
 
+  // 1, 2, 3 pick a suggested answer — but never while the composer has focus,
+  // or typing "2 weeks" would send an answer instead of the digit.
+  const liveChoices = useRef<string[]>([]);
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const el = document.activeElement;
+      if (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) return;
+      const n = Number(e.key);
+      if (!Number.isInteger(n) || n < 1 || n > liveChoices.current.length) return;
+      e.preventDefault();
+      send(liveChoices.current[n - 1]);
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const lastAssistantIdx = (() => {
     for (let i = messages.length - 1; i >= 0; i--) if (messages[i].role === "assistant") return i;
     return -1;
   })();
+
+  // What the number keys currently answer. Kept in a ref so the shortcut
+  // listener stays mounted once instead of rebinding on every render.
+  const shownChoices = (!sending && lastAssistantIdx >= 0)
+    ? parseMarkers(messages[lastAssistantIdx].content).choices
+    : [];
+  liveChoices.current = shownChoices;
 
   // How far the interview has got: the newest assistant message that carries
   // each marker wins, so reloading history rebuilds the same rail.
@@ -418,10 +443,14 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
           const showChoices = i === lastAssistantIdx && parsed.choices.length > 0 && !sending;
           const isDoc = !!parsed.doc || looksLikeDocument(parsed.text, deliverable.title);
           const choices = showChoices ? (
-            <div className="sugg-list">
+            <div className="sugg-list" role="group" aria-label="Suggested answers">
               {parsed.choices.map((c, ci) => (
                 <button key={c} className="sugg-item" disabled={sending} onClick={() => send(c)}
                   style={{ ["--i" as string]: ci }}>
+                  {/* The number is the shortcut. keyboards.md: a desktop app
+                      should be usable without reaching for the mouse, and the
+                      key is printed rather than hidden in a help page. */}
+                  <span className="sugg-key" aria-hidden="true">{ci + 1}</span>
                   <span className="s">{c}</span>
                   <IconArrow />
                 </button>

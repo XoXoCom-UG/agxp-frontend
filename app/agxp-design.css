@@ -2090,14 +2090,14 @@ main.workspace.swapping > .panel:last-child{ animation:swapFromLeft 400ms var(--
   position:relative; overflow:hidden; display:flex; flex-direction:column; text-align:left;
   padding:var(--sp-5); gap:var(--sp-4); border-radius:24px;
   background:linear-gradient(145deg, rgba(74,88,108,0.30) 0%, rgba(51,61,77,0.24) 42%, rgba(29,34,43,0.28) 100%);
-  border:1px solid rgba(120,160,210,0.22);
+  border:1px solid color-mix(in srgb, var(--primary-soft) 26%, transparent);
   backdrop-filter:blur(18px) saturate(120%);
   box-shadow:inset 0 1px 0 rgba(255,255,255,0.10), inset 0 -1px 0 rgba(255,255,255,0.02), 0 18px 42px rgba(0,0,0,0.22);
   transition:transform .28s var(--ease-out), border-color .28s var(--ease-out), box-shadow .28s var(--ease-out);
 }
 .picker-card::before{
   content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
-  background:radial-gradient(circle at 14% 10%, rgba(111,164,232,0.07), transparent 34%),
+  background:radial-gradient(circle at 14% 10%, color-mix(in srgb, var(--primary-soft) 9%, transparent), transparent 34%),
              radial-gradient(circle at 90% 100%, rgba(255,255,255,0.025), transparent 34%);
 }
 /* A light that sweeps across once on hover. Parked off-card, so it costs
@@ -2114,11 +2114,11 @@ main.workspace.swapping > .panel:last-child{ animation:swapFromLeft 400ms var(--
    press and is gone the moment you leave. */
 .picker-card-glow{
   position:absolute; inset:0; border-radius:inherit; pointer-events:none; z-index:0; opacity:0;
-  background:radial-gradient(190px circle at var(--mx, 50%) var(--my, 50%), rgba(125,180,245,0.15), transparent 68%);
+  background:radial-gradient(190px circle at var(--mx, 50%) var(--my, 50%), color-mix(in srgb, var(--primary-soft) 20%, transparent), transparent 68%);
   transition:opacity .34s var(--ease-out);
 }
 html.light .picker-card-glow{
-  background:radial-gradient(190px circle at var(--mx, 50%) var(--my, 50%), rgba(21,78,128,0.09), transparent 68%);
+  background:radial-gradient(190px circle at var(--mx, 50%) var(--my, 50%), color-mix(in srgb, var(--primary) 11%, transparent), transparent 68%);
 }
 .picker-card:hover:not(:disabled) .picker-card-glow{ opacity:1; }
 .picker-card:active:not(:disabled) .picker-card-glow{ opacity:1.6; transition-duration:.08s; }
@@ -2149,10 +2149,10 @@ html.light .picker-card-glow{
   position:relative; z-index:1; overflow:hidden; display:flex; align-items:center; height:44px; width:100%;
   margin-top:auto; padding:0 var(--sp-5); gap:8px; font-size:var(--text-sm); font-weight:600; color:#fff;
   border-radius:16px;
-  background:linear-gradient(180deg, rgba(77,147,239,0.96) 0%, rgba(51,120,217,0.96) 46%, rgba(36,92,171,0.98) 100%);
-  border:1px solid rgba(118,171,235,0.50);
+  background:linear-gradient(180deg, color-mix(in srgb, var(--primary-soft) 88%, #FFFFFF) 0%, var(--primary-soft) 46%, var(--primary) 100%);
+  border:1px solid color-mix(in srgb, var(--primary-soft) 55%, transparent);
   box-shadow:inset 0 1px 0 rgba(255,255,255,0.22), inset 0 -1px 0 rgba(0,25,65,0.20),
-             0 4px 14px rgba(34,92,175,0.20), 0 0 14px rgba(69,134,226,0.08);
+             0 4px 14px color-mix(in srgb, var(--primary) 24%, transparent), 0 0 14px color-mix(in srgb, var(--primary-soft) 10%, transparent);
   transition:background .28s var(--ease-out), box-shadow .28s var(--ease-out);
 }
 .picker-card-cta span:first-of-type{ flex:1; text-align:left; }
@@ -2164,17 +2164,17 @@ html.light .picker-card-glow{
 @media (hover:hover) and (pointer:fine){
   .picker-card:hover:not(:disabled){
     transform:translateY(-6px);
-    border-color:rgba(140,185,235,0.42);
+    border-color:color-mix(in srgb, var(--primary-soft) 48%, transparent);
     box-shadow:inset 0 1px 0 rgba(255,255,255,0.14), 0 30px 60px -18px rgba(0,0,0,0.42),
-               0 0 0 1px rgba(111,164,232,0.10);
+               0 0 0 1px color-mix(in srgb, var(--primary-soft) 12%, transparent);
   }
   .picker-card:hover:not(:disabled)::after{ left:115%; }
   /* The head leans up towards you — the card reacts, not just its shadow. */
   .picker-card:hover:not(:disabled) .mascot{ transform:translateY(-6px) scale(1.07); }
   .picker-card:hover:not(:disabled) .picker-card-cta{
-    background:linear-gradient(180deg, rgba(85,154,245,1) 0%, rgba(57,127,224,1) 46%, rgba(40,98,182,1) 100%);
+    background:linear-gradient(180deg, color-mix(in srgb, var(--primary-soft) 78%, #FFFFFF) 0%, color-mix(in srgb, var(--primary-soft) 94%, #FFFFFF) 46%, color-mix(in srgb, var(--primary) 92%, #FFFFFF) 100%);
     box-shadow:inset 0 1px 0 rgba(255,255,255,0.26), inset 0 -1px 0 rgba(0,25,65,0.18),
-               0 7px 18px rgba(34,92,175,0.24), 0 0 18px rgba(69,134,226,0.11);
+               0 7px 18px color-mix(in srgb, var(--primary) 28%, transparent), 0 0 18px color-mix(in srgb, var(--primary-soft) 14%, transparent);
   }
   .picker-card:hover:not(:disabled) .btn-arrow-end{ transform:translateX(4px); }
 }
@@ -2190,17 +2190,17 @@ html.light .picker-card-glow{
    dimmed, or the cards read as grey slabs. */
 html.light .picker-card{
   background:linear-gradient(145deg, rgba(255,255,255,0.92) 0%, rgba(245,247,250,0.80) 42%, rgba(231,236,243,0.86) 100%);
-  border-color:rgba(21,78,128,0.16);
+  border-color:color-mix(in srgb, var(--primary) 18%, transparent);
   box-shadow:inset 0 1px 0 rgba(255,255,255,0.90), 0 14px 34px rgba(24,39,60,0.09);
 }
 html.light .picker-card::before{
-  background:radial-gradient(circle at 14% 10%, rgba(46,123,196,0.07), transparent 38%),
-             radial-gradient(circle at 90% 100%, rgba(21,78,128,0.05), transparent 38%);
+  background:radial-gradient(circle at 14% 10%, color-mix(in srgb, var(--primary-soft) 9%, transparent), transparent 38%),
+             radial-gradient(circle at 90% 100%, color-mix(in srgb, var(--primary) 6%, transparent), transparent 38%);
 }
-html.light .picker-card::after{ background:linear-gradient(100deg, transparent, rgba(21,78,128,0.05), transparent); }
+html.light .picker-card::after{ background:linear-gradient(100deg, transparent, color-mix(in srgb, var(--primary) 6%, transparent), transparent); }
 @media (hover:hover) and (pointer:fine){
   html.light .picker-card:hover:not(:disabled){
-    border-color:rgba(21,78,128,0.30);
+    border-color:color-mix(in srgb, var(--primary) 34%, transparent);
     box-shadow:inset 0 1px 0 rgba(255,255,255,0.95), 0 26px 50px -18px rgba(24,39,60,0.20);
   }
 }
@@ -2475,3 +2475,172 @@ html.light .who-face{
   }
   .chat-input{ background:var(--surface-elevated); backdrop-filter:none; -webkit-backdrop-filter:none; }
 }
+
+/* ============================================================================
+   SETTINGS + the suggested answers. Reviewed against Apple's HIG
+   (.agents/skills/apple-design).
+   ============================================================================ */
+
+/* ---------- Suggested answers ----------
+   They were a flat bordered list. They are the fastest way to answer, so they
+   should look like the offer they are. Each row now carries its own key:
+   keyboards.md wants a desktop app usable without the mouse, and a shortcut
+   nobody can see is a shortcut nobody uses. */
+.sugg-list{
+  display:flex; flex-direction:column; gap:6px; margin-top:11px; max-width:460px;
+  border:none; border-radius:0; overflow:visible;
+}
+.sugg-item{
+  position:relative; overflow:hidden;
+  display:flex; align-items:center; gap:11px; width:100%; text-align:left;
+  padding:11px 13px; border-radius:13px; border:1px solid var(--border-soft);
+  background:color-mix(in srgb, var(--surface-1) 55%, transparent);
+  font-size:var(--text-2xs); color:var(--text-secondary); line-height:1.45;
+  transition:transform .2s var(--ease-out), border-color .2s var(--ease-out),
+             background-color .2s var(--ease-out), color .2s var(--ease-out);
+}
+.sugg-item:last-child{ border-bottom:1px solid var(--border-soft); }
+
+/* The number you can press. Tabular figures so 1, 2 and 3 sit identically. */
+.sugg-key{
+  flex-shrink:0; width:19px; height:19px; border-radius:6px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:10px; font-weight:700; font-variant-numeric:tabular-nums;
+  color:var(--text-muted);
+  background:color-mix(in srgb, var(--primary) 10%, transparent);
+  border:1px solid color-mix(in srgb, var(--primary) 16%, transparent);
+  transition:color .2s var(--ease-out), background-color .2s var(--ease-out),
+             border-color .2s var(--ease-out);
+}
+.sugg-item:disabled{ opacity:.45; cursor:default; }
+.sugg-item:active:not(:disabled){ transform:scale(0.988); }
+
+@media (hover:hover) and (pointer:fine){
+  .sugg-item:hover:not(:disabled){
+    transform:translateX(3px);
+    color:var(--text-primary);
+    border-color:color-mix(in srgb, var(--primary) 34%, transparent);
+    background:color-mix(in srgb, var(--primary) 11%, transparent);
+  }
+  .sugg-item:hover:not(:disabled) .sugg-key{
+    color:var(--primary-foreground);
+    background:var(--primary-soft);
+    border-color:transparent;
+  }
+  .sugg-item:hover:not(:disabled) svg.arrow{ transform:translateX(3px); opacity:1; }
+}
+@media (prefers-reduced-motion:reduce){
+  .sugg-item{ transition:none; }
+  .sugg-item:hover:not(:disabled){ transform:none; }
+}
+
+/* ---------- Settings ----------
+   One sheet, two tabs, nothing else. settings.md: minimize the number of
+   settings you offer, because too many make the app feel less approachable
+   and the one you want harder to find. */
+.settings-sheet{
+  width:520px; max-width:94vw; max-height:88vh; display:flex; flex-direction:column;
+  background:var(--surface-2); border:1px solid var(--border-medium);
+  border-radius:var(--r-lg); overflow:hidden;
+  box-shadow:0 34px 90px -22px rgba(0,0,0,0.72);
+  animation:modalIn 220ms var(--ease-out);
+}
+.ss-head{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:var(--sp-5) var(--sp-6) var(--sp-4);
+}
+.ss-head h2{ font-size:var(--text-lg); font-weight:650; letter-spacing:-0.2px; color:var(--text-primary); }
+.ss-close{
+  width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center;
+  color:var(--text-muted); background:transparent; border:none;
+  transition:color .15s var(--ease-out), background-color .15s var(--ease-out);
+}
+@media (hover:hover) and (pointer:fine){
+  .ss-close:hover{ color:var(--text-primary); background:var(--surface-1); }
+}
+
+.ss-tabs{ display:flex; gap:var(--sp-5); padding:0 var(--sp-6); border-bottom:1px solid var(--border-soft); }
+.ss-tabs button{
+  position:relative; padding:0 0 11px; background:none; border:none;
+  font-size:var(--text-xs); font-weight:550; color:var(--text-muted);
+  transition:color .16s var(--ease-out);
+}
+.ss-tabs button.on{ color:var(--text-primary); }
+/* The underline grows rather than snapping between tabs. */
+.ss-tabs button::after{
+  content:""; position:absolute; left:0; right:0; bottom:-1px; height:2px; border-radius:2px;
+  background:var(--primary-soft); transform:scaleX(0); transform-origin:center;
+  transition:transform .24s var(--ease-out);
+}
+.ss-tabs button.on::after{ transform:scaleX(1); }
+@media (hover:hover) and (pointer:fine){ .ss-tabs button:hover{ color:var(--text-secondary); } }
+
+.ss-body{ padding:var(--sp-6); overflow-y:auto; display:flex; flex-direction:column; gap:var(--sp-5); }
+
+.ss-identity{ display:flex; align-items:center; gap:var(--sp-4); }
+.ss-avatar{
+  width:54px; height:54px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:var(--text-base); font-weight:650; letter-spacing:0.02em;
+  color:var(--primary-foreground);
+  background:linear-gradient(160deg, var(--primary-soft), var(--primary));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.18), 0 8px 20px -10px rgba(0,0,0,0.6);
+}
+.ss-name{ font-size:var(--text-base); font-weight:650; color:var(--text-primary); }
+.ss-mail{ font-size:var(--text-2xs); color:var(--text-muted); margin-top:3px; }
+
+.ss-field{ display:flex; flex-direction:column; gap:8px; }
+.ss-label{ font-size:var(--text-3xs); font-weight:700; letter-spacing:0.09em; text-transform:uppercase; color:var(--text-muted); }
+.ss-field input{
+  height:40px; padding:0 13px; border-radius:11px; font-size:var(--text-xs); font-family:inherit;
+  color:var(--text-primary); background:var(--surface-1);
+  border:1px solid var(--border-medium); outline:none;
+  transition:border-color .16s var(--ease-out), box-shadow .16s var(--ease-out);
+}
+.ss-field input:focus{
+  border-color:var(--border-strong);
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--ring) 14%, transparent);
+}
+.ss-field input:disabled{ color:var(--text-muted); background:transparent; cursor:not-allowed; }
+.ss-hint{ font-size:var(--text-3xs); color:var(--text-muted); line-height:1.5; }
+.ss-error{ font-size:var(--text-2xs); color:var(--destructive); }
+.ss-actions{ display:flex; justify-content:flex-end; padding-top:var(--sp-2); }
+
+/* Theme: three states in one control, so the choice reads as one decision. */
+.ss-segment{
+  display:flex; gap:3px; padding:3px; border-radius:12px;
+  background:var(--surface-1); border:1px solid var(--border-soft);
+}
+.ss-segment button{
+  flex:1; display:flex; align-items:center; justify-content:center; gap:7px;
+  height:34px; border-radius:9px; border:none; background:transparent;
+  font-size:var(--text-2xs); font-weight:550; color:var(--text-muted);
+  transition:color .16s var(--ease-out), background-color .16s var(--ease-out);
+}
+.ss-segment button.on{ color:var(--text-primary); background:var(--surface-elevated); box-shadow:0 1px 3px rgba(0,0,0,0.22); }
+@media (hover:hover) and (pointer:fine){
+  .ss-segment button:not(.on):hover{ color:var(--text-secondary); }
+}
+
+.ss-swatches{ display:flex; gap:10px; flex-wrap:wrap; }
+.ss-swatch{
+  width:34px; height:34px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  color:#fff; border:2px solid transparent;
+  background:linear-gradient(160deg, var(--sw), var(--sw-deep));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.22);
+  transition:transform .2s var(--ease-out), box-shadow .2s var(--ease-out);
+}
+/* The ring sits outside the swatch, so the colour itself stays untouched. */
+.ss-swatch.on{ box-shadow:inset 0 1px 0 rgba(255,255,255,0.22), 0 0 0 3px var(--surface-2), 0 0 0 5px var(--sw); }
+.ss-swatch:active{ transform:scale(0.92); }
+@media (hover:hover) and (pointer:fine){
+  .ss-swatch:hover:not(.on){ transform:scale(1.08); }
+}
+@media (prefers-reduced-motion:reduce){
+  .ss-swatch, .ss-tabs button::after{ transition:none; }
+  .ss-swatch:hover:not(.on){ transform:none; }
+}
+
+/* The shortcut, printed in the menu item that uses it. */
+.mi-key{ margin-left:auto; font-size:var(--text-3xs); color:var(--text-muted); letter-spacing:0.04em; }
