@@ -265,6 +265,19 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
 
   // Ana's level-up animation, moved to where a level is actually earned: the
   // project that crossed the threshold, once — not every third message.
+  // True, not decorative: before the first token the request is out and the
+   // model is reading; past six seconds it is simply a long answer. Inventing
+   // more stages than exist would be the vague status message in costume.
+  const [waitingLong, setWaitingLong] = useState(false);
+  useEffect(() => {
+    if (!sending || streamText) { setWaitingLong(false); return; }
+    const id = setTimeout(() => setWaitingLong(true), 6000);
+    return () => clearTimeout(id);
+  }, [sending, streamText]);
+
+  // The head's hairline appears only once content has scrolled beneath it.
+  const [stuck, setStuck] = useState(false);
+
   const celebrated = useRef(false);
   useEffect(() => {
     if (!leveledUp || celebrated.current) return;
@@ -277,11 +290,13 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
       {/* Everything about the agent and the document lives behind these two
           small buttons — the panel itself is the conversation and nothing else
           (Patryk, 2026-09-11: "das Gespräch muss im Vordergrund stehen"). */}
-      <div className="chat-head" ref={headRef}>
+      <div className={`chat-head${stuck ? " is-stuck" : ""}`} ref={headRef}>
         <button className="who-btn" aria-expanded={pop === "agent"}
           onClick={() => setPop(p => (p === "agent" ? null : "agent"))}>
-          <AgentMascot role={role} state={orb} size={51} enter
-            attentive={attentive} mood={mood} level={mascotStage} lookAt={lookAt} />
+          <span className="who-face">
+            <AgentMascot role={role} state={orb} size={56} enter
+              attentive={attentive} mood={mood} level={mascotStage} lookAt={lookAt} />
+          </span>
           <span className="who-txt">
             <span className="n">{agent.name}</span>
             <span className="r"><span className={`role-dot ${role}`} />{role === "coach" ? "Coach" : "Consultant"}</span>
@@ -388,7 +403,7 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
         )}
       </div>
 
-      <div className="chat-body">
+      <div className="chat-body" onScroll={e => setStuck(e.currentTarget.scrollTop > 4)}>
         {!loaded && <div className="spinner" style={{ margin: "0 auto", borderColor: "var(--border-strong)", borderTopColor: "var(--foreground)" }} />}
 
         {loaded && (
@@ -466,7 +481,11 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
         )}
         {sending && !streamText && (
           <div className="msg-typing"><span className="tline" />
-            <span className="shimmer-text">{agent.name} is thinking…</span>
+            <span className="shimmer-text">
+              {waitingLong
+                ? "Still writing — a long answer takes a moment"
+                : `${agent.name} is reading what you wrote…`}
+            </span>
           </div>
         )}
         <div ref={bottomRef} />

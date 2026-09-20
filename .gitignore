@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Skills installed by `npx skills add` symlink themselves in here with an
+# absolute path to this machine. The real files live in .agents/skills and
+# are committed; the symlink is local only and would break anywhere else.
+/.claude/skills/apple-design

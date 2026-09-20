@@ -2354,3 +2354,124 @@ html.light .es-shadow{ background:radial-gradient(closest-side, rgba(24,39,60,0.
   .project-row{ transition:none; }
   .project-row:hover .open-action{ transform:none; }
 }
+
+/* ============================================================================
+   CHAT — reworked against Apple's HIG (.agents/skills/apple-design).
+
+   The rule that drives all of it, from liquid-glass.md > The two layers:
+   there are exactly two. Content (the messages) and the functional layer that
+   floats above it (the head, the composer). Glass belongs only on the second,
+   and the first has to run underneath it, or the material has nothing to
+   refract and the effect is just a grey box.
+
+   So the head now floats over the scroll area instead of sitting in a row
+   above it, and the conversation passes beneath it.
+   ============================================================================ */
+
+.panel{ --chat-head-h:88px; }
+
+.chat-head{
+  position:absolute; top:0; left:0; right:0; z-index:3;
+  height:var(--chat-head-h); padding:0 var(--sp-5);
+  display:flex; align-items:center; gap:var(--sp-3);
+  border-bottom:1px solid transparent;
+  /* Regular, not clear: liquid-glass.md > Which variant — anything carrying
+     a lot of text takes the variant that blurs and re-lumps the luminosity. */
+  background:color-mix(in srgb, var(--card) 72%, transparent);
+  backdrop-filter:blur(22px) saturate(150%);
+  -webkit-backdrop-filter:blur(22px) saturate(150%);
+  transition:border-color .2s var(--ease-out), background-color .2s var(--ease-out);
+}
+/* The hairline only appears once something has scrolled under it — Apple's
+   scroll edge effect. At rest the head has no line to draw. */
+.chat-head.is-stuck{
+  border-bottom-color:var(--border-soft);
+  background:color-mix(in srgb, var(--card) 86%, transparent);
+}
+
+/* The conversation starts below the glass and ends above the composer, but
+   scrolls through both. */
+.chat-body{ padding-top:calc(var(--chat-head-h) + var(--sp-3)); scroll-padding-top:var(--chat-head-h); }
+
+/* Text dissolves as it reaches the composer instead of being cut by an edge.
+   Bottom only — a top fade would fight the glass, which already handles it. */
+.chat-body{
+  -webkit-mask-image:linear-gradient(to bottom, #000 calc(100% - 26px), transparent 100%);
+  mask-image:linear-gradient(to bottom, #000 calc(100% - 26px), transparent 100%);
+}
+
+/* The composer belongs to the same floating layer, so it wears the same
+   material — one family, not two ideas of "raised". */
+.chat-input{
+  background:color-mix(in srgb, var(--surface-elevated) 82%, transparent);
+  backdrop-filter:blur(20px) saturate(150%);
+  -webkit-backdrop-filter:blur(20px) saturate(150%);
+}
+
+/* ---------- The agent's head ----------
+   It is the one thing on this panel that is a someone rather than a control.
+   color.md > Liquid Glass color: colour the background of the thing that
+   benefits from emphasis, not the symbol. So the head gets a plate, and the
+   plate carries the state — not the little face itself, which is too small
+   to hold a signal at this size. */
+.who-face{
+  position:relative; flex-shrink:0;
+  width:66px; height:66px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background:
+    radial-gradient(120% 120% at 50% 12%, color-mix(in srgb, var(--primary) 20%, transparent), transparent 68%),
+    color-mix(in srgb, var(--surface-1) 78%, transparent);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.10), 0 6px 18px -10px rgba(0,0,0,0.55);
+}
+.who-face .mascot{ width:54px !important; height:54px !important; }
+
+/* The ring is the state. Idle it is a hairline; thinking and speaking light
+   it up and it breathes. accessibility.md: never the only carrier — the line
+   under the last message says the same thing in words. */
+.who-face::after{
+  content:""; position:absolute; inset:0; border-radius:50%; pointer-events:none;
+  border:1.5px solid color-mix(in srgb, var(--primary) 26%, transparent);
+  transition:border-color .32s var(--ease-out), box-shadow .32s var(--ease-out);
+}
+.panel .who-face:has(.is-thinking)::after,
+.panel .who-face:has(.is-working)::after,
+.panel .who-face:has(.is-speaking)::after{
+  border-color:color-mix(in srgb, var(--primary-soft) 72%, transparent);
+  box-shadow:0 0 0 4px color-mix(in srgb, var(--primary) 12%, transparent);
+  animation:facePulse 2.1s var(--ease-out) infinite;
+}
+@keyframes facePulse{
+  0%, 100%{ box-shadow:0 0 0 3px color-mix(in srgb, var(--primary) 13%, transparent); }
+  50%{ box-shadow:0 0 0 8px color-mix(in srgb, var(--primary) 0%, transparent); }
+}
+
+html.light .who-face{
+  background:
+    radial-gradient(120% 120% at 50% 12%, color-mix(in srgb, var(--primary) 13%, transparent), transparent 68%),
+    #FFFFFF;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.9), 0 6px 16px -10px rgba(24,39,60,0.28);
+}
+
+.chat-head .n{ font-size:var(--text-base); font-weight:650; letter-spacing:-0.1px; }
+.chat-head .r{ margin-top:3px; }
+
+@media (hover:hover) and (pointer:fine){
+  .who-btn:hover .who-face::after{ border-color:color-mix(in srgb, var(--primary) 46%, transparent); }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .who-face::after{ transition:none; }
+  .panel .who-face:has(.is-thinking)::after,
+  .panel .who-face:has(.is-working)::after,
+  .panel .who-face:has(.is-speaking)::after{ animation:none; }
+}
+
+/* Reduce Transparency has to have an answer (liquid-glass.md). Solid, and the
+   hairline comes back permanently since nothing shows through any more. */
+@media (prefers-reduced-transparency:reduce){
+  .chat-head{
+    background:var(--card); backdrop-filter:none; -webkit-backdrop-filter:none;
+    border-bottom-color:var(--border-soft);
+  }
+  .chat-input{ background:var(--surface-elevated); backdrop-filter:none; -webkit-backdrop-filter:none; }
+}
