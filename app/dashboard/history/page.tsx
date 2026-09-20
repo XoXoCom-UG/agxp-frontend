@@ -103,8 +103,9 @@ export default function ProjectHistoryPage() {
             )}
 
             <div className="project-list">
-              {!loading && filtered.map(p => (
-                <div key={p.id} className="project-row" tabIndex={0} role="button" aria-label={`Open ${p.name}`}
+              {!loading && filtered.map((p, i) => (
+                <div key={p.id} className="project-row row-in" style={{ "--i": i } as React.CSSProperties}
+                  tabIndex={0} role="button" aria-label={`Open ${p.name}`}
                   onClick={() => router.push(`/dashboard/project/${p.id}`)}>
                   {/* Who worked on it, not a folder glyph — you recognise a
                       project by its team faster than by its name. */}

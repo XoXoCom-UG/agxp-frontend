@@ -104,12 +104,12 @@ export default function AgentDashboardPage() {
   return (
     <div className="app">
       <AgentNav />
-      <div className="view-root">
+      <div className="view-root view-enter">
         <div className="page-head"><div><h1>Agent Dashboard</h1><p>Everyone you work with, and what they have learned about you so far.</p></div></div>
         <div className="flat-view" onClick={() => setFilterOpen(false)}>
           <div className="flat-col">
             {detail ? (
-              <div style={{ paddingTop: 8 }}>
+              <div className="detail-enter" key={detail.id} style={{ paddingTop: 8 }}>
                 <button className="back-link" style={{ marginBottom: 16 }} onClick={() => setDetailId(null)}><IconBack size={11} />Back</button>
                 {/* This page is about the agents, so the agent itself leads —
                     the one screen where the mascot can be big without taking
@@ -155,7 +155,7 @@ export default function AgentDashboardPage() {
                 )}
               </div>
             ) : (
-              <>
+              <div className="list-enter">
                 <div className="list-toolbar" style={{ padding: "0 0 16px", border: "none", position: "relative" }}>
                   <div className="search-box"><input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name or what they do..." /></div>
                   <button className={`filter-chip ${filter !== "All" ? "active" : ""}`} onClick={e => { e.stopPropagation(); setFilterOpen(o => !o); }}>
@@ -171,8 +171,9 @@ export default function AgentDashboardPage() {
                 </div>
                 {loading && <SkeletonRows count={5} avatar="round" />}
                 <div className="project-list">
-                  {!loading && filtered.map(a => (
-                    <div key={a.id} className="project-row" tabIndex={0} role="button" aria-label={`View ${a.name}`}
+                  {!loading && filtered.map((a, i) => (
+                    <div key={a.id} className="project-row row-in" style={{ "--i": i } as React.CSSProperties}
+                      tabIndex={0} role="button" aria-label={`View ${a.name}`}
                       onClick={() => setDetailId(a.id)}>
                       <div className="pr-face"><AgentMascot role={a.type} size={44} level={stageForProjects(totalProjects(a))} /></div>
                       <div className="pr-main">
@@ -197,7 +198,7 @@ export default function AgentDashboardPage() {
                       body="Agents appear here once you create one. Start a task and pick “Create new agent”, and this is where you will watch it grow." />
                   )
                 )}
-              </>
+              </div>
             )}
           </div>
         </div>

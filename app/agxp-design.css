@@ -2303,3 +2303,54 @@ html.light .es-shadow{ background:radial-gradient(closest-side, rgba(24,39,60,0.
   .project-row:hover .pr-team-face:first-child,
   .project-row:hover .pr-team-face + .pr-team-face{ transform:none; }
 }
+
+/* ---------- PAGE TRANSITIONS ----------
+   The app used to cut between screens. Now a page assembles: the heading
+   first, then the toolbar, then the rows one after another. It is the same
+   220ms of waiting, but it reads as the page arriving instead of a flash.
+
+   Every animation below uses fill-mode `backwards`, never `both`. `both`
+   leaves an identity transform behind, which creates a permanent stacking
+   context — that is what once drew the agent popover underneath the chat
+   messages. Not a style preference; a bug we already paid for. */
+
+.view-enter > .page-head{ animation:viewIn 260ms var(--ease-out) backwards; }
+.view-enter > .flat-view{ animation:viewIn 300ms var(--ease-out) 60ms backwards; }
+
+/* List rows land in sequence. Capped at the 12th so a long list does not end
+   with rows still arriving a second later. */
+.row-in{
+  animation:rowIn 300ms var(--ease-out) backwards;
+  animation-delay:calc(min(var(--i, 0), 12) * 38ms);
+}
+@keyframes rowIn{
+  from{ opacity:0; transform:translateY(7px); }
+  to{ opacity:1; transform:none; }
+}
+
+/* Agent Dashboard, list <-> detail. Remounted on the agent id, so the
+   animation replays each way and the switch reads as going somewhere rather
+   than as the page being swapped under you. */
+.detail-enter{ animation:detailIn 300ms var(--ease-out) backwards; }
+@keyframes detailIn{
+  from{ opacity:0; transform:translateX(14px); }
+  to{ opacity:1; transform:none; }
+}
+.list-enter{ animation:listIn 260ms var(--ease-out) backwards; }
+@keyframes listIn{
+  from{ opacity:0; transform:translateX(-10px); }
+  to{ opacity:1; transform:none; }
+}
+
+/* The arrow at the end of a row leans towards where it will take you. */
+.project-row{ transition:background-color .18s var(--ease-out), border-color .18s var(--ease-out); }
+@media (hover:hover) and (pointer:fine){
+  .project-row:hover .open-action{ transform:translateX(3px); color:var(--text-secondary); }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .view-enter > .page-head, .view-enter > .flat-view,
+  .row-in, .detail-enter, .list-enter{ animation:none; }
+  .project-row{ transition:none; }
+  .project-row:hover .open-action{ transform:none; }
+}
