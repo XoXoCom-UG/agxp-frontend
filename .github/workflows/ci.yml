@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A second push to the same branch cancels the first — no point finishing a
+# run for code that has already been replaced.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Typecheck, lint, test, build
+    runs-on: ubuntu-latest
+
+    env:
+      # Placeholders, not secrets. Nothing reaches Supabase or Anthropic
+      # during a build; these exist only so Next has values to inline. The
+      # real ones live in Vercel and must never be copied here.
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
+      ANTHROPIC_API_KEY: ci-placeholder
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # npm ci, deliberately, not npm install: it refuses to run when
+      # package-lock.json and package.json disagree. That is exactly the
+      # break that reached main on 2026-09-18 — a lockfile generated on macOS
+      # with the Linux binaries pruned out, which would have failed the
+      # Vercel deploy. This job runs on Linux for the same reason.
+      - name: Install (clean, from the lockfile)
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
