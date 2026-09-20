@@ -25,11 +25,15 @@ jobs:
       ANTHROPIC_API_KEY: ci-placeholder
 
     steps:
-      - uses: actions/checkout@v4
+      # v5, not v4: GitHub now forces v4 actions onto Node 24, which they
+      # were not built for. The v5 line targets it properly.
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          # Quoted on purpose — unquoted YAML numbers lose trailing digits
+          # (22.10 would become 22.1).
+          node-version: "22"
           cache: npm
 
       # npm ci, deliberately, not npm install: it refuses to run when
