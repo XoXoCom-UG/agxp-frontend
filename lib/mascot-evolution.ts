@@ -1,16 +1,18 @@
-"use client";
-
-import { useEffect, useState } from "react";
+import { LEVEL_ORDER, levelFor, type KnowledgeLevel } from "@/lib/agent-progress";
 
 /**
- * mascot-evolution.ts — the mascot's purely-visual "growth" system.
+ * mascot-evolution.ts — how the mascot's look grows with the agent.
  *
- * There is no XP yet. `level` (1-3) is a placeholder counter, bumped once
- * per user message in the live chat (see project-chat-panel.tsx) and kept in
- * localStorage per agent id — remembered across reloads, but deliberately
- * NOT a database column: nothing here is real progress, so it doesn't
- * deserve a migration. When real XP exists, only the storage in this file
- * needs to change — evolutionFor() and every caller stay the same.
+ * Ana built the three visual stages and left the note that only the storage
+ * in this file would need to change once real progress existed. It already
+ * did: lib/agent-progress.ts derives a level from how many of *this user's*
+ * projects the agent has worked on. So the stages now read from that instead
+ * of a localStorage counter that went up once per message.
+ *
+ * Why it matters: the agent card prints "Medium · 4 projects together" right
+ * next to the mascot. With a per-message counter those two disagreed — three
+ * messages in a fresh browser lit up every ring, and the same agent looked
+ * brand new on another machine. evolutionFor() and every caller are unchanged.
  */
 
 export interface MascotEvolution {
@@ -28,46 +30,12 @@ export function evolutionFor(level: number): MascotEvolution {
   return { glow: l >= 2, accessory: l >= 3 };
 }
 
-const KEY_PREFIX = "agxp-mascot-level:";
-
-function clampLevel(n: number): number {
-  return Number.isFinite(n) ? Math.max(1, Math.min(MAX_LEVEL, Math.round(n))) : 1;
+/** "New" | "Medium" | "High" -> the 1-3 the visual stages are written against. */
+export function stageFor(level: KnowledgeLevel): number {
+  return LEVEL_ORDER.indexOf(level) + 1;
 }
 
-/** The level stored for this agent, 1-3, defaulting to 1. SSR/storage-safe. */
-export function readMascotLevel(agentId: string): number {
-  if (typeof window === "undefined") return 1;
-  try {
-    const raw = window.localStorage.getItem(KEY_PREFIX + agentId);
-    return raw ? clampLevel(parseInt(raw, 10)) : 1;
-  } catch {
-    return 1;
-  }
-}
-
-/** Bumps and persists the level for this agent, capped at 3. Returns the new value. */
-export function bumpMascotLevel(agentId: string): number {
-  const next = Math.min(MAX_LEVEL, readMascotLevel(agentId) + 1);
-  try {
-    if (typeof window !== "undefined") window.localStorage.setItem(KEY_PREFIX + agentId, String(next));
-  } catch {
-    // Storage blocked (private mode, quota) — the level just won't persist.
-  }
-  return next;
-}
-
-/**
- * Read-only, auto-syncing level for passive mounts (agent picker,
- * deliverable view) — shows whatever this agent has reached in the live
- * chat. `project-chat-panel.tsx` does not use this: it owns its own local
- * state so it can react to its own bump instead of only its next render.
- */
-export function useMascotLevel(agentId?: string | null): number {
-  const [level, setLevel] = useState(1);
-  useEffect(() => {
-    let alive = true;
-    Promise.resolve().then(() => { if (alive) setLevel(agentId ? readMascotLevel(agentId) : 1); });
-    return () => { alive = false; };
-  }, [agentId]);
-  return level;
+/** The stage this agent has earned with this user, from its project count. */
+export function stageForProjects(projects: number): number {
+  return stageFor(levelFor(projects));
 }

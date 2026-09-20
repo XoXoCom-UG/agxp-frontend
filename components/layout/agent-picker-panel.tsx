@@ -9,7 +9,7 @@ import { methodLabel } from "@/lib/method-labels";
 import { dateStr } from "@/lib/utils";
 import { describeDbError } from "@/lib/db-error";
 import { AgentMascot } from "@/components/layout/agent-mascot";
-import { useMascotLevel } from "@/lib/mascot-evolution";
+import { stageForProjects } from "@/lib/mascot-evolution";
 import {
   IconBack, IconArrow, IconSearch, IconCheck, IconPlus, IconSpark,
 } from "@/components/layout/agxp-icons";
@@ -132,14 +132,13 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   // The "train existing" head wears whichever agent this user has grown the
   // furthest in this role, so the two cards differ at a glance. No agents
   // yet — plain head, nothing to brag about.
-  const trainedAgentId = roleAgents.length
-    ? roleAgents.reduce((best, a) => (totalProjects(a) > totalProjects(best) ? a : best)).id
-    : undefined;
-  const trainedLevel = useMascotLevel(trainedAgentId);
+  const trainedLevel = stageForProjects(
+    roleAgents.reduce((most, a) => Math.max(most, totalProjects(a)), 0),
+  );
 
   // Chosen, waiting for Start. Showing who it is beats an empty panel, and
   // this is the one place changing your mind is free.
-  const assignedLevel = useMascotLevel(assignedAgent?.id);
+  const assignedLevel = stageForProjects(assignedAgent ? totalProjects(assignedAgent) : 0);
   if (assignedAgent) {
     const total = totalProjects(assignedAgent);
     return (

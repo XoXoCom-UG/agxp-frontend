@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import type { AgentType } from "@/lib/agents";
 import { md } from "@/lib/markdown";
 import { AgentMascot } from "@/components/layout/agent-mascot";
-import { useMascotLevel } from "@/lib/mascot-evolution";
+import { stageForProjects } from "@/lib/mascot-evolution";
 import { IconX, IconCopy, IconCheck, IconDownload, IconPrint } from "@/components/layout/agxp-icons";
 
 export interface DeliverableDoc {
@@ -14,6 +14,9 @@ export interface DeliverableDoc {
   role: AgentType;
   agentId: string;
   agentName: string;
+  /** How many of this user's projects the agent has worked on — drives the
+   *  mascot's visual stage, same source as everywhere else. */
+  agentProjects?: number;
   projectName: string;
   /** Markdown, markers already stripped. */
   content: string;
@@ -68,7 +71,7 @@ export function DeliverableView({ doc, onClose }: { doc: DeliverableDoc; onClose
   const toc = useMemo(() => outline(doc.content), [doc.content]);
   const html = useMemo(() => md(doc.content), [doc.content]);
   const words = useMemo(() => doc.content.split(/\s+/).filter(Boolean).length, [doc.content]);
-  const mascotLevel = useMascotLevel(doc.agentId);
+  const mascotLevel = stageForProjects(doc.agentProjects ?? 0);
 
   useEffect(() => () => { if (copyTimer.current) clearTimeout(copyTimer.current); }, []);
 

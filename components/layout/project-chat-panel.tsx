@@ -9,7 +9,7 @@ import { loadAgentMemory, memoryLines, EMPTY_MEMORY, type AgentMemory } from "@/
 import { DELIVERABLES } from "@/lib/deliverables";
 import { methodLabel } from "@/lib/method-labels";
 import { levelFor, nextLevel, LEVEL_ORDER } from "@/lib/agent-progress";
-import { readMascotLevel, bumpMascotLevel } from "@/lib/mascot-evolution";
+import { stageFor } from "@/lib/mascot-evolution";
 import { md } from "@/lib/markdown";
 import { AgentMascot, type MascotState, type MascotMood, type LookTarget } from "@/components/layout/agent-mascot";
 import type { DeliverableDoc } from "@/components/layout/deliverable-view";
@@ -48,9 +48,6 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
   /** A one-off reaction to what just happened, cleared after it has played. */
   const [mood, setMood] = useState<MascotMood>(null);
   const moodTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /** No real XP yet — a purely visual, per-agent counter (lib/mascot-evolution.ts),
-   *  remembered across reloads but not tied to any real progress. */
-  const [mascotLevel, setMascotLevel] = useState(1);
   /** Where the mascot looks right now; null resumes following the cursor. */
   const [lookAt, setLookAt] = useState<LookTarget>(null);
   const lookTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -72,14 +69,6 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
     if (moodTimer.current) clearTimeout(moodTimer.current);
     if (lookTimer.current) clearTimeout(lookTimer.current);
   }, []);
-
-  // What this agent's mascot has reached, remembered per agent (localStorage,
-  // not the database — there is no real XP system yet, see mascot-evolution.ts).
-  useEffect(() => {
-    let alive = true;
-    Promise.resolve().then(() => { if (alive) setMascotLevel(readMascotLevel(agent.id)); });
-    return () => { alive = false; };
-  }, [agent.id]);
 
 
 
@@ -147,7 +136,7 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
   }, [messages, sending, streamText]);
 
   function buildDoc(content: string, title: string, createdAt: string, version: number): DeliverableDoc {
-    return { title, role, agentId: agent.id, agentName: agent.name, projectName: project.name, content, createdAt, version };
+    return { title, role, agentId: agent.id, agentName: agent.name, agentProjects: totalProjects, projectName: project.name, content, createdAt, version };
   }
 
   async function send(text: string) {
@@ -160,13 +149,7 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
     setSending(true);
     const isGenerating = t === deliverable.generatePrompt || t === deliverable.regeneratePrompt;
     setOrb(isGenerating ? "working" : "thinking");
-    // No real XP yet: every message sent nudges this agent's purely visual
-    // level (see lib/mascot-evolution.ts). Persisted before the reply even
-    // starts, same as the optimistic "nod" below — the message was sent
-    // either way, regardless of how the reply turns out.
-    const newLevel = bumpMascotLevel(agent.id);
-    if (newLevel !== mascotLevel) { setMascotLevel(newLevel); react("levelUp", 1500); }
-    else react("nod", 450);   // "got it" — answered before the answer exists
+    react("nod", 450);   // "got it" — answered before the answer exists
     try {
       await addMessage(project.id, role, "user", t);
       if (isFirstEver) {
@@ -278,6 +261,16 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
   const level = levelFor(totalProjects);
   const leveledUp = levelFor(Math.max(0, totalProjects - 1)) !== level;
   const { next, remaining } = nextLevel(totalProjects);
+  const mascotStage = stageFor(level);
+
+  // Ana's level-up animation, moved to where a level is actually earned: the
+  // project that crossed the threshold, once — not every third message.
+  const celebrated = useRef(false);
+  useEffect(() => {
+    if (!leveledUp || celebrated.current) return;
+    celebrated.current = true;
+    react("levelUp", 1500);
+  }, [leveledUp]);
 
   return (
     <section className={`panel ${role}`} style={{ flexGrow: grow }}>
@@ -288,7 +281,7 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
         <button className="who-btn" aria-expanded={pop === "agent"}
           onClick={() => setPop(p => (p === "agent" ? null : "agent"))}>
           <AgentMascot role={role} state={orb} size={51} enter
-            attentive={attentive} mood={mood} level={mascotLevel} lookAt={lookAt} />
+            attentive={attentive} mood={mood} level={mascotStage} lookAt={lookAt} />
           <span className="who-txt">
             <span className="n">{agent.name}</span>
             <span className="r"><span className={`role-dot ${role}`} />{role === "coach" ? "Coach" : "Consultant"}</span>
