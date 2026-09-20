@@ -1,0 +1,57 @@
+name: Regenerate lockfile (Linux)
+
+# Manual only — nothing runs on its own.
+#
+# Why this exists: npm only resolves the dependencies it needs for the machine
+# it runs on. A lockfile written on Windows leaves out packages that Linux
+# pulls in (here: @emnapi/core and @emnapi/runtime, required by the wasm32-wasi
+# builds of tailwind's oxide and the eslint resolver), and one written on macOS
+# leaves out the Linux binaries. Both then fail `npm ci` on Linux — which is
+# what CI and Vercel run.
+#
+# Neither of us has a Linux machine, so the lockfile gets written here, on the
+# same OS that has to install from it. Run this after any change to
+# package.json, then pull.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  relock:
+    name: Rebuild package-lock.json on Linux
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      # --package-lock-only: resolve the full tree and write the lockfile
+      # without building node_modules. Nothing is executed from the packages.
+      - name: Resolve dependencies
+        run: npm install --package-lock-only
+
+      # The real test, on the machine the lockfile is for. If this fails the
+      # job stops here and nothing is pushed — a broken lockfile never lands.
+      - name: Prove a clean install works
+        run: npm ci
+
+      - name: Push it back, if it changed
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo "Lockfile already correct for Linux — nothing to do."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "package-lock.json regenerat pe Linux
+
+          Generat pe masina care chiar instaleaza din el. Un lockfile scris pe
+          Windows sau pe macOS omite pachete de care are nevoie Linux, si
+          atunci npm ci pica in CI si la deploy."
+          git push
