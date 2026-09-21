@@ -135,6 +135,16 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
     bottomRef.current?.scrollIntoView({ behavior: streamText ? "auto" : "smooth" });
   }, [messages, sending, streamText]);
 
+  // The agent levels up on the work it has actually done for this user; this
+  // project is one of them, so compare against the count without it to know
+  // whether joining here is what pushed it up a level.
+  //
+  // Declared up here on purpose: buildDoc below reads it, and buildDoc runs
+  // during render to build the current document. Further down the file it was
+  // still in the temporal dead zone at that moment, so opening a finished
+  // Transformation Concept threw and the whole panel fell over.
+  const totalProjects = agent.last_projects.length + projectCount;
+
   function buildDoc(content: string, title: string, createdAt: string, version: number): DeliverableDoc {
     return { title, role, agentId: agent.id, agentName: agent.name, agentProjects: totalProjects, projectName: project.name, content, createdAt, version };
   }
@@ -279,10 +289,6 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
   const stationLabel = station?.label || deliverable.stations[Math.max(0, stationIdx)]?.label || "";
   const ready = pct >= 100;
 
-  // The agent levels up on the work it has actually done for this user; this
-  // project is one of them, so compare against the count without it to know
-  // whether joining here is what pushed it up a level.
-  const totalProjects = agent.last_projects.length + projectCount;
   const level = levelFor(totalProjects);
   const leveledUp = levelFor(Math.max(0, totalProjects - 1)) !== level;
   const { next, remaining } = nextLevel(totalProjects);
