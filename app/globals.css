@@ -20,6 +20,7 @@
   --popover:#242C3A;
   --popover-foreground:#EDF2F8;
 
+  --font-mono:ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
   --primary:#154E80;
   --primary-foreground:#F1F1F2;
   --primary-soft:#2E7BC4;
@@ -37,6 +38,7 @@
   --destructive:#E0574A;
   --destructive-foreground:#FBEAE6;
   --success:#3FB27F;
+  --warn:#D89434;
 
   /* Coach vs Consultant: both on the same blue-dark scale — the Consultant
      side sits a step brighter because it leads the screen. */
@@ -115,6 +117,7 @@ html.light {
   --destructive:#B84B3E;
   --destructive-foreground:#FBEAE6;
   --success:#4F7D58;
+  --warn:#A56A17;
 
   --coach-1:#F1F2F4; --coach-2:#E4E6EA; --coach-3:#F8F9FA;
   --consultant-1:#F5F1EF; --consultant-2:#EAE3DF; --consultant-3:#FAF8F6;
@@ -264,10 +267,6 @@ html.dark .mf-cursor-glow { background: radial-gradient(circle, rgba(34,197,94,0
   }
   .print-area * { overflow: visible !important; }
 }
-
-/* ── Enterprise foundation: semantic colors, states, a11y ───────────────────── */
-:root { --ok:#16a34a; --warn:#b45309; --err:#dc2626; --info:#2563eb; }
-html.dark { --ok:#22c55e; --warn:#f59e0b; --err:#f87171; --info:#60a5fa; }
 
 /* Measure categories — one hue per category, kept consistent across all four
    diagram views so a colour always means the same thing. Tuned per theme

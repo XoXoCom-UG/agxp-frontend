@@ -73,19 +73,24 @@ function kpi(body: string): string {
   return tiles ? `<div class="v-kpi">${tiles}</div>` : "";
 }
 
-/** `label | today | target | unit?` — one pair of bars per indicator. */
+/**
+ * `label | today | target | unit?`
+ *
+ * One track per indicator, not two stacked bars: the fill is where you are,
+ * and a tick marks where you said you want to be. The distance between them
+ * is the whole point, and two bars made you measure it yourself.
+ */
 function gap(body: string): string {
   const out = rows(body).map(([label, todayRaw = "", targetRaw = "", unit = ""]) => {
     if (!label) return "";
     const today = num(todayRaw);
     const target = num(targetRaw);
     const u = unit ? ` ${unit}` : "";
-    const head = `<span class="n">${label}</span>`;
 
     // Without two numbers there is nothing to scale — keep it as a plain row.
     if (!isFinite(today) || !isFinite(target)) {
-      return `<div class="v-gap-row"><div class="top">${head}` +
-        `<span class="d">${todayRaw} → ${targetRaw}${u}</span></div></div>`;
+      return `<div class="v-gap-row"><div class="top"><span class="n">${label}</span>` +
+        `<span class="d"><b>${todayRaw}</b> → <b>${targetRaw}${u}</b></span></div></div>`;
     }
 
     const scale = Math.max(today, target, 1);
@@ -95,10 +100,11 @@ function gap(body: string): string {
       `<em class="delta ${better ? "good" : "up"}">${delta > 0 ? "+" : "−"}${Math.abs(delta)}%</em>`;
 
     return `<div class="v-gap-row">` +
-      `<div class="top">${head}<span class="d">${todayRaw}${u} → ${targetRaw}${u} ${deltaTxt}</span></div>` +
-      `<div class="bars">` +
-        `<span class="k">heute</span><span class="track"><i class="now" style="width:${pct(today, scale)}%"></i></span>` +
-        `<span class="k">ziel</span><span class="track"><i class="goal" style="width:${pct(target, scale)}%"></i></span>` +
+      `<div class="top"><span class="n">${label}</span>` +
+        `<span class="d"><b>${todayRaw}${u}</b> → <b>${targetRaw}${u}</b> ${deltaTxt}</span></div>` +
+      `<div class="track">` +
+        `<i class="now" style="width:${pct(today, scale)}%"></i>` +
+        `<i class="goal" style="left:${pct(target, scale)}%"></i>` +
       `</div></div>`;
   }).join("");
   return out ? `<div class="v-gap">${out}</div>` : "";
@@ -108,51 +114,52 @@ function gap(body: string): string {
  * Two lanes of chained steps:
  *   as-is: E-Mail rein | Excel tippen | Tour bauen
  *   to-be: Auftrag erkannt* | Disponent gibt frei
- * A trailing `*` marks a step that runs automatically.
+ * A trailing `*` marks a step that runs automatically — the chip says so
+ * itself, which is why there is no legend underneath any more.
  */
 function flow(body: string): string {
-  let hasAuto = false;
   const lanes = body.split("\n").map(l => l.trim()).filter(Boolean).map(line => {
     const at = line.indexOf(":");
     const label = at > 0 ? line.slice(0, at).trim() : "";
     const rest = at > 0 ? line.slice(at + 1) : line;
     const steps = rest.split("|").map(s => s.trim()).filter(Boolean);
     if (!steps.length) return "";
-    // The arrow is glued to the step that FOLLOWS it, so a wrapping chain
-    // never leaves an arrow dangling at the end of a line.
-    const chain = steps.map((s, idx) => {
+    const chain = steps.map(s => {
       const auto = s.endsWith("*");
-      if (auto) hasAuto = true;
-      const chip = `<span class="step${auto ? " auto" : ""}">${auto ? s.slice(0, -1).trim() : s}</span>`;
-      return idx === 0 ? chip : `<span class="lnk"><span class="arw">→</span>${chip}</span>`;
+      return `<span class="step${auto ? " auto" : ""}">${auto ? s.slice(0, -1).trim() : s}</span>`;
     }).join("");
     return `<div class="v-flow-lane">${label ? `<span class="k">${label}</span>` : ""}<div class="chain">${chain}</div></div>`;
   }).join("");
-  if (!lanes) return "";
-  const legend = hasAuto
-    ? '<div class="v-legend"><span class="sw auto"></span>läuft automatisch<span class="sw"></span>bleibt beim Menschen</div>'
-    : "";
-  return `<div class="v-flow">${lanes}${legend}</div>`;
+  return lanes ? `<div class="v-flow">${lanes}</div>` : "";
 }
 
-/** `phase | item; item; item` — the measures on a calendar instead of a table. */
+/**
+ * `phase | item; item; item`
+ *
+ * Read top to bottom, like the rest of the document — the phase on the left,
+ * its measures hanging off a lit rail.
+ */
 function roadmap(body: string): string {
-  const cols = rows(body).map(([phase, items = ""], i) => {
+  const phases = rows(body).map(([phase, items = ""]) => {
     if (!phase) return "";
-    const chips = items.split(";").map(s => s.trim()).filter(Boolean)
+    const list = items.split(";").map(s => s.trim()).filter(Boolean)
       .map(s => `<span class="it">${s}</span>`).join("");
-    return `<div class="v-road-col"${i === 0 ? ' data-first="1"' : ""}>` +
-      `<span class="rail"></span><span class="ph">${phase}</span>` +
-      `<div class="items">${chips}</div></div>`;
+    return `<div class="v-road-phase"><span class="ph">${phase}</span>` +
+      `<div class="items">${list}</div></div>`;
   }).join("");
-  return cols ? `<div class="v-road">${cols}</div>` : "";
+  return phases ? `<div class="v-road">${phases}</div>` : "";
 }
 
-/** `risk | probability | impact` — placed on a 3×3 grid, keyed R1…Rn. */
+/**
+ * `risk | probability | impact` — placed on a 3×3 grid.
+ *
+ * The risk is written in its own cell. It used to be a key of R1…Rn with a
+ * legend underneath, which meant reading the chart was a lookup exercise.
+ */
 function risks(body: string): string {
   const items = rows(body)
     .filter(r => r[0])
-    .map(([name, p = "", im = ""], i) => ({ id: `R${i + 1}`, name, p: rank(p), im: rank(im) }));
+    .map(([name, p = "", im = ""]) => ({ name, p: rank(p), im: rank(im) }));
   if (!items.length) return "";
 
   const cells: string[] = [];
@@ -161,43 +168,39 @@ function risks(body: string): string {
     for (let c = 0; c < 3; c++) {
       const here = items.filter(x => x.im === impact && x.p === c);
       const sev = impact + c; // 0..4
-      const cls = sev >= 3 ? "hot" : sev === 2 ? "warm" : "";
-      const chips = here.map(x => {
-        const t = x.im + x.p >= 3 ? "bad" : x.im + x.p === 2 ? "warn" : "";
-        return `<span class="rchip${t ? ` t-${t}` : ""}">${x.id}</span>`;
-      }).join("");
-      cells.push(`<div class="cell${cls ? ` ${cls}` : ""}">${chips}</div>`);
+      // Only a cell that holds a risk gets a colour. Tinting the empty ones
+      // by position made the matrix look like it had findings where it had
+      // none — the severity is already carried by where the name sits.
+      const cls = here.length === 0 ? "" : sev >= 3 ? "hot" : sev === 2 ? "warm" : "";
+      const labels = here.map(x => `<span class="rname">${x.name}</span>`).join("");
+      cells.push(`<div class="cell${cls ? ` ${cls}` : ""}">${labels}</div>`);
     }
   }
 
-  const key = items.map(x => `<li><span class="rid">${x.id}</span>${x.name}</li>`).join("");
   return `<div class="v-risk">` +
-    `<div class="v-risk-plot">` +
-      `<span class="ax-y">Auswirkung</span>` +
-      `<div class="y-ticks"><span>hoch</span><span>mittel</span><span>gering</span></div>` +
-      `<div class="v-risk-main"><div class="grid">${cells.join("")}</div>` +
-      `<div class="x-ticks"><span>gering</span><span>mittel</span><span>hoch</span></div>` +
-      `<span class="ax-x">Wahrscheinlichkeit</span></div>` +
-    `</div><ol class="v-risk-key">${key}</ol></div>`;
+    `<div class="grid">${cells.join("")}</div>` +
+    `<div class="axes"><span>Wahrscheinlichkeit →</span><span>↑ Auswirkung</span></div>` +
+    `</div>`;
 }
 
 /** `group | count | stance | influence | concern` — the Coach's stakeholder board. */
 function stakeholders(body: string): string {
-  const cards = rows(body).map(([group, count = "", stance = "", infl = "", why = ""]) => {
+  const out = rows(body).map(([group, count = "", stance = "", infl = "", why = ""]) => {
     if (!group) return "";
     const s = (stance || "").toLowerCase();
     const cls = /unterst|support|pro|offen/.test(s) ? "s-pro"
       : /skept|gegen|contra|kritisch/.test(s) ? "s-con" : "s-mid";
     const lvl = rank(infl);
     const dots = [0, 1, 2].map(i => `<i${i <= lvl ? ' class="on"' : ""}></i>`).join("");
-    return `<div class="v-stake-card ${cls}">` +
-      `<div class="top"><b>${group}</b>${count ? `<span class="cnt">${count}</span>` : ""}</div>` +
-      `<div class="mid">${stance ? `<span class="stance">${stance}</span>` : ""}` +
-      `<span class="infl" title="Einfluss">${dots}</span></div>` +
-      (why ? `<span class="why">${why}</span>` : "") +
+    return `<div class="v-stake-row">` +
+      `<span class="g">${group}</span>` +
+      (count ? `<span class="cnt">${count}</span>` : "<span></span>") +
+      `<span class="infl" title="Einfluss">${dots}</span>` +
+      (stance ? `<span class="mood ${cls}">${stance}</span>` : "<span></span>") +
+      (why ? `<p class="why">${why}</p>` : "") +
       `</div>`;
   }).join("");
-  return cards ? `<div class="v-stake">${cards}</div>` : "";
+  return out ? `<div class="v-stake">${out}</div>` : "";
 }
 
 const RENDERERS: Record<string, (body: string) => string> = {

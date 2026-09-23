@@ -1094,139 +1094,169 @@ html.light .m-antenna{ stroke:color-mix(in srgb, var(--primary) 45%, transparent
    ============================================================================= */
 
 /* A — the numbers from the interview */
-.v-kpi{ display:grid; grid-template-columns:repeat(auto-fit, minmax(118px, 1fr)); gap:10px; margin:var(--sp-3) 0 var(--sp-5); }
+/* ---------- DOCUMENT VISUALS ----------
+   Ported from the presentation site (Documents/Presentation Site - AGXP,
+   components/ui/peeks.tsx + app/peeks.css), retuned to this app's tokens.
+
+   The site's versions are demos with fixed numbers; ours render whatever the
+   agent actually wrote. So this takes the site's visual language and keeps
+   our richer data — influence on a stakeholder, the delta against a target,
+   risks named inside their own cell.
+
+   Still CSS only, no chart library, so everything survives print and both
+   themes. Colour stays information, never decoration: red, amber and green
+   appear only where the colour IS the fact. */
+
+.v-kpi{ display:grid; grid-template-columns:repeat(auto-fit, minmax(132px, 1fr)); gap:8px; margin:var(--sp-3) 0 var(--sp-5); }
 .v-tile{
-  display:flex; flex-direction:column; gap:7px; padding:14px 15px; border-radius:12px;
-  border:1px solid var(--border-soft); background:color-mix(in srgb, var(--primary) 7%, transparent);
+  padding:12px 14px; border-radius:var(--r-md);
+  background:color-mix(in srgb, var(--surface-2) 70%, transparent);
+  border:1px solid var(--border-soft);
 }
-.v-tile .lbl{ font-size:var(--text-3xs); font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--text-muted); line-height:1.3; }
-.v-tile b{ font-size:25px; font-weight:650; letter-spacing:-0.6px; color:var(--text-primary); line-height:1.05; white-space:nowrap; }
-.v-tile.t-bad b{ color:var(--destructive); }
+.v-tile .lbl{ display:block; font-size:var(--text-3xs); color:var(--text-muted); line-height:1.3; }
+/* The number is the point of the tile, so it gets the display treatment. */
+.v-tile b{ display:block; margin-top:4px; font-size:23px; font-weight:650; letter-spacing:-0.03em; color:var(--text-primary); line-height:1.1; }
 .v-tile.t-good b{ color:var(--success); }
+.v-tile.t-bad b{ color:var(--destructive); }
 .v-tile.t-warn b{ color:var(--warn); }
 
-/* B — today against the target, per indicator */
-.v-gap{ display:flex; flex-direction:column; gap:16px; margin:var(--sp-3) 0 var(--sp-5); }
-.v-gap-row .top{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:9px; }
-.v-gap-row .n{ font-size:var(--text-sm); font-weight:650; color:var(--text-primary); }
-.v-gap-row .d{ font-size:var(--text-2xs); color:var(--text-muted); font-variant-numeric:tabular-nums; white-space:nowrap; }
-.v-gap-row .delta{
-  font-style:normal; font-weight:700; font-size:var(--text-3xs); border-radius:var(--r-pill); padding:2px 7px; margin-left:5px;
+/* Today against target: one track, with the target marked on it. */
+.v-gap{ display:grid; gap:14px; margin:var(--sp-3) 0 var(--sp-5); }
+.v-gap-row{ display:grid; gap:6px; }
+.v-gap-row .top{ display:flex; justify-content:space-between; align-items:baseline; gap:var(--sp-3); font-size:var(--text-2xs); color:var(--text-secondary); }
+.v-gap-row .n{ min-width:0; }
+.v-gap-row .d{ font-family:var(--font-mono); font-size:var(--text-3xs); color:var(--text-muted); white-space:nowrap; }
+.v-gap-row .d b{ font-weight:500; color:var(--text-primary); }
+.v-gap-row .delta{ font-style:normal; margin-left:6px; }
+.v-gap-row .delta.good{ color:var(--success); }
+.v-gap-row .delta.up{ color:var(--warn); }
+.v-gap-row .track{
+  position:relative; height:8px; border-radius:var(--r-pill); overflow:hidden;
+  background:color-mix(in srgb, var(--text-primary) 8%, transparent);
 }
-.v-gap-row .delta.good{ color:var(--success); background:color-mix(in srgb, var(--success) 16%, transparent); }
-.v-gap-row .delta.up{ color:var(--destructive); background:color-mix(in srgb, var(--destructive) 16%, transparent); }
-.v-gap-row .bars{ display:grid; grid-template-columns:34px 1fr; align-items:center; gap:6px 9px; }
-.v-gap-row .k{ font-size:var(--text-3xs); color:var(--text-muted); text-transform:lowercase; }
-.v-gap-row .track{ height:9px; border-radius:var(--r-pill); background:var(--border-medium); overflow:hidden; }
-.v-gap-row .track i{ display:block; height:100%; border-radius:var(--r-pill); }
-.v-gap-row .now{ background:color-mix(in srgb, var(--foreground) 26%, transparent); }
-.v-gap-row .goal{
+.v-gap-row .now{
+  position:absolute; inset:0 auto 0 0; border-radius:inherit;
   background:linear-gradient(90deg, var(--primary), var(--primary-soft));
-  box-shadow:0 0 14px -3px color-mix(in srgb, var(--primary) 85%, transparent);
+  animation:gapFill 1.1s var(--ease-out) backwards;
 }
+/* The tick is where you said you want to be. It sits above the fill, so the
+   gap between them is the thing you read. */
+/* The tick has to read on top of the fill AND on the empty track, so it is
+   drawn at full strength with a halo of the page behind it. At half opacity
+   it disappeared into the blue exactly when it mattered most. */
+.v-gap-row .goal{
+  position:absolute; top:-3px; bottom:-3px; width:2px; border-radius:1px;
+  background:var(--text-primary);
+  box-shadow:0 0 0 1.5px var(--card);
+}
+@keyframes gapFill{ from{ width:0; } }
 
-/* C — the process as a chain: as-is over to-be */
-.v-flow{ display:flex; flex-direction:column; gap:13px; margin:var(--sp-3) 0 var(--sp-5); }
-.v-flow-lane{ display:flex; align-items:flex-start; gap:11px; }
+/* as-is / to-be, the same chain twice. */
+.v-flow{ display:grid; gap:8px; margin:var(--sp-3) 0 var(--sp-5); }
+.v-flow-lane{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .v-flow-lane .k{
-  flex-shrink:0; width:44px; padding-top:7px; font-size:var(--text-3xs); font-weight:700;
-  letter-spacing:0.07em; text-transform:uppercase; color:var(--text-muted);
+  flex:none; width:44px; font-family:var(--font-mono); font-size:9px;
+  letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted);
 }
-.v-flow .chain{ display:flex; align-items:center; flex-wrap:wrap; gap:5px; }
+.v-flow-lane .chain{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; min-width:0; }
 .v-flow .step{
-  font-size:var(--text-2xs); color:var(--text-primary); background:var(--surface-1);
-  border:1px solid var(--border-soft); border-radius:9px; padding:7px 11px; line-height:1.35;
+  padding:6px 9px; border-radius:var(--r-xs); font-size:var(--text-2xs); white-space:nowrap;
+  border:1px solid var(--border-soft);
+  background:color-mix(in srgb, var(--surface-2) 60%, transparent);
+  color:var(--text-secondary);
 }
+/* An automated step says so itself — which is why the legend underneath is
+   gone. One word on the chip beats a key you have to look up. */
 .v-flow .step.auto{
-  color:var(--primary-soft); border-color:color-mix(in srgb, var(--primary) 48%, transparent);
-  background:color-mix(in srgb, var(--primary) 13%, transparent); font-weight:600;
+  color:var(--text-primary);
+  border-color:color-mix(in srgb, var(--primary-soft) 50%, transparent);
+  background:color-mix(in srgb, var(--primary) 22%, transparent);
 }
-.v-flow .arw{ font-size:var(--text-xs); color:var(--text-muted); }
-.v-flow .lnk{ display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
-.v-legend{ display:flex; align-items:center; gap:7px; font-size:var(--text-3xs); color:var(--text-muted); padding-left:55px; }
-.v-legend .sw{
-  width:9px; height:9px; border-radius:3px; border:1px solid var(--border-medium); background:var(--surface-1);
-  margin-left:9px;
+.v-flow .step.auto::after{
+  content:"auto"; margin-left:6px;
+  font-family:var(--font-mono); font-size:8px; letter-spacing:0.1em; text-transform:uppercase;
+  color:var(--primary-soft);
 }
-.v-legend .sw:first-child{ margin-left:0; }
-.v-legend .sw.auto{ border-color:color-mix(in srgb, var(--primary) 48%, transparent); background:var(--primary); }
 
-/* D — the measures on a calendar */
-.v-road{ display:grid; grid-template-columns:repeat(auto-fit, minmax(152px, 1fr)); gap:12px; margin:var(--sp-3) 0 var(--sp-5); }
-.v-road-col{ display:flex; flex-direction:column; gap:9px; }
-.v-road-col .rail{ height:3px; border-radius:2px; background:var(--border-medium); }
-.v-road-col[data-first="1"] .rail{ background:var(--primary); }
-.v-road-col .ph{ font-size:var(--text-3xs); font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--text-muted); }
-.v-road-col .items{ display:flex; flex-direction:column; gap:6px; }
-.v-road-col .it{
-  font-size:var(--text-2xs); line-height:1.45; color:var(--text-primary);
-  background:var(--surface-1); border:1px solid var(--border-soft); border-radius:9px; padding:8px 10px;
+/* Measures, read top to bottom like the rest of the document. */
+.v-road{ display:grid; gap:12px; margin:var(--sp-3) 0 var(--sp-5); }
+.v-road-phase{ display:grid; grid-template-columns:72px 1fr; gap:12px; align-items:start; }
+.v-road-phase .ph{
+  padding-top:2px; font-family:var(--font-mono); font-size:10px;
+  letter-spacing:0.08em; text-transform:uppercase; color:var(--primary-soft);
 }
-.v-road-col[data-first="1"] .it{ border-color:color-mix(in srgb, var(--primary) 34%, transparent); }
+.v-road-phase .items{ display:grid; gap:4px; position:relative; padding-left:18px; }
+/* The rail fades out downwards, so the last phase does not look cut off. */
+.v-road-phase .items::before{
+  content:""; position:absolute; left:3px; top:7px; bottom:2px; width:1px;
+  background:linear-gradient(var(--primary-soft), transparent);
+}
+.v-road-phase .items::after{
+  content:""; position:absolute; left:0; top:5px; width:7px; height:7px; border-radius:50%;
+  background:var(--primary-soft); box-shadow:0 0 10px var(--primary-soft);
+}
+.v-road-phase .it{ font-size:var(--text-2xs); color:var(--text-secondary); }
 
-/* E — risks on a probability x impact grid */
+/* Likelihood against impact. The risk is written in its own cell. */
 .v-risk{ margin:var(--sp-3) 0 var(--sp-5); }
-.v-risk-plot{ display:flex; align-items:stretch; gap:9px; }
-.v-risk .ax-y{
-  writing-mode:vertical-rl; transform:rotate(180deg);
-  height:152px; display:flex; align-items:center; justify-content:center;
-  font-size:var(--text-3xs); font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--text-muted);
-}
-.v-risk .y-ticks{ height:152px; display:flex; flex-direction:column; justify-content:space-around; font-size:var(--text-3xs); color:var(--text-muted); text-align:right; }
-.v-risk-main{ flex:1; min-width:0; }
-.v-risk .grid{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); grid-auto-rows:48px; gap:4px; }
+.v-risk .grid{ display:grid; grid-template-columns:repeat(3, 1fr); gap:4px; }
 .v-risk .cell{
-  border:1px solid var(--border-soft); border-radius:9px; background:var(--surface-1);
-  display:flex; align-items:center; justify-content:center; gap:4px;
+  min-height:56px; border-radius:7px; padding:6px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  text-align:center; font-size:var(--text-3xs); line-height:1.25; color:var(--text-muted);
+  border:1px solid var(--border-soft);
+  background:color-mix(in srgb, var(--text-primary) 4%, transparent);
 }
-.v-risk .cell.warm{ background:color-mix(in srgb, var(--warn) 9%, transparent); }
-.v-risk .cell.hot{ background:color-mix(in srgb, var(--destructive) 11%, transparent); border-color:color-mix(in srgb, var(--destructive) 28%, transparent); }
-.v-risk .rchip{
-  font-size:var(--text-3xs); font-weight:700; border-radius:var(--r-pill); padding:3px 9px;
-  color:var(--primary-soft); background:color-mix(in srgb, var(--primary) 18%, transparent);
+.v-risk .cell.warm{
+  color:var(--text-primary);
+  background:color-mix(in srgb, var(--warn) 22%, transparent);
+  border-color:color-mix(in srgb, var(--warn) 40%, transparent);
 }
-.v-risk .rchip.t-warn{ color:var(--warn); background:color-mix(in srgb, var(--warn) 20%, transparent); }
-.v-risk .rchip.t-bad{ color:var(--destructive); background:color-mix(in srgb, var(--destructive) 20%, transparent); }
-.v-risk .x-ticks{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:4px; margin-top:6px; font-size:var(--text-3xs); color:var(--text-muted); text-align:center; }
-.v-risk .ax-x{ display:block; margin-top:4px; text-align:center; font-size:var(--text-3xs); font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--text-muted); }
-.v-risk-key{ list-style:none; display:flex; flex-wrap:wrap; gap:6px 16px; margin:var(--sp-4) 0 0; padding:0; }
-.v-risk-key li{ display:flex; align-items:center; gap:7px; font-size:var(--text-2xs); color:var(--text-secondary); }
-.v-risk-key .rid{ font-size:var(--text-3xs); font-weight:700; color:var(--text-muted); }
+.v-risk .cell.hot{
+  color:var(--text-primary);
+  background:color-mix(in srgb, var(--destructive) 26%, transparent);
+  border-color:color-mix(in srgb, var(--destructive) 45%, transparent);
+}
+.v-risk .rname{ display:block; }
+.v-risk .axes{
+  display:flex; justify-content:space-between; margin-top:8px;
+  font-family:var(--font-mono); font-size:10px; letter-spacing:0.08em; color:var(--text-muted);
+}
 
-/* Coach — the stakeholder board */
-.v-stake{ display:grid; grid-template-columns:repeat(auto-fit, minmax(196px, 1fr)); gap:10px; margin:var(--sp-3) 0 var(--sp-5); }
-.v-stake-card{
-  display:flex; flex-direction:column; gap:9px; padding:13px 14px; border-radius:12px;
-  border:1px solid var(--border-soft); background:var(--surface-1);
+/* Who is affected, and what they actually said. */
+.v-stake{ display:grid; gap:6px; margin:var(--sp-3) 0 var(--sp-5); }
+.v-stake-row{
+  display:grid; grid-template-columns:1fr auto auto auto; gap:10px; align-items:center;
+  padding:9px 11px; border-radius:var(--r-xs); font-size:var(--text-2xs);
+  border:1px solid var(--border-soft);
+  background:color-mix(in srgb, var(--surface-2) 55%, transparent);
+  color:var(--text-secondary);
 }
-.v-stake-card .top{ display:flex; align-items:center; justify-content:space-between; gap:9px; }
-.v-stake-card b{ font-size:var(--text-sm); font-weight:650; color:var(--text-primary); }
-.v-stake-card .cnt{
-  font-size:var(--text-3xs); font-weight:700; color:var(--text-secondary);
-  background:var(--secondary); border-radius:var(--r-pill); padding:2px 8px; flex-shrink:0;
+.v-stake-row .g{ color:var(--text-primary); font-weight:550; min-width:0; }
+.v-stake-row .cnt{ font-family:var(--font-mono); font-size:var(--text-3xs); color:var(--text-muted); }
+/* Influence, three dots. Our data carries it and the site's demo did not. */
+.v-stake-row .infl{ display:flex; gap:3px; }
+.v-stake-row .infl i{ width:5px; height:5px; border-radius:50%; background:color-mix(in srgb, var(--text-primary) 16%, transparent); }
+.v-stake-row .infl i.on{ background:var(--primary-soft); }
+.v-stake-row .mood{
+  font-family:var(--font-mono); font-size:9px; letter-spacing:0.08em; text-transform:uppercase;
+  padding:3px 7px; border-radius:var(--r-pill);
+  border:1px solid var(--border-soft); color:var(--text-muted); white-space:nowrap;
 }
-.v-stake-card .mid{ display:flex; align-items:center; justify-content:space-between; gap:9px; }
-.v-stake-card .stance{ font-size:var(--text-3xs); font-weight:700; letter-spacing:0.04em; border-radius:var(--r-pill); padding:2px 9px; }
-.v-stake-card.s-pro .stance{ color:var(--success); background:color-mix(in srgb, var(--success) 16%, transparent); }
-.v-stake-card.s-mid .stance{ color:var(--text-secondary); background:var(--secondary); }
-.v-stake-card.s-con .stance{ color:var(--destructive); background:color-mix(in srgb, var(--destructive) 16%, transparent); }
-.v-stake-card .infl{ display:flex; gap:3px; flex-shrink:0; }
-.v-stake-card .infl i{ width:7px; height:7px; border-radius:50%; background:transparent; border:1px solid var(--border-strong); }
-.v-stake-card .infl i.on{ background:var(--primary); border-color:var(--primary); }
-.v-stake-card .why{ font-size:var(--text-2xs); line-height:1.55; color:var(--text-muted); }
+.v-stake-row .mood.s-con{ color:var(--warn); border-color:color-mix(in srgb, var(--warn) 45%, transparent); }
+.v-stake-row .mood.s-pro{ color:var(--success); border-color:color-mix(in srgb, var(--success) 45%, transparent); }
+/* The quote spans the whole row underneath it. */
+.v-stake-row .why{ grid-column:1 / -1; margin:2px 0 0; font-size:var(--text-3xs); font-style:italic; color:var(--text-muted); }
 
-/* Graphics + bullets means the document is scanned, not read: tighter list
-   rhythm, and the rare paragraph stays narrow. */
-.doc-body li{ margin-bottom:7px; }
-.doc-body h2 + .v-kpi, .doc-body h2 + .v-gap, .doc-body h2 + .v-flow,
-.doc-body h2 + .v-road, .doc-body h2 + .v-risk, .doc-body h2 + .v-stake{ margin-top:var(--sp-4); }
+@media (prefers-reduced-motion:reduce){
+  .v-gap-row .now{ animation:none; }
+}
 
-/* Visuals in print: keep them, drop the glow, never split one across pages */
 @media print{
-  .v-kpi, .v-gap-row, .v-flow, .v-road, .v-risk, .v-stake-card{ break-inside:avoid; }
+  .v-kpi, .v-gap-row, .v-flow, .v-road-phase, .v-risk, .v-stake-row{ break-inside:avoid; }
   .v-gap-row .goal{ box-shadow:none !important; background:#154E80 !important; }
   .v-gap-row .now{ background:#9aa3ad !important; }
-  .v-tile, .v-flow .step, .v-road-col .it, .v-risk .cell, .v-stake-card{
+  .v-tile, .v-flow .step, .v-risk .cell, .v-stake-row{
     border-color:#d5d8dd !important; background:#fff !important;
   }
   .v-flow .step.auto{ background:#e9eff6 !important; border-color:#154E80 !important; color:#0f3d66 !important; }
@@ -1363,9 +1393,8 @@ html.light .m-antenna{ stroke:color-mix(in srgb, var(--primary) 45%, transparent
   .v-tile b{ font-size:21px; }
   .v-flow-lane{ flex-direction:column; gap:6px; }
   .v-flow-lane .k{ width:auto; padding-top:0; }
-  .v-legend{ padding-left:0; }
-  .v-risk .grid{ grid-auto-rows:42px; }
-  .v-risk .ax-y, .v-risk .y-ticks{ height:134px; }
+  .v-risk .cell{ min-height:46px; }
+  .v-road-phase{ grid-template-columns:60px 1fr; gap:9px; }
 }
 
 @media (max-width:640px){
