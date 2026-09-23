@@ -25,11 +25,11 @@ function safeUrl(url: string): string {
 
 function inlineFmt(t: string): string {
   return t
-    .replace(/`([^`]+)`/g, '<code class="bg-zinc-100 dark:bg-zinc-700 px-1 py-0.5 rounded text-[11.5px] font-mono text-zinc-800 dark:text-zinc-200">$1</code>')
+    .replace(/`([^`]+)`/g, '<code class="md-tick">$1</code>')
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/\*([^*]+)\*/g, "<em class='opacity-80'>$1</em>")
     .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_m, label, url) =>
-      `<a href="${safeUrl(url)}" class="text-green-600 underline underline-offset-2 hover:text-green-700" target="_blank" rel="noopener noreferrer">${label}</a>`);
+      `<a href="${safeUrl(url)}" class="md-link" target="_blank" rel="noopener noreferrer">${label}</a>`);
 }
 
 function renderTable(rows: string[]): string {
@@ -40,15 +40,15 @@ function renderTable(rows: string[]): string {
   if (!dataRows.length) return "";
   const [head, ...body] = dataRows;
   const ths = parseRow(head).map(h =>
-    `<th class="px-3 py-2 text-left text-xs font-semibold text-zinc-600 dark:text-zinc-300 whitespace-nowrap">${inlineFmt(h)}</th>`
+    `<th>${inlineFmt(h)}</th>`
   ).join("");
   const trs = body.map(r => {
     const tds = parseRow(r).map(c =>
-      `<td class="px-3 py-2 text-xs text-zinc-700 dark:text-zinc-300 border-t border-zinc-100 dark:border-zinc-700">${inlineFmt(c)}</td>`
+      `<td>${inlineFmt(c)}</td>`
     ).join("");
-    return `<tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800/40">${tds}</tr>`;
+    return `<tr>${tds}</tr>`;
   }).join("");
-  return `<div class="overflow-x-auto my-3 rounded-lg border border-zinc-200 dark:border-zinc-700"><table class="w-full"><thead class="bg-zinc-50 dark:bg-zinc-800/60"><tr>${ths}</tr></thead><tbody>${trs}</tbody></table></div>`;
+  return `<div class="md-table"><table><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table></div>`;
 }
 
 export function md(raw: string): string {
@@ -78,7 +78,10 @@ export function md(raw: string): string {
       if (visual) { out.push(visual); continue; }
 
       out.push(
-        `<pre class="bg-zinc-950 dark:bg-zinc-950 text-zinc-100 rounded-xl p-4 overflow-x-auto my-4 text-[12.5px] font-mono leading-relaxed border border-zinc-800"><code>${escaped}</code></pre>`
+        // Hardcoded zinc classes before this: the block was the same near-black
+        // in both themes, and it ignored every token in the design system.
+        `<div class="md-code">${lang ? `<span class="md-code-lang">${lang}</span>` : ""}` +
+        `<pre><code>${escaped}</code></pre></div>`
       );
       continue;
     }
@@ -100,10 +103,10 @@ export function md(raw: string): string {
       const lvl = hm[1].length;
       const txt = inlineFmt(hm[2].trim());
       const cls = [
-        "text-[18px] font-bold text-zinc-900 dark:text-zinc-50 mt-6 mb-2 leading-tight",
-        "text-[15px] font-semibold text-zinc-800 dark:text-zinc-100 mt-5 mb-2 leading-tight",
-        "text-[13px] font-semibold text-zinc-700 dark:text-zinc-200 mt-4 mb-1.5 uppercase tracking-wide",
-        "text-[12px] font-semibold text-zinc-600 dark:text-zinc-300 mt-3 mb-1",
+        "md-h1",
+        "md-h2",
+        "md-h3",
+        "md-h4",
       ][lvl - 1] ?? "text-sm font-semibold mt-2 mb-1";
       out.push(`<h${lvl} class="${cls}">${txt}</h${lvl}>`);
       i++; continue;
@@ -111,7 +114,7 @@ export function md(raw: string): string {
 
     // Horizontal rule
     if (/^[-*_]{3,}$/.test(trimmed)) {
-      out.push('<hr class="border-zinc-200 dark:border-zinc-700 my-5" />');
+      out.push('<hr class="md-rule" />');
       i++; continue;
     }
 
@@ -119,10 +122,10 @@ export function md(raw: string): string {
     if (/^[-*•]\s/.test(trimmed)) {
       const items: string[] = [];
       while (i < lines.length && /^[-*•]\s/.test(lines[i].trim())) {
-        items.push(`<li class="leading-relaxed">${inlineFmt(lines[i].trim().replace(/^[-*•]\s/, ""))}</li>`);
+        items.push(`<li>${inlineFmt(lines[i].trim().replace(/^[-*•]\s/, ""))}</li>`);
         i++;
       }
-      out.push(`<ul class="my-2.5 ml-5 list-disc space-y-1 text-[13px] text-zinc-700 dark:text-zinc-300">${items.join("")}</ul>`);
+      out.push(`<ul class="md-ul">${items.join("")}</ul>`);
       continue;
     }
 
@@ -130,10 +133,10 @@ export function md(raw: string): string {
     if (/^\d+\.\s/.test(trimmed)) {
       const items: string[] = [];
       while (i < lines.length && /^\d+\.\s/.test(lines[i].trim())) {
-        items.push(`<li class="leading-relaxed">${inlineFmt(lines[i].trim().replace(/^\d+\.\s/, ""))}</li>`);
+        items.push(`<li>${inlineFmt(lines[i].trim().replace(/^\d+\.\s/, ""))}</li>`);
         i++;
       }
-      out.push(`<ol class="my-2.5 ml-5 list-decimal space-y-1 text-[13px] text-zinc-700 dark:text-zinc-300">${items.join("")}</ol>`);
+      out.push(`<ol class="md-ol">${items.join("")}</ol>`);
       continue;
     }
 
@@ -144,7 +147,7 @@ export function md(raw: string): string {
     }
 
     // Normal paragraph
-    out.push(`<p class="leading-relaxed text-[13.5px] text-zinc-800 dark:text-zinc-200">${inlineFmt(trimmed)}</p>`);
+    out.push(`<p>${inlineFmt(trimmed)}</p>`);
     i++;
   }
 

@@ -6,7 +6,7 @@ import { listMessages, addMessage, touchProjectActivity, renameFromFirstMessage,
 import { askAgent } from "@/lib/ask-agent";
 import { parseMarkers, looksLikeDocument, streamingText, streamIsDocument, type TopicMarker, type MemoryNote } from "@/lib/message-markers";
 import { loadAgentMemory, memoryLines, EMPTY_MEMORY, type AgentMemory } from "@/lib/agent-memory";
-import { DELIVERABLES } from "@/lib/deliverables";
+import { DELIVERABLES, isDeliverableCommand } from "@/lib/deliverables";
 import { methodLabel } from "@/lib/method-labels";
 import { levelFor, nextLevel, LEVEL_ORDER } from "@/lib/agent-progress";
 import { stageFor } from "@/lib/mascot-evolution";
@@ -444,7 +444,21 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
         )}
 
         {messages.map((m, i) => {
-          if (m.role === "user") return <div key={m.id} className="msg-user">{m.content}</div>;
+          if (m.role === "user") {
+            // The document buttons send their prompt as a user turn so the
+            // model has it. It is a command, not something the person wrote,
+            // so it shows as a single line instead of a wall of English in
+            // the middle of a German conversation.
+            if (isDeliverableCommand(m.content)) {
+              return (
+                <div key={m.id} className="msg-command">
+                  <IconRefresh size={11} />
+                  <span>You asked for the {deliverable.title}</span>
+                </div>
+              );
+            }
+            return <div key={m.id} className="msg-user">{m.content}</div>;
+          }
           const parsed = parseMarkers(m.content);
           const showChoices = i === lastAssistantIdx && parsed.choices.length > 0 && !sending;
           const isDoc = !!parsed.doc || looksLikeDocument(parsed.text, deliverable.title);

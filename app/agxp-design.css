@@ -508,8 +508,11 @@ html.light .panel{
 .msg-agent .txt > *:last-child{ margin-bottom:0; }
 .msg-user{
   align-self:flex-end; max-width:78%; background:var(--surface-elevated);
-  padding:12px 18px; border-radius:var(--r-pill); font-size:var(--text-sm); color:var(--text-primary);
-  line-height:1.55; white-space:pre-wrap;
+  padding:11px 16px; font-size:var(--text-sm); color:var(--text-primary);
+  line-height:1.55; white-space:pre-wrap; overflow-wrap:anywhere;
+  /* A pill is right for "yes" and absurd for four lines, so the radius is a
+     large fixed one instead — round on one line, a bubble on five. */
+  border-radius:18px 18px 6px 18px;
 }
 .msg-typing{ display:flex; align-items:center; gap:8px; font-size:var(--text-2xs); color:var(--text-muted); }
 /* Ported from Ana's repo: the waiting label sweeps, so it reads as live
@@ -2406,16 +2409,16 @@ html.light .es-shadow{ background:radial-gradient(closest-side, rgba(24,39,60,0.
   border-bottom:1px solid transparent;
   /* Regular, not clear: liquid-glass.md > Which variant — anything carrying
      a lot of text takes the variant that blurs and re-lumps the luminosity. */
-  background:color-mix(in srgb, var(--card) 72%, transparent);
-  backdrop-filter:blur(22px) saturate(150%);
-  -webkit-backdrop-filter:blur(22px) saturate(150%);
+  background:color-mix(in srgb, var(--card) 88%, transparent);
+  backdrop-filter:blur(26px) saturate(150%);
+  -webkit-backdrop-filter:blur(26px) saturate(150%);
   transition:border-color .2s var(--ease-out), background-color .2s var(--ease-out);
 }
 /* The hairline only appears once something has scrolled under it — Apple's
    scroll edge effect. At rest the head has no line to draw. */
 .chat-head.is-stuck{
   border-bottom-color:var(--border-soft);
-  background:color-mix(in srgb, var(--card) 86%, transparent);
+  background:color-mix(in srgb, var(--card) 96%, transparent);
 }
 
 /* The conversation starts below the glass and ends above the composer, but
@@ -2673,3 +2676,73 @@ html.light .who-face{
 
 /* The shortcut, printed in the menu item that uses it. */
 .mi-key{ margin-left:auto; font-size:var(--text-3xs); color:var(--text-muted); letter-spacing:0.04em; }
+
+/* ---------- RENDERED MARKDOWN ----------
+   Everything here used to be Tailwind zinc classes carried over from the old
+   app: `bg-zinc-950 dark:bg-zinc-950` meant the code block was the same
+   near-black on a white page, and none of it followed a single token. */
+
+.md-h1{ font-size:var(--text-lg); font-weight:700; color:var(--text-primary); line-height:1.25; margin:var(--sp-5) 0 var(--sp-2); }
+.md-h2{ font-size:var(--text-base); font-weight:650; color:var(--text-primary); line-height:1.3; margin:var(--sp-5) 0 var(--sp-2); }
+.md-h3{ font-size:var(--text-2xs); font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-secondary); margin:var(--sp-4) 0 6px; }
+.md-h4{ font-size:var(--text-2xs); font-weight:650; color:var(--text-secondary); margin:var(--sp-3) 0 4px; }
+.md-rule{ border:none; border-top:1px solid var(--border-soft); margin:var(--sp-5) 0; }
+.md-ul, .md-ol{ margin:10px 0; padding-left:20px; display:grid; gap:5px; font-size:var(--text-2xs); color:var(--text-secondary); }
+.md-ul{ list-style:disc; }
+.md-ol{ list-style:decimal; }
+.md-ul li, .md-ol li{ line-height:1.6; }
+.md-link{ color:var(--primary-soft); text-decoration:underline; text-underline-offset:2px; }
+@media (hover:hover) and (pointer:fine){ .md-link:hover{ color:var(--text-primary); } }
+
+/* Inline `code` — a tint of the accent, not a grey chip that fights the text. */
+.md-tick{
+  font-family:var(--font-mono); font-size:0.92em; padding:1px 5px; border-radius:5px;
+  color:var(--primary-soft);
+  background:color-mix(in srgb, var(--primary) 14%, transparent);
+}
+
+/* Fenced code. Scrolls sideways on its own instead of stretching the panel,
+   and carries a solid background of its own so it stays legible where it
+   passes under the glass head. */
+.md-code{
+  position:relative; margin:14px 0; border-radius:var(--r-md); overflow:hidden;
+  border:1px solid var(--border-soft); background:var(--surface-1);
+}
+.md-code-lang{
+  position:absolute; top:7px; right:10px; z-index:1;
+  font-family:var(--font-mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase;
+  color:var(--text-muted); pointer-events:none;
+}
+.md-code pre{
+  margin:0; padding:13px 14px; overflow-x:auto;
+  font-family:var(--font-mono); font-size:12px; line-height:1.65;
+  color:var(--text-primary); tab-size:2;
+}
+.md-code code{ white-space:pre; }
+.md-code pre::-webkit-scrollbar{ height:8px; }
+.md-code pre::-webkit-scrollbar-thumb{ background:var(--border-medium); border-radius:4px; }
+
+.md-table{ margin:12px 0; border-radius:var(--r-md); border:1px solid var(--border-soft); overflow:auto; }
+.md-table table{ width:100%; border-collapse:collapse; font-size:var(--text-2xs); }
+.md-table th{
+  padding:9px 11px; text-align:left; white-space:nowrap;
+  font-size:var(--text-3xs); font-weight:700; letter-spacing:0.07em; text-transform:uppercase;
+  color:var(--text-muted); background:color-mix(in srgb, var(--surface-2) 60%, transparent);
+}
+.md-table td{ padding:9px 11px; color:var(--text-secondary); border-top:1px solid var(--border-soft); vertical-align:top; }
+
+/* The agent's own paragraphs, inside a chat bubble or a document. */
+.msg-agent .txt p, .doc-body p{ margin:9px 0; }
+
+/* ---------- A COMMAND, NOT A SENTENCE ----------
+   "Create the document" sends its prompt as a user turn because the model
+   needs it. Shown as a bubble it was four lines of English dropped into a
+   German conversation, three times over. */
+.msg-command{
+  align-self:flex-end; display:inline-flex; align-items:center; gap:7px;
+  padding:6px 12px; border-radius:var(--r-pill);
+  font-size:var(--text-3xs); color:var(--text-muted);
+  border:1px dashed var(--border-medium);
+  background:color-mix(in srgb, var(--surface-1) 50%, transparent);
+}
+.msg-command svg{ flex-shrink:0; opacity:.7; }

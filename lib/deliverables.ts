@@ -72,6 +72,22 @@ const VISUAL_SPEC =
   "im Wortlaut der Betroffenen:\n" +
   "```agxp-stakeholders\nDisponenten | 5 | skeptisch | hoch | \"Kein Computer kennt die B75 besser\"\n```";
 
+/**
+ * Is this user message the button, rather than something the person typed?
+ *
+ * Pressing "Create document" sends generatePrompt as a user turn, because the
+ * model needs it in the conversation. But it is an instruction to the machine,
+ * not a sentence a consultant wrote, and showing it as a chat bubble put a
+ * four-line English command in the middle of a German conversation. The UI
+ * renders these as a one-line action instead.
+ */
+export function isDeliverableCommand(text: string): boolean {
+  const t = text.trim();
+  return Object.values(DELIVERABLES).some(
+    d => t === d.generatePrompt.trim() || t === d.regeneratePrompt.trim(),
+  );
+}
+
 export const DELIVERABLES: Record<AgentType, Deliverable> = {
   consultant: {
     title: "Transformation Concept",
