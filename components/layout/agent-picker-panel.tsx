@@ -76,7 +76,7 @@ const TYPE_CATALOG: Record<AgentType, TypeTemplate[]> = {
   ],
 };
 
-export function AgentPickerPanel({ role, project, agents, ensureProject, onAssigned, onAgentCreated, grow = 1, projectCounts = {}, assignedAgent, onChangeAgent }: {
+export function AgentPickerPanel({ role, project, agents, ensureProject, onAssigned, onAgentCreated, projectCounts = {}, assignedAgent, onChangeAgent }: {
   role: AgentType;
   /** Null until the project row exists — it's created lazily on the first real action. */
   project: Project | null;
@@ -84,8 +84,6 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   ensureProject: () => Promise<Project>;
   onAssigned: (project: Project) => void;
   onAgentCreated: (agent: Agent) => void;
-  /** How much of the row this panel takes (flex-grow). */
-  grow?: number;
   /** Projects each agent has worked on for this user — drives its level. */
   projectCounts?: Record<string, number>;
   /** Already chosen, but the chat has not started yet: show who it is. */
@@ -142,7 +140,7 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   if (assignedAgent) {
     const total = totalProjects(assignedAgent);
     return (
-      <section className={`panel ${role}`} style={{ flexGrow: grow }}>
+      <section className={`panel ${role}`}>
         <div className="panel-head">
           <AgentMascot role={role} size={59} enter level={assignedLevel} />
         </div>
@@ -160,7 +158,7 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   }
 
   return (
-    <section className={`panel ${role}`} style={{ flexGrow: grow }}>
+    <section className={`panel ${role}`}>
       <div className="panel-head">
         <AgentMascot role={role} size={44} enter level={trainedLevel} />
         <div style={{ minWidth: 0, flex: 1 }}>

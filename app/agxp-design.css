@@ -1328,9 +1328,9 @@ html.light .m-antenna{ stroke:color-mix(in srgb, var(--primary) 45%, transparent
   }
 
   /* One panel at a time — the hidden one keeps its state, it just isn't drawn */
-  main.workspace[data-active="coach"] .panel.consultant,
-  main.workspace[data-active="consultant"] .panel.coach{ display:none; }
-  .panel, .panel.primary{ flex:1; }
+  main.workspace[data-active="coach"] .slot[data-role="consultant"],
+  main.workspace[data-active="consultant"] .slot[data-role="coach"]{ display:none; }
+  .slot, .panel, .panel.primary{ flex:1; }
 
   /* Header: the brand shrinks to the mark, the nav scrolls if it has to */
   .app > header{ padding:0 var(--sp-5); gap:10px; }
@@ -1808,8 +1808,8 @@ html.light .ico-when-dark{ display:none; }
    ============================================================================= */
 
 /* --- Swapping the two panels: each one comes in from where the other was --- */
-main.workspace.swapping > .panel:first-child{ animation:swapFromRight 400ms var(--ease-out); }
-main.workspace.swapping > .panel:last-child{ animation:swapFromLeft 400ms var(--ease-out); }
+main.workspace.swapping > .slot[data-role="consultant"]{ animation:swapFromRight 400ms var(--ease-out); }
+main.workspace.swapping > .slot[data-role="coach"]{ animation:swapFromLeft 400ms var(--ease-out); }
 @keyframes swapFromRight{
   from{ opacity:.3; transform:translateX(30px); }
   to{ opacity:1; transform:none; }
@@ -1843,10 +1843,13 @@ main.workspace.swapping > .panel:last-child{ animation:swapFromLeft 400ms var(--
   to{ opacity:1; transform:none; }
 }
 
-/* --- Messages arrive, they don't pop into existence --- */
-.msg-agent, .msg-user{ animation:msgIn 240ms var(--ease-out); }
+/* --- Messages arrive, they don't pop into existence ---
+   Defined once. A second @keyframes msgIn further down the file would
+   silently replace this one everywhere, which is the sort of thing you only
+   find by wondering why a number you changed did nothing. */
+.msg-agent, .msg-user{ animation:msgIn 420ms var(--ease-out) backwards; }
 @keyframes msgIn{
-  from{ opacity:0; transform:translateY(8px); }
+  from{ opacity:0; transform:translateY(9px); }
   to{ opacity:1; transform:none; }
 }
 .msg-user{ transform-origin:bottom right; }
@@ -1861,7 +1864,7 @@ main.workspace.swapping > .panel:last-child{ animation:swapFromLeft 400ms var(--
 /* --- Stacked layout: the panel you switch to slides in (a display:none
        element restarts its animation when it becomes visible) --- */
 @media (max-width:1000px){
-  main.workspace > .panel{ animation:paneIn 300ms var(--ease-out); }
+  main.workspace > .slot > .panel{ animation:paneIn 300ms var(--ease-out); }
   @keyframes paneIn{
     from{ opacity:0; transform:translateY(8px) scale(.995); }
     to{ opacity:1; transform:none; }
@@ -1909,11 +1912,12 @@ main.workspace.swapping > .panel:last-child{ animation:swapFromLeft 400ms var(--
 
 /* Everything above is decoration: it all goes when the system asks for calm. */
 @media (prefers-reduced-motion:reduce){
-  main.workspace.swapping > .panel,
+  main.workspace.swapping > .slot,
   .panel > .chat-head, .panel > .chat-body, .panel > .chat-input,
   .panel > .panel-head, .panel > .pick-empty,
   .msg-agent, .msg-user, .sugg-item,
-  main.workspace > .panel,
+  main.workspace > .slot > .panel,
+  .coach-pill, .coach-pill.raised .cp-face, .coach-slot.sheet, .panel.is-idle.has-unread .who-face::after,
   .is-thinking .m-head, .is-thinking .m-eyes, .is-working .m-head, .is-working .m-eyes, .is-speaking.mascot,
   .level-up::after, .doc-pill.ready{
     animation:none !important;
@@ -2239,13 +2243,11 @@ html.light .picker-card::after{ background:linear-gradient(100deg, transparent, 
 
 /* Wide enough for two cards side by side. They stay short: the agent's head
    lives at the top of the panel now, so there is nothing to make room for. */
+/* Superseded by the 480px block at the end of this file, which is where the
+   row/column decision lives now. Centring went with it: B's cards are left
+   aligned in both directions, and having two rules disagree about it meant
+   the answer depended on which one happened to be later. */
 @container panel (min-width: 560px){
-  .pick-cards{ flex-direction:row; max-width:640px; }
-  .picker-card{
-    flex:1 1 0; align-items:center; text-align:center;
-    min-height:230px; padding:var(--sp-6) var(--sp-5); gap:var(--sp-4);
-  }
-  .picker-card-head{ align-items:center; }
   .picker-card-icon{ margin-bottom:2px; }
   .picker-card-cta{ height:52px; }
 }
@@ -2746,3 +2748,849 @@ html.light .who-face{
   background:color-mix(in srgb, var(--surface-1) 50%, transparent);
 }
 .msg-command svg{ flex-shrink:0; opacity:.7; }
+
+/* =============================================================================
+   TWO CHATS, ONE SCREEN — agreed with Patryk, 2026-09-25.
+
+   Three states, one mounted Coach panel:
+     split  the two conversations side by side, the lead one holding the room
+     min    the Coach folded away to a pill in the top corner
+     sheet  the pill opened, the Coach over the Consultant
+
+   The Coach never leaves the DOM. A slot around each panel owns the share of
+   the row, so the Coach can become an overlay without being moved to another
+   parent — which would remount it and throw away a reply mid-stream.
+   ============================================================================= */
+
+.slot{
+  display:flex; min-width:0; flex:1 1 0;
+  transition:flex-grow 340ms var(--ease-out);
+}
+.slot > .panel{ flex:1 1 auto; width:100%; }
+
+main.workspace{ position:relative; }
+
+/* --- min: gone from the row, still alive --- */
+.coach-slot.min{ display:none; }
+main.workspace[data-coach="min"] .slot[data-role="consultant"],
+main.workspace[data-coach="sheet"] .slot[data-role="consultant"]{ flex-grow:1; }
+
+/* --- sheet: the Coach over the Consultant, not instead of it --- */
+/* An absolutely positioned child resolves against the workspace's PADDING
+   box, so right/bottom:0 would hang the sheet past the gutter the panels sit
+   inside and make the layout look lopsided. It repeats the padding instead. */
+.coach-slot.sheet{
+  position:absolute; z-index:6; top:0; right:var(--sp-6); bottom:var(--sp-6);
+  width:min(560px, 52%); flex:none;
+  animation:coachSheetIn 320ms var(--ease-out);
+}
+.coach-slot.sheet > .panel{
+  border-color:var(--border-medium);
+  box-shadow:0 34px 90px -26px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.03);
+}
+@keyframes coachSheetIn{
+  from{ opacity:0; transform:translateX(26px) scale(.985); }
+  to{ opacity:1; transform:none; }
+}
+.coach-scrim{
+  position:absolute; inset:0; z-index:5; border:none; padding:0; cursor:default;
+  background:color-mix(in srgb, var(--background) 52%, transparent);
+  backdrop-filter:blur(1.5px);
+  animation:fadeIn 220ms var(--ease-out);
+}
+/* The sheet's handle lives in a gutter above the panel, not on top of the
+   panel head — the head already carries the agent button and the doc pill,
+   and two rows of controls fighting for the same corner is how you get a
+   "Dock" button sitting on someone's name. */
+.coach-slot.sheet{ padding-top:32px; }
+.sheet-grip{
+  position:absolute; z-index:2; top:2px; right:6px; display:flex; gap:6px;
+}
+.sg-btn{
+  display:inline-flex; align-items:center; gap:6px; height:24px; padding:0 10px;
+  border-radius:var(--r-pill); border:1px solid var(--border-soft);
+  background:var(--surface-2); color:var(--text-muted);
+  font-size:var(--text-3xs); font-weight:600;
+  transition:color .15s var(--ease-out), border-color .15s var(--ease-out);
+}
+@media (hover:hover) and (pointer:fine){
+  .sg-btn:hover{ color:var(--text-primary); border-color:var(--border-strong); }
+}
+
+/* --- The pill: the Coach raising a hand ---
+   Top right, never bottom right: Patryk asked for it "ein bisschen weiter
+   oben", so it can't sit over the composer or the answer buttons. */
+/* Folding the Coach away opens a gutter above the row for the pill to live
+   in. Floating it over the panel put it straight on top of the Consultant's
+   name and the document pill — which is the exact thing Patryk asked us to
+   avoid, just at the other corner. */
+main.workspace[data-coach="min"]{ padding-top:54px; }
+.coach-pill{
+  position:absolute; z-index:7; top:6px; right:var(--sp-6); max-width:340px;
+  display:flex; align-items:center; gap:12px; text-align:left;
+  padding:9px 16px 9px 9px; border-radius:var(--r-pill);
+  border:1px solid var(--border-medium); background:var(--surface-2);
+  box-shadow:0 18px 44px -20px rgba(0,0,0,0.8);
+  animation:coachPillIn 340ms var(--ease-out) backwards;
+  transition:border-color .18s var(--ease-out), transform .18s var(--ease-out), box-shadow .18s var(--ease-out);
+}
+@keyframes coachPillIn{
+  from{ opacity:0; transform:translateY(-8px) scale(.96); }
+  to{ opacity:1; transform:none; }
+}
+.cp-face{
+  position:relative; flex-shrink:0; width:38px; height:38px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background:color-mix(in srgb, var(--primary) 16%, transparent);
+  border:1px solid color-mix(in srgb, var(--primary) 34%, transparent);
+}
+.cp-face .mascot{ width:32px !important; height:32px !important; }
+.cp-dot{
+  position:absolute; top:-1px; right:-1px; width:11px; height:11px; border-radius:50%;
+  background:var(--primary-soft); box-shadow:0 0 0 2px var(--surface-2);
+}
+.cp-txt{ min-width:0; display:flex; flex-direction:column; gap:2px; }
+.cp-n{ font-size:var(--text-xs); font-weight:650; color:var(--text-primary); letter-spacing:-0.1px; }
+.cp-l{
+  font-size:var(--text-3xs); color:var(--text-muted); line-height:1.45;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+}
+@media (hover:hover) and (pointer:fine){
+  .coach-pill:hover{ transform:translateY(-1px); border-color:var(--border-strong);
+    box-shadow:0 22px 52px -20px rgba(0,0,0,0.85); }
+}
+.coach-pill:active{ transform:scale(0.985); }
+/* It only asks for attention when it has something to say. */
+.coach-pill.raised{ border-color:color-mix(in srgb, var(--primary) 46%, transparent); }
+.coach-pill.raised .cp-face{ animation:coachRaise 2.8s var(--ease-out) infinite; }
+@keyframes coachRaise{
+  0%, 100%{ box-shadow:0 0 0 0 color-mix(in srgb, var(--primary-soft) 40%, transparent); }
+  60%{ box-shadow:0 0 0 13px transparent; }
+}
+
+/* --- J: the narrow panel says what it is doing ---
+   Squeezed to a third of the row it used to look switched off. It isn't: it
+   is waiting, and when it has answered it says so where the answer is. */
+.panel.is-idle{ opacity:.94; }
+.panel.is-idle .chat-body{ --idle-dim:1; }
+.panel.is-idle.has-unread{
+  opacity:1; border-color:color-mix(in srgb, var(--primary) 34%, transparent);
+}
+.panel.is-idle.has-unread .who-face::after{
+  border-color:color-mix(in srgb, var(--primary) 50%, transparent);
+  animation:idleWaiting 2.6s var(--ease-out) infinite;
+}
+@keyframes idleWaiting{
+  0%, 100%{ box-shadow:0 0 0 0 color-mix(in srgb, var(--primary-soft) 34%, transparent); }
+  60%{ box-shadow:0 0 0 11px transparent; }
+}
+
+.head-unread{
+  display:inline-flex; align-items:center; gap:7px; height:26px; padding:0 11px;
+  border-radius:var(--r-pill); border:1px solid color-mix(in srgb, var(--primary) 45%, transparent);
+  background:color-mix(in srgb, var(--primary) 14%, transparent);
+  color:var(--text-primary); font-size:var(--text-3xs); font-weight:650;
+  letter-spacing:0.05em; text-transform:uppercase; flex-shrink:0;
+}
+.hu-dot{ width:6px; height:6px; border-radius:50%; background:var(--primary-soft); flex-shrink:0; }
+@media (hover:hover) and (pointer:fine){
+  .head-unread:hover{ background:color-mix(in srgb, var(--primary) 22%, transparent); }
+}
+
+.head-min{
+  width:28px; height:28px; border-radius:8px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  border:1px solid transparent; background:transparent; color:var(--text-muted);
+  transition:color .15s var(--ease-out), background-color .15s var(--ease-out);
+}
+@media (hover:hover) and (pointer:fine){
+  .head-min:hover{ color:var(--text-primary); background:rgba(255,255,255,0.06); }
+}
+html.light .head-min:hover{ background:rgba(0,0,0,0.05); }
+
+/* =============================================================================
+   THE B SKIN — the mockup Patryk picked on 2026-09-25 ("Design 2"), applied
+   over the layout we already had rather than replacing it. What makes B look
+   like B is four things, and only four:
+
+     1. one near-black blue world, lit from above by a single bloom
+     2. three typefaces with one job each, and labels set in tracked-out mono
+     3. primary surfaces are the PALE end of the blue with dark ink on them,
+        not dark blue with white ink
+     4. the agent speaks in bare text; only the user gets a bubble
+
+   This block sits last on purpose: it restyles rules defined earlier in this
+   file at the same specificity, so the cascade does the overriding and the
+   originals stay readable where they are.
+   ============================================================================= */
+
+/* --- 1. The lit room ------------------------------------------------------ */
+.app{
+  background:
+    radial-gradient(64% 46% at 50% -6%, color-mix(in srgb, var(--primary-soft) 15%, transparent), transparent 70%),
+    radial-gradient(42% 40% at 100% 104%, color-mix(in srgb, var(--primary) 16%, transparent), transparent 72%),
+    var(--background);
+}
+html.light .app{
+  background:
+    radial-gradient(64% 46% at 50% -6%, color-mix(in srgb, var(--primary-soft) 9%, transparent), transparent 70%),
+    radial-gradient(42% 40% at 100% 104%, color-mix(in srgb, var(--primary) 7%, transparent), transparent 72%),
+    var(--background);
+}
+.panel{ border-radius:22px; }
+.coach-slot.sheet > .panel{ border-radius:22px; }
+
+/* --- 2. Typography -------------------------------------------------------- */
+/* Space Grotesk carries names, headings and numbers — the things you look AT.
+   Inter carries the things you read THROUGH. */
+.brand-text .name,
+.page-head h1, .modal h2, .sheet-head h2,
+.pane-title, .empty-title,
+.chat-head .n, .who-btn .n,
+.pr-name, .dr-name, .sel-name,
+.stat-value, .detail-row-inline b,
+.doc-body h1, .doc-body h2, .md-h1, .md-h2{
+  font-family:var(--font-display);
+  letter-spacing:-0.025em;
+}
+.page-head h1, .modal h2, .sheet-head h2{ font-weight:600; }
+
+/* The small uppercase labels are the mockup's signature: mono, tracked wide,
+   quiet. They were sans-serif and only half as tracked out, which read as
+   "small text" rather than as a label. */
+.brand-text .sub,
+.role-eyebrow, .step-eyebrow, .stat-label, .list-section-label,
+.data-head span, .dr-methods .mlabel,
+.field label, .modal .field label, .sheet-body .field label,
+.detail-section .lbl, .detail-row-inline .lbl,
+.hp-grp .lbl, .hp-stats .lbl,
+.chat-head .r, .dr-kind{
+  font-family:var(--font-mono);
+  letter-spacing:0.19em;
+  font-weight:500;
+}
+
+/* --- 3. Primary surfaces: pale blue, dark ink ----------------------------- */
+.btn-hero, .btn-plum, .btn-solid,
+.detail-select-btn, .btn-primary-wide, .progress-banner .ready-cta,
+.deliv-rail.ready .dr-cta, .deliv-rail.done .dr-cta,
+.composer-send{
+  background:var(--primary-grad);
+  border-color:transparent;
+  box-shadow:0 14px 34px -16px color-mix(in srgb, var(--primary-soft) 85%, transparent),
+             inset 0 1px 0 rgba(255,255,255,0.35);
+}
+.composer-send{ box-shadow:0 8px 20px -10px color-mix(in srgb, var(--primary-soft) 85%, transparent); }
+/* A gradient can't be transitioned to a flat colour, so hover brightens the
+   same fill instead of swapping it — otherwise every hover snapped. */
+@media (hover:hover) and (pointer:fine){
+  .btn-hero:hover:not(:disabled), .btn-plum:hover:not(:disabled), .btn-solid:hover:not(:disabled),
+  .detail-select-btn:hover:not(:disabled), .btn-primary-wide:hover:not(:disabled),
+  .progress-banner .ready-cta:hover:not(:disabled), .composer-send:hover:not(:disabled){
+    background:var(--primary-grad); filter:brightness(1.07); transform:translateY(-1px);
+  }
+}
+.btn-hero:disabled, .btn-solid:disabled, .detail-select-btn:disabled, .btn-primary-wide:disabled{
+  background:var(--secondary); box-shadow:none; filter:none; color:var(--text-muted);
+}
+
+/* --- 4. Who gets a bubble ------------------------------------------------- */
+/* The agent still speaks in bare text (Ana's call, kept). The user's bubble
+   becomes the mockup's deep blue gradient — it is the one warm object on the
+   screen, and it marks which half of the conversation is yours at a glance. */
+.msg-user{
+  background:linear-gradient(140deg,
+    color-mix(in srgb, var(--primary-soft) 78%, #0A1526),
+    color-mix(in srgb, var(--primary) 84%, #05090F));
+  color:#E9F1FD;
+  border-radius:20px 20px 6px 20px;
+  box-shadow:0 16px 34px -18px color-mix(in srgb, var(--primary) 90%, transparent);
+}
+html.light .msg-user{ color:#F2F7FF; }
+
+/* B sets the agent's prose a shade softer than a heading — mixed from the
+   tokens rather than hardcoded, so it follows both themes and the accent. */
+.msg-agent .txt{
+  font-size:var(--text-base); line-height:1.7;
+  color:color-mix(in srgb, var(--foreground) 88%, var(--muted-foreground));
+}
+
+/* The suggested answers are rows you hit with a number key. B draws them as
+   separate cards with air between them instead of one divided block, and
+   gives the first one the accent — it is the option the model put first, and
+   it is the one "1" answers. */
+.sugg-list{
+  gap:8px; margin-top:12px; max-width:470px;
+  border:none; border-radius:0; overflow:visible;
+}
+.sugg-item{
+  padding:13px 15px; border-radius:14px;
+  border:1px solid var(--border-soft); border-bottom:1px solid var(--border-soft);
+  background:color-mix(in srgb, var(--surface-1) 55%, transparent);
+  font-size:var(--text-sm); color:var(--text-secondary);
+}
+.sugg-item:first-child{
+  border-color:color-mix(in srgb, var(--primary-soft) 34%, transparent);
+  background:color-mix(in srgb, var(--primary-soft) 10%, transparent);
+  color:var(--text-primary);
+}
+.sugg-item:first-child .sugg-key{
+  color:var(--primary-foreground); background:var(--primary-grad); border-color:transparent;
+}
+.sugg-key{ width:21px; height:21px; border-radius:7px; font-family:var(--font-mono); font-size:10.5px; }
+
+/* --- Stacked: there is no second panel to fold away ----------------------- */
+/* Deliberately the last thing in the file. These undo rules that the B skin
+   block above sets unconditionally, and a media query adds no specificity —
+   put anywhere earlier they simply lose to it. */
+@media (max-width:1000px){
+  .head-min, .coach-pill, .coach-scrim, .sheet-grip{ display:none !important; }
+  main.workspace[data-coach="min"]{ padding-top:0; }
+  .coach-slot.min, .coach-slot.sheet{
+    display:flex; position:static; inset:auto; width:auto;
+    padding-top:0; box-shadow:none; animation:none;
+  }
+  /* !important because the share of the row is an inline style: folded away,
+     the Coach's share is 0, and stacked that collapsed the panel to nothing
+     the moment you tapped its tab. Stacked there is only ever one panel
+     visible, so the split is meaningless here anyway. */
+  main.workspace > .slot{ flex:1 1 auto !important; }
+}
+
+/* =============================================================================
+   THE B SKIN, PART 2 — the screens the first pass never touched.
+
+   Part 1 above moved the tokens, the type and the primary surfaces, which is
+   invisible on any screen that doesn't happen to contain a primary button.
+   The agent picker and the chat both look exactly as they did. This block is
+   the actual B pass on those two: B2's card deck reading as our list, and
+   B3's orbiting head and segmented progress on our two-panel chat.
+   ============================================================================= */
+
+/* --- The panel head: eyebrow over a display headline (B2) ----------------- */
+.panel-head{ padding:var(--sp-6) var(--sp-6) var(--sp-5); align-items:center; }
+.panel-head > div::before{
+  display:block; margin-bottom:7px;
+  font-family:var(--font-mono); font-size:var(--text-3xs); font-weight:500;
+  letter-spacing:0.28em; text-transform:uppercase; color:var(--text-muted);
+}
+.panel.consultant .panel-head > div::before{ content:"Step 1 — the consultant seat"; }
+.panel.coach .panel-head > div::before{ content:"Step 2 — the coach seat"; }
+.panel-head h2{
+  font-family:var(--font-display); font-size:26px; font-weight:600;
+  letter-spacing:-0.035em; line-height:1.1;
+}
+.panel-head .sub{ font-size:var(--text-xs); color:var(--text-secondary); margin-top:7px; max-width:34ch; }
+
+/* --- The two ways in: B's flat dark cards, not frosted glass -------------- */
+/* Ana's version was a glass panel lit from inside. B's are quieter and much
+   darker, and all the light in them is in the button — which is what makes
+   the button read as the thing to press. */
+.picker-card{
+  border-radius:22px; padding:var(--sp-6); gap:var(--sp-5);
+  background:linear-gradient(165deg,
+    color-mix(in srgb, var(--card) 96%, #FFFFFF 4%),
+    color-mix(in srgb, var(--background) 92%, #000000));
+  border:1px solid var(--border);
+  backdrop-filter:none;
+  box-shadow:0 40px 80px -34px #000, inset 0 1px 0 rgba(255,255,255,0.05);
+}
+html.light .picker-card{
+  background:linear-gradient(165deg, #FFFFFF, color-mix(in srgb, var(--background) 82%, #FFFFFF));
+  box-shadow:0 24px 50px -30px rgba(24,39,60,0.40), inset 0 1px 0 #FFFFFF;
+}
+/* .pick-empty centres its content, which the card was inheriting: a left
+   aligned title over a centred sentence, with the icon floating in the
+   middle. B's cards are left-aligned all the way down. */
+.pick-empty .picker-card, .picker-card-head, .picker-card-icon{ text-align:left; align-self:flex-start; }
+.picker-card-head{ align-self:stretch; }
+.picker-card-title{ font-family:var(--font-display); font-size:22px; font-weight:600; letter-spacing:-0.03em; }
+.picker-card-desc{ font-size:var(--text-xs); color:var(--text-muted); line-height:1.6; }
+.picker-card-cta{
+  height:46px; border-radius:13px; padding:0 var(--sp-5);
+  color:var(--primary-foreground); font-weight:600;
+  background:var(--primary-grad);
+  border:1px solid transparent;
+  box-shadow:0 16px 38px -14px color-mix(in srgb, var(--primary-soft) 90%, transparent),
+             inset 0 1px 0 rgba(255,255,255,0.4);
+}
+@media (hover:hover) and (pointer:fine){
+  .picker-card:hover:not(:disabled) .picker-card-cta{ background:var(--primary-grad); filter:brightness(1.07); }
+}
+.picker-card-icon{
+  border-radius:14px;
+  background:color-mix(in srgb, var(--primary-soft) 14%, transparent);
+  border:1px solid color-mix(in srgb, var(--primary-soft) 30%, transparent);
+  color:var(--primary-soft);
+}
+
+/* --- The agent list stays a list (Patryk chose it over the carousel), but
+       each row becomes one of B's cards instead of a divided table row. ---- */
+.directory{ padding:var(--sp-2) var(--sp-5) var(--sp-5); display:flex; flex-direction:column; gap:var(--sp-3); }
+.dir-row{
+  padding:var(--sp-5); border-radius:20px;
+  border:1px solid var(--border);
+  background:linear-gradient(165deg,
+    color-mix(in srgb, var(--card) 92%, transparent),
+    color-mix(in srgb, var(--background) 80%, transparent));
+  box-shadow:0 26px 56px -34px #000;
+  transition:transform .2s var(--ease-out), border-color .2s var(--ease-out), box-shadow .2s var(--ease-out);
+}
+html.light .dir-row{
+  background:#FFFFFF;
+  box-shadow:0 14px 32px -26px rgba(24,39,60,0.45);
+}
+/* B gives the recommended card the accent and a halo. Here that is the first
+   row, which is the agent this user has worked with most. */
+.dir-row:first-child{
+  border-color:color-mix(in srgb, var(--primary-soft) 36%, transparent);
+  background:linear-gradient(165deg,
+    color-mix(in srgb, var(--primary-soft) 11%, var(--card)),
+    color-mix(in srgb, var(--background) 82%, transparent));
+}
+@media (hover:hover) and (pointer:fine){
+  .dir-row:hover{
+    transform:translateY(-2px);
+    border-color:color-mix(in srgb, var(--primary-soft) 45%, transparent);
+    box-shadow:0 34px 66px -32px #000;
+  }
+}
+.dr-name{ font-family:var(--font-display); font-size:19px; font-weight:600; letter-spacing:-0.03em; }
+.dr-sub{ font-size:var(--text-xs); color:var(--text-muted); margin-top:5px; line-height:1.55; }
+.dr-foot{ margin-top:var(--sp-5); align-items:center; }
+.dr-select{
+  height:34px; padding:0 15px; border-radius:11px;
+  color:var(--primary-foreground); background:var(--primary-grad); border-color:transparent;
+  font-weight:600;
+  box-shadow:0 12px 28px -14px color-mix(in srgb, var(--primary-soft) 85%, transparent);
+}
+.dr-row-gap{ display:none; }
+.list-section-label{ padding:var(--sp-5) var(--sp-5) var(--sp-3); }
+.list-toolbar{ padding:var(--sp-4) var(--sp-5); border-bottom:none; }
+
+/* --- B3's head: the agent sits inside an orbit ---------------------------- */
+/* The one thing every B board has in common. An ellipse seen almost edge-on,
+   turning slowly — cheap (one transform, composited) and it is what makes
+   the mascot read as a presence rather than an avatar. */
+.who-face{ overflow:visible; }
+.who-face::before{
+  content:""; position:absolute; left:50%; top:50%; width:104%; height:104%;
+  margin:-52% 0 0 -52%; border-radius:50%; pointer-events:none;
+  border:1px solid color-mix(in srgb, var(--primary-soft) 30%, transparent);
+  transform:rotateX(74deg) rotate(0deg);
+  animation:faceOrbit 22s linear infinite;
+}
+@keyframes faceOrbit{ to{ transform:rotateX(74deg) rotate(360deg); } }
+.panel .who-face:has(.is-thinking)::before,
+.panel .who-face:has(.is-working)::before,
+.panel .who-face:has(.is-speaking)::before{
+  border-color:color-mix(in srgb, var(--primary-soft) 62%, transparent);
+  animation-duration:7s;
+}
+.cp-face{ overflow:visible; }
+
+/* --- B3's progress: eight ticks, not one bar ------------------------------ */
+/* .deliv-rail already knows how many stations there are (--dr-steps), so the
+   bar is cut into exactly that many ticks with a mask instead of the markup
+   growing a span per station. */
+.dr-bar{
+  height:4px; border-radius:0; background:var(--border-medium); overflow:visible;
+  --dr-gap:4px;
+  --dr-seg:calc((100% - (var(--dr-steps, 8) - 1) * var(--dr-gap)) / var(--dr-steps, 8));
+  -webkit-mask-image:repeating-linear-gradient(90deg, #000 0 var(--dr-seg), transparent var(--dr-seg) calc(var(--dr-seg) + var(--dr-gap)));
+  mask-image:repeating-linear-gradient(90deg, #000 0 var(--dr-seg), transparent var(--dr-seg) calc(var(--dr-seg) + var(--dr-gap)));
+}
+.dr-bar > span{ border-radius:0; }
+.doc-pill span{ font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.04em; }
+
+/* --- The conversation gets B's air ---------------------------------------
+   Longhands, not the `padding` shorthand: the head is a glass bar floating
+   over this list, and the only thing keeping the first message out from
+   under it is a padding-top set further up. A shorthand here quietly reset
+   that to 32px and the conversation started behind the agent's name. */
+.chat-body{
+  padding-left:var(--sp-6); padding-right:var(--sp-6); padding-bottom:var(--sp-4);
+  gap:var(--sp-5);
+}
+.msg-agent{ max-width:74%; }
+
+/* =============================================================================
+   THE B SKIN, PART 3 — the room itself.
+
+   Parts 1 and 2 did the tokens and the two screens. This is everything that
+   is not a component: the light in the room, the header, the thinking state,
+   and the seam between the two conversations.
+   ============================================================================= */
+
+/* --- The lit room, properly ----------------------------------------------
+   Three stacked layers, all pointer-transparent and none of them in the way
+   of a click: a dot grid that only exists near the middle, two slow auroras,
+   and film grain over the lot. Grain is what stops a near-black gradient
+   banding into visible stripes on a cheap panel. */
+.view-root, .app > header{ position:relative; }
+.view-root{ z-index:1; }
+.app::before, .app::after{ content:""; position:absolute; inset:0; pointer-events:none; z-index:0; }
+
+/* Dot grid, masked to a soft oval so it fades out before it reaches an edge. */
+.app::before{
+  background-image:radial-gradient(color-mix(in srgb, var(--primary-soft) 26%, transparent) 1px, transparent 1.4px);
+  background-size:26px 26px;
+  -webkit-mask-image:radial-gradient(58% 48% at 50% 34%, #000, transparent 76%);
+  mask-image:radial-gradient(58% 48% at 50% 34%, #000, transparent 76%);
+  opacity:.5;
+  animation:gridDrift 70s linear infinite;
+}
+@keyframes gridDrift{ to{ background-position:26px 52px; } }
+html.light .app::before{ opacity:.34; }
+
+/* Grain. An inline SVG turbulence, so it costs no request and no image file. */
+.app::after{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  opacity:.035; mix-blend-mode:overlay;
+}
+html.light .app::after{ opacity:.022; }
+
+/* The auroras live on the workspace, so they sit behind the panels and move
+   with them rather than behind the header too. */
+main.workspace::before, main.workspace::after{
+  content:""; position:absolute; border-radius:50%; pointer-events:none; z-index:0;
+  filter:blur(90px);
+}
+main.workspace::before{
+  width:46vw; height:46vw; left:-6%; top:-28%;
+  background:radial-gradient(circle, color-mix(in srgb, var(--primary-soft) 22%, transparent), transparent 70%);
+  animation:auroraA 44s ease-in-out infinite;
+}
+main.workspace::after{
+  width:38vw; height:38vw; right:-8%; bottom:-24%;
+  background:radial-gradient(circle, color-mix(in srgb, var(--primary) 26%, transparent), transparent 72%);
+  animation:auroraB 58s ease-in-out infinite;
+}
+@keyframes auroraA{ 0%,100%{ transform:translate(0,0) scale(1); } 50%{ transform:translate(5%,4%) scale(1.12); } }
+@keyframes auroraB{ 0%,100%{ transform:translate(0,0) scale(1); } 50%{ transform:translate(-4%,-5%) scale(1.09); } }
+/* Only the slots. `> *` also matched the pill and the scrim, whose own
+   z-index is lower in specificity than this rule — it quietly flattened
+   the overlay stack and left the sheet working by DOM order alone. */
+main.workspace > .slot{ position:relative; z-index:1; }
+/* ...and the sheet is a slot too, so it has to out-specify that rule to stay
+   on top of the conversation it is covering. */
+main.workspace > .coach-slot.sheet{ position:absolute; z-index:6; }
+
+/* --- The header ----------------------------------------------------------- */
+.app > header{
+  height:64px; padding:0 22px;
+  background:linear-gradient(180deg,
+    color-mix(in srgb, var(--background) 92%, transparent),
+    color-mix(in srgb, var(--background) 66%, transparent));
+  border-bottom:none;
+  backdrop-filter:blur(16px) saturate(140%);
+}
+/* A lit hairline instead of a border: brightest under the brand, gone by the
+   right edge — the same trick the panels use along their own top. */
+.app > header::after{
+  content:""; position:absolute; left:0; right:0; bottom:0; height:1px; pointer-events:none;
+  background:linear-gradient(90deg,
+    color-mix(in srgb, var(--primary-soft) 45%, transparent),
+    var(--border) 38%, transparent);
+}
+.brand-mark{
+  width:30px; height:30px; border-radius:10px;
+  background:linear-gradient(150deg, color-mix(in srgb, var(--primary-soft) 55%, #FFFFFF), var(--primary));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.45),
+             0 8px 20px -8px color-mix(in srgb, var(--primary-soft) 85%, transparent);
+}
+.brand-mark svg{ stroke:var(--primary-foreground); opacity:1; }
+.brand-mark::after{
+  background:var(--primary-soft);
+  animation:brandPing 3.6s var(--ease-out) infinite;
+}
+@keyframes brandPing{
+  0%, 100%{ box-shadow:0 0 0 0 color-mix(in srgb, var(--primary-soft) 55%, transparent); }
+  55%{ box-shadow:0 0 0 6px transparent; }
+}
+.brand-text .name{ font-family:var(--font-display); font-size:15px; font-weight:600; letter-spacing:-0.025em; }
+.brand-text .sub{ font-family:var(--font-mono); letter-spacing:0.3em; font-weight:500; }
+
+nav{
+  margin-left:26px; gap:2px; padding:3px; border-radius:var(--r-pill);
+  background:color-mix(in srgb, var(--foreground) 4%, transparent);
+  border:1px solid var(--border);
+}
+nav button{
+  font-family:var(--font-mono); font-size:var(--text-3xs); letter-spacing:0.13em;
+  text-transform:uppercase; font-weight:500;
+  padding:8px 14px; border-radius:var(--r-pill);
+  transition:color .18s var(--ease-out), background .18s var(--ease-out);
+}
+nav button.active{
+  color:var(--primary-foreground); background:var(--primary-grad);
+  box-shadow:0 8px 20px -10px color-mix(in srgb, var(--primary-soft) 90%, transparent);
+}
+/* The old underline was a second marker for the same thing. */
+nav button.active::after{ display:none; }
+@media (hover:hover) and (pointer:fine){
+  nav button:not(.active):hover{ color:var(--text-primary); background:color-mix(in srgb, var(--foreground) 6%, transparent); }
+}
+.avatar{
+  background:var(--primary-grad); color:var(--primary-foreground);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.45),
+             0 0 0 1px color-mix(in srgb, var(--primary-soft) 26%, transparent),
+             0 6px 16px -8px color-mix(in srgb, var(--primary-soft) 80%, transparent);
+  font-family:var(--font-mono); letter-spacing:0.04em;
+}
+.icon-btn{ border-radius:10px; }
+
+/* --- The thinking orb -----------------------------------------------------
+   A real sphere of dots turning under a perspective. Each dot carries only a
+   translate3d; the one animation is on their shared parent, so the whole
+   thing stays a single composited transform however many dots there are. */
+.torb{ position:relative; display:inline-block; flex-shrink:0; perspective:240px; }
+.torb-spin{
+  position:absolute; inset:0; transform-style:preserve-3d;
+  animation:torbSpin 7s linear infinite;
+}
+.torb i{
+  position:absolute; left:50%; top:50%; width:2px; height:2px; margin:-1px 0 0 -1px;
+  border-radius:50%; background:var(--primary-soft);
+  box-shadow:0 0 4px color-mix(in srgb, var(--primary-soft) 70%, transparent);
+}
+@keyframes torbSpin{
+  from{ transform:rotateX(-16deg) rotateY(0deg); }
+  to{ transform:rotateX(-16deg) rotateY(360deg); }
+}
+.msg-typing{ gap:11px; font-size:var(--text-xs); }
+
+/* --- An answer nobody asked for ------------------------------------------
+   The Coach reads the other conversation and sometimes speaks up on its own.
+   It has to be obvious that this one was volunteered, or it just reads as
+   the agent having lost the thread. */
+.msg-agent.aside{
+  padding:16px 18px; border-radius:18px;
+  border:1px solid color-mix(in srgb, var(--primary-soft) 26%, transparent);
+  background:linear-gradient(165deg,
+    color-mix(in srgb, var(--primary-soft) 9%, transparent),
+    transparent 70%);
+  animation:asideIn 460ms var(--ease-out) backwards;
+}
+@keyframes asideIn{ from{ opacity:0; transform:translateY(10px); } }
+.aside-tag{
+  display:inline-block; margin-bottom:11px;
+  font-family:var(--font-mono); font-size:10px; letter-spacing:0.17em; text-transform:uppercase;
+  /* The accent at full strength is too dim to carry 10px uppercase on a dark
+     card — it announces something, so it has to be legible first and
+     decorative second. */
+  color:color-mix(in srgb, var(--primary-soft) 30%, var(--foreground));
+  padding:5px 11px; border-radius:var(--r-pill);
+  border:1px solid color-mix(in srgb, var(--primary-soft) 38%, transparent);
+  background:color-mix(in srgb, var(--primary-soft) 17%, transparent);
+}
+html.light .aside-tag{ color:color-mix(in srgb, var(--primary) 60%, var(--foreground)); }
+/* The half-line after the role in the head: "coach · read along". */
+.chat-head .r em{ font-style:normal; color:var(--primary-soft); margin-left:5px; }
+
+/* --- The seam: drag to resize, press to swap ------------------------------ */
+.seam{
+  position:relative; z-index:2;
+  flex:none; width:22px; align-self:stretch; margin:0 -3px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+  cursor:col-resize; touch-action:none;
+}
+.seam-rail{
+  flex:1; width:2px; border-radius:2px; min-height:0;
+  background:linear-gradient(180deg, transparent, var(--border), transparent);
+  transition:background .2s var(--ease-out);
+}
+@media (hover:hover) and (pointer:fine){
+  .seam:hover .seam-rail{
+    background:linear-gradient(180deg, transparent, color-mix(in srgb, var(--primary-soft) 50%, transparent), transparent);
+  }
+}
+.seam.dragging .seam-rail{
+  background:linear-gradient(180deg, transparent, var(--primary-soft), transparent);
+}
+/* While dragging, the share has to follow the pointer exactly — the 340ms
+   ease that makes a swap look good makes a drag feel broken. */
+main.workspace.resizing .slot{ transition:none; }
+main.workspace.resizing{ cursor:col-resize; user-select:none; }
+.swap-panels{ cursor:pointer; }
+
+/* --- Settings: the width presets draw themselves -------------------------- */
+.ss-split-ic{
+  display:block; width:22px; height:11px; border-radius:3px; overflow:hidden;
+  background:var(--border-medium); position:relative; flex-shrink:0;
+}
+.ss-split-ic::before{
+  content:""; position:absolute; inset:0 auto 0 0; width:calc(var(--lead, 50%) - 1px);
+  background:currentColor; opacity:.85;
+}
+.ss-segment button{ flex-direction:column; gap:6px; height:auto; padding:10px 8px; }
+
+/* --- The conversation, the rest of B3's detail ----------------------------
+   B's composer is a translucent bar the panel shows through, not a solid
+   card sitting on it. Ana's raised card read as a separate object in a room
+   that no longer has any other separate objects in it. */
+.chat-input{
+  background:color-mix(in srgb, var(--foreground) 5%, transparent);
+  border:1px solid var(--border);
+  border-radius:20px;
+  box-shadow:0 18px 40px -26px #000;
+  backdrop-filter:blur(10px);
+}
+html.light .chat-input{
+  background:#FFFFFF; border-color:var(--border);
+  box-shadow:0 12px 28px -20px rgba(24,39,60,0.30);
+}
+.chat-input textarea{ font-size:var(--text-base); }
+.composer-send{ width:34px; height:34px; }
+.composer-icon-btn{ width:34px; height:34px; border-radius:11px; }
+
+
+/* --- The login page gets the same room ------------------------------------ */
+.auth{ position:relative; overflow:hidden; }
+.auth::before, .auth::after{ content:""; position:absolute; inset:0; pointer-events:none; z-index:0; }
+.auth::before{
+  background:
+    radial-gradient(38vw 38vw at 18% -10%, color-mix(in srgb, var(--primary-soft) 20%, transparent), transparent 70%),
+    radial-gradient(34vw 34vw at 96% 108%, color-mix(in srgb, var(--primary) 24%, transparent), transparent 72%);
+  filter:blur(40px);
+  animation:auroraA 52s ease-in-out infinite;
+}
+.auth::after{
+  background-image:radial-gradient(color-mix(in srgb, var(--primary-soft) 22%, transparent) 1px, transparent 1.4px);
+  background-size:28px 28px;
+  -webkit-mask-image:radial-gradient(52% 46% at 74% 50%, #000, transparent 74%);
+  mask-image:radial-gradient(52% 46% at 74% 50%, #000, transparent 74%);
+  opacity:.45;
+  animation:gridDrift 70s linear infinite;
+}
+.auth > *{ position:relative; z-index:1; }
+.auth-card h1{ font-family:var(--font-display); font-size:30px; font-weight:600; letter-spacing:-0.035em; }
+
+/* Everything in this block is decoration. */
+@media (prefers-reduced-motion:reduce){
+  .app::before, main.workspace::before, main.workspace::after,
+  .brand-mark::after, .torb-spin, .msg-agent, .msg-user, .msg-agent.aside,
+  .auth::before, .auth::after, .who-face::before{
+    animation:none !important;
+  }
+}
+
+/* =============================================================================
+   FIXES — 2026-09-27
+
+   Two things off the same screenshot: an app shell that had scrolled far
+   enough to take the header and the whole conversation off the top of the
+   window, and an agent picker with two small cards adrift in a 900px panel.
+   ============================================================================= */
+
+/* --- The shell cannot scroll, rather than merely not needing to -----------
+   `height:100dvh` plus `overflow:hidden` only stops the shell's OWN content
+   scrolling; the shell is still a block in page flow, so anything that ends
+   up a pixel taller than the viewport lets the page itself scroll, and the
+   header is the first thing to go. Out of flow, it is always exactly the
+   viewport and there is nothing left for the page to scroll. */
+.app{ position:fixed; inset:0; height:auto; width:auto; }
+
+/* --- The picker's empty state --------------------------------------------
+   Dead-centring a 240px block in an 860px panel leaves a void above and
+   below it and reads as a page that failed to load. Sitting it in the upper
+   third reads as a composition. The cards also grow: two 300px cards in a
+   1100px panel look lost, and there is room for them not to be. */
+.pick-cards{ margin-top:clamp(20px, 9vh, 84px); margin-bottom:auto; }
+@container panel (min-width: 560px){
+  .pick-cards{ max-width:720px; }
+  .picker-card{ min-height:260px; }
+}
+
+/* --- The auroras are lights, not weather ---------------------------------
+   46vw is 860px of blurred circle on a wide monitor, twice over, animating.
+   Capped: past a point a bigger blob is not a bigger glow, it is just a more
+   expensive one that washes the whole panel out. */
+main.workspace::before{ width:min(46vw, 620px); height:min(46vw, 620px); }
+main.workspace::after{ width:min(38vw, 520px); height:min(38vw, 520px); }
+
+/* Both seats should lay their cards out the same way at the same moment.
+   The old 560px threshold fell between the two panels at the default split,
+   so the Consultant got a row and the Coach a column on the same screen —
+   which read as two different designs rather than one responsive one. */
+@container panel (min-width: 480px){
+  .pick-cards{ flex-direction:row; max-width:720px; }
+  .picker-card{
+    flex:1 1 0; min-height:260px; padding:var(--sp-6) var(--sp-5); gap:var(--sp-4);
+  }
+}
+
+/* B2 closes its deck with a line about what happens next. Here it also does
+   the job of giving the empty half of a tall panel something to end on. */
+.pick-empty::after{
+  margin-top:auto; padding-top:var(--sp-6);
+  font-family:var(--font-mono); font-size:var(--text-3xs); letter-spacing:0.18em;
+  text-transform:uppercase; color:var(--text-muted); opacity:.75;
+}
+.panel.consultant .pick-empty::after{ content:"The coach seat opens once this one is filled"; }
+.panel.coach .pick-empty::after{ content:"Both seats filled — then press Start"; }
+
+/* --- Nothing above the message list may scroll, ever ----------------------
+   `overflow:hidden` hides a scrollbar but still creates a scroll container,
+   so anything that scrolls a descendant into view can drag the panel — and
+   the whole app shell — off the top of the window, with no way for the user
+   to drag it back. `clip` creates no scroll container at all, so the only
+   thing on this screen that can scroll is the conversation. */
+.app{ overflow:clip; }
+.panel{ overflow:clip; }
+/* And the list can only scroll itself if it is allowed to be shorter than
+   its content: a flex item defaults to min-height:auto, which makes it grow
+   past the panel instead. */
+.chat-body{ min-height:0; }
+
+/* --- Swapping actually swaps sides ---------------------------------------
+   The button's icon promises two things trading places; until now it only
+   traded their widths, and the Consultant stayed on the left either way.
+   Reversing the row moves them for real, and because the panel holding the
+   room is always the first one in the reversed order, the lead stays on the
+   left in both states — which is what makes the seam drag read the same way
+   whichever agent you are leading with. */
+main.workspace.swapped{ flex-direction:row-reverse; }
+
+/* The seam is focusable now, so it needs to show focus. */
+.seam:focus-visible{ outline:none; }
+.seam:focus-visible .seam-rail{
+  background:linear-gradient(180deg, transparent, var(--primary-soft), transparent);
+  box-shadow:0 0 0 1px color-mix(in srgb, var(--primary-soft) 45%, transparent);
+}
+
+/* The panels come in from where the other one was. With the row reversed,
+   "from the right" and "from the left" are the other way round, or each
+   panel slides in from the side it is already on. */
+main.workspace.swapping.swapped > .slot[data-role="consultant"]{ animation-name:swapFromLeft; }
+main.workspace.swapping.swapped > .slot[data-role="coach"]{ animation-name:swapFromRight; }
+
+/* =============================================================================
+   THE PARTS THE BROWSER WAS STILL DRAWING
+
+   Three things had never been styled and were being painted by the browser's
+   defaults, which on a near-black page means a light-grey scrollbar, a bright
+   blue selection and a white caret — the only three light-mode objects left
+   on the screen.
+   ============================================================================= */
+
+*{ scrollbar-width:thin; scrollbar-color:var(--border-strong) transparent; }
+*::-webkit-scrollbar{ width:10px; height:10px; }
+*::-webkit-scrollbar-track{ background:transparent; }
+*::-webkit-scrollbar-thumb{
+  background:var(--border-strong); border-radius:999px;
+  /* A transparent border with background-clip is how you inset a thumb: the
+     track stays full width for the hit area, the thumb looks thin. */
+  border:3px solid transparent; background-clip:content-box;
+}
+*::-webkit-scrollbar-thumb:hover{ background:color-mix(in srgb, var(--primary-soft) 60%, var(--border-strong)); background-clip:content-box; }
+*::-webkit-scrollbar-corner{ background:transparent; }
+
+::selection{
+  background:color-mix(in srgb, var(--primary-soft) 34%, transparent);
+  color:var(--foreground);
+}
+
+.chat-input textarea, .field input, .field textarea, .search-box input{
+  caret-color:var(--primary-soft);
+}

@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/lib/auth-context";
 import { ACCENTS, readAccent, applyAccent, type Accent } from "@/lib/accent";
+import { SPLIT_PRESETS, useChatSplit, broadcastSplit, presetFor } from "@/lib/chat-split";
 import { IconX, IconCheck, IconUser, IconSun, IconMoon } from "@/components/layout/agxp-icons";
 
 type Tab = "profile" | "appearance";
@@ -25,6 +26,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const [tab, setTab] = useState<Tab>("profile");
   const [name, setName] = useState(profileName);
   const [accent, setAccent] = useState<Accent>(() => readAccent());
+  const split = useChatSplit();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
@@ -145,6 +147,30 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
                   ))}
                 </div>
                 <span className="ss-hint">Changes every accent in the app. Saved on this browser.</span>
+              </div>
+
+              {/* Asked for on 2026-09-26: the drag on the seam is the quick
+                  way, this is where the answer sticks. Only the ratio is a
+                  setting — the sides themselves are swapped in the workspace,
+                  where you can see what you are swapping. */}
+              <div className="ss-field">
+                <span className="ss-label">Conversation width</span>
+                <div className="ss-segment" role="group" aria-label="How the two conversations share the screen">
+                  {SPLIT_PRESETS.map(p => {
+                    const on = presetFor(split) === p.id;
+                    return (
+                      <button key={p.id} className={on ? "on" : ""} aria-pressed={on}
+                        data-tooltip={p.hint}
+                        onClick={() => broadcastSplit(p.share)}>
+                        <span className="ss-split-ic" style={{ ["--lead" as string]: `${(p.share / (p.share + 1)) * 100}%` }} />
+                        {p.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <span className="ss-hint">
+                  How much room the conversation you are in takes. You can also drag the seam between them.
+                </span>
               </div>
             </>
           )}

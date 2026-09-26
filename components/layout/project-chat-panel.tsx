@@ -11,19 +11,20 @@ import { methodLabel } from "@/lib/method-labels";
 import { levelFor, nextLevel, LEVEL_ORDER } from "@/lib/agent-progress";
 import { stageFor } from "@/lib/mascot-evolution";
 import { md } from "@/lib/markdown";
+import { peerTranscript, previewLine, isReadAlongCommand, READ_ALONG_PROMPT, NUDGE_EVERY, NUDGE_AFTER,
+  type PeerContext, type PanelSnapshot } from "@/lib/peer-context";
+import { ThinkingOrb } from "@/components/layout/thinking-orb";
 import { AgentMascot, type MascotState, type MascotMood, type LookTarget } from "@/components/layout/agent-mascot";
 import type { DeliverableDoc } from "@/components/layout/deliverable-view";
-import { IconArrow, IconAttach, IconArrowUp, IconDoc, IconSpark, IconRefresh, IconChevronDown } from "@/components/layout/agxp-icons";
+import { IconArrow, IconAttach, IconArrowUp, IconDoc, IconSpark, IconRefresh, IconChevronDown, IconMinimise } from "@/components/layout/agxp-icons";
 
 const OPENING: Record<AgentType, string> = {
   consultant: "Hey, what can I do for you today?",
   coach: "Hey, what would you like to talk through today?",
 };
 
-export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount = 0, onProjectNamed, onActivity, onOpenDoc, onChangeAgent }: {
+export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer, idle = false, unread = false, onProjectNamed, onActivity, onOpenDoc, onChangeAgent, onSnapshot, onFocusPanel, onMinimise }: {
   project: Project; role: AgentType; agent: Agent;
-  /** How much of the row this panel takes (flex-grow). */
-  grow?: number;
   /** How many of the user's projects this agent has worked on, this one included. */
   projectCount?: number;
   onProjectNamed?: (name: string) => void;
@@ -35,6 +36,18 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
   /** Drops this agent so the panel falls back to the picker — the same escape
    *  hatch AgentPickerPanel offers before Start, now also reachable mid-chat. */
   onChangeAgent?: () => void;
+  /** The other agent's conversation on this project, handed down by the screen. */
+  peer?: PeerContext;
+  /** True when this is the narrow panel — it waits rather than leads. */
+  idle?: boolean;
+  /** An answer landed here while the user was looking at the other panel. */
+  unread?: boolean;
+  /** Publishes this panel's state upward; the screen routes it to the other one. */
+  onSnapshot?: (s: PanelSnapshot) => void;
+  /** Hands this panel the room. */
+  onFocusPanel?: () => void;
+  /** Folds this panel away into the pill. Only the Coach is given one. */
+  onMinimise?: () => void;
 }) {
   const [messages, setMessages] = useState<ProjectMessage[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -57,7 +70,7 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
   const [learned, setLearned] = useState<MemoryNote[]>([]);
   /** Which head popover is open: the agent profile, or the document. */
   const [pop, setPop] = useState<"agent" | "doc" | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const headRef = useRef<HTMLDivElement>(null);
   const speakTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -131,8 +144,17 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
 
   // Following a streaming answer smoothly fights itself on every chunk, so the
   // scroll is instant while text is arriving and smooth otherwise.
+  //
+  // This scrolls the list itself rather than calling scrollIntoView on a
+  // sentinel at the bottom. scrollIntoView walks up and scrolls EVERY
+  // scrollable ancestor, and `overflow:hidden` still makes an element
+  // programmatically scrollable — so it was quietly scrolling the panel and
+  // the whole app shell down as well, taking the agent's head and the header
+  // off the top of the window with no way to scroll them back.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: streamText ? "auto" : "smooth" });
+    const el = bodyRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: streamText ? "auto" : "smooth" });
   }, [messages, sending, streamText]);
 
   // The agent levels up on the work it has actually done for this user; this
@@ -162,7 +184,11 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
     react("nod", 450);   // "got it" — answered before the answer exists
     try {
       await addMessage(project.id, role, "user", t);
-      if (isFirstEver) {
+      // Only something a person actually typed can name the project. The
+      // document buttons and the Coach's own nudge are commands, and naming
+      // a project "(Systemhinweis, nicht vom Nutzer geschrieben…" once was
+      // enough to make that obvious.
+      if (isFirstEver && !isDeliverableCommand(t) && !isReadAlongCommand(t)) {
         renameFromFirstMessage(project, t).then(name => { if (name) onProjectNamed?.(name); }).catch(() => {});
       }
       const history = [...messages, userMsg].map(m => ({ role: m.role, content: m.content }));
@@ -171,6 +197,7 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
         messages: history,
         memory: memoryLines(memory, learned),
         experience: { level, projects: totalProjects },
+        peer,
         onDelta: soFar => { setStreamText(soFar); setOrb("speaking"); },
       });
       setStreamText("");
@@ -285,9 +312,28 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
     return out;
   })();
 
+  // Was the newest answer one the agent volunteered? It reads differently
+  // from an answer to a question, and the head says so.
+  const lastIsAside = (() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role !== "assistant") continue;
+      const before = messages[i - 1];
+      return !!before && before.role === "user" && isReadAlongCommand(before.content);
+    }
+    return false;
+  })();
+
   const stationIdx = station ? station.index - 1 : (messages.length > 0 ? 0 : -1);
   const stationLabel = station?.label || deliverable.stations[Math.max(0, stationIdx)]?.label || "";
   const ready = pct >= 100;
+
+  /** The half-line after the role. B3 puts the station number here; folded
+   *  or narrow, what matters more is whether this agent is doing anything. */
+  const headStatus = sending ? "thinking"
+    : lastIsAside ? "read along"
+    : idle ? "waiting"
+    : station ? `station ${station.index}/${station.total}`
+    : null;
 
   const level = levelFor(totalProjects);
   const leveledUp = levelFor(Math.max(0, totalProjects - 1)) !== level;
@@ -309,6 +355,55 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
   // The head's hairline appears only once content has scrolled beneath it.
   const [stuck, setStuck] = useState(false);
 
+  // What this panel tells the screen about itself: the transcript the other
+  // agent gets to read, and the last line its pill/idle preview shows. Held
+  // in a ref so the effect below fires on real changes only — passing the
+  // callback itself as a dependency would republish on every render, and the
+  // screen writing that back down would spin the two panels against each other.
+  const snapCb = useRef(onSnapshot);
+  useEffect(() => { snapCb.current = onSnapshot; });
+  useEffect(() => {
+    const turns = messages
+      .filter(m => !(m.role === "user" && (isDeliverableCommand(m.content) || isReadAlongCommand(m.content))))
+      .map(m => ({ role: m.role, content: m.content }));
+    const agentTurns = messages.reduce((k, m) => k + (m.role === "assistant" ? 1 : 0), 0);
+    let lastLine = OPENING[role];
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role !== "assistant") continue;
+      lastLine = previewLine(parseMarkers(messages[i].content).text) || lastLine;
+      break;
+    }
+    snapCb.current?.({ name: agent.name, transcript: peerTranscript(turns, agent.name), lastLine, agentTurns, busy: sending });
+  }, [messages, sending, agent.name, role]);
+
+  // The Coach speaks up by itself once the Consultant has got somewhere.
+  // Guarded by a ref rather than state: this fires a paid model call, and a
+  // re-render must never be able to fire a second one.
+  const nudgedAt = useRef(0);
+  const armed = useRef(false);
+  const sendRef = useRef(send);
+  useEffect(() => { sendRef.current = send; });
+
+  // Arm once, the moment history has loaded. A project opened halfway
+  // through must not fire a nudge for the ten turns it just read out of the
+  // database; a fresh one starts from zero and may nudge as soon as the
+  // Consultant has actually got somewhere.
+  useEffect(() => {
+    if (!loaded || role !== "coach" || armed.current) return;
+    armed.current = true;
+    nudgedAt.current = messages.length > 0 ? (peer?.turns ?? 0) : 0;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, role]);
+
+  useEffect(() => {
+    if (!armed.current || sending) return;
+    const peerTurns = peer?.turns ?? 0;
+    if (peerTurns < NUDGE_AFTER) return;
+    if (peerTurns - nudgedAt.current < NUDGE_EVERY) return;
+    nudgedAt.current = peerTurns;
+    sendRef.current(READ_ALONG_PROMPT);
+  }, [peer?.turns, sending]);
+
   const celebrated = useRef(false);
   useEffect(() => {
     if (!leveledUp || celebrated.current) return;
@@ -317,7 +412,7 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
   }, [leveledUp]);
 
   return (
-    <section className={`panel ${role}`} style={{ flexGrow: grow }}>
+    <section className={`panel ${role}${idle ? " is-idle" : ""}${unread ? " has-unread" : ""}`}>
       {/* Everything about the agent and the document lives behind these two
           small buttons — the panel itself is the conversation and nothing else
           (Patryk, 2026-09-11: "das Gespräch muss im Vordergrund stehen"). */}
@@ -330,7 +425,10 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
           </span>
           <span className="who-txt">
             <span className="n">{agent.name}</span>
-            <span className="r"><span className={`role-dot ${role}`} />{role === "coach" ? "Coach" : "Consultant"}</span>
+            <span className="r"><span className={`role-dot ${role}`} />
+              {role === "coach" ? "Coach" : "Consultant"}
+              {headStatus && <em>· {headStatus}</em>}
+            </span>
           </span>
           <IconChevronDown size={11} />
         </button>
@@ -343,6 +441,27 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
           <IconDoc size={12} />
           <span>{currentDoc ? "ready" : `${pct}%`}</span>
         </button>
+
+        {/* J: the waiting panel says so itself. The badge is the control —
+            clicking it hands this conversation the room and clears the mark,
+            so the unread state has somewhere to go other than the seam button. */}
+        {unread && onFocusPanel && (
+          <button className="head-unread" onClick={onFocusPanel}
+            data-tooltip={`Read what ${agent.name} said`}>
+            <span className="hu-dot" aria-hidden="true" />New
+          </button>
+        )}
+
+        {/* K: Patryk, 2026-09-25 — "man braucht den Coach manchmal nicht und
+            er nimmt nur Platz weg". Folding it away leaves the pill, which is
+            anchored high on purpose so it never covers the composer. */}
+        {onMinimise && (
+          <button className="head-min" onClick={onMinimise}
+            data-tooltip="Fold away — the Coach keeps listening"
+            aria-label="Fold this panel away">
+            <IconMinimise size={14} />
+          </button>
+        )}
 
         {pop === "agent" && (
           <div className="popover head-pop" onClick={e => e.stopPropagation()}>
@@ -434,7 +553,7 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
         )}
       </div>
 
-      <div className="chat-body" onScroll={e => setStuck(e.currentTarget.scrollTop > 4)}>
+      <div className="chat-body" ref={bodyRef} onScroll={e => setStuck(e.currentTarget.scrollTop > 4)}>
         {!loaded && <div className="spinner" style={{ margin: "0 auto", borderColor: "var(--border-strong)", borderTopColor: "var(--foreground)" }} />}
 
         {loaded && (
@@ -457,9 +576,12 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
                 </div>
               );
             }
+            if (isReadAlongCommand(m.content)) return null;
             return <div key={m.id} className="msg-user">{m.content}</div>;
           }
           const parsed = parseMarkers(m.content);
+          const before = messages[i - 1];
+          const isAside = !!before && before.role === "user" && isReadAlongCommand(before.content);
           const showChoices = i === lastAssistantIdx && parsed.choices.length > 0 && !sending;
           const isDoc = !!parsed.doc || looksLikeDocument(parsed.text, deliverable.title);
           const choices = showChoices ? (
@@ -502,7 +624,11 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
           }
 
           return (
-            <div key={m.id} className="msg-agent">
+            <div key={m.id} className={`msg-agent${isAside ? " aside" : ""}`}>
+              {/* Nobody asked for this one. Saying so is the difference
+                  between an agent that is paying attention and one that
+                  interrupts. */}
+              {isAside && <span className="aside-tag">read along · spoke up on its own</span>}
               <div className="txt" dangerouslySetInnerHTML={{ __html: md(parsed.text) }} />
               {choices}
             </div>
@@ -529,7 +655,7 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
           )
         )}
         {sending && !streamText && (
-          <div className="msg-typing"><span className="tline" />
+          <div className="msg-typing"><ThinkingOrb size={26} />
             <span className="shimmer-text">
               {waitingLong
                 ? "Still writing — a long answer takes a moment"
@@ -537,7 +663,6 @@ export function ProjectChatPanel({ project, role, agent, grow = 1, projectCount 
             </span>
           </div>
         )}
-        <div ref={bottomRef} />
       </div>
 
       {/* Ana's composer (agxp-frontend-ana): one raised card holds the text

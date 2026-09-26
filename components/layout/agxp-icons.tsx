@@ -45,3 +45,7 @@ export const IconRefresh = (p: IconProps) => <Svg {...p} strokeWidth={1.9}><path
 // --- Composer (agxp-frontend-ana) ---
 export const IconAttach = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><path d="M21.44 11.05 12.25 20.24a5 5 0 0 1-7.07-7.07l9.19-9.19a3.34 3.34 0 0 1 4.71 4.71l-9.2 9.19a1.67 1.67 0 0 1-2.35-2.35l8.49-8.48" /></Svg>;
 export const IconArrowUp = (p: IconProps) => <Svg {...p} strokeWidth={2.2}><path d="M12 19V5" /><path d="m5 12 7-7 7 7" /></Svg>;
+
+// --- Folding the Coach away (K1/K2: minimise to a pill, open as a sheet) ---
+export const IconMinimise = (p: IconProps) => <Svg {...p} strokeWidth={2.2}><path d="M5 12h14" /></Svg>;
+export const IconExpand = (p: IconProps) => <Svg {...p} strokeWidth={1.9}><path d="M15 3h6v6" /><path d="M21 3l-7 7" /><path d="M9 21H3v-6" /><path d="M3 21l7-7" /></Svg>;

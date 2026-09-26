@@ -12,28 +12,41 @@
    here ever need to move again.
    ============================================================================= */
 :root {
-  --background:#1C1D1F;
-  --foreground:#EDF2F8;
+  /* The B mockup's world: near-black with a blue cast, not neutral graphite.
+     Everything above --surface-elevated is one hue family, so the only real
+     colour on screen is the accent. */
+  --background:#06070B;
+  --foreground:#E9EEF7;
 
-  --card:#1F2530;
-  --card-foreground:#EDF2F8;
-  --popover:#242C3A;
-  --popover-foreground:#EDF2F8;
+  --card:#121824;
+  --card-foreground:#E9EEF7;
+  --popover:#161D2B;
+  --popover-foreground:#E9EEF7;
 
-  --font-mono:ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  /* Three faces, loaded in app/layout.tsx. The fallbacks matter: next/font
+     sets these variables on <html>, so anything rendered before that (or with
+     fonts blocked) still gets a sane stack instead of Times. */
+  --font-display:"Space Grotesk", var(--font-sans), -apple-system, "Segoe UI", sans-serif;
+  --font-mono:var(--font-mono-face), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
   --primary:#154E80;
-  --primary-foreground:#F1F1F2;
+  /* Dark ink, because a primary surface is now the pale end of the blue
+     gradient below, the way B draws its buttons. */
+  --primary-foreground:#061018;
   --primary-soft:#2E7BC4;
+  /* Built from the accent rather than hardcoded, so lib/accent.ts still
+     repaints every primary surface in the app when the user picks a colour. */
+  --primary-grad:linear-gradient(140deg, color-mix(in srgb, var(--primary-soft) 42%, #FFFFFF), var(--primary-soft));
 
-  --secondary:#222A36;
-  --secondary-foreground:#A9B4C4;
-  --muted:#222A36;
-  --muted-foreground:#7C8798;
-  --accent:#283242;
-  --accent-foreground:#EDF2F8;
+  --secondary:#151B27;
+  --secondary-foreground:#A6B5CB;
+  --muted:#151B27;
+  --muted-foreground:#6C7A91;
+  --accent:#1A2130;
+  --accent-foreground:#E9EEF7;
   /* Ana's palette: a surface that is clearly lighter than the page, for the
      composer and the user's own messages — not a subtle tint like --accent. */
-  --surface-elevated:#384252;
+  --surface-elevated:#1D2534;
 
   --destructive:#E0574A;
   --destructive-foreground:#FBEAE6;
@@ -42,12 +55,12 @@
 
   /* Coach vs Consultant: both on the same blue-dark scale — the Consultant
      side sits a step brighter because it leads the screen. */
-  --coach-1:#292D34; --coach-2:#2F343D; --coach-3:#1E2024;
-  --consultant-1:#2B2F36; --consultant-2:#31363F; --consultant-3:#1F2125;
+  --coach-1:#121A28; --coach-2:#17202F; --coach-3:#0A0F1A;
+  --consultant-1:#141D2E; --consultant-2:#1A2436; --consultant-3:#0B1220;
 
-  --border:rgba(255,255,255,0.10);
+  --border:rgba(255,255,255,0.075);
   --border-strong:rgba(255,255,255,0.20);
-  --input:rgba(255,255,255,0.14);
+  --input:rgba(255,255,255,0.12);
   --ring:var(--primary-soft);
   --hl:rgba(255,255,255,0.06);
 
@@ -55,7 +68,7 @@
   --ease-in-out:cubic-bezier(0.77, 0, 0.175, 1);
   --focus-ring:0 0 0 2px var(--background), 0 0 0 4px var(--ring);
 
-  --radius:10px;
+  --radius:12px;
   --radius-xs:calc(var(--radius) * 0.8);
   --radius-sm:var(--radius);
   --radius-md:calc(var(--radius) * 1.2);
@@ -119,8 +132,8 @@ html.light {
   --success:#4F7D58;
   --warn:#A56A17;
 
-  --coach-1:#F1F2F4; --coach-2:#E4E6EA; --coach-3:#F8F9FA;
-  --consultant-1:#F5F1EF; --consultant-2:#EAE3DF; --consultant-3:#FAF8F6;
+  --coach-1:#EEF1F6; --coach-2:#E1E6EE; --coach-3:#F7F9FC;
+  --consultant-1:#EDF1F7; --consultant-2:#DFE6F0; --consultant-3:#F8FAFD;
 
   --border:rgba(0,0,0,0.09);
   --border-strong:rgba(0,0,0,0.18);
@@ -134,7 +147,7 @@ html.light {
 html { background-color: var(--background); }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background-color: var(--background);
   color: var(--foreground);
 }
@@ -256,6 +269,10 @@ html.dark .mf-cursor-glow { background: radial-gradient(circle, rgba(34,197,94,0
 @media print {
   .no-print { display: none !important; }
   html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
+  /* The app shell is position:fixed so the page can never scroll behind it.
+     A fixed element prints as one clipped viewport-sized box, so it goes
+     back into flow for printing. */
+  .app { position: static !important; inset: auto !important; height: auto !important; overflow: visible !important; }
   /* Let the concept content flow across pages instead of being clipped by
      the fixed 100vh app layout. */
   .print-area {

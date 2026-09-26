@@ -1,5 +1,6 @@
 import type { Agent } from "@/lib/agents";
 import { createClient } from "@/lib/supabase";
+import type { PeerContext } from "@/lib/peer-context";
 
 export interface ChatTurn {
   role: "user" | "assistant";
@@ -31,17 +32,19 @@ export interface AskOptions {
   memory?: string[];
   /** How much history the two of them have — the agent's tone follows it. */
   experience?: { level: string; projects: number };
+  /** The other panel's conversation, so the two agents aren't blind to each other. */
+  peer?: PeerContext;
   onDelta?: (soFar: string) => void;
 }
 
-export async function askAgent({ agent, messages, memory = [], experience, onDelta }: AskOptions): Promise<string> {
+export async function askAgent({ agent, messages, memory = [], experience, peer, onDelta }: AskOptions): Promise<string> {
   const res = await fetch("/api/agent/chat", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${await accessToken()}`,
     },
-    body: JSON.stringify({ agentType: agent.type, agentName: agent.name, messages, memory, experience }),
+    body: JSON.stringify({ agentType: agent.type, agentName: agent.name, messages, memory, experience, peer }),
   });
 
   // Everything that fails before the answer starts still answers in JSON.
