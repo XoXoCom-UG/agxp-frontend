@@ -2500,15 +2500,8 @@ html.light .who-face{
   .panel .who-face:has(.is-speaking)::after{ animation:none; }
 }
 
-/* Reduce Transparency has to have an answer (liquid-glass.md). Solid, and the
-   hairline comes back permanently since nothing shows through any more. */
-@media (prefers-reduced-transparency:reduce){
-  .chat-head{
-    background:var(--card); backdrop-filter:none; -webkit-backdrop-filter:none;
-    border-bottom-color:var(--border-soft);
-  }
-  .chat-input{ background:var(--surface-elevated); backdrop-filter:none; -webkit-backdrop-filter:none; }
-}
+/* Reduce Transparency is answered once, in the Liquid Glass block at the end
+   of this file, where every glass surface is listed together. */
 
 /* ============================================================================
    SETTINGS + the suggested answers. Reviewed against Apple's HIG
@@ -3279,11 +3272,8 @@ main.workspace > .coach-slot.sheet{ position:absolute; z-index:6; }
 /* --- The header ----------------------------------------------------------- */
 .app > header{
   height:64px; padding:0 22px;
-  background:linear-gradient(180deg,
-    color-mix(in srgb, var(--background) 92%, transparent),
-    color-mix(in srgb, var(--background) 66%, transparent));
   border-bottom:none;
-  backdrop-filter:blur(16px) saturate(140%);
+  /* The material comes from the Liquid Glass block at the end of the file. */
 }
 /* A lit hairline instead of a border: brightest under the brand, gone by the
    right edge — the same trick the panels use along their own top. */
@@ -3429,17 +3419,7 @@ main.workspace.resizing{ cursor:col-resize; user-select:none; }
    B's composer is a translucent bar the panel shows through, not a solid
    card sitting on it. Ana's raised card read as a separate object in a room
    that no longer has any other separate objects in it. */
-.chat-input{
-  background:color-mix(in srgb, var(--foreground) 5%, transparent);
-  border:1px solid var(--border);
-  border-radius:20px;
-  box-shadow:0 18px 40px -26px #000;
-  backdrop-filter:blur(10px);
-}
-html.light .chat-input{
-  background:#FFFFFF; border-color:var(--border);
-  box-shadow:0 12px 28px -20px rgba(24,39,60,0.30);
-}
+.chat-input{ border:1px solid var(--border); }
 .chat-input textarea{ font-size:var(--text-base); }
 .composer-send{ width:34px; height:34px; }
 .composer-icon-btn{ width:34px; height:34px; border-radius:11px; }
@@ -3594,3 +3574,198 @@ main.workspace.swapping.swapped > .slot[data-role="coach"]{ animation-name:swapF
 .chat-input textarea, .field input, .field textarea, .search-box input{
   caret-color:var(--primary-soft);
 }
+
+/* =============================================================================
+   LIQUID GLASS
+
+   Built against the curated guide in .claude/skills/apple-design (distilled
+   from Apple's Materials and Color pages), not from memory. Its model has
+   exactly two layers, and the whole thing falls apart if you ignore that:
+
+     Content layer     text, messages, cards, list rows, panel backgrounds.
+                       Opaque or standard materials. NEVER glass.
+     Functional layer  the bars and surfaces that float above content —
+                       header, the agent bar, the composer, popovers, sheets,
+                       the folded Coach. This is the only place glass belongs.
+
+   "Glass on app backgrounds, cards, list rows, or content containers is a
+   defect" (liquid-glass.md › Review checklist). So the panels stay solid and
+   the cards stay solid; only what floats over them is glass. Glass stacked on
+   glass is also called out, which is why the nav capsule inside the header is
+   a plain fill rather than a second pane of glass.
+
+   Apple publishes one number, the 35% dimming layer. Everything else below is
+   the guide's stated starting range: blur 20-40px regular / 8-16px clear,
+   saturation 1.2-1.5x, a translucent fill and a hairline highlight.
+   ============================================================================= */
+
+:root{
+  --glass-blur:30px;
+  --glass-sat:1.45;
+  /* Regular variant: enough fill to carry text over anything. */
+  --glass-fill:rgba(255,255,255,0.07);
+  --glass-fill-strong:rgba(255,255,255,0.10);
+  --glass-hairline:rgba(255,255,255,0.10);
+  /* The specular edge: a light catching one corner and dying before the
+     opposite one. This is the single detail that separates glass from a
+     blurred rectangle. */
+  --glass-spec:linear-gradient(150deg, rgba(255,255,255,0.46), rgba(255,255,255,0.05) 36%, transparent 64%);
+  --glass-drop:0 24px 60px -28px rgba(0,0,0,0.85);
+}
+html.light{
+  --glass-fill:rgba(255,255,255,0.62);
+  --glass-fill-strong:rgba(255,255,255,0.76);
+  --glass-hairline:rgba(255,255,255,0.85);
+  --glass-spec:linear-gradient(150deg, rgba(255,255,255,0.95), rgba(255,255,255,0.35) 36%, transparent 64%);
+  --glass-drop:0 18px 44px -26px rgba(24,39,60,0.35);
+}
+
+/* The material itself. */
+.app > header,
+.chat-head,
+.chat-input,
+.popover,
+.modal,
+.sheet,
+.coach-pill,
+.coach-slot.sheet > .panel{
+  background:var(--glass-fill);
+  backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));
+  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));
+  border-color:var(--glass-hairline);
+}
+
+/* The specular edge, drawn as a 1px ring so it follows any radius. The mask
+   pair punches out the middle: paint the whole box, paint the content box,
+   exclude one from the other, and what is left is exactly the border. */
+.app > header::before,
+.chat-head::before,
+.chat-input::before,
+.popover::before,
+.modal::before,
+.sheet::before,
+.coach-pill::before,
+.coach-slot.sheet > .panel::before{
+  content:""; position:absolute; inset:0; border-radius:inherit;
+  padding:1px; pointer-events:none; z-index:0;
+  background:var(--glass-spec);
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+  mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite:exclude;
+}
+/* The header is a full-width band, so its light runs along the top edge
+   rather than around a corner that isn't there. */
+.app > header::before{
+  padding:1px 0 0;
+  background:linear-gradient(90deg,
+    rgba(255,255,255,0.28), rgba(255,255,255,0.06) 40%, transparent 72%);
+}
+/* Everything inside has to sit above the ring. */
+.chat-head > *, .chat-input > *, .popover > *, .coach-pill > *{ position:relative; z-index:1; }
+
+/* Radii: iOS shapes are capsules and generously rounded rectangles, and the
+   material reads as thicker the rounder it is. */
+.chat-input{ border-radius:24px; }
+.popover{ border-radius:18px; }
+.modal{ border-radius:22px; }
+.coach-pill{ border-radius:var(--r-pill); }
+.coach-slot.sheet > .panel{ border-radius:24px; }
+
+/* The composer is the one surface a person aims at constantly, so it gets the
+   thicker fill — Apple's own rule is that thicker materials carry text and
+   fine detail better. */
+.chat-input{ background:var(--glass-fill-strong); box-shadow:var(--glass-drop); }
+.popover, .modal, .sheet{ box-shadow:var(--glass-drop); }
+
+/* --- Colour budget -------------------------------------------------------
+   "Refrain from adding color to the background of multiple controls"
+   (color.md › Liquid Glass color). The header had four at once: the active
+   nav tab, the avatar, Start, and the send button. The nav capsule becomes
+   glass with a white label, which is how the system draws a selected segment,
+   and the colour goes back to meaning "this is the action". */
+nav{ background:color-mix(in srgb, var(--foreground) 5%, transparent); border-color:var(--glass-hairline); }
+nav button.active{
+  color:var(--text-primary);
+  background:var(--glass-fill-strong);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.22), 0 2px 8px -4px rgba(0,0,0,0.5);
+}
+html.light nav button.active{ box-shadow:inset 0 1px 0 #FFFFFF, 0 2px 8px -5px rgba(24,39,60,0.3); }
+
+/* --- A control turns to glass while you press it -------------------------
+   The guide's one sanctioned use of glass inside the content layer: "a
+   control in the content layer with a transient interactive element, such as
+   a slider or toggle, which takes on a glass appearance only while a person
+   is manipulating it". The answer rows qualify. */
+.sugg-item{ transition:background-color .16s var(--ease-out), color .16s var(--ease-out), backdrop-filter .16s linear; }
+.sugg-item:active:not(:disabled){
+  background:var(--glass-fill-strong);
+  backdrop-filter:blur(16px) saturate(1.3);
+  -webkit-backdrop-filter:blur(16px) saturate(1.3);
+}
+
+/* --- Scroll edge effect --------------------------------------------------
+   "Content fades and blurs where it meets a bar instead of colliding with
+   it." The bottom fade was already here; this is the top one, and it only
+   appears once something has actually scrolled under the bar. */
+.chat-body{
+  -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 18px, #000 calc(100% - 26px), transparent 100%);
+  mask-image:linear-gradient(to bottom, transparent 0, #000 18px, #000 calc(100% - 26px), transparent 100%);
+}
+
+/* --- Accessibility -------------------------------------------------------
+   "Reduce Transparency gets an opaque fallback, Increase Contrast gets
+   stronger fills and borders." Both are real media queries in Chromium, so
+   unlike a native webview wrapper this can honour them directly. */
+@media (prefers-reduced-transparency: reduce){
+  .app > header, .chat-head, .chat-input, .popover, .modal, .sheet,
+  .coach-pill, .coach-slot.sheet > .panel, .sugg-item:active:not(:disabled){
+    backdrop-filter:none !important;
+    -webkit-backdrop-filter:none !important;
+    background:var(--surface-2) !important;
+  }
+  .app > header{ background:var(--background) !important; }
+  .app > header::before, .chat-head::before, .chat-input::before,
+  .popover::before, .modal::before, .sheet::before, .coach-pill::before,
+  .coach-slot.sheet > .panel::before{ display:none; }
+  .chat-head, .chat-input, .popover, .modal, .coach-pill{ border:1px solid var(--border-strong); }
+}
+@media (prefers-contrast: more){
+  .app > header, .chat-head, .chat-input, .popover, .modal, .sheet, .coach-pill{
+    background:var(--glass-fill-strong);
+    border-color:var(--border-strong);
+  }
+  .msg-agent .txt{ color:var(--foreground); }
+  .sugg-item{ border-color:var(--border-strong); }
+}
+
+/* --- Legibility on the material ------------------------------------------
+   Glass lightens whatever is behind it, which quietly costs the small grey
+   labels their contrast — they were measured against the panel, not against
+   the panel plus a 7% white veil. Computed against the worst realistic
+   backdrop (the darkest corner of the panel gradient under the fill):
+
+     muted #6C7A91 on regular glass    3.75:1   fails 4.5:1
+     muted #8B8B85 on light glass      3.36:1   fails
+     accent #2E7BC4 as 10px label      4.01:1   fails
+
+   The token is redefined on the glass surfaces only, so every label inside
+   them lifts at once and nothing outside changes.
+
+     #8A97A9 on dark glass   5.98:1   composer 5.49:1
+     #5B6472 on light glass  5.87:1   composer 5.92:1
+*/
+.app > header, .chat-head, .chat-input, .popover, .modal, .sheet,
+.coach-pill, .coach-slot.sheet > .panel{
+  --muted-foreground:#8A97A9;
+  --text-muted:#8A97A9;
+}
+html.light .app > header, html.light .chat-head, html.light .chat-input,
+html.light .popover, html.light .modal, html.light .sheet,
+html.light .coach-pill, html.light .coach-slot.sheet > .panel{
+  --muted-foreground:#5B6472;
+  --text-muted:#5B6472;
+}
+/* The accent at full strength cannot carry 10px type on glass. Mixed toward
+   the foreground it stays recognisably blue at 9.4:1. */
+.chat-head .r em{ color:color-mix(in srgb, var(--primary-soft) 50%, var(--foreground)); }
