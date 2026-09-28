@@ -6,27 +6,26 @@
    DESIGN TOKENS — ported from Ana's mockup (agxp-functional-ui, v7), accent
    swapped from gold to blue per Patryk's 2026-09-02 review ("schwarz mit
    Blau, transparentes Blau — wie PowerPoint Slides"). Dark (near-monochrome
-   graphite) is the base; `html.light` overrides for light mode. `--green*`
-   are kept as aliases so existing `var(--green)` references elsewhere in
-   this file (and any leftover legacy code) keep working — only the values
-   here ever need to move again.
+   graphite) is the base; `html.light` overrides for light mode. Every
+   colour, radius, layer and blur in agxp-design.css resolves from here, so
+   only the values in this block ever need to move.
    ============================================================================= */
 :root {
-  /* The B mockup's world: near-black with a blue cast, not neutral graphite.
-     Everything above --surface-elevated is one hue family, so the only real
-     colour on screen is the accent. */
-  --background:#06070B;
-  --foreground:#E9EEF7;
+  /* Neutral near-black graphite (Ana, 2026-09-27: "gri negru", not dark
+     blue). The blue lives only in the accent and in the lights behind the
+     panels, so the surfaces themselves carry no hue. */
+  --background:#060607;
+  --foreground:#ECECEE;
 
-  --card:#121824;
-  --card-foreground:#E9EEF7;
-  --popover:#161D2B;
-  --popover-foreground:#E9EEF7;
+  --card:#141416;
+  --card-foreground:#ECECEE;
+  --popover:#18181B;
+  --popover-foreground:#ECECEE;
 
   /* Three faces, loaded in app/layout.tsx. The fallbacks matter: next/font
      sets these variables on <html>, so anything rendered before that (or with
      fonts blocked) still gets a sane stack instead of Times. */
-  --font-display:"Space Grotesk", var(--font-sans), -apple-system, "Segoe UI", sans-serif;
+  --font-display:"Familjen Grotesk", var(--font-sans), -apple-system, "Segoe UI", sans-serif;
   --font-mono:var(--font-mono-face), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
   --primary:#154E80;
@@ -38,80 +37,82 @@
      repaints every primary surface in the app when the user picks a colour. */
   --primary-grad:linear-gradient(140deg, color-mix(in srgb, var(--primary-soft) 42%, #FFFFFF), var(--primary-soft));
 
-  --secondary:#151B27;
-  --secondary-foreground:#A6B5CB;
-  --muted:#151B27;
-  --muted-foreground:#6C7A91;
-  --accent:#1A2130;
-  --accent-foreground:#E9EEF7;
+  --secondary:#18181B;
+  --secondary-foreground:#AEAEB5;
+  --muted:#18181B;
+  --muted-foreground:#8A8A93;   /* 5.0–5.4:1 on every dark surface (AA) */
+  --accent:#1C1C20;
+  --accent-foreground:#ECECEE;
   /* Ana's palette: a surface that is clearly lighter than the page, for the
      composer and the user's own messages — not a subtle tint like --accent. */
-  --surface-elevated:#1D2534;
+  --surface-elevated:#202024;
 
   --destructive:#E0574A;
   --destructive-foreground:#FBEAE6;
   --success:#3FB27F;
   --warn:#D89434;
 
-  /* Coach vs Consultant: both on the same blue-dark scale — the Consultant
+  /* Coach vs Consultant: both on the same graphite scale — the Consultant
      side sits a step brighter because it leads the screen. */
-  --coach-1:#121A28; --coach-2:#17202F; --coach-3:#0A0F1A;
-  --consultant-1:#141D2E; --consultant-2:#1A2436; --consultant-3:#0B1220;
+  --coach-1:#141416; --coach-2:#19191C; --coach-3:#0B0B0D;
+  --consultant-1:#151517; --consultant-2:#1A1A1D; --consultant-3:#0D0D0F;
 
   --border:rgba(255,255,255,0.075);
   --border-strong:rgba(255,255,255,0.20);
   --input:rgba(255,255,255,0.12);
   --ring:var(--primary-soft);
   --hl:rgba(255,255,255,0.06);
+  /* Hover and pressed fills, and faint separators: white on dark, black on
+     light. A raw rgba(255,255,255,…) hover is invisible on the light theme,
+     which is how half the menus there lost their hover state. */
+  --tint-1:rgba(255,255,255,0.03);
+  --tint-2:rgba(255,255,255,0.05);
+  --tint-3:rgba(255,255,255,0.08);
+  --tint-4:rgba(255,255,255,0.12);
+  /* The strongest ink the theme has: white on dark, black on light. For the
+     one filled control that should read as "press me" in either theme. */
+  --ink-max:#FFFFFF;
+  /* Shadows are black on the dark theme; on the light one they take the
+     graphite of the text, so no surface casts a blue or a warm shadow. */
+  --shadow-rgb:0,0,0;
 
   --ease-out:cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out:cubic-bezier(0.77, 0, 0.175, 1);
   --focus-ring:0 0 0 2px var(--background), 0 0 0 4px var(--ring);
 
-  --radius:12px;
-  --radius-xs:calc(var(--radius) * 0.8);
-  --radius-sm:var(--radius);
-  --radius-md:calc(var(--radius) * 1.2);
-  --radius-lg:calc(var(--radius) * 1.6);
+  /* Radius: four steps. Tighter inside, softer outside — a control sits in a
+     card, a card sits on a surface. */
+  --radius-xs:6px;    /* chips, tags, inline code */
+  --radius-sm:8px;    /* buttons and fields */
+  --radius-md:12px;   /* cards, menus, the composer */
+  --radius-lg:16px;   /* panels, dialogs, sheets */
   --radius-pill:999px;
 
-  /* Type scale — 8 steps instead of ~17 near-duplicate one-off sizes. */
+  /* Layers. Local stacking inside a component stays a small number (1–7);
+     these are the only values that decide what covers what across the app. */
+  --z-header:40;
+  --z-tooltip:50;
+  --z-popover:60;
+  --z-toast:70;
+  --z-overlay:80;
+  --z-dialog:90;
+  --z-skip:200;
+
+  /* Blur: two strengths. Surfaces that carry text frost lightly; things that
+     float over content frost more, so they separate from it. */
+  --blur-surface:24px;
+  --blur-float:32px;
+
+  /* Type scale — nine steps, nothing below 10px. */
   --text-3xs:10px; --text-2xs:11px; --text-xs:12px; --text-sm:13px; --text-base:14px;
-  --text-lg:16px; --text-xl:20px; --text-2xl:25px;
+  --text-lg:16px; --text-xl:20px; --text-2xl:25px; --text-3xl:31px;
 
   /* Spacing — multiples of 4. */
   --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px; --sp-7:32px;
-
-  /* Legacy aliases — every var(--x) written across the ported CSS (agxp-design.css)
-     resolves from here; only the values on the token side ever need to move. */
-  --bg-deep:var(--background);
-  --surface-1:var(--card);
-  --surface-2:var(--popover);
-  --indigo-light:var(--coach-2);
-  --violet-dark:var(--coach-3);
-  --plum-dark:var(--consultant-3);
-  --plum:var(--consultant-1);
-  --plum-light:var(--consultant-2);
-  --magenta:var(--primary);
-  --magenta-soft:var(--primary-soft);
-  --blush:var(--primary);
-  --blush-muted:var(--destructive);
-  --text-primary:var(--foreground);
-  --text-secondary:var(--secondary-foreground);
-  --text-muted:var(--muted-foreground);
-  --border-soft:var(--border);
-  --border-medium:var(--input);
-  --r-xs:var(--radius-xs); --r-md:var(--radius-md); --r-lg:var(--radius-lg); --r-pill:var(--radius-pill);
-
-  /* Our own alias (predates the Ana port) — a few inline styles still use it. */
-  --green: var(--primary);
-  --green-light: var(--secondary);
-  --green-mid: var(--border-strong);
-  --green-dark: var(--primary-soft);
 }
 
 html.light {
-  --background:#FAFAF9;
+  --background:#FAFAFA;
   --foreground:#18181B;
 
   --card:#FFFFFF;
@@ -119,26 +120,32 @@ html.light {
   --popover:#FFFFFF;
   --popover-foreground:#18181B;
 
-  --secondary:#F1F1EF;
+  --secondary:#F2F2F3;
   --secondary-foreground:#52525B;
-  --muted:#F1F1EF;
-  --muted-foreground:#8B8B85;
-  --accent:#EFEFEC;
+  --muted:#F2F2F3;
+  --muted-foreground:#63636B;   /* 5.0–5.9:1 on the light surfaces (AA) */
+  --accent:#EFEFF1;
   --accent-foreground:#18181B;
-  --surface-elevated:#EBEBE8;
+  --surface-elevated:#EAEAEC;
 
   --destructive:#B84B3E;
   --destructive-foreground:#FBEAE6;
   --success:#4F7D58;
   --warn:#A56A17;
 
-  --coach-1:#EEF1F6; --coach-2:#E1E6EE; --coach-3:#F7F9FC;
-  --consultant-1:#EDF1F7; --consultant-2:#DFE6F0; --consultant-3:#F8FAFD;
+  --coach-1:#F0F0F2; --coach-2:#E4E4E8; --coach-3:#F7F7F8;
+  --consultant-1:#EFEFF1; --consultant-2:#E2E2E6; --consultant-3:#F8F8F9;
 
   --border:rgba(0,0,0,0.09);
   --border-strong:rgba(0,0,0,0.18);
   --input:rgba(0,0,0,0.13);
   --hl:rgba(255,255,255,0.7);
+  --tint-1:rgba(0,0,0,0.02);
+  --tint-2:rgba(0,0,0,0.04);
+  --tint-3:rgba(0,0,0,0.06);
+  --tint-4:rgba(0,0,0,0.09);
+  --ink-max:#000000;
+  --shadow-rgb:24,24,28;
 }
 
 /* ── Dark mode base ─────────────────────────────────────────────────────────── */
@@ -152,207 +159,78 @@ body {
   color: var(--foreground);
 }
 
-/* ── Spinner ────────────────────────────────────────────────────────────────── */
-@keyframes thinking-spin { to { transform: rotate(360deg); } }
-.thinking-spinner {
-  width: 14px; height: 14px; flex-shrink: 0;
-  border: 2px solid #e5e7eb;
-  border-top-color: var(--green);
-  border-radius: 9999px;
-  animation: thinking-spin 0.7s linear infinite;
-  display: inline-block;
+/* ── Component tokens: menus, glass, shadows ────────────────────────────────
+   Moved here from agxp-design.css, where five separate :root blocks each
+   redefined part of the glass recipe and the last one silently won. */
+:root {
+  /* The dropdown timing (Transitions.dev menu). */
+  --dropdown-open-dur:250ms;
+  --dropdown-close-dur:150ms;
+  --dropdown-pre-scale:0.97;
+  --dropdown-closing-scale:0.99;
+  --dropdown-ease:cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Glass: a tinted body, a strong blur with saturation, a lit top edge and an
+     inner glow — all four, or it falls back to looking like a grey box. */
+  --glass-blur:var(--blur-float);
+  --glass-sat:1.8;
+  --glass-fill:linear-gradient(145deg, rgba(255,255,255,0.12), rgba(255,255,255,0.05) 45%, rgba(255,255,255,0.03));
+  --glass-fill-strong:linear-gradient(145deg, rgba(255,255,255,0.14), rgba(255,255,255,0.06) 45%, rgba(255,255,255,0.04));
+  --glass-body:rgba(20,20,23,0.55);
+  --glass-body-strong:rgba(18,18,21,0.74);
+  --glass-hairline:rgba(255,255,255,0.12);
+  --glass-inner:inset 0 1px 0 rgba(255,255,255,0.14), inset 0 0 0 1px rgba(255,255,255,0.03);
+  /* The specular edge: a light catching one corner and dying before the
+     opposite one — the detail that separates glass from a blurred rectangle. */
+  --glass-spec:linear-gradient(150deg, rgba(255,255,255,0.46), rgba(255,255,255,0.05) 36%, transparent 64%);
+  --glass-drop:0 24px 60px -24px rgba(var(--shadow-rgb),0.75), 0 0 0 1px rgba(var(--shadow-rgb),0.12);
+  /* Separators drawn as a soft line of light instead of a hard rule. */
+  --glow-sep:rgba(255,255,255,0.16);
+
+  /* Two shadow levels: things that float over content, and dialogs. */
+  --shadow-float:0 12px 28px -14px rgba(var(--shadow-rgb),0.7);
+  --shadow-modal:0 24px 48px -20px rgba(var(--shadow-rgb),0.75);
 }
-html.dark .thinking-spinner { border-color: #3f3f46; border-top-color: var(--green); }
-
-/* ── Fade up ────────────────────────────────────────────────────────────────── */
-@keyframes fade-up {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.animate-in { animation: fade-up 0.2s ease-out; }
-
-/* ── Concept animations ─────────────────────────────────────────────────────── */
-@keyframes concept-in {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.concept-fade-in { animation: concept-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
-.concept-fade-in-1 { animation-delay: 0ms; }
-.concept-fade-in-2 { animation-delay: 80ms; }
-.concept-fade-in-3 { animation-delay: 160ms; }
-.concept-section   { animation: concept-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
-
-@keyframes deck-card-in {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.deck-card { animation: deck-card-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
-
-@keyframes slide-from-right {
-  from { opacity: 0; transform: translateX(24px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-.roadmap-panel { animation: slide-from-right 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
-
-/* ── Choice chips ───────────────────────────────────────────────────────────── */
-.choice-chip {
-  padding: 7px 14px;
-  border-radius: 10px;
-  border: 1px solid #e5e7eb;
-  background: white;
-  color: #4b5563;
-  font-size: 13px;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-html.dark .choice-chip { border-color: #3f3f46; background: #27272a; color: #a1a1aa; }
-.choice-chip:hover:not(:disabled) { border-color: var(--green); background: var(--green-light); color: var(--green-dark); }
-html.dark .choice-chip:hover:not(:disabled) { background: #052e16; color: #4ade80; }
-.choice-chip.chosen { background: var(--green); color: white; border-color: transparent; font-weight: 500; }
-.choice-chip:disabled:not(.chosen) { opacity: 0.4; cursor: default; }
-
-/* ── Chat prose ─────────────────────────────────────────────────────────────── */
-.prose-chat p { margin-bottom: 6px; }
-.prose-chat p:last-child { margin-bottom: 0; }
-.prose-chat strong { font-weight: 600; }
-.prose-chat em { font-style: italic; opacity: 0.8; }
-.prose-chat ul { margin: 8px 0 8px 18px; list-style: disc; }
-.prose-chat li { margin-bottom: 3px; font-size: 13px; line-height: 1.6; }
-.prose-chat h4 { font-weight: 600; margin: 10px 0 4px; }
-.prose-chat code { font-size: 12px; font-family: monospace; background: #f3f4f6; padding: 1px 5px; border-radius: 4px; }
-html.dark .prose-chat code { background: #27272a; color: #d4d4d8; }
-
-/* ── Home hero: interactive background + word rotator ───────────────────────── */
-.mf-aurora { position: absolute; border-radius: 50%; filter: blur(90px); opacity: 1; transition: opacity 0.6s ease; }
-.mf-aurora-1 { width: 44vw; height: 44vw; left: 8%; top: -18%;
-  background: radial-gradient(circle, rgba(34,197,94,0.14), transparent 70%); animation: mf-drift1 26s ease-in-out infinite; }
-.mf-aurora-2 { width: 38vw; height: 38vw; right: 4%; bottom: -20%;
-  background: radial-gradient(circle, rgba(74,222,128,0.10), transparent 72%); animation: mf-drift2 32s ease-in-out infinite; }
-html.dark .mf-aurora-1 { background: radial-gradient(circle, rgba(34,197,94,0.12), transparent 70%); }
-html.dark .mf-aurora-2 { background: radial-gradient(circle, rgba(74,222,128,0.08), transparent 72%); }
-@keyframes mf-drift1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(4%,3%) scale(1.1); } }
-@keyframes mf-drift2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-3%,-3%) scale(1.08); } }
-
-.mf-dotfield {
-  position: absolute; inset: 0; opacity: 0; transition: opacity 0.5s ease;
-  background-image: radial-gradient(rgba(22,163,74,0.30) 1px, transparent 1.6px);
-  background-size: 22px 22px;
-  -webkit-mask-image: radial-gradient(circle 230px at var(--mx,-1000px) var(--my,-1000px), #000 0%, rgba(0,0,0,0.4) 42%, transparent 72%);
-  mask-image: radial-gradient(circle 230px at var(--mx,-1000px) var(--my,-1000px), #000 0%, rgba(0,0,0,0.4) 42%, transparent 72%);
-}
-html.dark .mf-dotfield { background-image: radial-gradient(rgba(74,222,128,0.42) 1px, transparent 1.6px); }
-
-.mf-cursor-glow {
-  position: absolute; width: 460px; height: 460px; border-radius: 50%; transform: translate(-50%,-50%);
-  left: -1000px; top: -1000px; opacity: 0; transition: opacity 0.5s ease; pointer-events: none;
-  background: radial-gradient(circle, rgba(34,197,94,0.12), transparent 60%);
-}
-html.dark .mf-cursor-glow { background: radial-gradient(circle, rgba(34,197,94,0.14), transparent 60%); }
-
-.mf-bg.mf-interacting .mf-aurora { opacity: 0.35; }
-.mf-bg.mf-interacting .mf-dotfield { opacity: 1; }
-.mf-bg.mf-interacting .mf-cursor-glow { opacity: 1; }
-
-.mf-slot { display: inline-block; }
-.mf-rotator { display: inline-block; will-change: transform, filter, opacity; animation: mf-rollin 0.55s cubic-bezier(0.2,0.8,0.2,1); }
-@keyframes mf-rollin {
-  0%   { opacity: 0; transform: translateY(0.7em); filter: blur(7px); }
-  60%  { filter: blur(0); }
-  100% { opacity: 1; transform: none; filter: blur(0); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .mf-aurora, .mf-rotator { animation: none !important; }
+html.light {
+  --glass-fill:linear-gradient(145deg, rgba(255,255,255,0.82), rgba(246,246,248,0.60) 50%, rgba(238,238,242,0.55));
+  --glass-fill-strong:linear-gradient(145deg, rgba(255,255,255,0.92), rgba(248,248,250,0.76) 50%, rgba(240,240,244,0.70));
+  --glass-body:rgba(255,255,255,0.45);
+  --glass-body-strong:rgba(255,255,255,0.62);
+  --glass-hairline:rgba(0,0,0,0.10);
+  --glass-inner:inset 0 1px 0 rgba(255,255,255,0.95), inset 0 -18px 36px -24px rgba(var(--shadow-rgb),0.08);
+  --glass-spec:linear-gradient(150deg, rgba(255,255,255,0.95), rgba(255,255,255,0.35) 36%, transparent 64%);
+  --glass-drop:0 22px 50px -26px rgba(var(--shadow-rgb),0.34);
+  --glow-sep:rgba(0,0,0,0.12);
+  --shadow-float:0 10px 24px -14px rgba(var(--shadow-rgb),0.28);
+  --shadow-modal:0 20px 40px -20px rgba(var(--shadow-rgb),0.3);
 }
 
 /* ── Print: export the Transformation Concept as a clean PDF ──────────── */
 @media print {
-  .no-print { display: none !important; }
   html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
   /* The app shell is position:fixed so the page can never scroll behind it.
      A fixed element prints as one clipped viewport-sized box, so it goes
      back into flow for printing. */
   .app { position: static !important; inset: auto !important; height: auto !important; overflow: visible !important; }
-  /* Let the concept content flow across pages instead of being clipped by
-     the fixed 100vh app layout. */
-  .print-area {
-    position: static !important;
-    overflow: visible !important;
-    height: auto !important;
-    max-height: none !important;
-    flex: none !important;
-  }
-  .print-area * { overflow: visible !important; }
 }
 
-/* Measure categories — one hue per category, kept consistent across all four
-   diagram views so a colour always means the same thing. Tuned per theme
-   (lighter//more saturated on dark) rather than reused verbatim. */
-:root {
-  --cat-tooling:#16a34a;  --cat-tooling-tint:#e9f8ef;
-  --cat-agile:#c2610a;    --cat-agile-tint:#fdf2e3;
-  --cat-business:#2563eb; --cat-business-tint:#e9f0fe;
-  --cat-security:#e11d48; --cat-security-tint:#fdecf0;
-}
-html.dark {
-  --cat-tooling:#34d17a;  --cat-tooling-tint:#0f2417;
-  --cat-agile:#f0a94e;    --cat-agile-tint:#2a1c0b;
-  --cat-business:#6d94f7; --cat-business-tint:#101d3a;
-  --cat-security:#f2607f; --cat-security-tint:#2c1017;
-}
-
-/* Visible keyboard focus everywhere (mouse clicks stay clean via :focus-visible) */
+/* Visible keyboard focus everywhere (mouse clicks stay clean via :focus-visible).
+   The ring is --ring (the light end of the accent), not --primary: the deep
+   blue measured 2.3:1 against the near-black page, under the 3:1 a focus
+   indicator needs. Inside .app the box-shadow ring in agxp-design.css takes
+   over; this is what the auth and legal pages get. */
 :where(a,button,[role="button"],input,textarea,select,summary,[tabindex]):focus-visible {
-  outline: 2px solid var(--green); outline-offset: 2px; border-radius: 6px;
+  outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 6px;
 }
 
-/* A container that shows focus for the field inside it — the composers use
-   focus-within to turn their whole border green. Without this the rule above ALSO
-   ringed the textarea, so focusing it drew two green rounded rectangles, one inside
-   the other. The container's border is the focus indicator here, so the inner one is
-   redundant, not missing: accessibility is preserved. */
-.focus-parent :focus-visible { outline: none; }
-
-/* Skeleton loaders */
-.skeleton { position: relative; overflow: hidden; background: #eceeec; border-radius: 8px; }
-html.dark .skeleton { background: #1f2320; }
-.skeleton::after { content: ""; position: absolute; inset: 0; transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.6), transparent); animation: sk 1.4s infinite; }
-html.dark .skeleton::after { background: linear-gradient(90deg, transparent, rgba(255,255,255,.06), transparent); }
-@keyframes sk { 100% { transform: translateX(100%); } }
-
-/* Keyboard hint chip */
-.kbd { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 10px; line-height: 1;
-  padding: 2px 5px; border-radius: 5px; border: 1px solid #e5e7eb; background: #f9fafb; color: #6b7280; }
-html.dark .kbd { border-color: #3f3f46; background: #27272a; color: #a1a1aa; }
-
-/* Respect reduced-motion globally */
+/* Respect reduced-motion globally. Reduced means fewer and gentler, not
+   zero: keyframes (which move things) are cut, and transitions are limited to
+   the properties that don't move anything — opacity and colour still fade,
+   transforms and layout jump. The few entrances worth keeping as a plain fade
+   are restored at the end of agxp-design.css. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important;
-    transition-duration: .01ms !important; scroll-behavior: auto !important; }
+    transition-property: opacity, color, background-color, border-color, box-shadow, fill, stroke !important;
+    scroll-behavior: auto !important; }
 }
 
-/* ── Cards respond to the cursor ──────────────────────────────────────────
-   Asked for on the Concept and Roadmap cards. Deliberately restrained: these sit
-   in dense grids, so anything stronger than a 2px lift turns scanning the page
-   into a light show. Defined once so both pages tune together, and so the
-   reduced-motion escape hatch below has a single thing to switch off — the global
-   rule shortens transitions but cannot cancel a transform. */
-.card-lift {
-  transition: transform .18s cubic-bezier(.23, 1, .32, 1),
-              box-shadow .18s cubic-bezier(.23, 1, .32, 1),
-              border-color .18s ease;
-  will-change: transform;
-}
-.card-lift:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 22px -14px rgba(16, 40, 22, .38);
-  border-color: rgb(161 161 170);          /* zinc-400 */
-}
-.dark .card-lift:hover {
-  box-shadow: 0 10px 22px -14px rgba(0, 0, 0, .6);
-  border-color: rgb(82 82 91);             /* zinc-600 */
-}
-@media (prefers-reduced-motion: reduce) {
-  .card-lift, .card-lift:hover { transform: none; transition: none; }
-}

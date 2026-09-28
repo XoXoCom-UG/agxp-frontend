@@ -1,23 +1,30 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { IconArrow } from "@/components/layout/agxp-icons";
+import { BrandLogo } from "@/components/layout/brand-logo";
 
+// Collected for the 404 like a page's own metadata, so the tab says what
+// happened instead of the default app title.
+export const metadata: Metadata = { title: "Page not found" };
+
+/** Unmatched URLs and notFound() calls. Same shell as the sign-in screen, so a
+ *  wrong link still lands somewhere that looks like the app. */
 export default function NotFound() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-zinc-50 dark:bg-zinc-950 px-6">
-      <div className="flex items-center gap-px mb-8">
-        <span className="font-bold text-xl tracking-tight text-zinc-900 dark:text-zinc-50">Agentix</span>
-        <span className="font-bold text-xl tracking-tight text-blue-600">Projects</span>
+    <main className="auth">
+      <div className="auth-form-col">
+        <div className="auth-card status-card">
+          <div className="auth-brand">
+            <BrandLogo size={32} />
+          </div>
+          <p className="status-code" aria-hidden="true">404</p>
+          <h1>Page not found</h1>
+          <p className="auth-sub">The page you were looking for doesn&apos;t exist, or it has moved.</p>
+          <Link className="btn-primary-wide" href="/dashboard">
+            Go to your workspace<IconArrow />
+          </Link>
+        </div>
       </div>
-      <p className="text-[80px] font-extrabold leading-none text-zinc-200 dark:text-zinc-800 mb-4 select-none">404</p>
-      <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50 mb-2">Seite nicht gefunden</h1>
-      <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-8 text-center max-w-sm">
-        Die Seite, die du suchst, existiert nicht oder wurde verschoben.
-      </p>
-      <Link
-        href="/chat"
-        className="text-sm font-semibold text-white bg-green-600 hover:bg-green-700 transition-colors duration-150 rounded-lg px-5 py-2.5"
-      >
-        Zurück zum Chat
-      </Link>
-    </div>
+    </main>
   );
 }

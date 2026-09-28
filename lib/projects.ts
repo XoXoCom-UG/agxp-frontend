@@ -152,9 +152,20 @@ export async function listMessages(projectId: string, column: AgentType): Promis
   return (data ?? []) as ProjectMessage[];
 }
 
-export async function addMessage(projectId: string, column: AgentType, role: "user" | "assistant", content: string): Promise<void> {
+/** Returns the stored row's id, so a reply can later be found again (Try again). */
+export async function addMessage(projectId: string, column: AgentType, role: "user" | "assistant", content: string): Promise<string | null> {
   const supabase = createClient();
-  const { error } = await supabase.from("agxp_project_messages").insert({ project_id: projectId, column_type: column, role, content });
+  const { data, error } = await supabase.from("agxp_project_messages")
+    .insert({ project_id: projectId, column_type: column, role, content })
+    .select("id").single();
+  if (error) throw error;
+  return (data?.id as string | undefined) ?? null;
+}
+
+/** One message. Allowed by the owner-delete policy (migration 0004). */
+export async function deleteMessage(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("agxp_project_messages").delete().eq("id", id);
   if (error) throw error;
 }
 

@@ -1,16 +1,21 @@
 import Link from "next/link";
+import { BrandLogo } from "@/components/layout/brand-logo";
+import { IconAlert } from "@/components/layout/agxp-icons";
 
-/** Shared frame for the public legal pages (Impressum / Datenschutz / AGB). */
+/**
+ * Shared frame for the public legal pages (Impressum / Datenschutz / AGB).
+ * The copy is German legal text inside an English app, so the frame carries
+ * lang="de" — screen readers and hyphenation then read it as German.
+ */
 export function LegalShell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="legal">
+    <div className="legal" lang="de">
       <header className="legal-head">
         <div className="legal-col">
-          <Link href="/" className="legal-brand">
-            <span className="name">Agentix Projects</span>
-            <span className="sub">AGXP</span>
+          <Link href="/dashboard" className="legal-brand">
+            <BrandLogo size={26} />
           </Link>
-          <span className="sep">/</span>
+          <span className="sep" aria-hidden="true">/</span>
           <span className="where">{title}</span>
         </div>
       </header>
@@ -25,7 +30,8 @@ export function LegalShell({ title, children }: { title: string; children: React
           <Link href="/impressum">Impressum</Link>
           <Link href="/datenschutz">Datenschutz</Link>
           <Link href="/agb">AGB</Link>
-          <Link href="/" className="back">← Zur App</Link>
+          {/* Straight to the workspace: "/" only decides where to send you. */}
+          <Link href="/dashboard" className="back">← Zur App</Link>
         </div>
       </footer>
     </div>
@@ -41,15 +47,16 @@ export function LegalSection({ heading, children }: { heading: string; children:
   );
 }
 
-/** Highlighted reminder that placeholders must be completed / legally reviewed. */
+/**
+ * Highlighted reminder that placeholders must be completed / legally reviewed.
+ * These are notes to the team, not to visitors, so a production build leaves
+ * them out entirely — the [placeholders] in the text stay visible either way.
+ */
 export function TodoNotice({ children }: { children: React.ReactNode }) {
+  if (process.env.NODE_ENV === "production") return null;
   return (
     <div className="legal-todo">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-        strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
-        <path d="M12 9v4" /><path d="M12 17h.01" />
-      </svg>
+      <IconAlert size={15} />
       <p>{children}</p>
     </div>
   );

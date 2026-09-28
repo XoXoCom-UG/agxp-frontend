@@ -78,7 +78,9 @@ const CONVERSATIONAL_STYLE =
   `kurz (wenige Sätze), bevor die Frage kommt. Baue auf dem auf, was der Nutzer gerade gesagt hat, ` +
   `statt eine vorgefertigte Checkliste abzuarbeiten. Große strukturierte Inhalte (Tabellen, ` +
   `vollständige Dokumente) lieferst du NUR, wenn der Nutzer explizit danach fragt (z.B. das fertige ` +
-  `Ergebnis-Dokument) — nicht als Zwischenschritt im normalen Gesprächsfluss.`;
+  `Ergebnis-Dokument) — nicht als Zwischenschritt im normalen Gesprächsfluss. Wenn du Code zeigst, ` +
+  `schreibe den Dateinamen direkt hinter die Sprache in den Fence, z.B. \`\`\`tsx:SongSearch.tsx — ` +
+  `die Oberfläche zeigt ihn als Kopfzeile des Code-Blocks.`;
 
 const ROLE_PROMPTS: Record<AgentType, (name: string) => string> = {
   consultant: (name) =>
@@ -216,23 +218,34 @@ interface ChatBody {
   peer?: PeerContext;
 }
 
+/**
+ * Every error the browser can get before the answer starts. The text is what
+ * a person may end up reading, so it is plain English and never names an env
+ * var or an internal; `code` is what the client actually branches on.
+ */
+function fail(status: number, code: string, error: string) {
+  return NextResponse.json({ error, code }, { status });
+}
+
 export async function POST(req: NextRequest) {
   const userId = await callerId(req);
   if (!userId) {
-    return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+    return fail(401, "unauthorized", "Your session has expired. Sign in again.");
   }
   if (overLimit(userId)) {
-    return NextResponse.json({ error: "Too many messages in a row. Wait a minute." }, { status: 429 });
+    return fail(429, "rate_limited", "Too many messages in a short time. Wait a minute, then try again.");
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    return NextResponse.json({ error: "ANTHROPIC_API_KEY ist nicht konfiguriert." }, { status: 500 });
+    // Named here, in the server log, where the person who can fix it looks.
+    console.error("[agent/chat] ANTHROPIC_API_KEY is not set");
+    return fail(500, "not_configured", "The assistant isn't configured on the server yet.");
   }
 
-  const body = (await req.json()) as ChatBody;
+  const body = (await req.json().catch(() => null)) as ChatBody | null;
   if (!body?.messages?.length || !body.agentType || !DELIVERABLES[body.agentType]) {
-    return NextResponse.json({ error: "messages und agentType sind erforderlich." }, { status: 400 });
+    return fail(400, "bad_request", "The request was incomplete. Reload the page and try again.");
   }
 
   const anthropic = new Anthropic({ apiKey });

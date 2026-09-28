@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import type { Agent, AgentType, Method } from "@/lib/agents";
 import { listAllMethods, createAgent } from "@/lib/agents";
 import { assignAgent, type Project } from "@/lib/projects";
@@ -9,9 +9,9 @@ import { methodLabel } from "@/lib/method-labels";
 import { dateStr } from "@/lib/utils";
 import { describeDbError } from "@/lib/db-error";
 import { AgentMascot } from "@/components/layout/agent-mascot";
-import { stageForProjects } from "@/lib/mascot-evolution";
+import { useMascotReplies, levelFromReplies } from "@/lib/mascot-level";
 import {
-  IconBack, IconArrow, IconSearch, IconCheck, IconPlus, IconSpark,
+  IconBack, IconArrow, IconSearch, IconCheck, IconAlert, IconRefresh,
 } from "@/components/layout/agxp-icons";
 
 type PanelState = "empty" | "list" | "detail" | "type" | "configure";
@@ -20,16 +20,14 @@ const ROLE_LABEL: Record<AgentType, string> = { consultant: "Consultant", coach:
 // Plain words only. Patryk's review (2026-09-10): someone with no IT or
 // consulting background must not meet jargon on the first screen, or they
 // lose interest before the conversation starts.
-const ROLE_HEAD: Record<AgentType, { title: string; sub: string; emptyTitle: string; emptyDesc: string }> = {
+const ROLE_HEAD: Record<AgentType, { title: string; emptyTitle: string; emptyDesc: string }> = {
   coach: {
     title: "Your coach",
-    sub: "Keeps an eye on the people side of your project.",
     emptyTitle: "No coach yet",
     emptyDesc: "Make a new one, or pick a coach you have worked with before.",
   },
   consultant: {
     title: "Your consultant",
-    sub: "Works out what to change and how.",
     emptyTitle: "No consultant yet",
     emptyDesc: "Make a new one, or pick a consultant you have worked with before.",
   },
@@ -38,12 +36,12 @@ const ROLE_HEAD: Record<AgentType, { title: string; sub: string; emptyTitle: str
 /** Ana's two ways in (agxp-frontend-ana): make one, or train one you have. */
 const PICKER_COPY: Record<AgentType, { createDesc: string; trainDesc: string }> = {
   consultant: {
-    createDesc: "Set up a new AI consultant tailored to your needs.",
-    trainDesc: "Improve your consultant with new knowledge and context.",
+    createDesc: "Choose the kind of help you need, then give your consultant a name.",
+    trainDesc: "Pick one you have worked with. It keeps what it learned in your earlier projects.",
   },
   coach: {
-    createDesc: "Start a new AI coach for your personal growth.",
-    trainDesc: "Enhance your coach with new insights and goals.",
+    createDesc: "Choose the kind of support you need, then give your coach a name.",
+    trainDesc: "Pick one you have worked with. It keeps what it learned about your team.",
   },
 };
 
@@ -53,24 +51,24 @@ const PICKER_COPY: Record<AgentType, { createDesc: string; trainDesc: string }> 
 interface TypeTemplate { type: string; sub: string; description: string; primary: string[]; secondary: string[]; status: "confirmed" | "preview"; }
 const TYPE_CATALOG: Record<AgentType, TypeTemplate[]> = {
   consultant: [
-    { type: "AI Strategy Consultant", sub: "Strategy & AI Transformation", status: "confirmed",
+    { type: "AI Strategy Consultant", sub: "Strategy & AI transformation", status: "confirmed",
       description: "Strategic analysis and structured guidance for AI and IT transformation projects.",
       primary: ["As-Is/To-Be", "Gap-Analyse", "Requirements Engineering"], secondary: ["Process Mapping", "Impact Mapping"] },
-    { type: "Solution Architect", sub: "Systems & Integration", status: "preview",
+    { type: "Solution Architect", sub: "Systems & integration", status: "preview",
       description: "Designs target-state systems and integration blueprints.",
       primary: ["Gap-Analyse", "Process Mapping"], secondary: ["Impact Mapping"] },
-    { type: "Digital Transformation Manager", sub: "Roadmap & Adoption", status: "preview",
+    { type: "Digital Transformation Manager", sub: "Roadmap & adoption", status: "preview",
       description: "Coordinates roadmap execution and change adoption across teams.",
       primary: ["Impact Mapping", "Process Mapping"], secondary: ["Requirements Engineering"] },
   ],
   coach: [
-    { type: "AI Business Analyst", sub: "Process & Requirements", status: "confirmed",
+    { type: "AI Business Analyst", sub: "Process & requirements", status: "confirmed",
       description: "Supports structured project discovery, requirements clarification and project execution.",
       primary: ["Requirements Engineering", "Process Mapping"], secondary: ["As-Is/To-Be"] },
-    { type: "Agile Coach / Scrum Master", sub: "Delivery & Team Flow", status: "preview",
+    { type: "Agile Coach / Scrum Master", sub: "Delivery & team flow", status: "preview",
       description: "Coaches delivery teams on flow, ceremonies and iterative planning.",
       primary: ["Process Mapping"], secondary: ["Impact Mapping"] },
-    { type: "Change Manager", sub: "Change & Adoption", status: "preview",
+    { type: "Change Manager", sub: "Change & adoption", status: "preview",
       description: "Guides teams through the human side of AI/IT transformations.",
       primary: ["Impact Mapping", "As-Is/To-Be"], secondary: ["Gap-Analyse"] },
   ],
@@ -97,6 +95,11 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState<TypeTemplate | null>(null);
+  /** Picking failed — which agent, so Retry can pick it again. */
+  const [selectError, setSelectError] = useState<{ agentId: string; message: string } | null>(null);
+  const replies = useMascotReplies();
+  const searchId = useId();
+  const lockedHintId = useId();
 
   const roleAgents = agents.filter(a => a.type === role);
   const filtered = roleAgents.filter(a => {
@@ -110,17 +113,15 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
    *  wrong one you simply pick again (Patryk, 2026-09-11). */
   async function select(agentId: string) {
     setBusy(true);
+    setSelectError(null);
     try {
       const p = project ?? await ensureProject();
       onAssigned(await assignAgent(p.id, role, agentId, `${ROLE_LABEL[role]} selected`));
+    } catch (e) {
+      // Without this the button just stops spinning and nothing happens —
+      // indistinguishable from a click that didn't register.
+      setSelectError({ agentId, message: describeDbError(e, `Choosing the ${ROLE_LABEL[role].toLowerCase()}`) });
     } finally { setBusy(false); }
-  }
-
-  /** Lights the card under the pointer. No state — this is paint, not data. */
-  function trackGlow(e: React.MouseEvent<HTMLButtonElement>) {
-    const box = e.currentTarget.getBoundingClientRect();
-    e.currentTarget.style.setProperty("--mx", `${e.clientX - box.left}px`);
-    e.currentTarget.style.setProperty("--my", `${e.clientY - box.top}px`);
   }
 
   const showBack = state !== "empty";
@@ -130,19 +131,18 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   // The "train existing" head wears whichever agent this user has grown the
   // furthest in this role, so the two cards differ at a glance. No agents
   // yet — plain head, nothing to brag about.
-  const trainedLevel = stageForProjects(
-    roleAgents.reduce((most, a) => Math.max(most, totalProjects(a)), 0),
+  const trainedLevel = levelFromReplies(
+    roleAgents.reduce((most, a) => Math.max(most, replies[a.id] ?? 0), 0),
   );
 
   // Chosen, waiting for Start. Showing who it is beats an empty panel, and
   // this is the one place changing your mind is free.
-  const assignedLevel = stageForProjects(assignedAgent ? totalProjects(assignedAgent) : 0);
   if (assignedAgent) {
     const total = totalProjects(assignedAgent);
     return (
       <section className={`panel ${role}`}>
         <div className="panel-head">
-          <AgentMascot role={role} size={59} enter level={assignedLevel} />
+          <AgentMascot role={role} size={68} enter agentId={assignedAgent.id} />
         </div>
         <div className="selected-summary">
           <div className="sel-name">{assignedAgent.name}</div>
@@ -160,10 +160,9 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   return (
     <section className={`panel ${role}`}>
       <div className="panel-head">
-        <AgentMascot role={role} size={44} enter level={trainedLevel} />
-        <div style={{ minWidth: 0, flex: 1 }}>
+        <AgentMascot role={role} size={51} enter level={trainedLevel} />
+        <div className="panel-head-main">
           <h2>{head.title}</h2>
-          <div className="sub">{head.sub}</div>
         </div>
         {showBack && (
           <button className="back-link" onClick={() => setState(state === "detail" ? "list" : state === "configure" ? "type" : "empty")}>
@@ -171,6 +170,16 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
           </button>
         )}
       </div>
+
+      {selectError && (
+        <div className="inline-error" role="alert">
+          <IconAlert size={14} />
+          <p className="ie-detail">{selectError.message}</p>
+          <button className="btn btn-ghost" disabled={busy} onClick={() => select(selectError.agentId)}>
+            <IconRefresh size={12} />Retry
+          </button>
+        </div>
+      )}
 
       {state === "empty" ? (
         // Two cards, one per way in. They sit side by side in the wide panel
@@ -182,41 +191,48 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
                 bottom — a card that lifts under the cursor but only counts a
                 click on its last 50px is a trap. So the CTA is a span and the
                 card itself is the button. */}
-            <button className="picker-card" disabled={locked} onMouseMove={trackGlow}
+            {/* Locked, the cards stay focusable (aria-disabled, not disabled)
+                so a keyboard user can reach them and hear why — and the same
+                reason is written under them for everyone else. */}
+            <button className="picker-card" aria-disabled={locked || undefined}
+              aria-describedby={locked ? lockedHintId : undefined}
               data-tooltip={locked ? "Pick a Consultant first" : undefined}
-              onClick={() => setState("type")}>
-              <span className="picker-card-glow" />
-              <span className="picker-card-icon"><IconPlus size={17} /></span>
+              onClick={() => { if (!locked) setState("type"); }}>
               <span className="picker-card-head">
                 <span className="picker-card-title">Create new AI {ROLE_LABEL[role]}</span>
                 <span className="picker-card-desc">{PICKER_COPY[role].createDesc}</span>
               </span>
               <span className="picker-card-cta">
-                <span>Create new agent</span><span className="btn-arrow-end">→</span>
+                <span>Create new agent</span><IconArrow className="btn-arrow-end" />
               </span>
             </button>
 
-            <button className="picker-card" disabled={locked} onMouseMove={trackGlow}
+            <button className="picker-card" aria-disabled={locked || undefined}
+              aria-describedby={locked ? lockedHintId : undefined}
               data-tooltip={locked ? "Pick a Consultant first" : undefined}
-              onClick={() => setState("list")}>
-              <span className="picker-card-glow" />
-              <span className="picker-card-icon"><IconSpark size={17} /></span>
+              onClick={() => { if (!locked) setState("list"); }}>
               <span className="picker-card-head">
                 <span className="picker-card-title">Train existing AI {ROLE_LABEL[role]}</span>
                 <span className="picker-card-desc">{PICKER_COPY[role].trainDesc}</span>
               </span>
               <span className="picker-card-cta">
-                <span>Train existing agent</span><span className="btn-arrow-end">→</span>
+                <span>Train existing agent</span><IconArrow className="btn-arrow-end" />
               </span>
             </button>
           </div>
+          {locked && (
+            <p className="pick-locked-hint" id={lockedHintId}>
+              Pick a Consultant first. The Coach joins once there is one.
+            </p>
+          )}
         </div>
 
       ) : state === "list" ? (
         <>
           <div className="list-toolbar">
             <div className="search-box"><IconSearch size={13} />
-              <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name or what they do..." />
+              <label htmlFor={searchId} className="visually-hidden">Search your {ROLE_LABEL[role].toLowerCase()}s</label>
+              <input id={searchId} type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name or what they do…" />
             </div>
           </div>
           <div className="list-section-label">People you have worked with</div>
@@ -228,19 +244,25 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
             </div>
           ) : (
             <div className="directory">
-              {filtered.map(a => (
-                <div key={a.id} className="dir-row" tabIndex={0} role="button" aria-label={`View ${a.name}`}
-                  onClick={() => { setDetailId(a.id); setState("detail"); }}>
-                  <div className="dr-name">{a.name}</div>
-                  {a.tagline && <div className="dr-sub">{a.tagline}</div>}
-                  {a.primaryMethods.length > 0 && <div className="dr-methods"><span className="mlabel">Primary</span>{a.primaryMethods.map(m => m.name).join(" · ")}</div>}
-                  {a.secondaryMethods.length > 0 && <div className="dr-methods secondary"><span className="mlabel">Secondary</span>{a.secondaryMethods.map(m => m.name).join(" · ")}</div>}
-                  <div className="dr-foot">
-                    <span className="proj-count">{levelFor(totalProjects(a))} · {totalProjects(a)} Projects</span>
-                    <span className="dr-select" aria-hidden="true">Select <IconArrow /></span>
-                  </div>
-                </div>
-              ))}
+              {/* A real button, so Enter and Space work without a handler.
+                  Its content is phrasing only (spans), which is all a button
+                  may hold; the name comes from the text, read in order. */}
+              {filtered.map(a => {
+                const total = totalProjects(a);
+                return (
+                  <button key={a.id} type="button" className="dir-row"
+                    onClick={() => { setDetailId(a.id); setState("detail"); }}>
+                    <span className="dr-name">{a.name}</span>
+                    {a.tagline && <span className="dr-sub">{a.tagline}</span>}
+                    {a.primaryMethods.length > 0 && <span className="dr-methods"><span className="mlabel">Primary</span>{a.primaryMethods.map(m => methodLabel(m.name)).join(" · ")}</span>}
+                    {a.secondaryMethods.length > 0 && <span className="dr-methods secondary"><span className="mlabel">Secondary</span>{a.secondaryMethods.map(m => methodLabel(m.name)).join(" · ")}</span>}
+                    <span className="dr-foot">
+                      <span className="proj-count">{levelFor(total)} · {total} {total === 1 ? "project" : "projects"}</span>
+                      <span className="dr-select" aria-hidden="true">Select <IconArrow /></span>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           )}
         </>
@@ -251,7 +273,7 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
 
       ) : state === "type" ? (
         <>
-          <div className="step-eyebrow">Step 1 of 2 — what kind of help?</div>
+          <div className="step-eyebrow">Step 1 of 2: what kind of help?</div>
           <div className="type-wrap">
             {TYPE_CATALOG[role].map(t => (
               <div key={t.type} className="type-card">
@@ -259,7 +281,7 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
                   <div><h3>{t.type}</h3><div className="desc">{t.description}</div></div>
                   <button className="btn btn-ghost" onClick={() => { setDraft(t); setState("configure"); }}>Select <IconArrow /></button>
                 </div>
-                <div className="detail-section" style={{ marginBottom: 0 }}>
+                <div className="detail-section flush">
                   <span className="lbl">Can help with</span>
                   <ul className="plist">
                     {[...t.primary, ...t.secondary].map(m => <li key={m}>{methodLabel(m)}</li>)}
@@ -314,7 +336,7 @@ function DetailView({ agent, role, busy, totalProjects, onSelect }: {
         </div>
       )}
       {agent.last_projects.length > 0 && (
-        <div className="detail-section"><span className="lbl">Recent Projects</span>
+        <div className="detail-section"><span className="lbl">Recent projects</span>
           <div className="timeline">{agent.last_projects.map(p => (
             <div key={p.id} className="t-item"><div className="pn">{p.name}</div><div className="pd">{dateStr(p.created_at)}</div></div>
           ))}</div>
@@ -331,16 +353,43 @@ function ConfigureView({ role, template, onCreated }: { role: AgentType; templat
   const t = template ?? TYPE_CATALOG[role][0];
   const [name, setName] = useState(t.type);
   const [description, setDescription] = useState(t.description);
-  const [allMethods, setAllMethods] = useState<Method[]>([]);
+  const [allMethods, setAllMethods] = useState<Method[] | null>(null);
+  /** The method list failed to load. Without it Create can never be valid,
+   *  so this has to be on screen instead of a button that just stays grey. */
+  const [methodsError, setMethodsError] = useState<string | null>(null);
+  const [methodsAttempt, setMethodsAttempt] = useState(0);
   const [touched, setTouched] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const nameId = useId();
+  const descId = useId();
+  const helpsId = useId();
+  const reasonId = useId();
 
-  useEffect(() => { listAllMethods().then(setAllMethods).catch(() => {}); }, []);
+  useEffect(() => {
+    let alive = true;
+    listAllMethods()
+      .then(m => { if (alive) setAllMethods(m); })
+      .catch(e => { if (alive) setMethodsError(describeDbError(e, "Loading the methods")); });
+    return () => { alive = false; };
+  }, [methodsAttempt]);
+
+  function retryMethods() {
+    setMethodsError(null);
+    setAllMethods(null);
+    setMethodsAttempt(n => n + 1);
+  }
 
   // The type decides the methods — the user names the agent, not its skillset.
-  const methodIds = allMethods.filter(m => t.primary.includes(m.name) || t.secondary.includes(m.name)).map(m => m.id);
+  const methodIds = (allMethods ?? []).filter(m => t.primary.includes(m.name) || t.secondary.includes(m.name)).map(m => m.id);
   const valid = name.trim().length > 0 && methodIds.length > 0;
+  /** Why Create won't go yet, in words — shown beside the button, not only
+   *  in a tooltip. The load error has its own box with a Retry. */
+  const blockReason = saving || methodsError ? null
+    : allMethods === null ? "Loading what this agent can help with…"
+    : methodIds.length === 0 ? "None of this type's methods are in the database yet, so it can't be created."
+    : !name.trim() ? "Give the agent a name first."
+    : null;
 
   async function submit() {
     setTouched(true);
@@ -359,25 +408,49 @@ function ConfigureView({ role, template, onCreated }: { role: AgentType; templat
 
   return (
     <>
-      <div className="step-eyebrow">Step 2 of 2 — give them a name</div>
+      <div className="step-eyebrow">Step 2 of 2: give them a name</div>
       <div className="configure">
         <div className="field">
-          <label>Name</label>
-          <input type="text" value={name} onChange={e => setName(e.target.value)} />
+          <label htmlFor={nameId}>Name</label>
+          <input id={nameId} type="text" value={name} onChange={e => setName(e.target.value)}
+            aria-invalid={touched && !name.trim() ? true : undefined} />
           {touched && !name.trim() && <div className="field-err">Agent name is required.</div>}
         </div>
-        <div className="field"><label>Description</label><textarea rows={3} value={description} onChange={e => setDescription(e.target.value)} /></div>
         <div className="field">
-          <label>Can help with</label>
-          <ul className="plist">{[...t.primary, ...t.secondary].map(m => <li key={m}>{methodLabel(m)}</li>)}</ul>
+          <label htmlFor={descId}>Description</label>
+          <textarea id={descId} rows={3} value={description} onChange={e => setDescription(e.target.value)} />
         </div>
-        <div className="field"><label>Experience</label><div className="val" style={{ fontSize: "var(--text-xs)", color: "var(--text-secondary)" }}>New — you two have not worked together yet</div></div>
-        {error && <div className="field-err">{error}</div>}
+        {/* Not form controls, so not <label>s: a label with nothing to label
+            is announced as a stray label. The list is named by its heading. */}
+        <div className="field">
+          <span className="field-label" id={helpsId}>Can help with</span>
+          <ul className="plist" aria-labelledby={helpsId}>{[...t.primary, ...t.secondary].map(m => <li key={m}>{methodLabel(m)}</li>)}</ul>
+        </div>
+        <div className="field">
+          <span className="field-label">Experience</span>
+          <div className="field-val">New. You two have not worked together yet.</div>
+        </div>
+        {methodsError && (
+          <div className="inline-error" role="alert">
+            <IconAlert size={14} />
+            <p className="ie-detail">{methodsError}</p>
+            <button className="btn btn-ghost" onClick={retryMethods}><IconRefresh size={12} />Retry</button>
+          </div>
+        )}
+        {error && <div className="field-err" role="alert">{error}</div>}
         <div className="configure-actions">
-          <button className="btn btn-solid" disabled={!valid || saving} onClick={submit}>
-            {saving ? <span className="spinner" /> : (<><IconCheck size={13} />Create</>)}
+          {/* aria-disabled rather than disabled: it stays focusable, and the
+              reason below is tied to it, so nobody meets a silent grey button. */}
+          <button className="btn btn-solid" aria-disabled={!valid || saving || undefined}
+            aria-describedby={blockReason ? reasonId : undefined}
+            data-tooltip={blockReason ?? undefined}
+            onClick={submit}>
+            {saving
+              ? <><span className="spinner" aria-hidden="true" /><span className="visually-hidden">Creating…</span></>
+              : (<><IconCheck size={13} />Create</>)}
           </button>
         </div>
+        {blockReason && <p className="create-hint" id={reasonId}>{blockReason}</p>}
       </div>
     </>
   );

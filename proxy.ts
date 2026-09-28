@@ -23,8 +23,11 @@ export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const authed = hasSupabaseSession(req);
 
-  // Not logged in → block app pages
-  if (!authed && PROTECTED_PREFIXES.some(p => pathname.startsWith(p))) {
+  // Not logged in → block app pages. "/" is in the list too: it only decides
+  // where to send you, and without a cookie the answer is always /login — so
+  // the server gives it straight away instead of the page flashing a spinner
+  // while the client works out the same thing.
+  if (!authed && (pathname === "/" || PROTECTED_PREFIXES.some(p => pathname.startsWith(p)))) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
@@ -43,9 +46,13 @@ export function proxy(req: NextRequest) {
   // could not escape it because the cookie survived. Landing a signed-in user on
   // /login is a cosmetic issue; an inescapable loop is not. The client redirects
   // to /dashboard on its own anyway (app/page.tsx, and the login form after sign-in).
+  //
+  // The same reason keeps "/" with a cookie on the client: sending it to
+  // /dashboard from here would trust the cookie just as blindly, and an expired
+  // one would loop the same way. app/page.tsx checks the real session instead.
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/login"],
+  matcher: ["/", "/dashboard/:path*", "/login"],
 };

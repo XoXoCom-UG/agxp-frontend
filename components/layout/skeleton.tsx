@@ -15,11 +15,14 @@ export function SkeletonRows({ count = 4, avatar = "square" }: {
   avatar?: "square" | "round";
 }) {
   return (
-    <div className="project-list" aria-busy="true" aria-label="Loading">
+    // A status region with words in it: aria-label on a plain div is not
+    // announced, and the bars themselves mean nothing to a screen reader.
+    <div className="project-list" role="status" aria-busy="true">
+      <span className="visually-hidden">Loading…</span>
       {Array.from({ length: count }, (_, i) => (
         // The stagger makes it read as a list filling in rather than one
         // block flashing.
-        <div key={i} className="skel-row" style={{ "--i": i } as React.CSSProperties}>
+        <div key={i} className="skel-row" aria-hidden="true" style={{ "--i": i } as React.CSSProperties}>
           <div className={`skel-avatar ${avatar}`} />
           <div className="skel-lines">
             {/* Uneven widths — equal bars look like a table, not like text. */}

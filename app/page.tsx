@@ -4,6 +4,11 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 
+/**
+ * "/" only decides where to go. Without an auth cookie proxy.ts has already
+ * sent the visitor to /login, so this only runs for cookie holders — and the
+ * cookie alone can't be trusted (see proxy.ts), so the real session decides.
+ */
 export default function Root() {
   const { session, loading } = useAuth();
   const router = useRouter();
@@ -15,8 +20,9 @@ export default function Root() {
   }, [session, loading, router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="thinking-spinner" />
-    </div>
+    <main className="root-wait">
+      <span className="spinner spinner-lg" aria-hidden="true" />
+      <span className="visually-hidden" role="status">Loading…</span>
+    </main>
   );
 }

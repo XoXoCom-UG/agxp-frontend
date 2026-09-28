@@ -2,28 +2,46 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Agent, AgentType } from "@/lib/agents";
-import { listMessages, addMessage, touchProjectActivity, renameFromFirstMessage, type Project, type ProjectMessage } from "@/lib/projects";
-import { askAgent } from "@/lib/ask-agent";
-import { parseMarkers, looksLikeDocument, streamingText, streamIsDocument, type TopicMarker, type MemoryNote } from "@/lib/message-markers";
+import type { Project } from "@/lib/projects";
+import { type MemoryNote } from "@/lib/message-markers";
 import { loadAgentMemory, memoryLines, EMPTY_MEMORY, type AgentMemory } from "@/lib/agent-memory";
-import { DELIVERABLES, isDeliverableCommand } from "@/lib/deliverables";
-import { methodLabel } from "@/lib/method-labels";
-import { levelFor, nextLevel, LEVEL_ORDER } from "@/lib/agent-progress";
-import { stageFor } from "@/lib/mascot-evolution";
-import { md } from "@/lib/markdown";
-import { peerTranscript, previewLine, isReadAlongCommand, READ_ALONG_PROMPT, NUDGE_EVERY, NUDGE_AFTER,
-  type PeerContext, type PanelSnapshot } from "@/lib/peer-context";
-import { ThinkingOrb } from "@/components/layout/thinking-orb";
-import { AgentMascot, type MascotState, type MascotMood, type LookTarget } from "@/components/layout/agent-mascot";
+import { DELIVERABLES } from "@/lib/deliverables";
+import { levelFor } from "@/lib/agent-progress";
+import { recordReply, syncReplies, useMascotLevel, MAX_MASCOT_LEVEL } from "@/lib/mascot-level";
+import { handleCodeCopyClick } from "@/lib/markdown";
+import { peerTranscript, previewLine, type PeerContext, type PanelSnapshot } from "@/lib/peer-context";
+import { parseEntries, deriveConversation } from "@/lib/conversation-state";
+import { useAgentConversation, type ReplyInfo } from "@/lib/use-agent-conversation";
+import { useMascotChoreography } from "@/lib/use-mascot-choreography";
+import { useReadAlongNudge } from "@/lib/use-read-along-nudge";
+import { useChoiceKeys } from "@/lib/use-choice-keys";
 import type { DeliverableDoc } from "@/components/layout/deliverable-view";
-import { IconArrow, IconAttach, IconArrowUp, IconDoc, IconSpark, IconRefresh, IconChevronDown, IconMinimise } from "@/components/layout/agxp-icons";
+import { ConfirmDialog } from "@/components/layout/confirm-dialog";
+import { IconRefresh } from "@/components/layout/agxp-icons";
+import { ChatHead } from "@/components/layout/chat/chat-head";
+import { ChatComposer } from "@/components/layout/chat/chat-composer";
+import { ChatMessage, ChatStreaming } from "@/components/layout/chat/chat-message";
 
 const OPENING: Record<AgentType, string> = {
   consultant: "Hey, what can I do for you today?",
   coach: "Hey, what would you like to talk through today?",
 };
 
-export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer, idle = false, unread = false, onProjectNamed, onActivity, onOpenDoc, onChangeAgent, onSnapshot, onFocusPanel, onMinimise }: {
+/** Scrolled further than this, the head shows its hairline. */
+const STUCK_AFTER_PX = 4;
+/** Progress jumps at least this far before the mascot is pleased about it. */
+const PLEASED_STEP = 10;
+const PROUD_MS = 1200;
+const PLEASED_MS = 400;
+const GLANCE_UP_MS = 1200;
+
+/** Only a precise pointer gets the composer focused back for it; on a phone
+ *  that would pull the keyboard up after every answer. */
+function hasFinePointer(): boolean {
+  return typeof window !== "undefined" && window.matchMedia?.("(pointer: fine)").matches;
+}
+
+export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer, idle = false, unread = false, keyboardActive = true, headExtra, onProjectNamed, onActivity, onOpenDoc, onChangeAgent, onSnapshot, onFocusPanel, onMinimise }: {
   project: Project; role: AgentType; agent: Agent;
   /** How many of the user's projects this agent has worked on, this one included. */
   projectCount?: number;
@@ -42,103 +60,115 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
   idle?: boolean;
   /** An answer landed here while the user was looking at the other panel. */
   unread?: boolean;
+  /** The panel the keyboard belongs to. Both panels are mounted at once, so
+   *  only this one answers the number keys and gets its composer focused
+   *  back after a reply. */
+  keyboardActive?: boolean;
   /** Publishes this panel's state upward; the screen routes it to the other one. */
   onSnapshot?: (s: PanelSnapshot) => void;
   /** Hands this panel the room. */
   onFocusPanel?: () => void;
   /** Folds this panel away into the pill. Only the Coach is given one. */
   onMinimise?: () => void;
+  /** Rendered in the head beside the document button — the folded Coach
+   *  lives here, so it takes no room of its own. */
+  headExtra?: React.ReactNode;
 }) {
-  const [messages, setMessages] = useState<ProjectMessage[]>([]);
-  const [loaded, setLoaded] = useState(false);
-  const [input, setInput] = useState("");
-  const [sending, setSending] = useState(false);
-  const [orb, setOrb] = useState<MascotState>("idle");
-  /** The answer as it arrives, before it is saved and becomes a message. */
-  const [streamText, setStreamText] = useState("");
-  /** The agent looks at the composer while you are writing to it. */
-  const [attentive, setAttentive] = useState(false);
-  /** A one-off reaction to what just happened, cleared after it has played. */
-  const [mood, setMood] = useState<MascotMood>(null);
-  const moodTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /** Where the mascot looks right now; null resumes following the cursor. */
-  const [lookAt, setLookAt] = useState<LookTarget>(null);
-  const lookTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const deliverable = DELIVERABLES[role];
+  /** The mascot's earned look, 1-5: one level per answer (lib/mascot-level.ts). */
+  const mascotLevel = useMascotLevel(agent.id);
+  const mascot = useMascotChoreography(mascotLevel);
+
   // What the agent brings from this user's earlier projects, plus what it
   // picked up during this session.
   const [memory, setMemory] = useState<AgentMemory>(EMPTY_MEMORY);
   const [learned, setLearned] = useState<MemoryNote[]>([]);
-  /** Which head popover is open: the agent profile, or the document. */
-  const [pop, setPop] = useState<"agent" | "doc" | null>(null);
+  /** What the screen reader hears when an answer lands. */
+  const [announce, setAnnounce] = useState("");
+  /** "Change agent" asks first — it is a one-click way to lose your place. */
+  const [confirmChange, setConfirmChange] = useState(false);
+  /** The agent looks at the composer while you are writing to it. */
+  const [attentive, setAttentive] = useState(false);
+  /** The head's hairline appears only once content has scrolled beneath it. */
+  const [stuck, setStuck] = useState(false);
+  /** Set by Restore in the version history: Open shows this version instead
+   *  of the newest. Remembers how many versions there were, so a real new
+   *  version supersedes it without an effect having to reset it. */
+  const [restore, setRestore] = useState<{ version: number; atCount: number } | null>(null);
+  const panelRef = useRef<HTMLElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
-  const headRef = useRef<HTMLDivElement>(null);
-  const speakTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  /** Was the composer focused when the request went out? */
+  const composerHadFocus = useRef(false);
 
+  const totalProjects = agent.last_projects.length + projectCount;
+  const level = levelFor(totalProjects);
 
-  const deliverable = DELIVERABLES[role];
-
-  useEffect(() => () => {
-    if (speakTimer.current) clearTimeout(speakTimer.current);
-    if (moodTimer.current) clearTimeout(moodTimer.current);
-    if (lookTimer.current) clearTimeout(lookTimer.current);
-  }, []);
-
-
-
-  /** Plays a reaction once. Reactions are what read as alive — they have to
-   *  end, or they turn into noise in the corner of the eye. */
-  function react(next: Exclude<MascotMood, null>, ms = 1000) {
-    setMood(next);
-    if (moodTimer.current) clearTimeout(moodTimer.current);
-    moodTimer.current = setTimeout(() => setMood(null), ms);
+  function buildDoc(content: string, title: string, createdAt: string, version: number): DeliverableDoc {
+    return { title, role, agentId: agent.id, agentName: agent.name, agentProjects: totalProjects, projectName: project.name, content, createdAt, version };
   }
 
-  // Click anywhere else, or press Escape, and the head popover closes.
-  useEffect(() => {
-    function onDoc(e: MouseEvent) {
-      if (headRef.current && !headRef.current.contains(e.target as Node)) setPop(null);
+  function onReply({ parsed, isDoc, stopped, createdAt, version, progressBefore }: ReplyInfo) {
+    // No real upgrade system yet: every answer is one level (up to 5).
+    recordReply(agent.id);
+    onActivity?.();
+    const preview = previewLine(parsed.text);
+    setAnnounce(stopped ? `${agent.name} stopped. ${preview}`
+      : isDoc ? `${agent.name} finished the ${parsed.doc || deliverable.title}.`
+      : `${agent.name} replied: ${preview}`);
+    // Anything the agent decided to remember shows up in the profile right
+    // away, and travels with it into the next project.
+    if (parsed.memories.length) setLearned(prev => [...prev, ...parsed.memories]);
+    // Stopped on purpose: kept, but nothing to celebrate or open.
+    if (stopped) { mascot.setOrb("idle"); return; }
+    mascot.playSuccess();
+    // The document is the moment worth showing — open it right away instead
+    // of leaving the user to find a card in the scrollback.
+    if (isDoc) {
+      onOpenDoc?.(buildDoc(parsed.text, parsed.doc || deliverable.title, createdAt, version));
+      mascot.glanceAt("result");
     }
-    function onKey(e: KeyboardEvent) { if (e.key === "Escape") setPop(null); }
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
-    return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
-  }, []);
-
-  /** A brief, restrained flourish — antenna flash, small bounce — once the
-   *  full reply has landed, then back to idle. */
-  function playSuccess() {
-    setOrb("success");
-    if (speakTimer.current) clearTimeout(speakTimer.current);
-    speakTimer.current = setTimeout(() => setOrb("idle"), 700);
+    // One reaction per answer, never several fighting over the same
+    // animation: a level-up (played by useMascotChoreography when the level
+    // rises) outranks a finished document, which outranks real progress. A
+    // question back or suggested answers only move the eyes — that happens
+    // on most replies, so it gets no head motion at all.
+    if (mascotLevel < MAX_MASCOT_LEVEL) return;
+    if (isDoc) mascot.react("proud", PROUD_MS);
+    else if (parsed.progress !== null && parsed.progress - progressBefore >= PLEASED_STEP) mascot.react("pleased", PLEASED_MS);
+    else if (/[?？]\s*$/.test(parsed.text)) mascot.glanceAt("up", GLANCE_UP_MS);
+    else if (parsed.choices.length > 0) mascot.glanceAt("card");
   }
 
-  /** Professional, not alarmed: a brief dimmed/narrowed look, then idle. */
-  function playError() {
-    setOrb("error");
-    if (speakTimer.current) clearTimeout(speakTimer.current);
-    speakTimer.current = setTimeout(() => setOrb("idle"), 700);
-  }
+  const chat = useAgentConversation({
+    project, role, agent, deliverable,
+    context: () => ({ memory: memoryLines(memory, learned), experience: { level, projects: totalProjects }, peer }),
+    onProjectNamed,
+    onStart: isGenerating => {
+      composerHadFocus.current = !!inputRef.current && document.activeElement === inputRef.current;
+      mascot.setOrb(isGenerating ? "working" : "thinking");
+    },
+    onDelta: () => mascot.setOrb("speaking"),
+    onReply,
+    onStoppedEmpty: () => { mascot.setOrb("idle"); setAnnounce(`${agent.name} stopped.`); },
+    onError: mascot.playError,
+  });
+  const { messages, loaded, loadError, sending, streamText, leavingId } = chat;
 
-  /** A brief glance toward a UI region, then back to following the cursor. */
-  function glanceAt(target: Exclude<LookTarget, null>, ms = 1500) {
-    setLookAt(target);
-    if (lookTimer.current) clearTimeout(lookTimer.current);
-    lookTimer.current = setTimeout(() => setLookAt(null), ms);
-  }
-
-  useEffect(() => {
-    let alive = true;
-    listMessages(project.id, role).then(m => { if (alive) { setMessages(m); setLoaded(true); } }).catch(() => setLoaded(true));
-    return () => { alive = false; };
-  }, [project.id, role]);
+  // Every message parsed once per change of the list, not once per use per render.
+  const entries = useMemo(() => parseEntries(messages, deliverable.title), [messages, deliverable.title]);
+  const convo = useMemo(() => deriveConversation(entries), [entries]);
+  const { pct, station, docs, versionOf, lastAssistantIdx } = convo;
+  const answered = useMemo(() => entries.filter(e => e.m.role === "assistant" && !e.isError).length, [entries]);
 
   // Memory is read from the user's other projects with this agent, so the
   // current one is excluded — an agent should not "remember" today's answers.
+  // A failure only means it starts without them; the chat itself still works.
   useEffect(() => {
     let alive = true;
     loadAgentMemory(agent.id, role, project.id)
       .then(m => { if (alive) setMemory(m); })
-      .catch(() => {});
+      .catch(e => console.warn("[chat] loading agent memory failed:", e));
     return () => { alive = false; };
   }, [agent.id, role, project.id]);
 
@@ -157,203 +187,32 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
     el.scrollTo({ top: el.scrollHeight, behavior: streamText ? "auto" : "smooth" });
   }, [messages, sending, streamText]);
 
-  // The agent levels up on the work it has actually done for this user; this
-  // project is one of them, so compare against the count without it to know
-  // whether joining here is what pushed it up a level.
-  //
-  // Declared up here on purpose: buildDoc below reads it, and buildDoc runs
-  // during render to build the current document. Further down the file it was
-  // still in the temporal dead zone at that moment, so opening a finished
-  // Transformation Concept threw and the whole panel fell over.
-  const totalProjects = agent.last_projects.length + projectCount;
-
-  function buildDoc(content: string, title: string, createdAt: string, version: number): DeliverableDoc {
-    return { title, role, agentId: agent.id, agentName: agent.name, agentProjects: totalProjects, projectName: project.name, content, createdAt, version };
-  }
-
-  async function send(text: string) {
-    const t = text.trim();
-    if (!t || sending) return;
-    setInput("");
-    const isFirstEver = messages.length === 0;
-    const userMsg: ProjectMessage = { id: crypto.randomUUID(), project_id: project.id, column_type: role, role: "user", content: t, created_at: new Date().toISOString() };
-    setMessages(prev => [...prev, userMsg]);
-    setSending(true);
-    const isGenerating = t === deliverable.generatePrompt || t === deliverable.regeneratePrompt;
-    setOrb(isGenerating ? "working" : "thinking");
-    react("nod", 450);   // "got it" — answered before the answer exists
-    try {
-      await addMessage(project.id, role, "user", t);
-      // Only something a person actually typed can name the project. The
-      // document buttons and the Coach's own nudge are commands, and naming
-      // a project "(Systemhinweis, nicht vom Nutzer geschrieben…" once was
-      // enough to make that obvious.
-      if (isFirstEver && !isDeliverableCommand(t) && !isReadAlongCommand(t)) {
-        renameFromFirstMessage(project, t).then(name => { if (name) onProjectNamed?.(name); }).catch(() => {});
-      }
-      const history = [...messages, userMsg].map(m => ({ role: m.role, content: m.content }));
-      const reply = await askAgent({
-        agent,
-        messages: history,
-        memory: memoryLines(memory, learned),
-        experience: { level, projects: totalProjects },
-        peer,
-        onDelta: soFar => { setStreamText(soFar); setOrb("speaking"); },
-      });
-      setStreamText("");
-      await addMessage(project.id, role, "assistant", reply);
-      const createdAt = new Date().toISOString();
-      setMessages(prev => [...prev, { id: crypto.randomUUID(), project_id: project.id, column_type: role, role: "assistant", content: reply, created_at: createdAt }]);
-      playSuccess();
-      onActivity?.();
-      // The document is the moment worth showing — open it right away instead
-      // of leaving the user to find a card in the scrollback.
-      const parsed = parseMarkers(reply);
-      // Anything the agent decided to remember shows up in the Steckbrief
-      // right away, and travels with it into the next project.
-      if (parsed.memories.length) setLearned(prev => [...prev, ...parsed.memories]);
-      const isDocReply = parsed.doc || looksLikeDocument(parsed.text, deliverable.title);
-      if (isDocReply) {
-        onOpenDoc?.(buildDoc(parsed.text, parsed.doc || deliverable.title, createdAt, docs.length + 1));
-        glanceAt("result");
-      }
-      // The reaction comes from what the reply IS, not from asking the model
-      // for a mood: a finished document, real progress, or a question back.
-      if (isDocReply) react("proud", 1200);
-      else if (parsed.progress !== null && parsed.progress - pct >= 10) react("pleased", 900);
-      else if (/[?？]\s*$/.test(parsed.text)) react("curious", 1800);
-      else if (parsed.choices.length > 0) glanceAt("card");
-      touchProjectActivity(project.id, `${role === "coach" ? "Coach" : "Consultant"} replied`).catch(() => {});
-    } catch (e) {
-      setStreamText("");
-      setMessages(prev => [...prev, { id: crypto.randomUUID(), project_id: project.id, column_type: role, role: "assistant", content: `Error: ${(e as Error).message}`, created_at: new Date().toISOString() }]);
-      playError();
-    } finally {
-      setSending(false);
-    }
-  }
-
-  // 1, 2, 3 pick a suggested answer — but never while the composer has focus,
-  // or typing "2 weeks" would send an answer instead of the digit.
-  const liveChoices = useRef<string[]>([]);
+  // Once the answer is in, the composer gets focus back — if this is the
+  // panel the keyboard belongs to, and focus is not somewhere the person
+  // put it in the meantime (the other panel, the document that just opened).
+  const wasSending = useRef(false);
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      const el = document.activeElement;
-      if (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) return;
-      const n = Number(e.key);
-      if (!Number.isInteger(n) || n < 1 || n > liveChoices.current.length) return;
-      e.preventDefault();
-      send(liveChoices.current[n - 1]);
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const was = wasSending.current;
+    wasSending.current = sending;
+    if (!was || sending || !keyboardActive) return;
+    const active = document.activeElement;
+    if (active && active !== document.body) return;
+    if (composerHadFocus.current || hasFinePointer()) inputRef.current?.focus({ preventScroll: true });
+  }, [sending, keyboardActive]);
 
-  const lastAssistantIdx = (() => {
-    for (let i = messages.length - 1; i >= 0; i--) if (messages[i].role === "assistant") return i;
-    return -1;
-  })();
+  useChoiceKeys({ choices: convo.choices, active: keyboardActive, sending, panelRef, onPick: chat.sendRef });
+  useReadAlongNudge({
+    enabled: role === "coach", loaded, hasHistory: messages.length > 0,
+    peerTurns: peer?.turns ?? 0, sending, sendRef: chat.sendRef,
+  });
 
-  // What the number keys currently answer. Kept in a ref so the shortcut
-  // listener stays mounted once instead of rebinding on every render.
-  const shownChoices = (!sending && lastAssistantIdx >= 0)
-    ? parseMarkers(messages[lastAssistantIdx].content).choices
-    : [];
-  liveChoices.current = shownChoices;
-
-  // How far the interview has got: the newest assistant message that carries
-  // each marker wins, so reloading history rebuilds the same rail.
-  const { pct, station } = useMemo(() => {
-    let pct: number | null = null;
-    let station: TopicMarker | null = null;
-    for (let i = messages.length - 1; i >= 0 && (pct === null || station === null); i--) {
-      if (messages[i].role !== "assistant") continue;
-      const p = parseMarkers(messages[i].content);
-      if (pct === null && p.progress !== null) pct = p.progress;
-      if (station === null && p.topic) station = p.topic;
-    }
-    return { pct: pct ?? 0, station };
-  }, [messages]);
-
-  // Every version of the deliverable the agent has produced, oldest first —
-  // each regeneration is a full rebuild, so they are numbered versions.
-  const docs = useMemo(() =>
-    messages
-      .filter(m => m.role === "assistant")
-      .map(m => ({ m, p: parseMarkers(m.content) }))
-      .filter(({ p }) => !!p.doc || looksLikeDocument(p.text, deliverable.title)),
-    [messages, deliverable.title]);
-
-  const versionOf = new Map(docs.map((d, i) => [d.m.id, i + 1]));
-  const docMsg = docs.length ? docs[docs.length - 1] : null;
-  const currentDoc = docMsg
-    ? buildDoc(docMsg.p.text, docMsg.p.doc || deliverable.title, docMsg.m.created_at, docs.length)
-    : null;
-
-  // What to show in the Steckbrief: this session's lessons first (they are the
-  // new thing), then the older ones, deduplicated by fact.
-  const shownLessons = (() => {
-    const seen = new Set<string>();
-    const out: { kind: string; fact: string; fresh: boolean; project?: string }[] = [];
-    for (const l of [...learned].reverse()) {
-      const key = l.fact.toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push({ kind: l.kind, fact: l.fact, fresh: true });
-    }
-    for (const l of memory.lessons) {
-      const key = l.fact.toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push({ kind: l.kind, fact: l.fact, fresh: false, project: l.project });
-    }
-    return out;
-  })();
-
-  // Was the newest answer one the agent volunteered? It reads differently
-  // from an answer to a question, and the head says so.
-  const lastIsAside = (() => {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role !== "assistant") continue;
-      const before = messages[i - 1];
-      return !!before && before.role === "user" && isReadAlongCommand(before.content);
-    }
-    return false;
-  })();
-
-  const stationIdx = station ? station.index - 1 : (messages.length > 0 ? 0 : -1);
-  const stationLabel = station?.label || deliverable.stations[Math.max(0, stationIdx)]?.label || "";
-  const ready = pct >= 100;
-
-  /** The half-line after the role. B3 puts the station number here; folded
-   *  or narrow, what matters more is whether this agent is doing anything. */
-  const headStatus = sending ? "thinking"
-    : lastIsAside ? "read along"
-    : idle ? "waiting"
-    : station ? `station ${station.index}/${station.total}`
-    : null;
-
-  const level = levelFor(totalProjects);
-  const leveledUp = levelFor(Math.max(0, totalProjects - 1)) !== level;
-  const { next, remaining } = nextLevel(totalProjects);
-  const mascotStage = stageFor(level);
-
-  // Ana's level-up animation, moved to where a level is actually earned: the
-  // project that crossed the threshold, once — not every third message.
-  // True, not decorative: before the first token the request is out and the
-   // model is reading; past six seconds it is simply a long answer. Inventing
-   // more stages than exist would be the vague status message in costume.
-  const [waitingLong, setWaitingLong] = useState(false);
+  // A conversation opened from history already holds that many answers; the
+  // mascot is at least that far along, even in a browser that never saw
+  // them. syncReplies only ever raises the count, so running it again as
+  // answers land is a no-op — recordReply has already counted them.
   useEffect(() => {
-    if (!sending || streamText) { setWaitingLong(false); return; }
-    const id = setTimeout(() => setWaitingLong(true), 6000);
-    return () => clearTimeout(id);
-  }, [sending, streamText]);
-
-  // The head's hairline appears only once content has scrolled beneath it.
-  const [stuck, setStuck] = useState(false);
+    if (loaded) syncReplies(agent.id, answered);
+  }, [loaded, agent.id, answered]);
 
   // What this panel tells the screen about itself: the transcript the other
   // agent gets to read, and the last line its pill/idle preview shows. Held
@@ -363,198 +222,86 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
   const snapCb = useRef(onSnapshot);
   useEffect(() => { snapCb.current = onSnapshot; });
   useEffect(() => {
-    const turns = messages
-      .filter(m => !(m.role === "user" && (isDeliverableCommand(m.content) || isReadAlongCommand(m.content))))
-      .map(m => ({ role: m.role, content: m.content }));
-    const agentTurns = messages.reduce((k, m) => k + (m.role === "assistant" ? 1 : 0), 0);
-    let lastLine = OPENING[role];
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role !== "assistant") continue;
-      lastLine = previewLine(parseMarkers(messages[i].content).text) || lastLine;
-      break;
-    }
-    snapCb.current?.({ name: agent.name, transcript: peerTranscript(turns, agent.name), lastLine, agentTurns, busy: sending });
-  }, [messages, sending, agent.name, role]);
+    // Error lines are not something the agent said, and commands are not
+    // something the person wrote.
+    const said = entries.filter(e => !e.isError && !e.isCommand);
+    const turns = said.map(e => ({ role: e.m.role, content: e.m.content }));
+    const answers = said.filter(e => e.m.role === "assistant");
+    const last = answers[answers.length - 1];
+    const lastLine = (last && previewLine(last.p.text)) || OPENING[role];
+    snapCb.current?.({ name: agent.name, transcript: peerTranscript(turns, agent.name), lastLine, agentTurns: answers.length, busy: sending });
+  }, [entries, sending, agent.name, role]);
 
-  // The Coach speaks up by itself once the Consultant has got somewhere.
-  // Guarded by a ref rather than state: this fires a paid model call, and a
-  // re-render must never be able to fire a second one.
-  const nudgedAt = useRef(0);
-  const armed = useRef(false);
-  const sendRef = useRef(send);
-  useEffect(() => { sendRef.current = send; });
+  const latest = docs.length;
+  const restoredVersion = restore && restore.atCount === latest && restore.version < latest ? restore.version : null;
+  const currentVersion = restoredVersion ?? latest;
 
-  // Arm once, the moment history has loaded. A project opened halfway
-  // through must not fire a nudge for the ten turns it just read out of the
-  // database; a fresh one starts from zero and may nudge as soon as the
-  // Consultant has actually got somewhere.
-  useEffect(() => {
-    if (!loaded || role !== "coach" || armed.current) return;
-    armed.current = true;
-    nudgedAt.current = messages.length > 0 ? (peer?.turns ?? 0) : 0;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded, role]);
+  function docFor(version: number): DeliverableDoc | null {
+    const d = docs[version - 1];
+    return d ? buildDoc(d.p.text, d.p.doc || deliverable.title, d.m.created_at, version) : null;
+  }
+  function openVersion(version: number) {
+    const doc = docFor(version);
+    if (doc) onOpenDoc?.(doc);
+  }
 
-  useEffect(() => {
-    if (!armed.current || sending) return;
-    const peerTurns = peer?.turns ?? 0;
-    if (peerTurns < NUDGE_AFTER) return;
-    if (peerTurns - nudgedAt.current < NUDGE_EVERY) return;
-    nudgedAt.current = peerTurns;
-    sendRef.current(READ_ALONG_PROMPT);
-  }, [peer?.turns, sending]);
+  const stationIdx = station ? station.index - 1 : (messages.length > 0 ? 0 : -1);
+  const stationLabel = station?.label || deliverable.stations[Math.max(0, stationIdx)]?.label || "";
 
-  const celebrated = useRef(false);
-  useEffect(() => {
-    if (!leveledUp || celebrated.current) return;
-    celebrated.current = true;
-    react("levelUp", 1500);
-  }, [leveledUp]);
+  /** The half-line after the role. Folded or narrow, what matters more than
+   *  the station is whether this agent is doing anything. */
+  const headStatus = sending ? "thinking"
+    : convo.lastIsAside ? "read along"
+    : idle ? "waiting"
+    : station ? `station ${station.index}/${station.total}`
+    : null;
+
+  const busy = sending || !!leavingId;
 
   return (
-    <section className={`panel ${role}${idle ? " is-idle" : ""}${unread ? " has-unread" : ""}`}>
-      {/* Everything about the agent and the document lives behind these two
-          small buttons — the panel itself is the conversation and nothing else
-          (Patryk, 2026-09-11: "das Gespräch muss im Vordergrund stehen"). */}
-      <div className={`chat-head${stuck ? " is-stuck" : ""}`} ref={headRef}>
-        <button className="who-btn" aria-expanded={pop === "agent"}
-          onClick={() => setPop(p => (p === "agent" ? null : "agent"))}>
-          <span className="who-face">
-            <AgentMascot role={role} state={orb} size={56} enter
-              attentive={attentive} mood={mood} level={mascotStage} lookAt={lookAt} />
-          </span>
-          <span className="who-txt">
-            <span className="n">{agent.name}</span>
-            <span className="r"><span className={`role-dot ${role}`} />
-              {role === "coach" ? "Coach" : "Consultant"}
-              {headStatus && <em>· {headStatus}</em>}
-            </span>
-          </span>
-          <IconChevronDown size={11} />
-        </button>
+    <section ref={panelRef} className={`panel ${role}${idle ? " is-idle" : ""}${unread ? " has-unread" : ""}`}>
+      <ChatHead
+        role={role} agent={agent} deliverable={deliverable}
+        mascot={{ orb: mascot.orb, mood: mascot.mood, lookAt: mascot.lookAt }}
+        attentive={attentive} status={headStatus} stuck={stuck} headExtra={headExtra}
+        unread={unread} sending={sending} totalProjects={totalProjects}
+        memory={memory} learned={learned}
+        doc={{
+          pct, stationIdx, stationLabel,
+          currentDoc: docFor(currentVersion), currentVersion, restored: restoredVersion !== null,
+          versions: docs.map((d, i) => ({ version: i + 1, createdAt: d.m.created_at })),
+        }}
+        onFocusPanel={onFocusPanel}
+        onMinimise={onMinimise}
+        onChangeAgent={onChangeAgent ? () => setConfirmChange(true) : undefined}
+        onOpenVersion={openVersion}
+        onGenerate={() => chat.send(deliverable.generatePrompt)}
+        onRegenerate={() => chat.send(deliverable.regeneratePrompt)}
+        onRestoreVersion={v => setRestore({ version: v, atCount: latest })}
+      />
 
-        {/* The fill IS the progress — no bar, no label taking up the panel */}
-        <button className={`doc-pill${ready ? " ready" : ""}${currentDoc ? " done" : ""}`}
-          style={{ ["--fill" as string]: `${currentDoc ? 100 : pct}%` }}
-          aria-expanded={pop === "doc"} data-tooltip={deliverable.title}
-          onClick={() => setPop(p => (p === "doc" ? null : "doc"))}>
-          <IconDoc size={12} />
-          <span>{currentDoc ? "ready" : `${pct}%`}</span>
-        </button>
-
-        {/* J: the waiting panel says so itself. The badge is the control —
-            clicking it hands this conversation the room and clears the mark,
-            so the unread state has somewhere to go other than the seam button. */}
-        {unread && onFocusPanel && (
-          <button className="head-unread" onClick={onFocusPanel}
-            data-tooltip={`Read what ${agent.name} said`}>
-            <span className="hu-dot" aria-hidden="true" />New
-          </button>
-        )}
-
-        {/* K: Patryk, 2026-09-25 — "man braucht den Coach manchmal nicht und
-            er nimmt nur Platz weg". Folding it away leaves the pill, which is
-            anchored high on purpose so it never covers the composer. */}
-        {onMinimise && (
-          <button className="head-min" onClick={onMinimise}
-            data-tooltip="Fold away — the Coach keeps listening"
-            aria-label="Fold this panel away">
-            <IconMinimise size={14} />
-          </button>
-        )}
-
-        {pop === "agent" && (
-          <div className="popover head-pop" onClick={e => e.stopPropagation()}>
-            <div className="hp-stats">
-              <div>
-                <span className="lbl">Experience</span>
-                <div className="level">
-                  <b>{level}</b>
-                  <span className="level-bar">
-                    {LEVEL_ORDER.map((l, i) => (
-                      <span key={l} className={`level-seg ${i <= LEVEL_ORDER.indexOf(level) ? "on" : ""}`} />
-                    ))}
-                  </span>
-                  {leveledUp && <span className="level-up">Level up!</span>}
-                </div>
-                {next && <div className="level-hint">{remaining} more project{remaining === 1 ? "" : "s"} to {next}</div>}
-              </div>
-              <div><span className="lbl">Projects together</span><b>{totalProjects}</b></div>
-              {onChangeAgent && (
-                <button className="btn btn-hero btn-sm hp-change" onClick={() => { setPop(null); onChangeAgent(); }}>
-                  Change agent
-                </button>
-              )}
-            </div>
-            {agent.tagline && <div className="hp-grp"><span className="lbl">Role</span><div className="val">{agent.tagline}</div></div>}
-            {shownLessons.length > 0 && (
-              <div className="hp-grp">
-                <span className="lbl">
-                  Remembers about you
-                  {learned.length > 0 && <em className="mem-new">+{learned.length} new</em>}
-                </span>
-                <ul className="plist mem">
-                  {shownLessons.slice(0, 3).map(l => (
-                    <li key={l.fact} className={l.fresh ? "fresh" : undefined}>{l.fact}</li>
-                  ))}
-                  {shownLessons.length > 3 && <li className="muted">and {shownLessons.length - 3} more</li>}
-                </ul>
-              </div>
-            )}
-            {agent.primaryMethods.length > 0 && (
-              <div className="hp-grp">
-                <span className="lbl">Can help with</span>
-                <ul className="plist">
-                  {[...agent.primaryMethods, ...agent.secondaryMethods].map(m => (
-                    <li key={m.id}>{methodLabel(m.name)}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
+      <div className="chat-body" ref={bodyRef} onScroll={e => setStuck(e.currentTarget.scrollTop > STUCK_AFTER_PX)}
+        onClick={handleCodeCopyClick}>
+        {!loaded && !loadError && (
+          <div className="chat-loading" role="status">
+            <span className="spinner chat-spinner" aria-hidden="true" />
+            <span className="visually-hidden">Loading the conversation…</span>
           </div>
         )}
 
-        {pop === "doc" && (
-          <div className="popover head-pop deliv-pop" onClick={e => e.stopPropagation()}>
-            <div className={`deliv-rail${ready ? " ready" : ""}${currentDoc ? " done" : ""}`}
-              style={{ ["--dr-steps" as string]: deliverable.stations.length }}>
-              <div className="dr-top">
-                <span className="dr-kind"><IconDoc size={12} />{deliverable.title}</span>
-                {currentDoc ? <span className="dr-done">ready</span> : <span className="dr-pct">{pct}%</span>}
-              </div>
-              <div className="dr-bar"><span style={{ width: `${currentDoc ? 100 : pct}%` }} /></div>
-              <div className="dr-bottom">
-                <span className="dr-step">
-                  {currentDoc
-                    ? docs.length > 1 ? `Version ${docs.length} generated` : "Document generated"
-                    : stationIdx < 0
-                      ? `${deliverable.stations.length} steps · not started`
-                      : `Step ${stationIdx + 1} of ${deliverable.stations.length} · ${stationLabel}`}
-                </span>
-                {currentDoc ? (
-                  <>
-                    <button className="dr-cta" onClick={() => { setPop(null); onOpenDoc?.(currentDoc); }}>
-                      <IconDoc size={12} />Open
-                    </button>
-                    <button className="dr-redo" disabled={sending} aria-label="Rebuild the document"
-                      onClick={() => { setPop(null); send(deliverable.regeneratePrompt); }}>
-                      <IconRefresh size={13} />
-                    </button>
-                  </>
-                ) : (
-                  <button className="dr-cta" disabled={sending}
-                    onClick={() => { setPop(null); send(deliverable.generatePrompt); }}>
-                    <IconSpark size={12} />Generate
-                  </button>
-                )}
-              </div>
+        {/* Looking like an empty chat here would be wrong: there is history,
+            it just didn't arrive, and a message sent now would go out without it. */}
+        {loadError && (
+          <div className="msg-agent msg-error" role="alert">
+            <div className="me-title">This conversation didn&apos;t load</div>
+            <div className="me-detail">
+              The earlier messages couldn&apos;t be fetched, so {agent.name} can&apos;t see them yet. Check your connection and try again.
             </div>
+            <button className="me-retry" onClick={chat.reload}>
+              <IconRefresh size={13} />Try again
+            </button>
           </div>
         )}
-      </div>
-
-      <div className="chat-body" ref={bodyRef} onScroll={e => setStuck(e.currentTarget.scrollTop > 4)}>
-        {!loaded && <div className="spinner" style={{ margin: "0 auto", borderColor: "var(--border-strong)", borderTopColor: "var(--foreground)" }} />}
 
         {loaded && (
           <div className="msg-agent">
@@ -562,136 +309,37 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
           </div>
         )}
 
-        {messages.map((m, i) => {
-          if (m.role === "user") {
-            // The document buttons send their prompt as a user turn so the
-            // model has it. It is a command, not something the person wrote,
-            // so it shows as a single line instead of a wall of English in
-            // the middle of a German conversation.
-            if (isDeliverableCommand(m.content)) {
-              return (
-                <div key={m.id} className="msg-command">
-                  <IconRefresh size={11} />
-                  <span>You asked for the {deliverable.title}</span>
-                </div>
-              );
-            }
-            if (isReadAlongCommand(m.content)) return null;
-            return <div key={m.id} className="msg-user">{m.content}</div>;
-          }
-          const parsed = parseMarkers(m.content);
-          const before = messages[i - 1];
-          const isAside = !!before && before.role === "user" && isReadAlongCommand(before.content);
-          const showChoices = i === lastAssistantIdx && parsed.choices.length > 0 && !sending;
-          const isDoc = !!parsed.doc || looksLikeDocument(parsed.text, deliverable.title);
-          const choices = showChoices ? (
-            <div className="sugg-list" role="group" aria-label="Suggested answers">
-              {parsed.choices.map((c, ci) => (
-                <button key={c} className="sugg-item" disabled={sending} onClick={() => send(c)}
-                  style={{ ["--i" as string]: ci }}>
-                  {/* The number is the shortcut. keyboards.md: a desktop app
-                      should be usable without reaching for the mouse, and the
-                      key is printed rather than hidden in a help page. */}
-                  <span className="sugg-key" aria-hidden="true">{ci + 1}</span>
-                  <span className="s">{c}</span>
-                  <IconArrow />
-                </button>
-              ))}
-            </div>
-          ) : null;
+        {entries.map((entry, i) => (
+          <ChatMessage key={entry.m.id} entry={entry}
+            agentName={agent.name} docTitle={deliverable.title}
+            isNew={i >= chat.historyCount && !chat.streamedIds.has(entry.m.id)}
+            isLeaving={entry.m.id === leavingId}
+            isLast={i === lastAssistantIdx}
+            version={versionOf.get(entry.m.id) ?? 1}
+            sending={sending} busy={busy}
+            onRetry={chat.retry}
+            onPick={chat.send}
+            onOpenDoc={title => onOpenDoc?.(buildDoc(entry.p.text, title, entry.m.created_at, versionOf.get(entry.m.id) ?? 1))}
+          />
+        ))}
 
-          // A generated document is a document, not a 2000-word chat bubble.
-          if (isDoc) {
-            const title = parsed.doc || deliverable.title;
-            const version = versionOf.get(m.id) ?? 1;
-            const sections = (parsed.text.match(/^##\s+\S/gm) ?? []).length;
-            const words = parsed.text.split(/\s+/).filter(Boolean).length;
-            return (
-              <div key={m.id} className="msg-agent">
-                <button className="doc-card" onClick={() => onOpenDoc?.(buildDoc(parsed.text, title, m.created_at, version))}>
-                  <span className="dc-ic"><IconDoc size={17} /></span>
-                  <span className="dc-txt">
-                    <span className="dc-t">{title}</span>
-                    <span className="dc-s">
-                      {version > 1 && `Version ${version} · `}{sections} sections · {words.toLocaleString()} words · open to read
-                    </span>
-                  </span>
-                  <IconArrow />
-                </button>
-                {choices}
-              </div>
-            );
-          }
-
-          return (
-            <div key={m.id} className={`msg-agent${isAside ? " aside" : ""}`}>
-              {/* Nobody asked for this one. Saying so is the difference
-                  between an agent that is paying attention and one that
-                  interrupts. */}
-              {isAside && <span className="aside-tag">read along · spoke up on its own</span>}
-              <div className="txt" dangerouslySetInnerHTML={{ __html: md(parsed.text) }} />
-              {choices}
-            </div>
-          );
-        })}
-
-        {/* The answer as it is written. A document is not streamed into the
-            chat as a wall of text — it says what it is building instead. */}
-        {sending && streamText && (
-          streamIsDocument(streamText) ? (
-            <div className="msg-agent">
-              <div className="doc-card writing">
-                <span className="dc-ic"><IconDoc size={17} /></span>
-                <span className="dc-txt">
-                  <span className="dc-t">Writing your {deliverable.title}…</span>
-                  <span className="dc-s">{streamText.split(/\s+/).filter(Boolean).length.toLocaleString()} words so far</span>
-                </span>
-              </div>
-            </div>
-          ) : (
-            <div className="msg-agent streaming">
-              <div className="txt" dangerouslySetInnerHTML={{ __html: md(streamingText(streamText)) }} />
-            </div>
-          )
-        )}
-        {sending && !streamText && (
-          <div className="msg-typing"><ThinkingOrb size={26} />
-            <span className="shimmer-text">
-              {waitingLong
-                ? "Still writing — a long answer takes a moment"
-                : `${agent.name} is reading what you wrote…`}
-            </span>
-          </div>
+        {sending && (
+          <ChatStreaming streamText={streamText} agentName={agent.name}
+            docTitle={deliverable.title} waitingLong={chat.waitingLong} />
         )}
       </div>
 
-      {/* Ana's composer (agxp-frontend-ana): one raised card holds the text
-          row and a toolbar under it, instead of a bordered box with a square
-          button beside it. */}
-      <div className="chat-input">
-        <textarea className="autosize" rows={1} disabled={sending} value={input}
-          onChange={e => setInput(e.target.value)}
-          onFocus={() => setAttentive(true)}
-          onBlur={() => setAttentive(false)}
-          onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }}
-          placeholder={`Ask your ${role === "coach" ? "coach" : "consultant"}...`} />
-        <div className="composer-toolbar">
-          <div className="composer-left" />
-          <div className="composer-right">
-            {/* Disabled on purpose: the upload isn't built yet. Shown rather
-                than hidden so the plan is visible, and disabled rather than
-                silent so nobody attaches a file that never arrives. */}
-            <button className="composer-icon-btn" disabled
-              data-tooltip="Attach a file — not ready yet">
-              <IconAttach size={15} />
-            </button>
-            <button className="composer-send" data-tooltip="Send message"
-              disabled={!input.trim() || sending} onClick={() => send(input)}>
-              <IconArrowUp size={16} />
-            </button>
-          </div>
-        </div>
-      </div>
+      <ChatComposer role={role} sending={sending} canSend={loaded} inputRef={inputRef}
+        onSend={chat.send} onStop={chat.stop} onAttentiveChange={setAttentive} />
+      <div className="visually-hidden" role="status" aria-live="polite">{announce}</div>
+      {confirmChange && onChangeAgent && (
+        <ConfirmDialog
+          title={`Change your ${role === "coach" ? "coach" : "consultant"}?`}
+          body={`The conversation with ${agent.name} stays saved in this project. You'll pick another ${role === "coach" ? "coach" : "consultant"} next.`}
+          confirmLabel="Change agent"
+          onCancel={() => setConfirmChange(false)}
+          onConfirm={() => { setConfirmChange(false); onChangeAgent(); }} />
+      )}
     </section>
   );
 }

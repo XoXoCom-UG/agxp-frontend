@@ -1,51 +1,75 @@
 // Icons copied path-for-path from Ana's mockup (agxp-functional-ui) so shapes
-// match exactly, not just approximate Lucide equivalents.
+// match exactly, not just approximate Lucide equivalents. The geometry lives in
+// lib/icon-paths.ts, shared with the HTML-string renderer in lib/markdown.ts.
 
-type IconProps = { size?: number; className?: string; style?: React.CSSProperties };
+import { ICON_PATHS, ICON_STROKE, type IconName } from "@/lib/icon-paths";
 
-function Svg({ size = 14, className, style, children, strokeWidth = 1.8 }: IconProps & { children: React.ReactNode; strokeWidth?: number }) {
+type IconProps = {
+  size?: number;
+  className?: string;
+  style?: React.CSSProperties;
+  /** Only for an icon that carries meaning on its own. Without it the icon is
+   *  decoration and hidden from assistive tech — the button's label speaks. */
+  title?: string;
+};
+
+function Svg({ name, size = 14, className, style, title }: IconProps & { name: IconName }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
-      {children}
-    </svg>
+      strokeWidth={ICON_STROKE} strokeLinecap="round" strokeLinejoin="round" className={className} style={style}
+      aria-hidden={title ? undefined : true} role={title ? "img" : undefined} aria-label={title}
+      // Static path strings from ICON_PATHS, never user or model input.
+      dangerouslySetInnerHTML={{ __html: ICON_PATHS[name] }} />
   );
 }
 
-export const IconDiamond = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><path d="M12 2 L21 7 L21 17 L12 22 L3 17 L3 7 Z" /></Svg>;
-export const IconPlus = (p: IconProps) => <Svg {...p} strokeWidth={2}><path d="M12 5v14M5 12h14" /></Svg>;
-export const IconArrow = (p: IconProps) => <Svg {...p} strokeWidth={2.2} className={["arrow", p.className].filter(Boolean).join(" ")}><path d="M9 6l6 6-6 6" /></Svg>;
-export const IconBack = (p: IconProps) => <Svg {...p} strokeWidth={2.2}><path d="M15 6l-6 6 6 6" /></Svg>;
-export const IconSearch = (p: IconProps) => <Svg {...p} strokeWidth={2}><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></Svg>;
-export const IconFilter = (p: IconProps) => <Svg {...p} strokeWidth={2}><path d="M4 6h16M7 12h10M10 18h4" /></Svg>;
-export const IconBell = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><path d="M6 8a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z" /><path d="M10 20a2 2 0 0 0 4 0" /></Svg>;
-export const IconCoach = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><circle cx="12" cy="8" r="3.2" /><path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7" /></Svg>;
-export const IconConsultant = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><rect x="4" y="8" width="16" height="11" rx="2" /><path d="M9 8V6a3 3 0 0 1 6 0v2" /></Svg>;
-export const IconChevronDown = (p: IconProps) => <Svg {...p} strokeWidth={2.2}><path d="M6 9l6 6 6-6" /></Svg>;
-export const IconFolder = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" /></Svg>;
-export const IconHistory = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v5h5" /><path d="M12 7v5l3 3" /></Svg>;
-export const IconUsers = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></Svg>;
-export const IconMore = (p: IconProps) => <Svg {...p} strokeWidth={2}><circle cx="5" cy="12" r="1.2" /><circle cx="12" cy="12" r="1.2" /><circle cx="19" cy="12" r="1.2" /></Svg>;
-export const IconUser = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><circle cx="12" cy="8" r="4" /><path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8" /></Svg>;
-export const IconLogout = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="M16 17l5-5-5-5" /><path d="M21 12H9" /></Svg>;
-export const IconSwap = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><path d="m16 3 4 4-4 4" /><path d="M20 7H4" /><path d="m8 21-4-4 4-4" /><path d="M4 17h16" /></Svg>;
-export const IconSun = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></Svg>;
-export const IconMoon = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z" /></Svg>;
-export const IconCheck = (p: IconProps) => <Svg {...p} strokeWidth={2.5}><path d="M20 6 9 17l-5-5" /></Svg>;
-export const IconX = (p: IconProps) => <Svg {...p} strokeWidth={2}><path d="M18 6 6 18M6 6l12 12" /></Svg>;
+const make = (name: IconName, extraClass?: string) => {
+  const Icon = (p: IconProps) => (
+    <Svg {...p} name={name} className={[extraClass, p.className].filter(Boolean).join(" ") || undefined} />
+  );
+  return Icon;
+};
+
+export const IconPlus = make("plus");
+export const IconArrow = make("arrow", "arrow");
+export const IconBack = make("back");
+export const IconSearch = make("search");
+export const IconFilter = make("filter");
+export const IconChevronDown = make("chevronDown");
+export const IconFolder = make("folder");
+export const IconHistory = make("history");
+export const IconMore = make("more");
+export const IconUser = make("user");
+export const IconLogout = make("logout");
+export const IconSwap = make("swap");
+export const IconSun = make("sun");
+export const IconMoon = make("moon");
+export const IconMonitor = make("monitor");
+export const IconCheck = make("check");
+export const IconX = make("x");
+export const IconAlert = make("alert");
 
 // --- Deliverable document view (Transformation Concept / Change Plan) ---
-export const IconDoc = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" /><path d="M14 3v5h5" /><path d="M9 13h6M9 17h4" /></Svg>;
-export const IconDownload = (p: IconProps) => <Svg {...p} strokeWidth={1.9}><path d="M12 3v12" /><path d="m7 11 5 5 5-5" /><path d="M4 20h16" /></Svg>;
-export const IconPrint = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><path d="M7 8V3h10v5" /><rect x="4" y="8" width="16" height="8" rx="2" /><path d="M7 16h10v5H7z" /></Svg>;
-export const IconCopy = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h8" /></Svg>;
-export const IconSpark = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><path d="M12 3v4M12 17v4M3 12h4M17 12h4" /><path d="M12 8.5 13.4 11l2.6 1-2.6 1L12 15.5 10.6 13 8 12l2.6-1Z" /></Svg>;
-export const IconRefresh = (p: IconProps) => <Svg {...p} strokeWidth={1.9}><path d="M20 11a8 8 0 1 0-2.3 5.7" /><path d="M20 5v6h-6" /></Svg>;
+export const IconDoc = make("doc");
+export const IconDownload = make("download");
+export const IconPrint = make("print");
+export const IconCopy = make("copy");
+export const IconSpark = make("spark");
+export const IconRefresh = make("refresh");
+export const IconRestore = make("restore");
 
 // --- Composer (agxp-frontend-ana) ---
-export const IconAttach = (p: IconProps) => <Svg {...p} strokeWidth={1.8}><path d="M21.44 11.05 12.25 20.24a5 5 0 0 1-7.07-7.07l9.19-9.19a3.34 3.34 0 0 1 4.71 4.71l-9.2 9.19a1.67 1.67 0 0 1-2.35-2.35l8.49-8.48" /></Svg>;
-export const IconArrowUp = (p: IconProps) => <Svg {...p} strokeWidth={2.2}><path d="M12 19V5" /><path d="m5 12 7-7 7 7" /></Svg>;
+export const IconAttach = make("attach");
+export const IconArrowUp = make("arrowUp");
+export const IconStop = make("stop");
 
-// --- Folding the Coach away (K1/K2: minimise to a pill, open as a sheet) ---
-export const IconMinimise = (p: IconProps) => <Svg {...p} strokeWidth={2.2}><path d="M5 12h14" /></Svg>;
-export const IconExpand = (p: IconProps) => <Svg {...p} strokeWidth={1.9}><path d="M15 3h6v6" /><path d="M21 3l-7 7" /><path d="M9 21H3v-6" /><path d="M3 21l7-7" /></Svg>;
+// --- Folding the Coach away ---
+export const IconMinimise = make("minimise");
+
+// --- Under each answer: Copy / Share / Try again ---
+export const IconShare = make("share");
+export const IconMail = make("mail");
+
+// --- Forms ---
+export const IconEye = make("eye");
+export const IconEyeOff = make("eyeOff");

@@ -8,10 +8,10 @@ export default function ImpressumPage() {
     <LegalShell title="Impressum">
       <TodoNotice>
         Platzhalter — bitte vor dem Launch mit euren echten Angaben ausfüllen und
-        rechtlich prüfen lassen. Pflichtangaben nach § 5 TMG / § 18 MStV.
+        rechtlich prüfen lassen. Pflichtangaben nach § 5 DDG / § 18 Abs. 2 MStV.
       </TodoNotice>
 
-      <LegalSection heading="Angaben gemäß § 5 TMG">
+      <LegalSection heading="Angaben gemäß § 5 DDG">
         <p>[Firmenname / Anbieter]</p>
         <p>[Straße und Hausnummer]</p>
         <p>[PLZ, Ort]</p>
@@ -42,11 +42,9 @@ export default function ImpressumPage() {
         <p>[Anschrift]</p>
       </LegalSection>
 
-      <LegalSection heading="Streitschlichtung">
-        <p>
-          Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit:
-          {" "}<a href="https://ec.europa.eu/consumers/odr/" className="text-green-600 underline" target="_blank" rel="noopener noreferrer">https://ec.europa.eu/consumers/odr/</a>.
-        </p>
+      {/* The EU's online dispute resolution (ODR) platform was shut down in July
+          2025, so the old pointer to it is gone; the VSBG statement stays. */}
+      <LegalSection heading="Verbraucherstreitbeilegung">
         <p>
           Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer
           Verbraucherschlichtungsstelle teilzunehmen.

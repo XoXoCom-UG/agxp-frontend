@@ -24,7 +24,9 @@ export function EmptyState({ role = "consultant", title, body, action }: {
         <AgentMascot role={role} size={92} enter />
         <span className="es-shadow" aria-hidden="true" />
       </div>
-      <h3>{title}</h3>
+      {/* h2: the pages that show this have an h1 and nothing between, so an
+          h3 skipped a level for anyone navigating by headings. */}
+      <h2>{title}</h2>
       <p>{body}</p>
       {action}
     </div>

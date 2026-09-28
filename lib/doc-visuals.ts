@@ -179,7 +179,7 @@ function risks(body: string): string {
 
   return `<div class="v-risk">` +
     `<div class="grid">${cells.join("")}</div>` +
-    `<div class="axes"><span>Wahrscheinlichkeit →</span><span>↑ Auswirkung</span></div>` +
+    `<div class="axes"><span>Likelihood →</span><span>↑ Impact</span></div>` +
     `</div>`;
 }
 
@@ -188,14 +188,15 @@ function stakeholders(body: string): string {
   const out = rows(body).map(([group, count = "", stance = "", infl = "", why = ""]) => {
     if (!group) return "";
     const s = (stance || "").toLowerCase();
-    const cls = /unterst|support|pro|offen/.test(s) ? "s-pro"
-      : /skept|gegen|contra|kritisch/.test(s) ? "s-con" : "s-mid";
+    // Either language: the agent answers in the one the user writes in.
+    const cls = /unterst|support|pro|offen|open/.test(s) ? "s-pro"
+      : /skept|scept|gegen|against|contra|kritisch|critical|resist|widerst/.test(s) ? "s-con" : "s-mid";
     const lvl = rank(infl);
     const dots = [0, 1, 2].map(i => `<i${i <= lvl ? ' class="on"' : ""}></i>`).join("");
     return `<div class="v-stake-row">` +
       `<span class="g">${group}</span>` +
       (count ? `<span class="cnt">${count}</span>` : "<span></span>") +
-      `<span class="infl" title="Einfluss">${dots}</span>` +
+      `<span class="infl" title="Influence">${dots}</span>` +
       (stance ? `<span class="mood ${cls}">${stance}</span>` : "<span></span>") +
       (why ? `<p class="why">${why}</p>` : "") +
       `</div>`;

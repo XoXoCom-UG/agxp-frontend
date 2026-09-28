@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
-import { IconDiamond, IconArrow } from "@/components/layout/agxp-icons";
+import { IconArrow } from "@/components/layout/agxp-icons";
+import { BrandLogo } from "@/components/layout/brand-logo";
 
 /**
  * Landing page for the e-mail confirmation and the Google redirect. Google's
@@ -45,37 +47,30 @@ export default function AuthCallbackPage() {
   }, []);
 
   return (
-    <div className="auth">
+    <main className="auth">
       <div className="auth-form-col">
-        <div className="auth-card" style={{ textAlign: "center" }}>
-          <div className="auth-brand" style={{ justifyContent: "center" }}>
-            <span className="brand-mark"><IconDiamond size={12} /></span>
-            <span className="brand-text stacked" style={{ alignItems: "flex-start" }}>
-              <span className="name">Agentix Projects</span>
-              <span className="sub">AGXP</span>
-            </span>
+        <div className="auth-card status-card status-card-center">
+          <div className="auth-brand">
+            <BrandLogo size={32} />
           </div>
 
           {failed ? (
             <>
               <h1>That didn&apos;t work</h1>
               <p className="auth-sub">The link is invalid or has expired. Sign in again to get a fresh one.</p>
-              <a className="btn-primary-wide" href="/login" style={{ textDecoration: "none" }}>
+              <Link className="btn-primary-wide" href="/login">
                 Back to sign in<IconArrow />
-              </a>
+              </Link>
             </>
           ) : (
-            <>
-              <div className="spinner" style={{
-                width: 22, height: 22, margin: "var(--sp-4) auto var(--sp-5)",
-                borderColor: "var(--border-strong)", borderTopColor: "var(--primary)",
-              }} />
+            <div role="status">
+              <span className="spinner spinner-lg callback-spinner" aria-hidden="true" />
               <h1>Signing you in</h1>
-              <p className="auth-sub">One moment — confirming your account.</p>
-            </>
+              <p className="auth-sub">One moment, confirming your account.</p>
+            </div>
           )}
         </div>
       </div>
-    </div>
+    </main>
   );
 }

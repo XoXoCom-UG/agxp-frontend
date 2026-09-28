@@ -36,13 +36,15 @@ export function CookieBanner() {
   if (!show) return null;
 
   return (
-    <div className="cookie-note" role="status">
+    // lang="de" so a screen reader switches voice for it; the label names the
+    // region, since a status role on its own is announced without a name.
+    <div className="cookie-note" role="status" aria-label="Cookie-Hinweis" lang="de">
       <p>
         Wir verwenden nur technisch notwendige Cookies bzw. lokale Speicherung (Login &amp;
-        Einstellungen) — kein Tracking. Mehr dazu in der{" "}
+        Einstellungen), kein Tracking. Mehr dazu in der{" "}
         <Link href="/datenschutz">Datenschutzerklärung</Link>.
       </p>
-      <button className="btn-primary-wide" onClick={accept}>Verstanden</button>
+      <button className="btn-primary-wide" type="button" onClick={accept}>Verstanden</button>
     </div>
   );
 }

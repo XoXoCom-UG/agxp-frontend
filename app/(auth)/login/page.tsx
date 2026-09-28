@@ -1,14 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "next-themes";
 import { AgentMascot } from "@/components/layout/agent-mascot";
-import { IconDiamond, IconSun, IconMoon, IconArrow, IconCheck } from "@/components/layout/agxp-icons";
+import { IconSun, IconMoon, IconArrow, IconCheck, IconEye, IconEyeOff } from "@/components/layout/agxp-icons";
+import { BrandLogo } from "@/components/layout/brand-logo";
 
 type Mode = "signin" | "signup";
+const MODES: Mode[] = ["signin", "signup"];
+
+/** Loose on purpose: catches typos like a missing @ or dot, and leaves the
+ *  real verdict to the server, which knows what it accepts. */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+type FieldErrors = { email?: string; password?: string };
 
 /**
  * Turns a Supabase auth error into something a person can act on. The raw
@@ -18,7 +27,7 @@ type Mode = "signin" | "signup";
 function friendlyError(raw: string): string {
   const m = raw.toLowerCase();
   if (m.includes("invalid login credentials")) return "That email and password don't match.";
-  if (m.includes("email not confirmed")) return "Confirm your email first — the link is in your inbox.";
+  if (m.includes("email not confirmed")) return "Confirm your email first. The link is in your inbox.";
   if (m.includes("already registered") || m.includes("already exists")) return "That email may already have an account. Try signing in.";
   if (m.includes("rate limit") || m.includes("too many")) return "Too many attempts. Wait a minute, then try again.";
   if (m.includes("password should be at least")) return "Use at least 8 characters.";
@@ -31,7 +40,7 @@ function friendlyError(raw: string): string {
 const HERO_POINTS = [
   "A consultant works out what to change, and how.",
   "A coach takes care of the people side of it.",
-  "You end up with a document you can hand over — not a chat log.",
+  "You end up with a document you can hand over, not a chat log.",
 ];
 
 export default function LoginPage() {
@@ -53,6 +62,22 @@ export default function LoginPage() {
   const [showPw, setShowPw] = useState(false);
   const [busy, setBusy] = useState<"form" | "google" | "forgot" | null>(null);
   const [note, setNote] = useState<{ text: string; ok: boolean } | null>(null);
+  const [errors, setErrors] = useState<FieldErrors>({});
+
+  const uid = useId();
+  const ids = {
+    tab: (m: Mode) => `${uid}-tab-${m}`,
+    panel: `${uid}-panel`,
+    name: `${uid}-name`,
+    email: `${uid}-email`,
+    emailErr: `${uid}-email-err`,
+    pw: `${uid}-pw`,
+    pwHint: `${uid}-pw-hint`,
+    pwErr: `${uid}-pw-err`,
+  };
+  const emailRef = useRef<HTMLInputElement>(null);
+  const pwRef = useRef<HTMLInputElement>(null);
+  const tabRefs = useRef<Partial<Record<Mode, HTMLButtonElement | null>>>({});
 
   // Already signed in (came back to /login by hand or by an old bookmark).
   useEffect(() => { if (!authLoading && token) router.replace("/dashboard"); }, [token, authLoading, router]);
@@ -60,29 +85,64 @@ export default function LoginPage() {
   function switchMode(next: Mode) {
     setMode(next);
     setNote(null);
+    setErrors({});
+  }
+
+  /** Tabs pattern: one tab stop for the pair, arrows move between them and
+   *  switch straight away (there are only two, both cheap to show). */
+  function onTabKey(e: React.KeyboardEvent<HTMLButtonElement>) {
+    const i = MODES.indexOf(mode);
+    let next: Mode | null = null;
+    if (e.key === "ArrowRight") next = MODES[(i + 1) % MODES.length];
+    else if (e.key === "ArrowLeft") next = MODES[(i - 1 + MODES.length) % MODES.length];
+    else if (e.key === "Home") next = MODES[0];
+    else if (e.key === "End") next = MODES[MODES.length - 1];
+    if (!next) return;
+    e.preventDefault();
+    switchMode(next);
+    tabRefs.current[next]?.focus();
+  }
+
+  /** The browser's own validation bubbles are off (noValidate): they can't be
+   *  styled, vanish on their own and aren't tied to the field for a screen
+   *  reader. These messages sit under the field and stay until it changes. */
+  function validate(checkPassword: boolean): FieldErrors {
+    const next: FieldErrors = {};
+    const mail = email.trim();
+    if (!mail) next.email = "Enter your email address.";
+    else if (!EMAIL_RE.test(mail)) next.email = "That email address doesn't look right.";
+    if (checkPassword) {
+      if (!password) next.password = "Enter your password.";
+      else if (mode === "signup" && password.length < 8) next.password = "Use at least 8 characters.";
+    }
+    return next;
+  }
+
+  /** Shows the errors and puts the cursor in the first field that has one. */
+  function reportInvalid(found: FieldErrors): boolean {
+    setErrors(found);
+    if (found.email) emailRef.current?.focus();
+    else if (found.password) pwRef.current?.focus();
+    return !!(found.email || found.password);
   }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;
     setNote(null);
-
-    if (mode === "signup" && password.length < 8) {
-      setNote({ text: "Use at least 8 characters.", ok: false });
-      return;
-    }
+    if (reportInvalid(validate(true))) return;
 
     setBusy("form");
     try {
       if (mode === "signin") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (error) setNote({ text: friendlyError(error.message), ok: false });
         else router.replace("/dashboard");
         return;
       }
 
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: email.trim(),
         password,
         options: {
           data: name.trim() ? { full_name: name.trim() } : undefined,
@@ -93,7 +153,7 @@ export default function LoginPage() {
       // With email confirmation switched off, sign-up returns a session and the
       // user should just be let in instead of waiting for a mail that never comes.
       if (data.session) { router.replace("/dashboard"); return; }
-      setNote({ text: "Almost there — confirm your email with the link we just sent you.", ok: true });
+      setNote({ text: "Almost there. Confirm your email with the link we just sent you.", ok: true });
       setMode("signin");
     } finally {
       setBusy(null);
@@ -101,10 +161,11 @@ export default function LoginPage() {
   }
 
   async function forgotPassword() {
-    if (!email) { setNote({ text: "Enter your email address first.", ok: false }); return; }
-    setBusy("forgot");
     setNote(null);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    // Only the address matters here; a half-typed password is not an error.
+    if (reportInvalid(validate(false))) return;
+    setBusy("forgot");
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: `${window.location.origin}/reset`,
     });
     setBusy(null);
@@ -129,7 +190,7 @@ export default function LoginPage() {
   const signup = mode === "signup";
 
   return (
-    <div className="auth">
+    <main className="auth">
       <button className="auth-theme icon-btn" type="button" aria-label="Switch light or dark theme"
         onClick={toggleTheme}>
         <IconSun className="ico-when-dark" />
@@ -139,11 +200,7 @@ export default function LoginPage() {
       <div className="auth-form-col">
         <div className="auth-card">
           <div className="auth-brand">
-            <span className="brand-mark"><IconDiamond size={12} /></span>
-            <span className="brand-text stacked">
-              <span className="name">Agentix Projects</span>
-              <span className="sub">AGXP</span>
-            </span>
+            <BrandLogo size={32} />
           </div>
 
           <h1>{signup ? "Create your account" : "Welcome back"}</h1>
@@ -153,35 +210,42 @@ export default function LoginPage() {
               : "Sign in to pick up where you left off."}
           </p>
 
-          <div className="auth-tabs" role="tablist">
-            <button role="tab" type="button" aria-selected={!signup}
-              className={!signup ? "on" : ""} onClick={() => switchMode("signin")}>Sign in</button>
-            <button role="tab" type="button" aria-selected={signup}
-              className={signup ? "on" : ""} onClick={() => switchMode("signup")}>Create account</button>
+          <div className="auth-tabs" role="tablist" aria-label="Sign in or create an account">
+            {MODES.map(m => {
+              const on = mode === m;
+              return (
+                <button key={m} ref={el => { tabRefs.current[m] = el; }}
+                  role="tab" type="button" id={ids.tab(m)} aria-selected={on} aria-controls={ids.panel}
+                  tabIndex={on ? 0 : -1} className={on ? "on" : ""}
+                  onClick={() => switchMode(m)} onKeyDown={onTabKey}>
+                  {m === "signin" ? "Sign in" : "Create account"}
+                </button>
+              );
+            })}
           </div>
 
-          <form onSubmit={submit} noValidate={false}>
+          <form onSubmit={submit} noValidate role="tabpanel" id={ids.panel} aria-labelledby={ids.tab(mode)}>
             {signup && (
               <div className="field">
-                <label htmlFor="auth-name">Your name</label>
-                <input id="auth-name" type="text" value={name} autoComplete="name"
+                <label htmlFor={ids.name}>Your name</label>
+                <input id={ids.name} type="text" value={name} autoComplete="name"
                   placeholder="Alex" onChange={e => setName(e.target.value)} />
               </div>
             )}
 
             <div className="field">
-              <label htmlFor="auth-email">Email</label>
-              <input id="auth-email" type="email" required value={email} autoComplete="email"
+              <label htmlFor={ids.email}>Email</label>
+              <input id={ids.email} ref={emailRef} type="email" required value={email} autoComplete="email"
                 inputMode="email" placeholder="name@company.com"
-                onChange={e => setEmail(e.target.value)} />
+                aria-invalid={errors.email ? true : undefined}
+                aria-describedby={errors.email ? ids.emailErr : undefined}
+                onChange={e => { setEmail(e.target.value); if (errors.email) setErrors(x => ({ ...x, email: undefined })); }} />
+              {errors.email && <p className="field-err" id={ids.emailErr}>{errors.email}</p>}
             </div>
 
             <div className="field">
               <div className="auth-label-row">
-                <label htmlFor="auth-pw">
-                  Password
-                  {signup && <span className="hint">at least 8 characters</span>}
-                </label>
+                <label htmlFor={ids.pw}>Password</label>
                 {!signup && (
                   <button type="button" className="auth-link" onClick={forgotPassword} disabled={!!busy}>
                     Forgot it?
@@ -189,24 +253,20 @@ export default function LoginPage() {
                 )}
               </div>
               <div className="auth-pw">
-                <input id="auth-pw" type={showPw ? "text" : "password"} required value={password}
+                <input id={ids.pw} ref={pwRef} type={showPw ? "text" : "password"} required value={password}
                   autoComplete={signup ? "new-password" : "current-password"}
-                  minLength={signup ? 8 : undefined} placeholder="••••••••"
-                  onChange={e => setPassword(e.target.value)} />
-                <button type="button" tabIndex={-1} onClick={() => setShowPw(v => !v)}
-                  aria-label={showPw ? "Hide password" : "Show password"}>
-                  {showPw ? (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                      <path d="M1 1l22 22" />
-                    </svg>
-                  ) : (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
-                    </svg>
-                  )}
+                  aria-invalid={errors.password ? true : undefined}
+                  aria-describedby={[signup ? ids.pwHint : "", errors.password ? ids.pwErr : ""].filter(Boolean).join(" ") || undefined}
+                  onChange={e => { setPassword(e.target.value); if (errors.password) setErrors(x => ({ ...x, password: undefined })); }} />
+                {/* A toggle, so the label stays put and aria-pressed says which
+                    state it is in. */}
+                <button type="button" onClick={() => setShowPw(v => !v)}
+                  aria-label="Show password" aria-pressed={showPw}>
+                  {showPw ? <IconEyeOff size={16} /> : <IconEye size={16} />}
                 </button>
               </div>
+              {signup && <p className="field-hint" id={ids.pwHint}>At least 8 characters</p>}
+              {errors.password && <p className="field-err" id={ids.pwErr}>{errors.password}</p>}
             </div>
 
             {note && (
@@ -218,7 +278,7 @@ export default function LoginPage() {
 
             <button className="btn-primary-wide" type="submit" disabled={!!busy}>
               {busy === "form"
-                ? <span className="spinner" />
+                ? <><span className="spinner" aria-hidden="true" /><span className="visually-hidden">{signup ? "Creating your account…" : "Signing in…"}</span></>
                 : <>{signup ? "Create account" : "Sign in"}<IconArrow /></>}
             </button>
           </form>
@@ -226,7 +286,7 @@ export default function LoginPage() {
           <div className="auth-sep"><span>or</span></div>
 
           <button type="button" className="btn-google" onClick={googleSignIn} disabled={!!busy}>
-            {busy === "google" ? <span className="spinner" /> : (
+            {busy === "google" ? <span className="spinner" aria-hidden="true" /> : (
               <svg width="17" height="17" viewBox="0 0 18 18" aria-hidden="true">
                 <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.91c1.7-1.57 2.69-3.88 2.69-6.62z" />
                 <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.91-2.26c-.81.54-1.84.86-3.05.86-2.34 0-4.33-1.58-5.04-3.71H.96v2.33A9 9 0 0 0 9 18z" />
@@ -238,9 +298,9 @@ export default function LoginPage() {
           </button>
 
           <div className="auth-legal">
-            <a href="/impressum">Impressum</a>
-            <a href="/datenschutz">Datenschutz</a>
-            <a href="/agb">AGB</a>
+            <Link href="/impressum">Impressum</Link>
+            <Link href="/datenschutz">Datenschutz</Link>
+            <Link href="/agb">AGB</Link>
           </div>
         </div>
       </div>
@@ -259,12 +319,12 @@ export default function LoginPage() {
             </div>
           </div>
           <span className="eyebrow">Train your AI project agents</span>
-          <h2>Your project, thought through — by two agents who ask the right questions.</h2>
+          <h2>Your project, thought through by two agents who ask the right questions.</h2>
           <ul className="plist">
             {HERO_POINTS.map(p => <li key={p}>{p}</li>)}
           </ul>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

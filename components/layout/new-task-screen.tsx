@@ -1,24 +1,31 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { getProject, createBlankProject, clearAgent, type Project } from "@/lib/projects";
 import { listAgents, type Agent, type AgentType } from "@/lib/agents";
 import { projectCountsByAgent } from "@/lib/agent-progress";
 import type { PanelSnapshot, PeerContext } from "@/lib/peer-context";
-import { useChatSplit, broadcastSplit, clampShare } from "@/lib/chat-split";
+import { useChatSplit, broadcastSplit, clampShare, MIN_SHARE, MAX_SHARE } from "@/lib/chat-split";
+import { useMediaQuery } from "@/lib/use-media-query";
+import { describeDbError } from "@/lib/db-error";
 import { AgentNav } from "@/components/layout/agent-nav";
 import { AgentPickerPanel } from "@/components/layout/agent-picker-panel";
 import { ProjectChatPanel } from "@/components/layout/project-chat-panel";
 import { DeliverableView, type DeliverableDoc } from "@/components/layout/deliverable-view";
 import { AgentMascot } from "@/components/layout/agent-mascot";
-import { IconSwap, IconX, IconExpand } from "@/components/layout/agxp-icons";
+import { IconSwap, IconAlert, IconX } from "@/components/layout/agxp-icons";
 
-/** Where the Coach is right now. The Consultant always holds the room. */
-type CoachMode = "split" | "min" | "sheet";
+/** Where the Coach is right now: beside the Consultant, or folded into the pill.
+ *  Ana, 2026-09-27: the pill docks straight back — no overlay sheet in between. */
+type CoachMode = "split" | "min";
 
 const OTHER: Record<AgentType, AgentType> = { coach: "consultant", consultant: "coach" };
+const ROLES: AgentType[] = ["consultant", "coach"];
+const ROLE_NAME: Record<AgentType, string> = { consultant: "Consultant", coach: "Coach" };
+/** The same breakpoint the stylesheet stacks the panels at. */
+const STACKED_QUERY = "(max-width:1000px)";
 
 /**
  * The start screen: a narrow Coach panel beside a wide Consultant panel.
@@ -41,6 +48,22 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [projectCounts, setProjectCounts] = useState<Record<string, number>>({});
   const [loadingData, setLoadingData] = useState(true);
+  /** The project or the agent list could not be read. Carrying on with empty
+   *  data would show "no agents" and, worse, create a fresh project on the
+   *  first pick instead of reopening this one — so the screen stops here. */
+  const [loadError, setLoadError] = useState<string | null>(null);
+  /** Bumped by Retry to run the load effect again. */
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  /** Dropping an agent failed; the panel still shows the old one. */
+  const [changeError, setChangeError] = useState<{ role: AgentType; message: string } | null>(null);
+  /** The stylesheet stacks the panels below 1000px. What counts as "the
+   *  conversation you are looking at" depends on it, so JS has to know too. */
+  const stacked = useMediaQuery(STACKED_QUERY);
+  /** Side by side, both panels are on screen; number-key shortcuts go to the
+   *  one the user last clicked or tabbed into. */
+  const [lastPanel, setLastPanel] = useState<AgentType>("consultant");
+  const uid = useId();
+  const tabRefs = useRef<Partial<Record<AgentType, HTMLButtonElement | null>>>({});
   /** The document being read right now, opened from the chat or the rail. */
   const [openDoc, setOpenDoc] = useState<DeliverableDoc | null>(null);
   // Below ~1000px both panels don't fit side by side, so one is on screen at a
@@ -52,32 +75,30 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
    *  into the conversation the moment an agent is picked (Patryk, 2026-09-11;
    *  built this way in Ana's repo). */
   const [started, setStarted] = useState(false);
-  /** Manual override of the split: give the Coach the room instead. */
+  /** Manual override of the split: give the Coach the room instead. The two
+   *  panels stay where they are — only the widths trade (Ana, 2026-09-27). */
   const [swapped, setSwapped] = useState(false);
-  /** True for the length of the swap, so the panels can animate across. */
-  const [swapping, setSwapping] = useState(false);
   const [coachMode, setCoachMode] = useState<CoachMode>("split");
+  /** The Coach is coming back from the pill: its slot eases in instead of
+   *  appearing in one frame. Only then — not on first load. */
+  const [unfolding, setUnfolding] = useState(false);
   /** The saved preference, shared with the Settings sheet through the store.
    *  While the seam is being dragged, `live` takes over so the panels follow
    *  the pointer without writing to storage on every frame. */
   const savedShare = useChatSplit();
   const [live, setLive] = useState<number | null>(null);
+  /** The same value, readable from the pointerup handler without going
+   *  through a state updater — broadcasting from inside one updated the
+   *  Settings subscriber while this screen was still rendering. */
+  const liveRef = useRef<number | null>(null);
   const leadShare = live ?? savedShare;
   const dragging = live !== null;
   const wsRef = useRef<HTMLElement>(null);
   // What each panel is saying about itself. This screen is the only place that
   // can see both conversations, so it is where one is handed to the other.
   const [snaps, setSnaps] = useState<Partial<Record<AgentType, PanelSnapshot>>>({});
-  const swapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => () => { if (swapTimer.current) clearTimeout(swapTimer.current); }, []);
-
-  function swapSides() {
-    setSwapped(v => !v);
-    setSwapping(true);
-    if (swapTimer.current) clearTimeout(swapTimer.current);
-    swapTimer.current = setTimeout(() => setSwapping(false), 420);
-  }
+  function swapSides() { setSwapped(v => !v); }
   /**
    * Dragging the seam. The ratio is worked out from where the pointer is in
    * the row rather than from a delta, so it can't drift after a few drags,
@@ -93,10 +114,12 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
     if (!box) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     const move = (ev: PointerEvent) => {
-      // The lead panel is always the left one: swapping reverses the row, so
-      // whoever holds the room is on the left either way.
-      const leadFrac = (ev.clientX - box.left) / Math.max(1, box.width);
-      setLive(clampShare(leadFrac / Math.max(0.08, 1 - leadFrac)));
+      // The Consultant is always on the left. When the Coach leads, the lead
+      // panel is the right one, so the ratio is taken from the other side.
+      const leftFrac = Math.min(0.92, Math.max(0.08, (ev.clientX - box.left) / Math.max(1, box.width)));
+      const next = clampShare(coachLeads ? (1 - leftFrac) / leftFrac : leftFrac / (1 - leftFrac));
+      liveRef.current = next;
+      setLive(next);
     };
     const stop = () => {
       window.removeEventListener("pointermove", move);
@@ -106,7 +129,10 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
       // on and the panels keep resizing on every later mouse move.
       window.removeEventListener("pointercancel", stop);
       endDrag.current = null;
-      setLive(v => { if (v !== null) broadcastSplit(v); return null; });
+      const v = liveRef.current;
+      liveRef.current = null;
+      setLive(null);
+      if (v !== null) broadcastSplit(v);
     };
     endDrag.current = stop;
     window.addEventListener("pointermove", move);
@@ -116,8 +142,22 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
 
   /** The seam is a control, so it works from the keyboard too. */
   function nudgeSplit(step: number) {
-    const next = clampShare(leadShare + step);
+    // Arrow right widens the left panel, whichever one is leading.
+    const next = clampShare(leadShare + (coachLeads ? -step : step));
     broadcastSplit(next);
+  }
+
+  /** Home and End jump to the ends of the range. Home is the narrowest the
+   *  left panel gets, so which end of the share that is depends on who leads. */
+  function splitToEdge(edge: "start" | "end") {
+    const leftNarrow = coachLeads ? MAX_SHARE : MIN_SHARE;
+    const leftWide = coachLeads ? MIN_SHARE : MAX_SHARE;
+    broadcastSplit(edge === "start" ? leftNarrow : leftWide);
+  }
+
+  /** The left (Consultant) panel's width in percent, for the separator's value. */
+  function leftPercent(s: number): number {
+    return Math.round(((coachLeads ? 1 : s) / (s + 1)) * 100);
   }
 
   const creating = useRef<Promise<Project> | null>(null);
@@ -125,22 +165,60 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
   function showPane(role: AgentType) {
     setPane(role);
     setUnseen(u => (u[role] ? { ...u, [role]: false } : u));
+    // A folded Coach has no slot on screen, so picking its tab would leave
+    // the stacked layout blank.
+    if (role === "coach" && coachMode === "min") { setUnfolding(true); setCoachMode("split"); }
   }
 
-  /** Which conversation the user is actually looking at right now. */
+  /** Arrow keys move between the two tabs, the way a tablist is expected to. */
+  function onTabKey(e: React.KeyboardEvent<HTMLDivElement>) {
+    const i = ROLES.indexOf(pane);
+    const next = e.key === "ArrowRight" ? ROLES[(i + 1) % ROLES.length]
+      : e.key === "ArrowLeft" ? ROLES[(i - 1 + ROLES.length) % ROLES.length]
+      : e.key === "Home" ? ROLES[0]
+      : e.key === "End" ? ROLES[ROLES.length - 1]
+      : null;
+    if (!next) return;
+    e.preventDefault();
+    showPane(next);
+    tabRefs.current[next]?.focus();
+  }
+
+  /** The lead of the split: the wide one, or the Consultant when the Coach is folded. */
   const leadRole: AgentType = coachMode !== "split" ? "consultant" : swapped ? "coach" : "consultant";
+  /** Which conversation the user is actually looking at right now. Stacked,
+   *  that is the tab on screen — the split's lead means nothing there. */
+  const viewedRole: AgentType = stacked ? pane : leadRole;
+  /** Where number-key shortcuts go. Stacked: the visible pane. Side by side:
+   *  the panel last touched, unless the Coach is folded away. */
+  const keyboardRole: AgentType = stacked ? pane : coachMode === "split" ? lastPanel : "consultant";
+  /** Before Start, a chosen Consultant hands the room to the empty Coach seat
+   *  — that is the screen asking you to finish the pair. */
+  const coachLeads = coachMode === "split"
+    && (swapped || (!started && !!project?.consultant_agent_id && !project?.coach_agent_id));
 
   /** Hands a panel the room and clears its unread mark. */
   function focusPanel(role: AgentType) {
     setUnseen(u => (u[role] ? { ...u, [role]: false } : u));
-    if (role === "coach" && coachMode === "min") { setCoachMode("sheet"); return; }
-    if (role !== leadRole && coachMode === "split") swapSides();
+    setLastPanel(role);
+    // Stacked, "the room" is the screen itself: switch to that tab. Swapping
+    // the split there would change nothing visible and surprise the user
+    // the next time the window is wide.
+    if (stacked) setPane(role);
+    if (role === "coach" && coachMode === "min") { setUnfolding(true); setCoachMode("split"); return; }
+    if (!stacked && role !== leadRole && coachMode === "split") swapSides();
   }
+
+  // The panel calls onActivity from the end of a stream, through the closure
+  // it had when the message was sent. Read from a ref so switching tabs while
+  // the answer streams still counts against where you are looking now.
+  const viewedRef = useRef<AgentType>(viewedRole);
+  useEffect(() => { viewedRef.current = viewedRole; }, [viewedRole]);
 
   function noteActivity(role: AgentType) {
     // Unread means "answered somewhere you weren't looking": the stacked tab
     // you're not on, the narrow half of the split, or the folded-away Coach.
-    setUnseen(u => (role === pane || role === leadRole || u[role] ? u : { ...u, [role]: true }));
+    setUnseen(u => (role === viewedRef.current || u[role] ? u : { ...u, [role]: true }));
   }
 
   // Stable so the panels' publish effect isn't re-armed on every render.
@@ -171,10 +249,16 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
         // Start gate guards a fresh selection, not a return visit.
         if (p?.coach_agent_id && p?.consultant_agent_id) setStarted(true);
       })
-      .catch(() => {})
+      .catch(e => { if (alive) setLoadError(describeDbError(e, "Loading this task")); })
       .finally(() => { if (alive) setLoadingData(false); });
     return () => { alive = false; };
-  }, [token, projectId]);
+  }, [token, projectId, loadAttempt]);
+
+  function retryLoad() {
+    setLoadError(null);
+    setLoadingData(true);
+    setLoadAttempt(n => n + 1);
+  }
 
   // An agent that just joined a project may have crossed a level threshold —
   // refresh the counts so the Steckbrief shows it right away.
@@ -200,7 +284,14 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
   /** Drops the assignment so the panel falls back to its picker. */
   async function changeAgent(role: AgentType) {
     if (!project) return;
-    setProject(await clearAgent(project.id, role));
+    setChangeError(null);
+    try {
+      setProject(await clearAgent(project.id, role));
+    } catch (e) {
+      // Nothing changed on the server, so the panel is right to keep showing
+      // the old agent — it just has to say why the click did nothing.
+      setChangeError({ role, message: describeDbError(e, `Changing the ${ROLE_NAME[role]}`) });
+    }
   }
 
   /** What the agent on the other side of the screen has been told so far. */
@@ -220,11 +311,17 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
         <ProjectChatPanel key={role} project={project} role={role} agent={assigned}
           projectCount={projectCounts[assigned.id] ?? 0}
           peer={peerFor(role)}
-          idle={role !== leadRole}
+          idle={role !== viewedRole}
+          keyboardActive={role === keyboardRole}
           unread={unseen[role]}
           onSnapshot={s => handleSnapshot(role, s)}
           onFocusPanel={() => focusPanel(role)}
-          onMinimise={role === "coach" && coachMode === "split" ? () => setCoachMode("min") : undefined}
+          onMinimise={role === "coach" && coachMode === "split" ? () => {
+            setUnfolding(false); setCoachMode("min");
+            // Stacked, the Coach tab would otherwise point at nothing.
+            if (stacked) showPane("consultant");
+          } : undefined}
+          headExtra={role === "consultant" && foldedCoach ? coachPill(true) : undefined}
           onActivity={() => noteActivity(role)}
           onOpenDoc={setOpenDoc}
           onChangeAgent={() => changeAgent(role)}
@@ -247,8 +344,6 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
    *  the screen asking you to finish the pair. */
   function share(role: AgentType): number {
     if (coachMode !== "split") return role === "consultant" ? 1 : 0;
-    const consultantOnly = !!project?.consultant_agent_id && !project?.coach_agent_id;
-    const coachLeads = swapped || (!started && consultantOnly);
     return coachLeads ? (role === "consultant" ? 1 : leadShare) : (role === "consultant" ? leadShare : 1);
   }
 
@@ -256,12 +351,71 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
   const coachSnap = snaps.coach;
   /** The pill only makes sense once there is a Coach with something to say. */
   const foldedCoach = coachMode !== "split" && !!coachAgent && started;
+  /** Is the Consultant a live chat, with a head the pill can sit in? */
+  const consultantChatting = !!project?.consultant_agent_id && started
+    && agents.some(a => a.id === project?.consultant_agent_id);
+
+  /** K1: folded away, the Coach is a hand raised in the Consultant's head,
+   *  next to the document button — no gutter of its own above the row, and
+   *  nothing over the conversation or the answer buttons. */
+  function coachPill(inHead: boolean) {
+    const name = coachAgent?.name ?? "The Coach";
+    return (
+      <button className={`coach-pill${inHead ? " in-head" : ""}${unseen.coach ? " raised" : ""}`}
+        onClick={() => focusPanel("coach")}
+        aria-label={inHead
+          ? `${unseen.coach ? `${name} has something to add. ` : ""}Open ${coachAgent?.name ?? "the Coach"} beside the Consultant`
+          : undefined}>
+        <span className="cp-face">
+          <AgentMascot role="coach" state={coachSnap?.busy ? "thinking" : "idle"} size={30} agentId={coachAgent?.id} />
+          {unseen.coach && <span className="cp-dot" aria-hidden="true" />}
+        </span>
+        <span className="cp-txt">
+          <span className="cp-n">
+            {unseen.coach ? `${name} has something to add` : coachAgent?.name}
+          </span>
+          <span className="cp-l">{coachSnap?.lastLine ?? "Your coach is listening in."}</span>
+        </span>
+      </button>
+    );
+  }
 
   if (authLoading || !token || loadingData) return (
-    <div className="app" style={{ alignItems: "center", justifyContent: "center" }}>
-      <div className="spinner" style={{ width: 24, height: 24, borderColor: "var(--border-strong)", borderTopColor: "var(--primary)" }} />
+    <div className="app is-loading" role="status">
+      <span className="spinner spinner-lg" aria-hidden="true" />
+      <span className="visually-hidden">Loading…</span>
     </div>
   );
+
+  if (loadError) return (
+    <div className="app">
+      <AgentNav />
+      <main className="view-root view-enter" id="main-content" tabIndex={-1}>
+        <h1 className="visually-hidden">New task</h1>
+        <div className="inline-error is-page" role="alert">
+          <IconAlert size={16} />
+          <div className="ie-text">
+            <p className="ie-title">This task could not be loaded.</p>
+            <p className="ie-detail">{loadError}</p>
+          </div>
+          <button className="btn btn-ghost" onClick={retryLoad}>Retry</button>
+        </div>
+      </main>
+    </div>
+  );
+
+  const pctNow = leftPercent(leadShare);
+  const pctEdges = [leftPercent(MIN_SHARE), leftPercent(MAX_SHARE)];
+  const tabId = (role: AgentType) => `${uid}-tab-${role}`;
+  const panelId = (role: AgentType) => `${uid}-panel-${role}`;
+  /** Stacked, each slot is the tabpanel of its switcher tab. Side by side
+   *  the tabs are hidden, so the slots are plain regions of the page. */
+  const slotProps = (role: AgentType) => ({
+    id: panelId(role),
+    ...(stacked ? { role: "tabpanel" as const, "aria-labelledby": tabId(role) } : {}),
+    onPointerDown: () => setLastPanel(role),
+    onFocus: () => setLastPanel(role),
+  });
 
   return (
     <div className="app">
@@ -274,99 +428,91 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
           ist, weiß der User sofort, was als nächstes zu tun ist"). */}
       <div className="view-root view-enter">
         {/* Only shown once the layout stacks (CSS) — both panels stay mounted,
-            so switching never loses a conversation or a half-typed message. */}
-        <div className="pane-switch" role="tablist" aria-label="Choose panel">
-          {(["consultant", "coach"] as AgentType[]).map(role => {
+            so switching never loses a conversation or a half-typed message.
+            Roving tabindex: Tab lands on the selected tab, arrows move. */}
+        <div className="pane-switch" role="tablist" aria-label="Choose panel" onKeyDown={onTabKey}>
+          {ROLES.map(role => {
             const id = role === "coach" ? project?.coach_agent_id : project?.consultant_agent_id;
             const name = agents.find(a => a.id === id)?.name;
             return (
-              <button key={role} role="tab" aria-selected={pane === role}
+              <button key={role} role="tab" id={tabId(role)} aria-selected={pane === role}
+                aria-controls={panelId(role)} tabIndex={pane === role ? 0 : -1}
+                ref={el => { tabRefs.current[role] = el; }}
                 className={`ps-tab ${pane === role ? "on" : ""}`} onClick={() => showPane(role)}>
-                <span className={`role-dot ${role}`} />
-                {role === "coach" ? "Coach" : "Consultant"}
+                <span className={`role-dot ${role}`} aria-hidden="true" />
+                {ROLE_NAME[role]}
                 {name && <span className="who">{name}</span>}
-                {unseen[role] && <span className="ps-dot" aria-label="New reply" />}
+                {unseen[role] && <><span className="ps-dot" aria-hidden="true" /><span className="visually-hidden">, new reply</span></>}
               </button>
             );
           })}
         </div>
 
+        {changeError && (
+          <div className="inline-error" role="alert">
+            <IconAlert size={14} />
+            <p className="ie-detail">{changeError.message}</p>
+            <button className="btn btn-ghost" onClick={() => changeAgent(changeError.role)}>Retry</button>
+            <button className="icon-btn" aria-label="Dismiss" onClick={() => setChangeError(null)}><IconX size={12} /></button>
+          </div>
+        )}
+
         {/* Consultant leads (left, wide) — Coach supports (right). Each panel
-            sits in a slot that owns the split, so the Coach can become an
-            overlay sheet without ever leaving the tree and remounting. */}
-        <main ref={wsRef}
-          className={`workspace${swapping ? " swapping" : ""}${dragging ? " resizing" : ""}${swapped && coachMode === "split" ? " swapped" : ""}`}
-          data-active={pane} data-coach={coachMode}>
-          <div className="slot" data-role="consultant" style={{ flexGrow: share("consultant") }}>
+            sits in a slot that owns the split, so the Coach can fold away
+            without ever leaving the tree and remounting. The skip link lands
+            here, past the header and the switcher. */}
+        <main ref={wsRef} id="main-content" tabIndex={-1}
+          className={`workspace${dragging ? " resizing" : ""}`}
+          data-active={pane} data-coach={coachMode}
+          data-pill={foldedCoach && coachMode === "min" && !consultantChatting ? "float" : undefined}>
+          {/* The screen has no visible title — Patryk wanted it clean — but a
+              screen reader still needs to know where it is. */}
+          <h1 className="visually-hidden">{project?.name && project.name !== "New Project" ? project.name : "New task"}</h1>
+          <div className="slot" data-role="consultant" style={{ flexGrow: share("consultant") }} {...slotProps("consultant")}>
             {panelFor("consultant")}
           </div>
 
           {coachMode === "split" && (
             /* The seam does two jobs: drag it to resize, press the button in
-               the middle to swap sides. One strip, because two separate
-               controls on a 16px gap is a coin toss every time you aim. */
-            <div className={`seam${dragging ? " dragging" : ""}`} onPointerDown={startDrag}
-              role="separator" aria-orientation="vertical" tabIndex={0}
-              aria-label="Resize the conversations"
-              onKeyDown={e => {
-                if (e.key === "ArrowLeft") { e.preventDefault(); nudgeSplit(-0.25); }
-                if (e.key === "ArrowRight") { e.preventDefault(); nudgeSplit(0.25); }
-              }}
-              aria-valuenow={Math.round((leadShare / (leadShare + 1)) * 100)} aria-valuemin={50} aria-valuemax={78}>
-              <span className="seam-rail" />
+               the middle to hand the room to the other conversation. One
+               strip, because two controls on a 16px gap is a coin toss.
+               The separator is an empty layer under the strip rather than
+               the strip itself: a separator's children are presentational,
+               so a button inside one would vanish for screen readers. */
+            <div className={`seam${dragging ? " dragging" : ""}`} onPointerDown={startDrag}>
+              <div className="seam-handle"
+                role="separator" aria-orientation="vertical" tabIndex={0}
+                aria-label="Resize the conversations"
+                aria-valuenow={pctNow}
+                aria-valuemin={Math.min(...pctEdges)} aria-valuemax={Math.max(...pctEdges)}
+                aria-valuetext={`Consultant ${pctNow}%, Coach ${100 - pctNow}%`}
+                onKeyDown={e => {
+                  if (e.key === "ArrowLeft") { e.preventDefault(); nudgeSplit(-0.25); }
+                  else if (e.key === "ArrowRight") { e.preventDefault(); nudgeSplit(0.25); }
+                  else if (e.key === "Home") { e.preventDefault(); splitToEdge("start"); }
+                  else if (e.key === "End") { e.preventDefault(); splitToEdge("end"); }
+                }} />
+              <span className="seam-rail" aria-hidden="true" />
               <button className={`swap-panels${swapped ? " flipped" : ""}`}
                 onPointerDown={e => e.stopPropagation()} onClick={swapSides}
-                data-tooltip={swapped ? "Put the Consultant back on the left" : "Move the Coach to the left"}
-                aria-label="Swap the two sides">
+                data-tooltip={swapped ? "Give the Consultant more room" : "Give the Coach more room"}
+                aria-label={swapped ? "Give the Consultant more room" : "Give the Coach more room"}>
                 <IconSwap size={13} />
               </button>
-              <span className="seam-rail" />
+              <span className="seam-rail" aria-hidden="true" />
             </div>
-          )}
-
-          {coachMode === "sheet" && (
-            <button className="coach-scrim" aria-label="Close the Coach"
-              onClick={() => setCoachMode("min")} />
           )}
 
           {/* Folded away it is `display:none`, which already takes it out of
               the tab order and the accessibility tree — but it stays mounted,
               so a reply still streaming into it survives the fold. */}
-          <div className={`slot coach-slot ${coachMode}`} data-role="coach" style={{ flexGrow: share("coach") }}>
-            {coachMode === "sheet" && (
-              <div className="sheet-grip">
-                <button className="sg-btn" onClick={() => setCoachMode("split")}
-                  data-tooltip="Put the Coach back beside the Consultant">
-                  <IconExpand size={12} />Dock
-                </button>
-                <button className="sg-btn" onClick={() => setCoachMode("min")}
-                  data-tooltip="Fold away again" aria-label="Fold the Coach away">
-                  <IconX size={12} />
-                </button>
-              </div>
-            )}
+          <div className={`slot coach-slot ${coachMode}${unfolding ? " unfolding" : ""}`} data-role="coach" style={{ flexGrow: share("coach") }} {...slotProps("coach")}>
             {panelFor("coach")}
           </div>
 
-          {/* K1: folded away, the Coach is a hand raised in the corner. Anchored
-              to the top right on purpose (Patryk, 2026-09-25 — "der sollte nur
-              ein bisschen weiter oben sein, damit er nicht die Sicht versperrt
-              auf den Chat, auf die Buttons"). */}
-          {foldedCoach && coachMode === "min" && (
-            <button className={`coach-pill${unseen.coach ? " raised" : ""}`}
-              onClick={() => focusPanel("coach")}>
-              <span className="cp-face">
-                <AgentMascot role="coach" state={coachSnap?.busy ? "thinking" : "idle"} size={34} />
-                {unseen.coach && <span className="cp-dot" aria-hidden="true" />}
-              </span>
-              <span className="cp-txt">
-                <span className="cp-n">
-                  {unseen.coach ? `${coachAgent?.name} möchte etwas sagen` : coachAgent?.name}
-                </span>
-                <span className="cp-l">{coachSnap?.lastLine ?? "Your coach is listening in."}</span>
-              </span>
-            </button>
-          )}
+          {/* Only when the Consultant has no chat head to hold it (its agent
+              was changed mid-project): then the pill floats in the corner. */}
+          {foldedCoach && coachMode === "min" && !consultantChatting && coachPill(false)}
         </main>
 
       </div>

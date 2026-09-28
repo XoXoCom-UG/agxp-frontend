@@ -1,14 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/lib/auth-context";
 import { ACCENTS, readAccent, applyAccent, type Accent } from "@/lib/accent";
 import { SPLIT_PRESETS, useChatSplit, broadcastSplit, presetFor } from "@/lib/chat-split";
-import { IconX, IconCheck, IconUser, IconSun, IconMoon } from "@/components/layout/agxp-icons";
+import { IconX, IconCheck, IconMonitor, IconSun, IconMoon } from "@/components/layout/agxp-icons";
+import { useDialogFocus } from "@/lib/use-dialog-focus";
 
 type Tab = "profile" | "appearance";
+const TABS: { id: Tab; label: string }[] = [
+  { id: "profile", label: "Profile" },
+  { id: "appearance", label: "Appearance" },
+];
 
 /**
  * Settings, in one place.
@@ -31,13 +36,39 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const firstField = useRef<HTMLInputElement>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const tabRefs = useRef<Partial<Record<Tab, HTMLButtonElement | null>>>({});
+  const uid = useId();
+  const titleId = `${uid}-title`;
 
+  // Focus lands on the name field once, Tab stays inside, and focus goes
+  // back to whatever opened the sheet when it closes.
+  useDialogFocus(sheetRef, firstField);
+
+  // The parent passes a fresh arrow every render. Held in a ref, the Escape
+  // listener is attached once instead of being torn down and re-added — the
+  // old version also re-focused the name field on every parent render.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
   useEffect(() => {
-    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onCloseRef.current(); }
     document.addEventListener("keydown", onKey);
-    firstField.current?.focus();
     return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, []);
+
+  /** Left/Right/Home/End between the two tabs; Tab itself goes to the panel. */
+  function onTabKey(e: React.KeyboardEvent<HTMLElement>) {
+    const i = TABS.findIndex(t => t.id === tab);
+    const next = e.key === "ArrowRight" ? TABS[(i + 1) % TABS.length]
+      : e.key === "ArrowLeft" ? TABS[(i - 1 + TABS.length) % TABS.length]
+      : e.key === "Home" ? TABS[0]
+      : e.key === "End" ? TABS[TABS.length - 1]
+      : null;
+    if (!next) return;
+    e.preventDefault();
+    setTab(next.id);
+    tabRefs.current[next.id]?.focus();
+  }
 
   /** Live preview: the colour lands as you click, before anything is saved. */
   function pickAccent(a: Accent) {
@@ -66,20 +97,22 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
 
   return createPortal(
     <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="settings-sheet" role="dialog" aria-modal="true" aria-label="Settings">
+      <div ref={sheetRef} className="settings-sheet" role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <header className="ss-head">
-          <h2>Settings</h2>
+          <h2 id={titleId}>Settings</h2>
           <button className="ss-close" onClick={onClose} aria-label="Close settings"><IconX size={14} /></button>
         </header>
 
-        <nav className="ss-tabs" role="tablist">
-          <button role="tab" aria-selected={tab === "profile"}
-            className={tab === "profile" ? "on" : ""} onClick={() => setTab("profile")}>Profile</button>
-          <button role="tab" aria-selected={tab === "appearance"}
-            className={tab === "appearance" ? "on" : ""} onClick={() => setTab("appearance")}>Appearance</button>
-        </nav>
+        <div className="ss-tabs" role="tablist" aria-label="Settings sections" onKeyDown={onTabKey}>
+          {TABS.map(t => (
+            <button key={t.id} role="tab" id={`${uid}-tab-${t.id}`} aria-selected={tab === t.id}
+              aria-controls={`${uid}-panel`} tabIndex={tab === t.id ? 0 : -1}
+              ref={el => { tabRefs.current[t.id] = el; }}
+              className={tab === t.id ? "on" : ""} onClick={() => setTab(t.id)}>{t.label}</button>
+          ))}
+        </div>
 
-        <div className="ss-body">
+        <div className="ss-body" role="tabpanel" id={`${uid}-panel`} aria-labelledby={`${uid}-tab-${tab}`}>
           {tab === "profile" ? (
             <>
               <div className="ss-identity">
@@ -121,7 +154,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
                 <span className="ss-label">Theme</span>
                 <div className="ss-segment" role="group" aria-label="Theme">
                   {([
-                    ["system", "System", <IconUser key="s" size={13} />],
+                    ["system", "System", <IconMonitor key="s" size={13} />],
                     ["light", "Light", <IconSun key="l" size={13} />],
                     ["dark", "Dark", <IconMoon key="d" size={13} />],
                   ] as const).map(([value, label, icon]) => (

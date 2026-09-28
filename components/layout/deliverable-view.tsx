@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { AgentType } from "@/lib/agents";
-import { md } from "@/lib/markdown";
+import { md, handleCodeCopyClick } from "@/lib/markdown";
+import { useDialogFocus } from "@/lib/use-dialog-focus";
 import { AgentMascot } from "@/components/layout/agent-mascot";
-import { stageForProjects } from "@/lib/mascot-evolution";
 import { IconX, IconCopy, IconCheck, IconDownload, IconPrint } from "@/components/layout/agxp-icons";
 
 export interface DeliverableDoc {
@@ -63,15 +63,17 @@ function slug(s: string): string {
  */
 export function DeliverableView({ doc, onClose }: { doc: DeliverableDoc; onClose: () => void }) {
   const [copied, setCopied] = useState(false);
+  /** After the first copy, the icon swap animates both ways. */
+  const [copyUsed, setCopyUsed] = useState(false);
   const [active, setActive] = useState(0);
   const paperRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(modalRef);
 
   const toc = useMemo(() => outline(doc.content), [doc.content]);
   const html = useMemo(() => md(doc.content), [doc.content]);
-  const words = useMemo(() => doc.content.split(/\s+/).filter(Boolean).length, [doc.content]);
-  const mascotLevel = stageForProjects(doc.agentProjects ?? 0);
 
   useEffect(() => () => { if (copyTimer.current) clearTimeout(copyTimer.current); }, []);
 
@@ -112,6 +114,7 @@ export function DeliverableView({ doc, onClose }: { doc: DeliverableDoc; onClose
   async function copy() {
     try {
       await navigator.clipboard.writeText(doc.content);
+      setCopyUsed(true);
       setCopied(true);
       if (copyTimer.current) clearTimeout(copyTimer.current);
       copyTimer.current = setTimeout(() => setCopied(false), 1800);
@@ -137,31 +140,22 @@ export function DeliverableView({ doc, onClose }: { doc: DeliverableDoc; onClose
   return createPortal(
     <div className="doc-portal">
       <div className="doc-overlay" onClick={onClose} />
-      <div className="doc-modal" role="dialog" aria-modal="true" aria-label={doc.title}>
-        <header className="doc-head">
-          <AgentMascot role={doc.role} state="idle" size={44} level={mascotLevel} />
-          <div className="doc-id">
-            <span className="kind">{doc.role === "coach" ? "From your coach" : "From your consultant"}</span>
-            <h2>{doc.title}</h2>
-            <span className="meta">
-              {doc.projectName} · {doc.agentName} · {date}
-              {!!doc.version && doc.version > 1 && ` · version ${doc.version}`}
-            </span>
-          </div>
-          <div className="doc-actions">
-            <button className="doc-btn" onClick={copy}>
-              {copied ? <IconCheck size={13} /> : <IconCopy size={13} />}<span className="t">{copied ? "Copied" : "Copy"}</span>
-            </button>
-            <button className="doc-btn" onClick={download}><IconDownload size={13} /><span className="t">.md</span></button>
-            <button className="doc-btn" onClick={() => window.print()}><IconPrint size={13} /><span className="t">Print / PDF</span></button>
-            <button className="doc-btn icon" onClick={onClose} data-tooltip="Close (Esc)" aria-label="Close"><IconX size={14} /></button>
-          </div>
-        </header>
-
+      <div ref={modalRef} className="doc-modal" role="dialog" aria-modal="true" aria-label={doc.title}>
+        <button className="doc-close" onClick={onClose} data-tooltip="Close (Esc)" aria-label="Close"><IconX size={15} /></button>
         <div className="doc-main">
           <aside className="doc-toc">
+            <div className="doc-side-head">
+              <AgentMascot role={doc.role} state="idle" size={36} agentId={doc.agentId} />
+            </div>
+            <div className="doc-side-actions">
+              <button className="doc-side-btn" onClick={copy}>
+                {copied ? <IconCheck size={14} className="icon-swap" /> : <IconCopy size={14} className={copyUsed ? "icon-swap" : undefined} />}<span className="t">{copied ? "Copied" : "Copy"}</span>
+              </button>
+              <button className="doc-side-btn" onClick={download}><IconDownload size={14} /><span className="t">.md</span></button>
+              <button className="doc-side-btn" onClick={() => window.print()}><IconPrint size={14} /><span className="t">Print / PDF</span></button>
+            </div>
             <span className="lbl">Contents</span>
-            <nav>
+            <div className="toc-nav" role="navigation" aria-label="Contents">
               {toc.map((h, i) => (
                 <button key={`${h.domIndex}-${h.text}`} className={`toc-item lvl${h.level} ${i === active ? "on" : ""}`}
                   onClick={() => jumpTo(h)}>
@@ -169,20 +163,15 @@ export function DeliverableView({ doc, onClose }: { doc: DeliverableDoc; onClose
                 </button>
               ))}
               {toc.length === 0 && <span className="toc-empty">No sections</span>}
-            </nav>
-            <div className="doc-stats">
-              <div><b>{toc.length}</b><span>sections</span></div>
-              <div><b>{words.toLocaleString()}</b><span>words</span></div>
-              <div><b>{Math.max(1, Math.round(words / 200))}</b><span>min read</span></div>
             </div>
           </aside>
 
           <div className="doc-paper" ref={paperRef} onScroll={onScroll}>
             <div className="doc-sheet">
-              <div className="doc-body" ref={bodyRef} dangerouslySetInnerHTML={{ __html: html }} />
+              <div className="doc-body" ref={bodyRef} onClick={handleCodeCopyClick} dangerouslySetInnerHTML={{ __html: html }} />
               <div className="doc-foot">
                 <span>{doc.title} · {doc.projectName}</span>
-                <span>Generated with AgXP · {doc.agentName} · {date}</span>
+                <span>Generated with AgentiX · {doc.agentName} · {date}</span>
               </div>
             </div>
           </div>
