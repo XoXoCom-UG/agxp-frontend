@@ -64,8 +64,6 @@ export interface ConversationState {
   /** message id → 1-based version, for the document cards in the list. */
   versionOf: Map<string, number>;
   lastAssistantIdx: number;
-  /** Was the newest answer one the agent volunteered? */
-  lastIsAside: boolean;
   /** What the newest answer offers to pick from. */
   choices: string[];
 }
@@ -93,7 +91,6 @@ export function deriveConversation(entries: Entry[]): ConversationState {
     docs,
     versionOf: new Map(docs.map((d, i) => [d.m.id, i + 1])),
     lastAssistantIdx,
-    lastIsAside: !!last?.isAside,
     choices: last && !last.isError ? last.p.choices : [],
   };
 }

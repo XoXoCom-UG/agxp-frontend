@@ -13,6 +13,11 @@ import { useSyncExternalStore } from "react";
  */
 
 const KEY = "agxp.chat-split";
+/** Ana, 2026-09-28: "sau măcar să ai un buton în setări de lock, și atunci să
+ *  nu poți schimba dimensiunile la chaturi" — the drag is easy to do by
+ *  accident while reaching for the swap button, so it can be turned off and
+ *  the width set from Settings alone. */
+const LOCK_KEY = "agxp.chat-split-locked";
 
 /** Below this the narrow panel stops being a conversation and becomes a strip. */
 export const MIN_SHARE = 1;
@@ -46,6 +51,20 @@ export function readSplit(): number {
 
 export function saveSplit(v: number): void {
   try { window.localStorage.setItem(KEY, String(clampShare(v))); } catch { /* not worth failing over */ }
+}
+
+export function readSplitLocked(): boolean {
+  if (typeof window === "undefined") return false;
+  try { return window.localStorage.getItem(LOCK_KEY) === "1"; } catch { return false; }
+}
+
+/** Saves the lock and tells every subscriber, on the same event as the ratio
+ *  — one preference about one thing, so one channel. */
+export function broadcastSplitLocked(locked: boolean): void {
+  try { window.localStorage.setItem(LOCK_KEY, locked ? "1" : "0"); } catch { /* not worth failing over */ }
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent<number>(SPLIT_EVENT, { detail: readSplit() }));
+  }
 }
 
 /** Which preset a value corresponds to, for showing the choice as selected. */
@@ -89,4 +108,10 @@ function subscribe(onChange: () => void): () => void {
 
 export function useChatSplit(): number {
   return useSyncExternalStore(subscribe, readSplit, () => DEFAULT_SHARE);
+}
+
+/** Booleans are their own snapshot, so this needs no caching the way an
+ *  object-valued store would. */
+export function useSplitLocked(): boolean {
+  return useSyncExternalStore(subscribe, readSplitLocked, () => false);
 }

@@ -5,7 +5,8 @@ import { createPortal } from "react-dom";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/lib/auth-context";
 import { ACCENTS, readAccent, applyAccent, type Accent } from "@/lib/accent";
-import { SPLIT_PRESETS, useChatSplit, broadcastSplit, presetFor } from "@/lib/chat-split";
+import { SPLIT_PRESETS, useChatSplit, useSplitLocked, broadcastSplit, broadcastSplitLocked, presetFor } from "@/lib/chat-split";
+import { BACKGROUND_OPTIONS, GLASS_OPTIONS, useAppearance, setAppearance } from "@/lib/appearance";
 import { IconX, IconCheck, IconMonitor, IconSun, IconMoon } from "@/components/layout/agxp-icons";
 import { useDialogFocus } from "@/lib/use-dialog-focus";
 
@@ -32,6 +33,8 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState(profileName);
   const [accent, setAccent] = useState<Accent>(() => readAccent());
   const split = useChatSplit();
+  const splitLocked = useSplitLocked();
+  const appearance = useAppearance();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
@@ -179,7 +182,34 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
                     </button>
                   ))}
                 </div>
-                <span className="ss-hint">Changes every accent in the app. Saved on this browser.</span>
+                <span className="ss-hint">Changes every accent in the app, including the light in the room behind the panels. Saved on this browser.</span>
+              </div>
+
+              {/* The room, and how much of it shows through. Both land as you
+                  click — you are looking at the thing you are changing, so a
+                  Save button in between would only hide the answer. */}
+              <div className="ss-field">
+                <span className="ss-label">Background</span>
+                <div className="ss-segment" role="group" aria-label="Background pattern">
+                  {BACKGROUND_OPTIONS.map(opt => (
+                    <button key={opt.id} className={appearance.background === opt.id ? "on" : ""}
+                      aria-pressed={appearance.background === opt.id} data-tooltip={opt.hint}
+                      onClick={() => setAppearance({ background: opt.id })}>{opt.label}</button>
+                  ))}
+                </div>
+                <span className="ss-hint">Drifting moves about a third of a pixel a second — enough to feel alive, not enough to follow.</span>
+              </div>
+
+              <div className="ss-field">
+                <span className="ss-label">Glass</span>
+                <div className="ss-segment" role="group" aria-label="How much glass">
+                  {GLASS_OPTIONS.map(opt => (
+                    <button key={opt.id} className={appearance.glass === opt.id ? "on" : ""}
+                      aria-pressed={appearance.glass === opt.id} data-tooltip={opt.hint}
+                      onClick={() => setAppearance({ glass: opt.id })}>{opt.label}</button>
+                  ))}
+                </div>
+                <span className="ss-hint">How much the bars, the sheets and the panels blur what is behind them. Solid is also the faster one.</span>
               </div>
 
               {/* Asked for on 2026-09-26: the drag on the seam is the quick
@@ -202,8 +232,24 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
                   })}
                 </div>
                 <span className="ss-hint">
-                  How much room the conversation you are in takes. You can also drag the seam between them.
+                  How much room the conversation you are in takes.
+                  {splitLocked ? " The seam between them is locked." : " You can also drag the seam between them."}
                 </span>
+              </div>
+
+              {/* Asked for on 2026-09-28: the seam sits right where you reach
+                  for the swap button, so the width changes by accident. Locked,
+                  the presets above are the only way to change it. */}
+              <div className="ss-field">
+                <span className="ss-label">Dragging the seam</span>
+                <div className="ss-segment" role="group" aria-label="Whether the seam can be dragged">
+                  {([[false, "Free"], [true, "Locked"]] as const).map(([value, label]) => (
+                    <button key={label} className={splitLocked === value ? "on" : ""}
+                      aria-pressed={splitLocked === value}
+                      onClick={() => broadcastSplitLocked(value)}>{label}</button>
+                  ))}
+                </div>
+                <span className="ss-hint">Locked, the width only changes here — the seam keeps its swap button.</span>
               </div>
             </>
           )}

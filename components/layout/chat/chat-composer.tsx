@@ -6,7 +6,7 @@ import { IconArrowUp, IconAttach, IconStop } from "@/components/layout/agxp-icon
 
 /** The two 30px buttons beside the text, and the gaps between them. */
 const BUTTON_W = 30;
-const GAP_W = 8;
+const GAP_W = 6;
 /** Slack before the text counts as not fitting on the one row. */
 const FIT_SLACK = 10;
 /** The textarea grows with what you write between these, then scrolls. */
@@ -14,9 +14,12 @@ const MIN_H = 30;
 const MAX_H = 220;
 
 /**
- * The prompt bar: paper clip, the text, send — on one row while the text
- * fits, the text on top and the buttons under it once it doesn't. No border;
- * the surface and its shadow do the work.
+ * The prompt bar: the text, then paper clip and send — on one row while the
+ * text fits, the text on top and the two buttons under it, right-aligned,
+ * once it doesn't. Both buttons sit on the right (Ana, 2026-09-28): the clip
+ * is a thing you do to the message you are writing, so it belongs with Send,
+ * not on the far side of it. No border; the surface and its shadow do the
+ * work.
  *
  * The textarea is never disabled while an answer is on its way. Disabling it
  * threw focus to the page after every message, so each reply had to be
@@ -70,14 +73,6 @@ export function ChatComposer({ role, sending, canSend, inputRef, onSend, onStop,
     <div className={`chat-input pb${wide ? " is-wide" : ""}`}>
       <span ref={measureRef} className="pb-measure" aria-hidden="true">{input}</span>
       <div ref={controlsRef} className="pb-grid">
-        {/* Not built yet. Shown rather than hidden so the plan is visible, and
-            aria-disabled rather than disabled so it stays focusable and the
-            tooltip can say why — a click does nothing. */}
-        <button type="button" className="pb-btn pb-attach" aria-disabled="true"
-          data-tooltip="Attach a file (coming soon)" aria-label="Attach a file (coming soon)"
-          onClick={e => e.preventDefault()}>
-          <IconAttach size={16} />
-        </button>
         <textarea ref={inputRef} className="pb-input" rows={1} value={input}
           onChange={e => setInput(e.target.value)}
           onFocus={() => onAttentiveChange(true)}
@@ -87,6 +82,14 @@ export function ChatComposer({ role, sending, canSend, inputRef, onSend, onStop,
           }}
           aria-label={`Message your ${who}`}
           placeholder={`Ask your ${who}…`} />
+        {/* Not built yet. Shown rather than hidden so the plan is visible, and
+            aria-disabled rather than disabled so it stays focusable and the
+            tooltip can say why — a click does nothing. */}
+        <button type="button" className="pb-btn pb-attach" aria-disabled="true"
+          data-tooltip="Attach a file (coming soon)" aria-label="Attach a file (coming soon)"
+          onClick={e => e.preventDefault()}>
+          <IconAttach size={16} />
+        </button>
         {sending ? (
           <button key="stop" type="button" className="pb-btn pb-send pb-stop"
             data-tooltip="Stop generating" aria-label="Stop generating" onClick={onStop}>

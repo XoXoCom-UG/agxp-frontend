@@ -52,6 +52,16 @@
   --success:#3FB27F;
   --warn:#D89434;
 
+  /* "Go": the green of Start and of the Current-project chip (Ana's
+     2026-09-28 mockup). Deliberately NOT mixed from the accent — every other
+     filled surface follows whatever colour is picked in Settings, but "you
+     can begin now" has to mean the same thing whichever accent is on, and
+     the one green pill is also what keeps the bar from being all one hue. */
+  --go:#3FD98A;
+  --go-ink:#06301C;
+  --go-fill:linear-gradient(180deg, #86F0BC 0%, #45DC90 58%, #23C077 100%);
+  --go-glow:rgba(63,217,138,0.55);
+
   /* Coach vs Consultant: both on the same graphite scale — the Consultant
      side sits a step brighter because it leads the screen. */
   --coach-1:#141416; --coach-2:#19191C; --coach-3:#0B0B0D;
@@ -132,6 +142,13 @@ html.light {
   --destructive-foreground:#FBEAE6;
   --success:#4F7D58;
   --warn:#A56A17;
+
+  /* The light theme takes the same green a shade deeper, so the pill still
+     carries against white instead of glowing off it. */
+  --go:#1FA968;
+  --go-ink:#05301C;
+  --go-fill:linear-gradient(180deg, #8DEFBF 0%, #4FD597 60%, #2BBE7C 100%);
+  --go-glow:rgba(31,169,104,0.45);
 
   --coach-1:#F0F0F2; --coach-2:#E4E4E8; --coach-3:#F7F7F8;
   --consultant-1:#EFEFF1; --consultant-2:#E2E2E6; --consultant-3:#F8F8F9;

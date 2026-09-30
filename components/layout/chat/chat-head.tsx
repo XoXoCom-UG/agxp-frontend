@@ -52,7 +52,7 @@ export interface HeadDocState {
  * two small buttons — the panel itself is the conversation and nothing else.
  */
 export function ChatHead({
-  role, agent, deliverable, mascot, attentive, status, stuck, headExtra, unread, sending,
+  role, agent, deliverable, mascot, attentive, stuck, headExtra, unread, sending,
   totalProjects, memory, learned, doc,
   onFocusPanel, onMinimise, onChangeAgent, onOpenVersion, onGenerate, onRegenerate, onRestoreVersion,
 }: {
@@ -61,8 +61,6 @@ export function ChatHead({
   deliverable: Deliverable;
   mascot: { orb: MascotState; mood: MascotMood; lookAt: LookTarget };
   attentive: boolean;
-  /** The half-line after the role. */
-  status: string | null;
   /** Content has scrolled beneath the head, so it shows its hairline. */
   stuck: boolean;
   headExtra?: React.ReactNode;
@@ -122,9 +120,12 @@ export function ChatHead({
         </span>
         <span className="who-txt">
           <span className="n">{agent.name}</span>
+          {/* The role and nothing else. No "waiting", no "thinking", no
+              station counter: the mascot and the stream already say whether
+              the agent is doing anything, and a second, blue, changing word
+              beside the name only added noise (Ana, 2026-09-28). */}
           <span className="r"><span className={`role-dot ${role}`} />
             {role === "coach" ? "Coach" : "Consultant"}
-            {status && <em>· {status}</em>}
           </span>
         </span>
         <IconChevronDown size={11} />

@@ -7,7 +7,7 @@ import { getProject, createBlankProject, clearAgent, type Project } from "@/lib/
 import { listAgents, type Agent, type AgentType } from "@/lib/agents";
 import { projectCountsByAgent } from "@/lib/agent-progress";
 import type { PanelSnapshot, PeerContext } from "@/lib/peer-context";
-import { useChatSplit, broadcastSplit, clampShare, MIN_SHARE, MAX_SHARE } from "@/lib/chat-split";
+import { useChatSplit, useSplitLocked, broadcastSplit, clampShare, MIN_SHARE, MAX_SHARE } from "@/lib/chat-split";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { describeDbError } from "@/lib/db-error";
 import { AgentNav } from "@/components/layout/agent-nav";
@@ -86,6 +86,10 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
    *  While the seam is being dragged, `live` takes over so the panels follow
    *  the pointer without writing to storage on every frame. */
   const savedShare = useChatSplit();
+  /** Locked in Settings: the ratio is still a preference, the seam just isn't
+   *  a handle any more. Asked for because the drag fires on the way to the
+   *  swap button (Ana, 2026-09-28). */
+  const splitLocked = useSplitLocked();
   const [live, setLive] = useState<number | null>(null);
   /** The same value, readable from the pointerup handler without going
    *  through a state updater — broadcasting from inside one updated the
@@ -110,6 +114,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
   useEffect(() => () => endDrag.current?.(), []);
 
   function startDrag(e: React.PointerEvent<HTMLElement>) {
+    if (splitLocked) return;
     const box = wsRef.current?.getBoundingClientRect();
     if (!box) return;
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -142,6 +147,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
 
   /** The seam is a control, so it works from the keyboard too. */
   function nudgeSplit(step: number) {
+    if (splitLocked) return;
     // Arrow right widens the left panel, whichever one is leading.
     const next = clampShare(leadShare + (coachLeads ? -step : step));
     broadcastSplit(next);
@@ -150,6 +156,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
   /** Home and End jump to the ends of the range. Home is the narrowest the
    *  left panel gets, so which end of the share that is depends on who leads. */
   function splitToEdge(edge: "start" | "end") {
+    if (splitLocked) return;
     const leftNarrow = coachLeads ? MAX_SHARE : MIN_SHARE;
     const leftWide = coachLeads ? MIN_SHARE : MAX_SHARE;
     broadcastSplit(edge === "start" ? leftNarrow : leftWide);
@@ -422,6 +429,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
       <AgentNav
         startEnabled={!!project?.consultant_agent_id}
         startHint={!started && !!project?.consultant_agent_id && !!project?.coach_agent_id}
+        started={started}
         onStart={started ? undefined : () => setStarted(true)} />
       {/* No page title and no description: clicking "New Task" should show the
           two agents and nothing else (Patryk, 2026-09-11 — "wenn es so clean
@@ -479,10 +487,14 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
                The separator is an empty layer under the strip rather than
                the strip itself: a separator's children are presentational,
                so a button inside one would vanish for screen readers. */
-            <div className={`seam${dragging ? " dragging" : ""}`} onPointerDown={startDrag}>
+            <div className={`seam${dragging ? " dragging" : ""}${splitLocked ? " locked" : ""}`} onPointerDown={startDrag}>
+              {/* Locked, it is no longer a slider: aria-disabled and out of
+                  the tab order, because a separator you can focus but cannot
+                  move is worse than one you cannot reach. */}
               <div className="seam-handle"
-                role="separator" aria-orientation="vertical" tabIndex={0}
-                aria-label="Resize the conversations"
+                role="separator" aria-orientation="vertical" tabIndex={splitLocked ? -1 : 0}
+                aria-disabled={splitLocked || undefined}
+                aria-label={splitLocked ? "Conversation width, locked in Settings" : "Resize the conversations"}
                 aria-valuenow={pctNow}
                 aria-valuemin={Math.min(...pctEdges)} aria-valuemax={Math.max(...pctEdges)}
                 aria-valuetext={`Consultant ${pctNow}%, Coach ${100 - pctNow}%`}

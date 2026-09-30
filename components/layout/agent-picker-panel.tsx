@@ -141,7 +141,10 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
     const total = totalProjects(assignedAgent);
     return (
       <section className={`panel ${role}`}>
-        <div className="panel-head">
+        {/* A hairline under the mascot (mockup, 2026-09-28): it gives the
+            waiting panel the same head/body split the running one has, so
+            pressing Start doesn't redraw the shape of the panel. */}
+        <div className="panel-head sel-head">
           <AgentMascot role={role} size={68} enter agentId={assignedAgent.id} />
         </div>
         <div className="selected-summary">

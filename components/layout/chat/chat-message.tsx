@@ -125,9 +125,9 @@ export function ChatMessage({ entry, agentName, docTitle, isNew, isLeaving, isLa
 
   return (
     <div className={`msg-agent${entry.isAside ? " aside" : ""}${cls}`}>
-      {/* Nobody asked for this one. Saying so is the difference between an
-          agent that is paying attention and one that interrupts. */}
-      {entry.isAside && <span className="aside-tag">Read along · spoke up on its own</span>}
+      {/* Nobody asked for this one. The card it sits in says so on its own —
+          the blue "Read along" label that used to head it is gone with the
+          rest of the status words (Ana, 2026-09-28). */}
       <div className="txt" dangerouslySetInnerHTML={{ __html: html }} />
       {actions}
       {choices}

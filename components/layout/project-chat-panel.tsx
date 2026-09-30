@@ -248,14 +248,6 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
   const stationIdx = station ? station.index - 1 : (messages.length > 0 ? 0 : -1);
   const stationLabel = station?.label || deliverable.stations[Math.max(0, stationIdx)]?.label || "";
 
-  /** The half-line after the role. Folded or narrow, what matters more than
-   *  the station is whether this agent is doing anything. */
-  const headStatus = sending ? "thinking"
-    : convo.lastIsAside ? "read along"
-    : idle ? "waiting"
-    : station ? `station ${station.index}/${station.total}`
-    : null;
-
   const busy = sending || !!leavingId;
 
   return (
@@ -263,7 +255,7 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
       <ChatHead
         role={role} agent={agent} deliverable={deliverable}
         mascot={{ orb: mascot.orb, mood: mascot.mood, lookAt: mascot.lookAt }}
-        attentive={attentive} status={headStatus} stuck={stuck} headExtra={headExtra}
+        attentive={attentive} stuck={stuck} headExtra={headExtra}
         unread={unread} sending={sending} totalProjects={totalProjects}
         memory={memory} learned={learned}
         doc={{
