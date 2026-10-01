@@ -4669,6 +4669,19 @@ html.light .flat-view .list-sheet{ background:#FFFFFF; border-color:rgba(0,0,0,0
 .list-sheet .search-box{ border-radius:var(--radius-md); padding:9px var(--sp-3); }
 .list-sheet .search-box input{ font-size:var(--text-sm); }
 
+/* The sheet is the whole screen (Ana, 2026-10-02): the full width under the
+   bar, at the bar's own side margins, down to the bottom edge. The search
+   stays at the top of it and only the rows scroll. */
+.flat-view{ overflow:hidden; padding:0 var(--sp-6) var(--sp-5); }
+.flat-col{ max-width:none; padding:0; display:flex; flex-direction:column; min-height:0; }
+.flat-view .list-sheet{ flex:1; min-height:0; display:flex; flex-direction:column; padding:var(--sp-4) var(--sp-4) var(--sp-2); }
+.list-sheet .list-toolbar{ flex:none; }
+.list-sheet .project-list{
+  flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain;
+  scrollbar-width:thin; scrollbar-color:var(--tint-4) transparent;
+}
+@media (max-width:640px){ .flat-view{ padding:0 var(--sp-3) var(--sp-3); } }
+
 /* =============================================================================
    ANA'S PASS, ROUND 6 — 2026-09-30: the picker's empty state.
 

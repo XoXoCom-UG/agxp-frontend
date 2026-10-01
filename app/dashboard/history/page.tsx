@@ -163,10 +163,10 @@ export default function ProjectHistoryPage() {
           onCancel={() => { focusMore(confirmArchive.id); setConfirmArchive(null); }} />
       )}
       <main className="view-root view-enter" id="main-content" tabIndex={-1}>
-        <div className="page-head">
-          <div><h1>Project history</h1><p>Every task you started, with the AI team that worked on it.</p></div>
-          <button className="btn btn-hero" onClick={() => router.push("/dashboard")}><IconPlus />New task</button>
-        </div>
+        {/* The list is the page (Ana, 2026-10-02): no title row and no blue
+            "New task" button above it — "New Task" is already in the bar. The
+            h1 stays for screen readers. */}
+        <h1 className="visually-hidden">Project history</h1>
         <div className="flat-view" onClick={() => setMenuFor(null)}>
           <div className="flat-col">
 
