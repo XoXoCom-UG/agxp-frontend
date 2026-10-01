@@ -10,7 +10,7 @@ import { syncReplies } from "@/lib/mascot-level";
 import { describeDbError } from "@/lib/db-error";
 import { AgentNav } from "@/components/layout/agent-nav";
 import { EmptyState } from "@/components/layout/empty-state";
-import { Stat, Bars, RoleSection } from "@/components/layout/agent-dashboard";
+import { Stat, Bars, Meter, RoleSection } from "@/components/layout/agent-dashboard";
 import {
   IconPlus, IconAlert, IconRefresh,
 } from "@/components/layout/agxp-icons";
@@ -87,14 +87,16 @@ export default function AgentDashboardPage() {
             readers — the page still needs a name. */}
         <header className="agx-head">
           <h1 className="visually-hidden">Your AI team</h1>
-          <dl className="agx-stats">
+          <ul className="agx-stats" aria-label="Your team at a glance">
             <Stat label="Projects in progress" value={String(stats.projectsInProgress)} />
             <Stat label="Tokens used, est." value={compactNumber(stats.tokens)}
               hint="Estimated from the length of your conversations. The bars are the last 8 days.">
               <Bars values={stats.tokensByDay} />
             </Stat>
-            <Stat label="Slots filled" value={`${filled} / ${slots}`} />
-          </dl>
+            <Stat label="Slots filled" value={`${filled}/${slots}`}>
+              <Meter value={filled} max={slots} />
+            </Stat>
+          </ul>
         </header>
 
         <div className="agx-board">

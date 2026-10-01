@@ -24,15 +24,29 @@ import { IconPlus, IconArrow, IconBack, IconMoreV, IconX, IconDoc, IconArchive, 
  * carries information; the mascot is the one picture on a card.
  */
 
-/** One number in the strip along the top. */
+/**
+ * One number along the top, as a small glass tile of its own: what it
+ * counts, then the value, and — where a picture says more than the digit —
+ * a tiny visual beside it (Ana, 2026-10-02). A list item, so a screen reader
+ * reads it label first, the way the eye does.
+ */
 export function Stat({ label, value, hint, children }: {
   label: string; value: string; hint?: string; children?: React.ReactNode;
 }) {
   return (
-    <div className="agx-stat" title={hint}>
-      <dt>{label}</dt>
-      <dd>{value}{children}</dd>
-    </div>
+    <li className="agx-stat" title={hint}>
+      <span className="agx-stat-l">{label}</span>
+      <span className="agx-stat-v"><b>{value}</b>{children}</span>
+    </li>
+  );
+}
+
+/** How full something is, as a thin bar: the slots, 9 of 24. */
+export function Meter({ value, max }: { value: number; max: number }) {
+  return (
+    <span className="agx-meter" aria-hidden="true">
+      <i style={{ width: `${Math.min(100, (value / Math.max(1, max)) * 100)}%` }} />
+    </span>
   );
 }
 
