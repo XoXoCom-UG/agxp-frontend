@@ -15,6 +15,11 @@ drop policy if exists "agents_insert_authenticated" on agents;
 create policy "agents_insert_authenticated" on agents
   for insert to authenticated with check (created_by = auth.uid());
 
+alter table agents add column if not exists archived_at timestamptz;
+drop policy if exists "agents_update_own" on agents;
+create policy "agents_update_own" on agents
+  for update to authenticated using (created_by = auth.uid()) with check (created_by = auth.uid());
+
 -- ── agent_methods: link rows for an agent the current user created
 drop policy if exists "agent_methods_select_authenticated" on agent_methods;
 create policy "agent_methods_select_authenticated" on agent_methods

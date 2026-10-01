@@ -38,6 +38,11 @@ export function describeDbError(e: unknown, what = "The write"): string {
       return `[23503] A referenced row does not exist: ${base}`;
     case "23505":
       return `[23505] That already exists: ${base}`;
+    // Our own code (lib/agents.ts setAgentArchived): the archive column or
+    // the update policy is missing, or RLS filtered the row out — which
+    // Postgres reports as success.
+    case "AGXP_ARCHIVE_DENIED":
+      return "The database did not allow archiving this agent. Either it was not created by you, or archiving is not set up yet — run supabase/migrations/0006_agents_archive.sql once in the Supabase SQL Editor, then try again.";
     case "PGRST301":
       return "Your session expired — please sign in again.";
     default:

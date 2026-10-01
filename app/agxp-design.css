@@ -1529,7 +1529,12 @@ html.light .ico-when-dark{ display:none; }
 .panel > .chat-body{ --rise:10px; animation:rise 360ms var(--ease-out) 60ms backwards; }
 .panel > .chat-input{ --rise:10px; animation:rise 360ms var(--ease-out) 120ms backwards; }
 .panel > .panel-head{ --rise:10px; animation:rise 320ms var(--ease-out) backwards; }
-.panel > .pick-empty{ --rise:10px; animation:rise 380ms var(--ease-out) 70ms backwards; }
+.panel > .pick-empty{ animation:fadeIn 260ms var(--ease-out) 70ms backwards; }
+/* 60ms apart — inside the 30-80ms band where a cascade reads as one gesture
+   rather than as a queue. The parent only fades, so the two transforms never
+   compound mid-flight. */
+.pick-empty .picker-card{ --rise:10px; animation:rise 380ms var(--ease-out) 110ms backwards; }
+.pick-empty .picker-card:nth-child(2){ animation-delay:170ms; }
 
 /* And belt as well as braces: the head owns the popovers, so it stays above
    the conversation whatever a future animation does to the stacking order. */
@@ -1755,28 +1760,30 @@ html.light .ico-when-dark{ display:none; }
    may not contain another button — and a card that lifts under the cursor
    but only counts a click on its last 50px is a trap. */
 .picker-card{
-  position:relative; overflow:hidden; display:flex; flex-direction:column; text-align:left;
+  position:relative; display:flex; flex-direction:column; text-align:left;
 }
-/* A light that sweeps across once on hover. Parked off-card, so it costs
-   nothing until the cursor arrives. */
-
 .picker-card-head{ position:relative; z-index:1; display:flex; flex-direction:column; gap:4px; }
 .picker-card-title{ color:var(--foreground); line-height:1.25; }
 
-/* The agent's head, filling what was dead space between the words and the
-   button. Hidden in the narrow panel, where the cards are short anyway. */
-
 .picker-card-cta{
-  position:relative; z-index:1; overflow:hidden; display:flex; align-items:center; gap:var(--sp-2);
-  transition:background 280ms var(--ease-out), box-shadow 280ms var(--ease-out);
+  position:relative; z-index:1; display:flex; align-items:center; gap:var(--sp-2);
 }
 .picker-card-cta span:first-of-type{ flex:1; text-align:left; }
-.btn-arrow-end{ transition:transform 280ms var(--ease-out); }
 
-.picker-card:disabled{ opacity:.45; cursor:not-allowed; }
+/* The glyph, in a tile the size of the ones in the bar. */
+.pc-icon{
+  position:relative; z-index:1; flex:none;
+  width:34px; height:34px; border-radius:var(--radius-sm);
+  display:flex; align-items:center; justify-content:center;
+  color:var(--primary-soft);
+  background:color-mix(in srgb, var(--primary-soft) 13%, transparent);
+  border:1px solid color-mix(in srgb, var(--primary-soft) 22%, transparent);
+  transition:background-color 160ms var(--ease-out), border-color 160ms var(--ease-out);
+}
 @media (prefers-reduced-motion:reduce){
-  .picker-card, .picker-card .mascot, .btn-arrow-end{ transition:none; }
-  .picker-card:hover:not(:disabled, [aria-disabled="true"]), .picker-card:hover:not(:disabled, [aria-disabled="true"]) .mascot{ transform:none; }
+  .picker-card, .btn-arrow-end, .pc-icon{ transition:none; }
+  .picker-card:hover:not([aria-disabled="true"]){ transform:none; }
+  .pick-empty .picker-card{ animation:fadeIn 200ms var(--ease-out) backwards; }
 }
 
 /* Chosen, waiting for Start */
@@ -2403,7 +2410,11 @@ html.light .head-min:hover{ background:rgba(0,0,0,0.05); }
 .picker-card-title{ font-family:var(--font-display); font-size:var(--text-xl); font-weight:600; letter-spacing:-0.03em; }
 .picker-card-desc{ font-size:var(--text-xs); color:var(--muted-foreground); line-height:1.6; }
 @media (hover:hover) and (pointer:fine){
-  .picker-card:hover:not(:disabled, [aria-disabled="true"]) .picker-card-cta{ filter:brightness(1.07); }
+  .picker-card:hover:not([aria-disabled="true"]) .picker-card-cta{ color:var(--primary-soft); }
+  .picker-card:hover:not([aria-disabled="true"]) .pc-icon{
+    background:color-mix(in srgb, var(--primary-soft) 20%, transparent);
+    border-color:color-mix(in srgb, var(--primary-soft) 34%, transparent);
+  }
 }
 
 /* --- The agent list stays a list (Patryk chose it over the carousel), but
@@ -2979,12 +2990,21 @@ html.light .ver-menu{ background:#FFFFFF; }
    frost the page under it. -------------------------------------------------- */
 
 .app > header.navbar{
-  --nav-h:56px;
+  --nav-h:48px;
+  /* One height for every control in the bar (Ana, 2026-09-30). Start, New
+     Task and the capsule holding the two destinations all measure exactly
+     this, so the row has a single baseline instead of three. Heights are set
+     rather than derived from padding + line-height, because that sum differs
+     between a button, a link and a bordered capsule — which is how they
+     drifted apart in the first place. */
+  --nav-item-h:30px;
   position:relative; z-index:var(--z-header); flex-shrink:0;
   height:var(--nav-h); margin:10px var(--sp-6) 10px;
-  padding:0 6px 0 var(--sp-3);
+  padding:0 var(--sp-3);
   display:flex; align-items:center; justify-content:space-between; gap:var(--sp-4);
-  border-radius:var(--radius-pill);
+  /* A rounded bar, not a capsule: the corner stays about a quarter of the
+     bar's height, so it keeps its shape as the bar gets shorter. */
+  border-radius:var(--radius-md);
   border:1px solid rgba(160,190,255,0.16);
   background:none;
   box-shadow:inset 0 1px 0 rgba(255,255,255,0.10), 0 10px 30px -18px rgba(0,0,0,0.8);
@@ -3002,83 +3022,102 @@ html.light .ver-menu{ background:#FFFFFF; }
 
 /* Two halves, each one a row of its own: the work on the left, the places
    and the account on the right. */
-.nb-left, .nb-right{ display:flex; align-items:center; gap:var(--sp-3); min-width:0; }
-.nb-right{ gap:var(--sp-2); }
-.nb-brand{ padding:4px; border-radius:var(--radius-pill); flex-shrink:0; }
+.nb-left, .nb-right{ display:flex; align-items:center; gap:var(--sp-2); min-width:0; }
+.nb-brand{ padding:3px; border-radius:var(--radius-sm); flex-shrink:0; }
 
-/* "New Task" is where you already are, not somewhere to go — so it is set in
-   the display face beside the brand, not in the capsule on the right. */
-.navbar .nb-lead{
-  flex-shrink:0;
-  font-family:var(--font-display); font-size:var(--text-lg); font-weight:600;
-  letter-spacing:-0.01em; text-transform:none;
-  color:rgba(214,222,240,0.72);
-  padding:6px var(--sp-4); border-radius:var(--radius-pill);
-  border:1px solid transparent; background:none; text-decoration:none;
-}
-.navbar .nb-lead.active{
-  color:#fff;
-  background:linear-gradient(180deg, rgba(160,180,220,0.22), rgba(110,130,180,0.10));
-  border-color:var(--input);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,0.16);
-}
-@media (hover:hover) and (pointer:fine){
-  .navbar .nb-lead:not(.active):hover{ color:#fff; background:var(--tint-2); }
+/* The hairlines between groups. They are what let the items themselves lose
+   their pills and still read as a bar rather than a sentence. */
+.navbar .nb-rule{
+  flex:none; width:1px; height:18px; margin:0 6px;
+  background:var(--glass-hairline);
 }
 
-/* The two destinations, as one segmented capsule: small caps, wide tracking,
-   so they read as signposts rather than as two more buttons. */
-.navbar .nb-tabs{
-  margin:0; padding:3px; gap:2px; display:flex;
-  background:var(--tint-2); border:1px solid var(--input); border-radius:var(--radius-pill);
-}
-.navbar .nb-tabs .nb-tab{
-  font-family:var(--font-sans, inherit); font-size:var(--text-3xs); font-weight:600;
-  letter-spacing:0.13em; text-transform:uppercase; white-space:nowrap;
-  color:rgba(214,222,240,0.62);
-  padding:7px var(--sp-4); border-radius:var(--radius-pill);
+/* Every item in the bar: icon, then label, no box until you point at it. */
+/* Sized down (Ana, 2026-09-30): 30px tall, which still clears the 24x24 CSS
+   px the web target-size rule actually asks for, with 6px between neighbours
+   plus the hairlines. */
+.navbar .nb-item{
+  flex-shrink:0; display:inline-flex; align-items:center; gap:7px;
+  font-family:var(--font-sans, inherit); font-size:var(--text-sm); font-weight:500;
+  letter-spacing:0; text-transform:none; white-space:nowrap; text-decoration:none;
+  color:rgba(214,222,240,0.74);
+  height:var(--nav-item-h); padding:0 var(--sp-3); border-radius:var(--radius-pill);
   border:1px solid transparent; background:none; box-shadow:none;
 }
-.navbar .nb-tabs .nb-tab.active{
-  color:#fff;
-  background:linear-gradient(180deg, rgba(160,180,220,0.26), rgba(110,130,180,0.12));
-  border-color:var(--input);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,0.18), 0 4px 14px -8px rgba(0,0,0,0.6);
+/* Inside the capsule the items fill whatever the capsule's border and padding
+   leave, so the capsule's own outside edge is the one that measures 30px. */
+.navbar .nb-tabs{
+  height:var(--nav-item-h); padding:2px; gap:2px; box-sizing:border-box;
 }
-.navbar .nb-tabs .nb-tab.active::after{ display:none; }
+.navbar .nb-tabs .nb-item{ height:100%; }
+.navbar .nb-tabs .nb-rule{ height:14px; margin:0 2px; }
+.navbar .nb-item svg{ flex-shrink:0; color:rgba(214,222,240,0.6); }
+.navbar .nb-item.active{
+  color:#fff;
+  background:var(--tint-2);
+  border-color:var(--glass-hairline);
+}
+.navbar .nb-item.active svg{ color:var(--primary-soft); }
+.navbar .nb-item.active::after{ display:none; }
 @media (hover:hover) and (pointer:fine){
-  .navbar .nb-tabs .nb-tab:not(.active):hover{ color:#fff; background:var(--tint-3); }
+  .navbar .nb-item:not(.active):hover{ color:#fff; background:var(--tint-2); }
+  .navbar .nb-item:not(.active):hover svg{ color:rgba(255,255,255,0.86); }
 }
 
-/* Started: the Start pill stays in place and becomes a label for where you
-   are, so pressing Start doesn't make the left half of the bar reflow. */
+/* Where you are, in the one slot the Start button leaves behind. The mockup
+   fills it with the accent rather than the green — green is "you can begin",
+   blue is "this is the thing you are in". */
+/* Its own positioned wrapper: the menu hangs off the chip's left edge, not
+   off the whole bar's. */
+.nb-current-wrap{ position:relative; display:flex; align-items:center; flex-shrink:0; min-width:0; }
 .nb-current{
-  flex-shrink:0; display:inline-flex; align-items:center; gap:7px;
-  height:34px; padding:0 var(--sp-4); border-radius:var(--radius-pill);
-  font-size:var(--text-2xs); font-weight:600; letter-spacing:0.01em; white-space:nowrap;
-  color:var(--go-ink); background:var(--go-fill);
-  border:1px solid color-mix(in srgb, var(--go) 45%, transparent);
+  flex-shrink:1; display:inline-flex; align-items:center; gap:7px; min-width:0;
+  height:var(--nav-item-h); padding:0 var(--sp-3); border-radius:var(--radius-pill);
+  font-family:var(--font-sans, inherit); font-size:var(--text-sm); font-weight:600;
+  letter-spacing:0; white-space:nowrap;
+  color:color-mix(in srgb, var(--primary-soft) 55%, #FFFFFF);
+  background:color-mix(in srgb, var(--primary-soft) 20%, transparent);
+  border:1px solid color-mix(in srgb, var(--primary-soft) 32%, transparent);
 }
-.nb-current::before{
-  content:""; width:6px; height:6px; border-radius:50%;
-  background:currentColor; opacity:.8;
+.nb-current svg{ flex-shrink:0; color:var(--primary-soft); }
+/* A project name can be a sentence; the chip takes what it can and the menu
+   shows the rest. */
+.nb-current .nbc-name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:190px; }
+.nb-current > svg:last-child{ transition:transform 180ms var(--ease-out); }
+.nb-current.is-open > svg:last-child{ transform:rotate(180deg); }
+@media (hover:hover) and (pointer:fine){
+  .nb-current:hover{ background:color-mix(in srgb, var(--primary-soft) 28%, transparent); }
 }
+
+/* The switcher's menu. Rows are name over date, with a tick column that keeps
+   the names aligned whether or not a row is the current one. */
+.proj-menu{ top:calc(100% + 8px); left:0; min-width:260px; max-width:340px; }
+.proj-menu .pm-item{ align-items:flex-start; gap:var(--sp-2); }
+.pm-tick{ flex:none; width:14px; display:flex; justify-content:center; padding-top:2px; color:var(--primary-soft); }
+.pm-text{ min-width:0; display:flex; flex-direction:column; gap:2px; text-align:left; }
+.pm-n{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pm-d{ font-size:var(--text-3xs); color:var(--muted-foreground); }
+.pm-note{
+  display:flex; align-items:center; gap:var(--sp-2);
+  padding:var(--sp-3); font-size:var(--text-2xs); color:var(--muted-foreground);
+}
+.pm-note .spinner{ width:13px; height:13px; }
 
 .navbar .util{ display:flex; align-items:center; gap:var(--sp-2); }
 .navbar .icon-btn{
-  width:32px; height:32px; border-radius:50%;
+  width:28px; height:28px; border-radius:50%;
   color:rgba(220,228,245,0.8);
   background:var(--tint-2); border:1px solid var(--input);
 }
 @media (hover:hover) and (pointer:fine){
   .navbar .icon-btn:hover{ color:#fff; background:var(--tint-4); border-color:var(--border-strong); }
 }
-.navbar .avatar{ width:32px; height:32px; }
+.navbar .avatar{ width:28px; height:28px; font-size:var(--text-2xs); }
 .navbar .avatar-wrap .popover{ top:calc(100% + 12px); }
 
 .navbar .btn-start{
-  height:34px; padding:0 var(--sp-5); border-radius:var(--radius-pill);
-  font-family:var(--font-display); font-size:var(--text-base); font-weight:600; letter-spacing:-0.01em;
+  height:var(--nav-item-h); padding:0 var(--sp-4); border-radius:var(--radius-pill);
+  font-family:var(--font-display); font-size:var(--text-sm); font-weight:600; letter-spacing:-0.01em;
   color:var(--start-ink); background:var(--start-fill);
   border:1px solid color-mix(in srgb, var(--go) 55%, rgba(255,255,255,0.65));
   box-shadow:inset 0 1px 0 rgba(255,255,255,0.75), 0 6px 18px -8px var(--go-glow);
@@ -3097,28 +3136,39 @@ html.light .app > header.navbar{
 html.light .app > header.navbar::after{
   background:linear-gradient(180deg, rgba(255,255,255,0.78), rgba(240,245,255,0.58));
 }
-html.light .navbar .nb-tabs .nb-tab{ color:#4A5670; }
-html.light .navbar .nb-tabs .nb-tab.active{
-  color:#0B1B3F; background:rgba(255,255,255,0.8); border-color:rgba(0,0,0,0.08);
+html.light .navbar .nb-item{ color:#4A5670; }
+html.light .navbar .nb-item svg{ color:#6B7689; }
+html.light .navbar .nb-item.active{
+  color:#0B1B3F; background:rgba(255,255,255,0.85); border-color:rgba(0,0,0,0.07);
   box-shadow:inset 0 1px 0 #fff, 0 4px 12px -8px rgba(var(--shadow-rgb),0.35);
 }
+html.light .nb-current{
+  color:color-mix(in srgb, var(--primary) 82%, #000000);
+  background:color-mix(in srgb, var(--primary-soft) 14%, #FFFFFF);
+  border-color:color-mix(in srgb, var(--primary-soft) 26%, transparent);
+}
 @media (hover:hover) and (pointer:fine){
-  html.light .navbar .nb-tabs .nb-tab:not(.active):hover{ color:#0B1B3F; background:var(--tint-2); }
+  html.light .navbar .nb-item:not(.active):hover{ color:#0B1B3F; background:var(--tint-2); }
+  html.light .navbar .nb-item:not(.active):hover svg{ color:#0B1B3F; }
   html.light .navbar .icon-btn:hover{ color:#0B1B3F; background:rgba(255,255,255,0.9); border-color:rgba(0,0,0,0.14); }
 }
 html.light .navbar .icon-btn{ color:#4A5670; background:rgba(255,255,255,0.6); border-color:rgba(0,0,0,0.10); }
 html.light .navbar .btn-start{ border-color:color-mix(in srgb, var(--go) 45%, transparent); box-shadow:inset 0 1px 0 rgba(255,255,255,0.55), 0 6px 18px -8px var(--go-glow); }
 
+@media (max-width:1100px){
+  .app > header.navbar{ margin:var(--sp-2) var(--sp-4) var(--sp-2); padding:0 var(--sp-2); gap:var(--sp-2); }
+  .navbar .nb-item{ padding:0 var(--sp-3); font-size:var(--text-sm); }
+  .navbar .nb-rule{ margin:0 4px; }
+}
+/* Too narrow for four labels: the two destinations keep only their icons,
+   which is why they have one. */
 @media (max-width:900px){
-  .app > header.navbar{ margin:var(--sp-2) var(--sp-4) var(--sp-2); padding:0 4px 0 var(--sp-3); gap:var(--sp-2); }
-  .navbar .nb-tabs .nb-tab{ padding:var(--sp-2) var(--sp-3); font-size:var(--text-sm); }
+  .navbar .nb-tabs .nb-item{ gap:0; padding:0 9px; font-size:0; }
+  .navbar .nb-tabs .nb-item svg{ font-size:var(--text-base); }
 }
 @media (max-width:640px){
-  .navbar .nb-lead{ font-size:var(--text-base); padding:6px var(--sp-3); }
-  .navbar .nb-current{ display:none; }
-  .navbar .nb-tabs{ overflow-x:auto; scrollbar-width:none; }
-  .navbar .nb-tabs::-webkit-scrollbar{ display:none; }
-  .navbar .nb-tabs .nb-tab{ padding:var(--sp-2) 10px; font-size:var(--text-sm); white-space:nowrap; }
+  .navbar .nb-current, .navbar .nb-left > .nb-rule{ display:none; }
+  .navbar .nb-item{ padding:0 10px; }
   .navbar .btn-start{ padding:0 var(--sp-4); }
 }
 @media (prefers-reduced-transparency: reduce){
@@ -3238,19 +3288,32 @@ html.light .panel.consultant, html.light .panel.coach{
    out and small: tight, it read as one smudged word (Ana, 2026-09-28). */
 .brand-logo{ display:inline-flex; align-items:center; gap:11px; }
 .brand-logo-mark{ flex-shrink:0; filter:drop-shadow(0 2px 10px rgba(80,140,255,0.28)); }
-.brand-logo-text{ display:flex; flex-direction:column; align-items:flex-start; gap:1px; line-height:1; }
+/* Stretch, not flex-start: the column takes the width of its widest child —
+   the name — and PROJECTS below then has a width to spread across. */
+.brand-logo-text{ display:flex; flex-direction:column; align-items:stretch; gap:1px; line-height:1; }
 .brand-logo-text .name{
   font-family:var(--font-display); font-size:var(--text-lg); font-weight:600; letter-spacing:-0.015em;
   color:var(--foreground);
 }
 /* The one letter that carries the accent — the name ends on the same shape
-   the mark draws. */
-.brand-logo-text .name .x{ color:var(--primary-soft); }
+   the mark draws, and leans. A skew, not font-style:italic: the display face
+   has no italic cut, so the browser would synthesise a much harder slant than
+   "a bit". The right padding gives the lean its room, and keeps PROJECTS
+   below measuring the name's true width. */
+.brand-logo-text .name .x{
+  color:var(--primary-soft);
+  display:inline-block; transform:skewX(-11deg); transform-origin:0 100%;
+  padding-right:2px;
+}
 .brand-logo-text .sub{
   font-family:var(--font-sans, inherit); font-size:var(--text-3xs); font-weight:600;
-  letter-spacing:0.30em; text-transform:uppercase; color:var(--muted-foreground);
+  text-transform:uppercase; color:var(--muted-foreground);
   margin-top:4px;
 }
+/* The letters spread to the name's width instead of to a fixed tracking. The
+   last letter's right edge lands on the name's right edge, exactly. */
+.brand-logo-text .sub-fit{ display:flex; justify-content:space-between; width:100%; }
+.brand-logo-text .sub-fit i{ font-style:normal; }
 .navbar .brand-logo-text .name{ color:#fff; }
 html.light .navbar .brand-logo-text .name{ color:#0B1B3F; }
 html.light .brand-logo-text .name .x{ color:var(--primary); }
@@ -3587,13 +3650,13 @@ html.light .chat-input.pb:focus-within{ box-shadow:0 0 0 1px rgba(var(--shadow-r
 }
 
 /* Everything pressable says it heard the press. */
-.who-btn, .doc-pill, .head-min, .head-unread, .navbar .nb-tabs .nb-tab, .avatar,
+.who-btn, .doc-pill, .head-min, .head-unread, .navbar .nb-item, .avatar,
 .cb-copy, .doc-side-btn, .share-close, .ver-open, .ver-restore, .toc-item{
   transition:color 160ms var(--ease-out), background-color 160ms var(--ease-out),
              border-color 160ms var(--ease-out), transform 160ms var(--ease-out);
 }
 .who-btn:active, .doc-pill:active, .head-min:active, .head-unread:active,
-.navbar .nb-tabs .nb-tab:active, .avatar:active, .cb-copy:active, .doc-side-btn:active,
+.navbar .nb-item:active, .avatar:active, .cb-copy:active, .doc-side-btn:active,
 .share-close:active, .ver-open:active, .ver-restore:active, .toc-item:active{
   transform:scale(0.97);
 }
@@ -3835,21 +3898,26 @@ html.light .chat-input.pb{ box-shadow:0 0 0 1px rgba(var(--shadow-rgb),0.06), 0 
   border:1px solid var(--border); backdrop-filter:none;  background:color-mix(in srgb, var(--card) 70%, transparent);
   transition:border-color 160ms var(--ease-out), background-color 160ms var(--ease-out), transform 160ms var(--ease-out);
 }
+/* The glyph sits above the words, with the gap the card already uses. */
+.picker-card{ align-items:flex-start; }
 @media (hover:hover) and (pointer:fine){
-  .picker-card:hover:not(:disabled, [aria-disabled="true"]), html.light .picker-card:hover:not(:disabled, [aria-disabled="true"]){
+  .picker-card:hover:not([aria-disabled="true"]), html.light .picker-card:hover:not([aria-disabled="true"]){
     transform:none; box-shadow:none;
     border-color:var(--border-strong);
     background:color-mix(in srgb, var(--card) 92%, transparent);
   }
-  .picker-card:hover:not(:disabled, [aria-disabled="true"]) .mascot{ transform:none; }
-  .picker-card:hover:not(:disabled, [aria-disabled="true"]) .btn-arrow-end{ transform:translateX(2px); }
+  .picker-card:hover:not([aria-disabled="true"]) .btn-arrow-end{ transform:translateX(2px); }
 }
-.picker-card:active:not(:disabled, [aria-disabled="true"]){ transform:scale(0.99); }
+/* 0.99 on a card this tall is under the threshold you can see. The press is
+   quick because it is the system answering; the release rides the card's own
+   160ms, which is the hand letting go. */
+.picker-card:active:not([aria-disabled="true"]){ transform:scale(0.985); transition-duration:120ms; }
 /* The card is the button: the line at the bottom is its label, not a second button. */
-.picker-card-cta, .picker-card:hover:not(:disabled, [aria-disabled="true"]) .picker-card-cta{
+.picker-card-cta{
   height:auto; width:auto; padding:0; margin-top:auto;
   background:none; border:none; box-shadow:none; border-radius:0;
   color:var(--foreground); font-size:var(--text-sm); font-weight:600;
+  transition:color 160ms ease;
 }
 .picker-card-cta .btn-arrow-end{ margin-left:6px; transition:transform 160ms var(--ease-out); }
 
@@ -3948,7 +4016,20 @@ html.light .inline-error{
 .pick-locked-hint{ margin:var(--sp-3) 0 0; font-size:var(--text-xs); color:var(--muted-foreground); text-align:center; line-height:1.5; }
 
 /* Picker cards are aria-disabled (not :disabled), so the dimmed look follows the attribute. */
-.picker-card[aria-disabled="true"]{ opacity:.45; cursor:not-allowed; }
+/* Locked, the card is still focusable — aria-disabled, not disabled — so the
+   reason can be reached and read. opacity:.45 dimmed the words along with the
+   surface; the surface is muted on its own instead. */
+.picker-card[aria-disabled="true"]{
+  cursor:not-allowed; opacity:1;
+  background:color-mix(in srgb, var(--card) 40%, transparent);
+  border-color:var(--border);
+}
+.picker-card[aria-disabled="true"] .picker-card-title{ color:var(--secondary-foreground); }
+.picker-card[aria-disabled="true"] .picker-card-cta{ color:var(--muted-foreground); }
+.picker-card[aria-disabled="true"] .pc-icon{
+  color:var(--muted-foreground);
+  background:var(--tint-2); border-color:var(--border);
+}
 .picker-card[aria-disabled="true"]:hover,
 .picker-card[aria-disabled="true"]:active{ transform:none; }
 
@@ -4269,40 +4350,194 @@ html.light main.workspace::after{
   background:radial-gradient(circle, color-mix(in srgb, var(--primary) 7%, transparent), transparent 72%);
 }
 
-/* --- The dots ------------------------------------------------------------
-   One tile of a dot grid, translated by exactly one tile and looped, which
-   makes the loop seamless: 26px in 78 seconds is a third of a pixel a second
-   — you cannot watch it move, you can only notice that it has.
+/* --- The dust -----------------------------------------------------------
+   Two planes of scattered specks, not a grid of dots. The first attempt
+   stacked three tiles of 30, 60 and 120px; because they nest, every speck
+   landed on the same 30px lattice and the whole thing read as wallpaper
+   being pulled. So each plane is now ONE tile, large, with its specks
+   scattered inside it — blue-noise placement measured on the torus, so there
+   is no clump and no seam — and it translates by exactly that tile, which is
+   what keeps the loop invisible.
 
-   It is a transform, not an animated background-position: transform is
-   composited, so the drift costs nothing per frame; background-position would
-   repaint a full-screen layer sixty times a second for the same picture.
+   Both planes are one composited layer each: the specks are painted once
+   into the layer, and from then on only transform and opacity change. An
+   animated background-position would repaint a full-screen layer sixty times
+   a second for the same picture.
+
+   Both planes blow out of the top-left corner — the corner the room's own
+   light already sits in — and the masks thin them to nothing before the
+   opposite edge, so it is a plume, not a field. The near plane runs at twice
+   the far one's speed: one draft seen at two depths, not two sheets sliding.
+   The four periods (517s, 383s, 70s, 46s) share no factor, so the plume
+   never visibly repeats.
+
+   Speed: about one pixel a second near, half that far. Enough to catch out
+   of the corner of your eye, not enough to follow.
 
    Absolutely positioned on purpose — .app is a flex column, and a static
-   ::before would become a flex item and push the header down. */
-:root{ --dot-ink:color-mix(in srgb, var(--primary-soft) 52%, transparent); }
-html.light{ --dot-ink:color-mix(in srgb, var(--primary) 22%, transparent); }
+   pseudo-element would become a flex item and push the header down. */
+:root{
+  /* The lit tone: the accent carried toward white. Dust you can see is dust
+     catching light, so the nearer specks are brighter than the accent itself
+     rather than just more opaque. */
+  --dust-lit:color-mix(in srgb, var(--primary-soft) 52%, #FFFFFF);
+  --dust-1:color-mix(in srgb, var(--primary-soft) 96%, transparent);
+  --dust-2:var(--dust-lit);
+  --dust-3:color-mix(in srgb, var(--dust-lit) 78%, #FFFFFF);
+}
+html.light{
+  --dust-lit:color-mix(in srgb, var(--primary) 82%, #FFFFFF);
+  --dust-1:color-mix(in srgb, var(--primary) 46%, transparent);
+  --dust-2:color-mix(in srgb, var(--primary) 62%, transparent);
+  --dust-3:color-mix(in srgb, var(--primary) 74%, transparent);
+}
 
+.app::before, .app::after{
+  content:""; position:absolute; z-index:0; pointer-events:none;
+}
+
+/* The far plane: 82 specks in a 360px tile, none wider than 1.5px. Dust is
+   MANY SMALL bright specks — few large soft ones read as snow, which is what
+   the first bright pass looked like. */
 .app::before{
-  content:""; position:absolute; inset:-60px; z-index:0; pointer-events:none;
-  background-image:radial-gradient(circle at 1px 1px, var(--dot-ink) 1.1px, transparent 1.1px);
-  background-size:26px 26px;
-  /* Densest under the header, gone before the composer: a field that reaches
-     the bottom edge competes with the text sitting on it. */
-  -webkit-mask-image:radial-gradient(118% 94% at 50% 4%, #000 14%, transparent 74%);
-  mask-image:radial-gradient(118% 94% at 50% 4%, #000 14%, transparent 74%);
-  animation:dotDrift 78s linear infinite;
+  inset:-400px;
+  background-image:
+    radial-gradient(circle at 4px 40px, var(--dust-2) 0, transparent 1.3px),
+    radial-gradient(circle at 141px 246px, var(--dust-2) 0, transparent 1.3px),
+    radial-gradient(circle at 50px 40px, var(--dust-2) 0, transparent 1.5px),
+    radial-gradient(circle at 83px 273px, var(--dust-1) 0, transparent 1.1px),
+    radial-gradient(circle at 53px 267px, var(--dust-1) 0, transparent 1.1px),
+    radial-gradient(circle at 238px 49px, var(--dust-2) 0, transparent 1.3px),
+    radial-gradient(circle at 193px 161px, var(--dust-2) 0, transparent 1.5px),
+    radial-gradient(circle at 149px 359px, var(--dust-2) 0, transparent 1.3px),
+    radial-gradient(circle at 34px 7px, var(--dust-1) 0, transparent 1.0px),
+    radial-gradient(circle at 338px 145px, var(--dust-1) 0, transparent 1.0px),
+    radial-gradient(circle at 71px 119px, var(--dust-2) 0, transparent 1.5px),
+    radial-gradient(circle at 76px 78px, var(--dust-2) 0, transparent 1.3px),
+    radial-gradient(circle at 211px 197px, var(--dust-2) 0, transparent 1.5px),
+    radial-gradient(circle at 343px 302px, var(--dust-1) 0, transparent 1.0px),
+    radial-gradient(circle at 128px 73px, var(--dust-2) 0, transparent 1.5px),
+    radial-gradient(circle at 301px 356px, var(--dust-1) 0, transparent 1.0px),
+    radial-gradient(circle at 11px 265px, var(--dust-2) 0, transparent 1.3px),
+    radial-gradient(circle at 313px 234px, var(--dust-2) 0, transparent 1.3px),
+    radial-gradient(circle at 263px 70px, var(--dust-1) 0, transparent 1.0px),
+    radial-gradient(circle at 231px 79px, var(--dust-2) 0, transparent 1.5px),
+    radial-gradient(circle at 15px 121px, var(--dust-1) 0, transparent 1.1px),
+    radial-gradient(circle at 120px 143px, var(--dust-1) 0, transparent 1.0px),
+    radial-gradient(circle at 233px 301px, var(--dust-1) 0, transparent 1.0px),
+    radial-gradient(circle at 346px 352px, var(--dust-1) 0, transparent 1.0px),
+    radial-gradient(circle at 69px 332px, var(--dust-2) 0, transparent 1.5px),
+    radial-gradient(circle at 217px 250px, var(--dust-2) 0, transparent 1.5px),
+    radial-gradient(circle at 34px 144px, var(--dust-1) 0, transparent 1.1px),
+    radial-gradient(circle at 357px 71px, var(--dust-2) 0, transparent 1.5px),
+    radial-gradient(circle at 164px 288px, var(--dust-1) 0, transparent 1.0px),
+    radial-gradient(circle at 202px 42px, var(--dust-1) 0, transparent 1.0px),
+    radial-gradient(circle at 43px 70px, var(--dust-2) 0, transparent 1.5px),
+    radial-gradient(circle at 121px 257px, var(--dust-2) 0, transparent 1.5px),
+    radial-gradient(circle at 307px 171px, var(--dust-1) 0, transparent 1.0px),
+    radial-gradient(circle at 249px 350px, var(--dust-1) 0, transparent 1.1px),
+    radial-gradient(circle at 276px 92px, var(--dust-2) 0, transparent 1.3px),
+    radial-gradient(circle at 276px 355px, var(--dust-1) 0, transparent 1.0px),
+    radial-gradient(circle at 126px 4px, var(--dust-2) 0, transparent 1.5px),
+    radial-gradient(circle at 135px 102px, var(--dust-2) 0, transparent 1.3px),
+    radial-gradient(circle at 63px 16px, var(--dust-1) 0, transparent 1.1px),
+    radial-gradient(circle at 45px 311px, var(--dust-2) 0, transparent 1.3px),
+    radial-gradient(circle at 18px 221px, var(--dust-1) 0, transparent 1.0px),
+    radial-gradient(circle at 295px 108px, var(--dust-2) 0, transparent 1.3px),
+    radial-gradient(circle at 66px 164px, var(--dust-2) 0, transparent 1.5px),
+    radial-gradient(circle at 250px 189px, var(--dust-1) 0, transparent 1.0px),
+    radial-gradient(circle at 309px 145px, var(--dust-1) 0, transparent 1.1px),
+    radial-gradient(circle at 189px 258px, var(--dust-1) 0, transparent 1.1px),
+    radial-gradient(circle at 168px 48px, var(--dust-2) 0, transparent 1.5px),
+    radial-gradient(circle at 265px 298px, var(--dust-2) 0, transparent 1.3px),
+    radial-gradient(circle at 322px 93px, var(--dust-1) 0, transparent 1.1px),
+    radial-gradient(circle at 133px 278px, var(--dust-2) 0, transparent 1.3px),
+    radial-gradient(circle at 24px 90px, var(--dust-1) 0, transparent 1.0px),
+    radial-gradient(circle at 225px 173px, var(--dust-2) 0, transparent 1.3px),
+    radial-gradient(circle at 180px 337px, var(--dust-1) 0, transparent 1.0px),
+    radial-gradient(circle at 100px 65px, var(--dust-1) 0, transparent 1.1px),
+    radial-gradient(circle at 12px 174px, var(--dust-2) 0, transparent 1.3px),
+    radial-gradient(circle at 107px 171px, var(--dust-2) 0, transparent 1.5px),
+    radial-gradient(circle at 108px 329px, var(--dust-1) 0, transparent 1.0px),
+    radial-gradient(circle at 195px 115px, var(--dust-2) 0, transparent 1.5px),
+    radial-gradient(circle at 200px 80px, var(--dust-1) 0, transparent 1.0px),
+    radial-gradient(circle at 17px 344px, var(--dust-1) 0, transparent 1.1px),
+    radial-gradient(circle at 246px 117px, var(--dust-1) 0, transparent 1.0px),
+    radial-gradient(circle at 147px 194px, var(--dust-1) 0, transparent 1.0px),
+    radial-gradient(circle at 8px 289px, var(--dust-1) 0, transparent 1.1px),
+    radial-gradient(circle at 158px 173px, var(--dust-2) 0, transparent 1.3px),
+    radial-gradient(circle at 309px 20px, var(--dust-1) 0, transparent 1.0px),
+    radial-gradient(circle at 205px 328px, var(--dust-2) 0, transparent 1.3px),
+    radial-gradient(circle at 162px 145px, var(--dust-2) 0, transparent 1.5px),
+    radial-gradient(circle at 294px 265px, var(--dust-2) 0, transparent 1.3px),
+    radial-gradient(circle at 328px 266px, var(--dust-2) 0, transparent 1.3px),
+    radial-gradient(circle at 200px 283px, var(--dust-2) 0, transparent 1.5px),
+    radial-gradient(circle at 313px 45px, var(--dust-1) 0, transparent 1.1px),
+    radial-gradient(circle at 156px 28px, var(--dust-1) 0, transparent 1.0px),
+    radial-gradient(circle at 34px 288px, var(--dust-2) 0, transparent 1.5px),
+    radial-gradient(circle at 305px 198px, var(--dust-2) 0, transparent 1.5px),
+    radial-gradient(circle at 279px 43px, var(--dust-1) 0, transparent 1.0px),
+    radial-gradient(circle at 255px 220px, var(--dust-2) 0, transparent 1.5px),
+    radial-gradient(circle at 306px 318px, var(--dust-1) 0, transparent 1.0px),
+    radial-gradient(circle at 93px 27px, var(--dust-1) 0, transparent 1.1px),
+    radial-gradient(circle at 349px 171px, var(--dust-2) 0, transparent 1.5px),
+    radial-gradient(circle at 140px 323px, var(--dust-2) 0, transparent 1.3px),
+    radial-gradient(circle at 255px 266px, var(--dust-1) 0, transparent 1.0px),
+    radial-gradient(circle at 309px 283px, var(--dust-1) 0, transparent 1.0px);
+  background-size:360px 360px;
+  /* Thickest under the header and thinning downward — dust that reaches the
+     bottom edge competes with the composer sitting on it. */
+  -webkit-mask-image:radial-gradient(124% 116% at 4% -8%, #000 30%, rgba(0,0,0,0.5) 62%, transparent 92%);
+  mask-image:radial-gradient(124% 116% at 4% -8%, #000 30%, rgba(0,0,0,0.5) 62%, transparent 92%);
+  animation:dustFar 517s linear infinite, dustFarLight 70s var(--ease-in-out) infinite alternate;
 }
-@keyframes dotDrift{
+
+/* The near plane: 9 motes in a 520px tile, each a bright core in a tight
+   halo. The halo carries them through the glass panels, which swallow a flat
+   speck; kept small, or they become snowflakes. */
+.app::after{
+  inset:-560px;
+  background-image:
+    radial-gradient(circle at 22px 307px, var(--dust-2) 0, var(--dust-2) 0.7px, transparent 1.9px),
+    radial-gradient(circle at 508px 151px, var(--dust-3) 0, var(--dust-3) 1.0px, transparent 2.7px),
+    radial-gradient(circle at 460px 10px, var(--dust-3) 0, var(--dust-3) 0.8px, transparent 2.2px),
+    radial-gradient(circle at 383px 269px, var(--dust-3) 0, var(--dust-3) 0.8px, transparent 2.2px),
+    radial-gradient(circle at 284px 423px, var(--dust-3) 0, var(--dust-3) 0.8px, transparent 2.2px),
+    radial-gradient(circle at 269px 114px, var(--dust-3) 0, var(--dust-3) 1.0px, transparent 2.7px),
+    radial-gradient(circle at 242px 298px, var(--dust-3) 0, var(--dust-3) 0.8px, transparent 2.2px),
+    radial-gradient(circle at 158px 517px, var(--dust-3) 0, var(--dust-3) 0.8px, transparent 2.2px),
+    radial-gradient(circle at 134px 216px, var(--dust-3) 0, var(--dust-3) 0.8px, transparent 2.2px);
+  background-size:520px 520px;
+  -webkit-mask-image:radial-gradient(96% 90% at 1% -4%, #000 24%, rgba(0,0,0,0.48) 56%, transparent 84%);
+  mask-image:radial-gradient(96% 90% at 1% -4%, #000 24%, rgba(0,0,0,0.48) 56%, transparent 84%);
+  animation:dustNear 383s linear infinite, dustNearLight 46s var(--ease-in-out) infinite alternate;
+}
+
+@keyframes dustFar{
   from{ transform:translate3d(0, 0, 0); }
-  to{ transform:translate3d(26px, 26px, 0); }
+  to{ transform:translate3d(360px, 360px, 0); }
 }
-html[data-bg="dots"] .app::before{ animation:none; }
-html[data-bg="plain"] .app::before{ display:none; }
+@keyframes dustNear{
+  from{ transform:translate3d(0, 0, 0); }
+  to{ transform:translate3d(520px, 520px, 0); }
+}
+/* The light in the room changing, not each speck blinking: per-speck twinkle
+   would be hundreds of nodes for something nobody can point at. */
+@keyframes dustFarLight{
+  from{ opacity:.76; }
+  to{ opacity:1; }
+}
+@keyframes dustNearLight{
+  from{ opacity:.82; }
+  to{ opacity:1; }
+}
+
+html[data-bg="dots"] .app::before, html[data-bg="dots"] .app::after{ animation:none; }
+html[data-bg="plain"] .app::before, html[data-bg="plain"] .app::after{ display:none; }
 /* Decoration that moves, so it stops when the system says movement is not
-   welcome — the dots themselves stay, they simply hold still. */
+   welcome — the dust itself stays, it simply holds still. */
 @media (prefers-reduced-motion:reduce){
-  .app::before{ animation:none !important; }
+  .app::before, .app::after{ animation:none !important; opacity:1 !important; }
 }
 
 /* --- How much glass ------------------------------------------------------
@@ -4338,3 +4573,987 @@ html[data-glass="solid"] :is(.chat-head, .chat-input, .popover, .modal, .coach-p
    fixed rather than broken. */
 .seam.locked, .seam.locked .seam-handle{ cursor:default; }
 .seam.locked .seam-rail{ opacity:.4; }
+
+/* =============================================================================
+   ANA'S PASS, ROUND 5 — 2026-09-30: the Start button, and the two pages
+   brought up to the bar's grammar.
+
+   Checked against ui-ux-pro-max rather than assumed. Two things it changed in
+   the plan:
+
+   - Target size. The native 44pt rule is NOT the web rule; WCAG 2.2 Target
+     Size (Minimum) is 24x24 CSS px with 8px between targets. Every control in
+     the bar already clears that, so nothing was inflated to 44px for a
+     guideline that does not apply to a pointer-driven desktop app.
+   - The list pages do NOT become glass. The liquid-glass model above is
+     explicit that glass on a content container is a defect; they become solid
+     sheets on the room instead, which is the same shape without the mistake.
+   ============================================================================= */
+
+/* --- Start: the bar's grammar, and a disabled state you can still read -----
+   It kept the go-green — it is the only control in the app that means "you
+   can begin now", and that must not change meaning with the accent — but it
+   now matches the rhythm of the items beside it rather than being a foreign
+   object at a different height.
+
+   The old disabled state was `opacity:.55` over the whole button, which took
+   the label to 3.5:1 against its own fill. Opacity dims the ink and the fill
+   together, so it cannot preserve a ratio. The fill is muted directly now and
+   the ink stays dark: the button reads as unavailable and its label is still
+   legible, which matters because it is aria-disabled, not disabled — it stays
+   focusable so the reason can be read. */
+.navbar .btn-start{
+  height:var(--nav-item-h); padding:0 var(--sp-4); gap:6px;
+  font-family:var(--font-sans, inherit); font-size:var(--text-sm); font-weight:600;
+  letter-spacing:0;
+}
+.navbar .btn-start:disabled, .navbar .btn-start[aria-disabled="true"]{
+  cursor:not-allowed; transform:none; animation:none; filter:none; opacity:1;
+  color:color-mix(in srgb, var(--go-ink) 82%, #FFFFFF);
+  background:linear-gradient(180deg,
+    color-mix(in srgb, var(--go) 30%, var(--card)),
+    color-mix(in srgb, var(--go) 20%, var(--card)));
+  border-color:color-mix(in srgb, var(--go) 24%, transparent);
+  box-shadow:none;
+}
+html.light .navbar .btn-start:disabled, html.light .navbar .btn-start[aria-disabled="true"]{
+  color:color-mix(in srgb, var(--go-ink) 70%, #FFFFFF);
+  background:linear-gradient(180deg,
+    color-mix(in srgb, var(--go) 34%, #FFFFFF),
+    color-mix(in srgb, var(--go) 24%, #FFFFFF));
+}
+
+/* The active item in the bar was var(--tint-2) — 5% white, which on the dark
+   glass is nearly nothing. The mockup's selected item is a clear tinted pill,
+   so it gets one. */
+.navbar .nb-item.active{ background:var(--tint-4); border-color:var(--glass-hairline); }
+
+/* --- The two list pages --------------------------------------------------
+   The bar is a defined surface floating on the room; under it the pages were
+   bare text on that same room, so the screen read as one finished object and
+   one unfinished one. The list gets its own sheet — solid, not glass — at the
+   bar's radius, and the page title sits above it rather than inside it. */
+.flat-col > .list-enter, .flat-col > .detail-enter,
+.flat-view .flat-col > .list-toolbar{ position:relative; }
+
+.flat-col{ max-width:960px; }
+.page-head{ padding:var(--sp-5) var(--sp-6) var(--sp-4); align-items:center; }
+.page-head h1{ font-size:var(--text-xl); margin-bottom:4px; letter-spacing:-0.01em; }
+.page-head p{ font-size:var(--text-sm); }
+
+/* The sheet. Its own hairline and radius, so rows have an edge to end at. */
+.flat-view .list-sheet{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  padding:var(--sp-3) var(--sp-4) var(--sp-2);
+  box-shadow:var(--shadow-float);
+}
+html.light .flat-view .list-sheet{ background:#FFFFFF; border-color:rgba(0,0,0,0.07); }
+
+/* Rows inside the sheet: the last one has no rule to separate it from the
+   sheet's own edge, and hovering lifts the whole row rather than only the
+   arrow at its end. */
+.list-sheet .project-row{ padding:var(--sp-4) var(--sp-3); border-radius:var(--radius-md); }
+.list-sheet .project-row:last-child{ border-bottom:none; }
+@media (hover:hover) and (pointer:fine){
+  .list-sheet .project-row:hover{ background:var(--tint-2); }
+  html.light .list-sheet .project-row:hover{ background:rgba(0,0,0,0.028); }
+}
+/* A row is a link or a button wrapping its whole area; the focus ring belongs
+   on the row, not on the text inside it. */
+.list-sheet .project-row:focus-within{ background:var(--tint-2); }
+
+/* The toolbar sits inside the sheet, over the rows it filters. */
+.list-sheet .list-toolbar{ margin:0 0 var(--sp-3); padding:0 var(--sp-3); }
+.list-sheet .search-box{ border-radius:var(--radius-md); padding:9px var(--sp-3); }
+.list-sheet .search-box input{ font-size:var(--text-sm); }
+
+/* =============================================================================
+   ANA'S PASS, ROUND 6 — 2026-09-30: the picker's empty state.
+
+   Chosen out of five prototypes ("Billboard"), which is why this section
+   overrides the older .pick-* rules above rather than editing them in place:
+   the file is a run of dated passes, and the earlier ones are the record of
+   what the screen used to be.
+
+   The shape: a headline with the agent beside it, then the two ways in as
+   tall cards that take the rest of the panel. Before this, the cards sat in
+   the top third and the panel read as half-loaded.
+   ============================================================================= */
+
+.pick-empty{
+  flex:1; min-height:0; display:flex; flex-direction:column; align-items:stretch;
+  gap:var(--sp-5); padding:var(--sp-6); text-align:left; overflow-y:auto;
+}
+
+/* --- The two cards, filling the panel ------------------------------------ */
+.pick-cards{
+  flex:1; min-height:280px; margin:0; max-width:none;
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); gap:14px;
+}
+.pick-empty .picker-card{
+  position:relative; overflow:hidden; height:auto; width:auto; flex:initial;
+  align-items:flex-start; gap:8px; padding:24px;
+}
+/* Icon at the top, the words pushed down to meet the action. That is what
+   makes a tall card read as composed rather than stretched.
+   The title is a full heading now that the description is gone, so it wraps
+   instead of running under the sheets. */
+.pick-empty .picker-card .picker-card-title{
+  margin-top:auto; max-width:15ch; line-height:1.2; text-wrap:balance;
+  position:relative; z-index:1;
+}
+.pick-empty .picker-card-cta{ position:relative; z-index:1; }
+
+/* =============================================================================
+   ANA'S PASS, ROUND 7 — 2026-09-30, off the sync with Patryk.
+
+   "Wir haben einmal diese Runden und dann haben wir diese zwei Buttons, die
+   in so einem zusammen sind. Da denke ich, dass es so zusammen ist, passt
+   nicht. Also besser ist, wenn alle Buttons gleich sind."
+
+   So the capsule around Project History and Agent Dashboard goes: they become
+   the same item as New Task, and the hairlines are what group them.
+   ============================================================================= */
+.nb-tabs, .navbar .nb-tabs{
+  height:auto; padding:0; gap:6px; background:none; border:none; border-radius:0;
+}
+.navbar .nb-tabs .nb-item{ height:var(--nav-item-h); }
+.navbar .nb-tabs .nb-rule{ height:18px; margin:0 6px; }
+
+/* The way back is a button now, not a menu trigger, so it loses the chevron's
+   room and gains a press state. A project that is simply the one you are in
+   stays a label. */
+.nb-current-wrap{ display:none; }
+button.nb-current{ cursor:pointer; }
+button.nb-current:active{ transform:scale(0.97); }
+.nb-current.is-static{ cursor:default; }
+
+/* The Coach's seat before there is a Consultant. It used to show the same two
+   cards, dimmed and unpressable; now it says what it is waiting for. */
+.pick-empty.pick-waiting{
+  align-items:center; justify-content:center; text-align:center; gap:var(--sp-2);
+}
+.pick-waiting .mascot{ opacity:.5; }
+.pw-title{
+  margin:var(--sp-3) 0 0; font-family:var(--font-display); font-size:var(--text-lg);
+  font-weight:600; letter-spacing:-0.01em; color:var(--secondary-foreground);
+}
+.pw-sub{ margin:0; max-width:34ch; font-size:var(--text-sm); color:var(--muted-foreground); }
+
+/* The per-type cap, shown before the click rather than as a failed insert. */
+.tc-right{ display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex-shrink:0; }
+.tc-count{ font-size:var(--text-3xs); font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted-foreground); }
+.tc-full{ font-size:var(--text-2xs); font-weight:600; color:var(--warn); white-space:nowrap; }
+.type-card.is-full{ opacity:1; border-color:var(--border); }
+.type-card.is-full h3{ color:var(--secondary-foreground); }
+
+/* =============================================================================
+   THE AGENT DASHBOARD — 2026-10-01. Layout from Ana's "Your AI Team" mockup
+   (numbers on top, one section per role, a type per tab, four slots as
+   cards), drawn in the app's own surfaces. See the `.agx-*` block at the end
+   of this file. An opened agent is a card over its role (`.agx-info`).
+   ============================================================================= */
+.ag-loading{
+  display:flex; align-items:center; gap:var(--sp-3);
+  padding:var(--sp-6); font-size:var(--text-sm); color:var(--muted-foreground);
+}
+.ag-skills{ display:flex; flex-wrap:wrap; gap:6px; }
+.ag-skill{
+  font-size:var(--text-2xs); padding:4px 10px; border-radius:var(--radius-pill);
+  color:var(--secondary-foreground); background:var(--tint-2); border:1px solid var(--border);
+}
+
+/* --- The page --------------------------------------------------------------
+   Third pass (2026-10-01): the app's own room, tokens and radii — no palette
+   of its own. A heading and a strip of numbers, then one card per role with
+   its agents inside. No entrance animation, no hover lift: hover changes the
+   border, which is all it needs to say. */
+.agx-main{
+  position:relative; isolation:isolate;
+  overflow-y:auto; overflow-x:hidden;
+  padding:0 var(--sp-6) var(--sp-6);
+}
+.agx-head, .agx-board{ position:relative; z-index:1; }
+
+/* --- The light inside the role cards ---------------------------------------
+   Two soft glows in the accent inside each Consultants / Coaches card,
+   drifting very slowly, under its type bar and agents. The agent cards' glass
+   blurs and tints them — one light per role card instead of a glow painted
+   into every agent. Accent only, so the Appearance accent recolours it. */
+.agx-role-glow{ position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; border-radius:inherit; }
+.agx-role-glow i{
+  position:absolute; display:block; aspect-ratio:1; border-radius:50%;
+  background:radial-gradient(circle,
+    color-mix(in srgb, var(--primary-soft) 72%, #A4D0FF) 0,
+    color-mix(in srgb, var(--primary-soft) 62%, transparent) 34%, transparent 68%);
+  filter:blur(72px);
+}
+.agx-role-glow i:nth-child(1){ width:70%; left:-12%; top:6%; opacity:.34; animation:agxDrift 44s var(--ease-in-out) infinite alternate; }
+.agx-role-glow i:nth-child(2){
+  width:62%; right:-14%; bottom:-8%; opacity:.24;
+  background:radial-gradient(circle, color-mix(in srgb, var(--primary) 65%, var(--primary-soft)) 0,
+    color-mix(in srgb, var(--primary) 55%, transparent) 34%, transparent 68%);
+  animation:agxDrift 56s var(--ease-in-out) infinite alternate-reverse;
+}
+@keyframes agxDrift{ to{ transform:translate(6%, -5%) scale(1.08); } }
+html.light .agx-role-glow i{ opacity:.16; }
+@media (prefers-reduced-motion:reduce){ .agx-role-glow i{ animation:none; } }
+/* Everything in the card sits over its light. (The opened-agent overlay has
+   its own position and stacking, set further down.) */
+.agx-role > .agx-tabs{ z-index:1; }
+.agx-role > .agx-cards{ position:relative; z-index:1; }
+/* The page itself does not scroll on a desktop: the role cards take the
+   height that is left and scroll inside (Ana, 2026-10-01). A window too short
+   for that still scrolls, rather than squeezing the cards to nothing. */
+.agx-board{ flex:1; min-height:0; display:flex; flex-direction:column; gap:var(--sp-3); }
+
+/* --- Heading and numbers --------------------------------------------------- */
+/* The numbers: one pill, centred, drawn like the navbar above it — the same
+   bar, border, lit top edge and glass (Ana, 2026-10-01 mockup). */
+.agx-head{ flex:none; display:flex; justify-content:center; margin:0 0 var(--sp-3); }
+.agx-stats{
+  position:relative; z-index:0; margin:0;
+  display:flex; align-items:center; height:52px; padding:0 var(--sp-2);
+  border-radius:var(--radius-md); border:1px solid var(--input);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.10), 0 10px 30px -18px rgba(0,0,0,0.8);
+}
+.agx-stats::after{
+  content:""; position:absolute; inset:0; z-index:-1; border-radius:inherit; pointer-events:none;
+  background:linear-gradient(180deg, rgba(255,255,255,0.07), rgba(20,20,23,0.55));
+  backdrop-filter:blur(var(--blur-surface)) saturate(1.7);
+}
+html.light .agx-stats{ border-color:rgba(0,0,0,0.08); box-shadow:inset 0 1px 0 #FFFFFF, 0 10px 26px -18px rgba(var(--shadow-rgb),0.35); }
+html.light .agx-stats::after{ background:linear-gradient(180deg, rgba(255,255,255,0.78), rgba(240,245,255,0.58)); }
+html[data-glass="solid"] .agx-stats::after{ backdrop-filter:none; background:var(--popover); }
+.agx-stat{ padding:0 var(--sp-5); min-width:0; display:flex; flex-direction:column; justify-content:center; }
+/* The navbar's hairlines between groups. */
+.agx-stat + .agx-stat{ border-left:1px solid var(--glass-hairline); }
+.agx-stat dt{ font-size:var(--text-3xs); letter-spacing:0.02em; color:var(--muted-foreground); white-space:nowrap; }
+.agx-stat dd{
+  margin:3px 0 0; display:flex; align-items:flex-end; gap:var(--sp-2);
+  font-family:var(--font-display); font-size:var(--text-base); font-weight:600; line-height:1;
+  color:var(--foreground); font-variant-numeric:tabular-nums;
+}
+.agx-bars{ display:flex; align-items:flex-end; gap:2px; height:14px; }
+.agx-bars i{ width:4px; border-radius:1px; background:var(--tint-4); }
+/* Today is the one bar in the accent: the rest is context for it. */
+.agx-bars i:last-child{ background:var(--primary-soft); }
+
+/* --- One role -------------------------------------------------------------- */
+.agx-split{
+  flex:1; min-height:380px; display:grid;
+  grid-template-columns:1fr 1fr; grid-template-rows:minmax(0, 1fr); gap:var(--sp-5);
+}
+/* Each role is a card (Ana, 2026-10-01), the same graphite glass as the two
+   chat panels it stands for. The agents inside drop to a tint so the nesting
+   reads as one level of surface, not two boxes of equal weight. */
+.agx-role{
+  position:relative; min-width:0; min-height:0; display:flex; flex-direction:column; overflow:hidden;
+  padding:var(--sp-5); border-radius:var(--radius-lg);
+  /* See-through and without a blur of its own: a backdrop-filter here would
+     make it the "backdrop root" of the agent cards, and their glass could
+     only blur this card's paint — never the glows behind the page. */
+  isolation:isolate;
+  background:linear-gradient(180deg, rgba(20,20,24,0.62), rgba(10,10,12,0.72));
+  border:1px solid var(--border); box-shadow:inset 0 1px 0 rgba(255,255,255,0.06);
+}
+html.light .agx-role{
+  background:linear-gradient(180deg, rgba(255,255,255,0.72), rgba(248,248,250,0.66));
+  border-color:rgba(0,0,0,0.07);
+}
+@media (prefers-reduced-transparency: reduce){ .agx-role{ backdrop-filter:none; background:var(--card); } }
+/* The types: the app's navbar, as a bar of its own. The items and hairlines
+   are the navbar's (.navbar .nb-item / .nb-rule, set on this element); the
+   bar itself copies `.app > header.navbar`, which is scoped to the header. */
+.agx-tabs.navbar{
+  --nav-item-h:30px;
+  position:relative; z-index:0; align-self:stretch; flex:none;
+  display:flex; align-items:stretch;
+  height:46px; margin:0 0 var(--sp-4); padding:0;
+  border-radius:var(--radius-md); border:1px solid var(--input);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.10), 0 10px 30px -18px rgba(0,0,0,0.8);
+}
+/* The items scroll inside; the bar and its glass stay put. */
+.agx-tabs-scroll{
+  flex:1; min-width:0; display:flex; align-items:center; gap:2px; padding:0 var(--sp-2);
+  overflow-x:auto; scrollbar-width:none; overscroll-behavior-x:contain;
+}
+.agx-tabs-scroll::-webkit-scrollbar{ display:none; }
+
+/* "There is more this way": a fade that blurs what it covers, and a round
+   arrow in it (YouTube's chip bar). Only on a side with hidden tabs. */
+.agx-tabs-more{
+  position:absolute; top:0; bottom:0; z-index:2; width:84px;
+  display:flex; align-items:center; padding:0 7px;
+  border:none; background:none; cursor:pointer;
+  opacity:0; pointer-events:none; transition:opacity 180ms var(--ease-out);
+}
+.agx-tabs-more::before{
+  content:""; position:absolute; inset:0; z-index:-1; border-radius:inherit; pointer-events:none;
+  backdrop-filter:blur(6px);
+}
+.agx-tabs-more.is-right{
+  right:0; justify-content:flex-end; border-radius:0 var(--radius-md) var(--radius-md) 0;
+  background:linear-gradient(to right, transparent, rgba(24,24,28,0.94) 58%);
+}
+.agx-tabs-more.is-right::before{
+  -webkit-mask-image:linear-gradient(to right, transparent, #000 55%);
+  mask-image:linear-gradient(to right, transparent, #000 55%);
+}
+.agx-tabs-more.is-left{
+  left:0; justify-content:flex-start; border-radius:var(--radius-md) 0 0 var(--radius-md);
+  background:linear-gradient(to left, transparent, rgba(24,24,28,0.94) 58%);
+}
+.agx-tabs-more.is-left::before{
+  -webkit-mask-image:linear-gradient(to left, transparent, #000 55%);
+  mask-image:linear-gradient(to left, transparent, #000 55%);
+}
+html.light .agx-tabs-more.is-right{ background:linear-gradient(to right, transparent, rgba(250,250,252,0.95) 58%); }
+html.light .agx-tabs-more.is-left{ background:linear-gradient(to left, transparent, rgba(250,250,252,0.95) 58%); }
+.agx-tabs[data-more-right] .agx-tabs-more.is-right,
+.agx-tabs[data-more-left] .agx-tabs-more.is-left{ opacity:1; pointer-events:auto; }
+.agx-tabs-more > span{
+  width:32px; height:32px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  color:var(--foreground); transition:background-color 150ms var(--ease-out), transform 120ms var(--ease-out);
+}
+@media (hover:hover) and (pointer:fine){ .agx-tabs-more:hover > span{ background:var(--tint-4); } }
+.agx-tabs-more:active > span{ transform:scale(0.92); }
+.agx-tabs.navbar::after{
+  content:""; position:absolute; inset:0; z-index:-1; border-radius:inherit; pointer-events:none;
+  background:linear-gradient(180deg, rgba(255,255,255,0.07), rgba(20,20,23,0.55));
+  backdrop-filter:blur(var(--blur-surface)) saturate(1.7);
+}
+html.light .agx-tabs.navbar{
+  border-color:rgba(0,0,0,0.08);
+  box-shadow:inset 0 1px 0 #FFFFFF, 0 10px 26px -18px rgba(var(--shadow-rgb),0.35);
+}
+html.light .agx-tabs.navbar::after{ background:linear-gradient(180deg, rgba(255,255,255,0.78), rgba(240,245,255,0.58)); }
+html[data-glass="solid"] .agx-tabs.navbar::after{ backdrop-filter:none; background:var(--popover); }
+.agx-tabs .nb-item{ flex:none; height:var(--nav-item-h); gap:8px; }
+.agx-tab-n{ font-family:var(--font-mono); font-size:var(--text-3xs); color:var(--muted-foreground); }
+
+/* --- The four slots -------------------------------------------------------- */
+/* Every card the same fixed height; more than fit scroll inside the role. */
+.agx-cards{
+  flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain;
+  scrollbar-width:thin; scrollbar-color:var(--tint-4) transparent;
+}
+/* One agent per card, stacked down the role card. */
+.agx-cards-grid{ display:flex; flex-direction:column; gap:var(--sp-3); }
+/* A tab change brings the cards in from the side the tab sits on, so the
+   motion says which way you went. Only on a change, never on first paint. */
+.agx-cards-grid.is-sliding{ animation:agxSlide 260ms var(--ease-out); }
+@keyframes agxSlide{ from{ opacity:0; transform:translateX(calc(var(--agx-dir) * 14px)); } }
+
+/* Scroll edges fade rather than cut (Apple's scroll-edge effect): only at an
+   edge with more behind it, so a list that fits shows no fade at all. */
+/* Not on the agent list: a mask makes it the "backdrop root" of the agent
+   cards, and their glass could no longer see the role card's glows. */
+.agx-info-body[data-more-below]{
+  -webkit-mask-image:linear-gradient(to top, transparent 0, #000 24px);
+  mask-image:linear-gradient(to top, transparent 0, #000 24px);
+}
+.agx-info-body[data-more-above]{
+  -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 24px);
+  mask-image:linear-gradient(to bottom, transparent 0, #000 24px);
+}
+.agx-info-body[data-more-above][data-more-below]{
+  -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
+  mask-image:linear-gradient(to bottom, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
+}
+/* --- One agent: a glass card ---------------------------------------------
+   Frosted glass over the role card (Ana, 2026-10-01): a translucent fill
+   lighter at the top-left, the blur of what is behind, a lit top edge and a
+   specular rim — the same recipe as the app's floating glass, one step
+   lighter than the role it sits on so the two read as two layers. Every card
+   is the same height; the projects scroll sideways inside it. */
+.agx-card{
+  position:relative; flex:none; min-width:0; height:152px;
+  display:flex; flex-direction:column; justify-content:space-between; gap:var(--sp-3);
+  padding:var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-4); border-radius:var(--radius-lg);
+  /* Thick glass over the role card's light (Ana, 2026-10-01: "o sticlă mai
+     groasă"). Thickness is three things: a more frosted body (heavier blur,
+     a denser tint), light caught INSIDE the top of the pane, and a darker
+     band inside the bottom edge where the glass turns away — a bevel read
+     from the inside, with no white outline around it. */
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.02) 42%, rgba(255,255,255,0.035)),
+    rgba(16,16,20,0.42);
+  backdrop-filter:blur(34px) saturate(1.6) brightness(1.04);
+  border:1px solid rgba(255,255,255,0.05);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.09),
+    inset 0 18px 26px -22px rgba(255,255,255,0.07),
+    inset 0 -2px 0 rgba(0,0,0,0.28),
+    inset 0 -30px 40px -30px rgba(0,0,0,0.6),
+    0 30px 60px -34px rgba(0,0,0,0.9),
+    0 4px 10px -4px rgba(0,0,0,0.4);
+  transition:border-color 160ms var(--ease-out), box-shadow 200ms var(--ease-out), transform 120ms var(--ease-out);
+}
+html.light .agx-card{
+  background:
+    radial-gradient(120% 90% at 12% -10%, rgba(255,255,255,0.95), transparent 60%),
+    linear-gradient(165deg, rgba(255,255,255,0.78), rgba(246,247,250,0.55) 50%, rgba(238,240,245,0.6));
+  border-color:transparent;
+  box-shadow:
+    inset 0 -18px 30px -26px rgba(var(--shadow-rgb),0.18),
+    0 18px 36px -26px rgba(var(--shadow-rgb),0.35),
+    0 1px 3px rgba(var(--shadow-rgb),0.08);
+}
+@media (prefers-reduced-transparency:reduce){
+  .agx-card{ backdrop-filter:none; background:var(--surface-elevated); }
+}
+/* Feedback on the press itself, not on release. */
+.agx-card:has(> .agx-card-hit:active), .agx-free:active{ transform:scale(0.99); }
+/* Hover: a touch more light in the glass. Nothing moves, no outline. */
+@media (hover:hover) and (pointer:fine){
+  .agx-card:hover{ border-color:rgba(255,255,255,0.10); background-color:rgba(255,255,255,0.03); }
+}
+/* Archived: the same card, a step quieter. */
+.agx-card.is-archived{ opacity:.72; }
+@media (hover:hover) and (pointer:fine){ .agx-card.is-archived:hover{ opacity:1; } }
+/* The whole card opens the agent; everything interactive sits above this layer. */
+.agx-card-hit{ position:absolute; inset:0; z-index:1; border:none; background:none; border-radius:inherit; }
+
+/* Who: the face, its level, the name. */
+.agx-card-head{ flex:none; display:flex; align-items:center; gap:var(--sp-3); }
+/* The mascot stands on the glass on its own, no tile behind it (Ana, 2026-10-01). */
+.agx-card-head > .mascot{ flex:none; }
+.agx-card-text{ flex:1; min-width:0; }
+.agx-name{
+  margin:0; font-family:var(--font-display); font-size:var(--text-lg); font-weight:600; line-height:1.25;
+  letter-spacing:-0.01em; color:var(--foreground);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.agx-meta{
+  margin:3px 0 0; font-size:var(--text-xs); line-height:1.4; letter-spacing:0.01em; color:var(--muted-foreground);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+
+.agx-menu{ flex:none; align-self:flex-start; position:relative; z-index:2; }
+.agx-menu-btn{
+  width:28px; height:28px; display:flex; align-items:center; justify-content:center;
+  border:none; background:none; border-radius:var(--radius-xs); color:var(--muted-foreground);
+}
+@media (hover:hover) and (pointer:fine){ .agx-menu-btn:hover{ background:var(--tint-3); color:var(--foreground); } }
+.agx-menu-pop{
+  position:absolute; top:30px; right:-4px; min-width:128px; padding:4px; border-radius:var(--radius-sm);
+  background:var(--popover); border:1px solid var(--border-strong);
+  box-shadow:var(--shadow-float);
+  transform-origin:top right; animation:popIn 160ms var(--ease-out);
+}
+.agx-menu-pop button{
+  width:100%; display:flex; align-items:center; gap:8px; padding:7px 10px;
+  border:none; background:none; border-radius:var(--radius-xs); text-align:left;
+  font-size:var(--text-xs); color:var(--secondary-foreground);
+}
+.agx-menu-pop button:hover{ background:var(--tint-2); color:var(--foreground); }
+.agx-menu-pop button.is-danger:hover{ color:var(--destructive); }
+
+/* The small statistic, divided by the same hairlines as the page's numbers.
+   The third one is a button: the count of documents opens the list of them. */
+.agx-card-stats{
+  flex:none; display:flex; align-items:stretch;
+  padding-top:var(--sp-3); border-top:1px solid var(--glass-hairline);
+}
+.agx-card-stats > div{ flex:none; display:flex; flex-direction:column; gap:2px; padding:0 var(--sp-4); min-width:0; }
+/* The industries are words, not a number: the one stat allowed to shrink. */
+.agx-card-stats > .agx-stat-industry{ flex:0 1 auto; }
+.agx-stat-industry b{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.agx-card-stats > div:first-child{ padding-left:0; }
+.agx-card-stats > * + *{ border-left:1px solid var(--glass-hairline); }
+.agx-card-stats span{ font-size:var(--text-2xs); letter-spacing:0.01em; color:var(--muted-foreground); white-space:nowrap; }
+.agx-card-stats b{
+  font-family:var(--font-display); font-size:var(--text-base); font-weight:600; line-height:1.15;
+  color:var(--foreground); font-variant-numeric:tabular-nums;
+}
+.agx-docs-btn{
+  position:relative; z-index:2; margin-left:auto; flex:none; min-width:0;
+  display:flex; align-items:center; gap:var(--sp-2); padding:0 var(--sp-2) 0 var(--sp-3);
+  border:1px solid var(--glass-hairline); border-left:none; border-radius:var(--radius-sm);
+  background:rgba(255,255,255,0.04);
+  font-size:var(--text-xs); font-weight:500; color:var(--secondary-foreground); text-align:left;
+  transition:background-color 150ms var(--ease-out), color 150ms var(--ease-out), border-color 150ms var(--ease-out);
+}
+.agx-card-stats > .agx-docs-btn{ border-left:1px solid var(--glass-hairline); }
+html.light .agx-docs-btn{ background:rgba(255,255,255,0.7); }
+.agx-docs-btn > span{ font-size:var(--text-xs); color:inherit; overflow:hidden; text-overflow:ellipsis; }
+.agx-docs-btn > b{ font-size:var(--text-sm); }
+.agx-docs-btn svg{ flex:none; color:var(--muted-foreground); }
+@media (hover:hover) and (pointer:fine){
+  .agx-docs-btn:hover:not(:disabled){ background:var(--tint-3); border-color:var(--border-strong); color:var(--foreground); }
+}
+.agx-docs-btn:active:not(:disabled){ transform:scale(0.98); }
+.agx-docs-btn:disabled{ opacity:.5; pointer-events:none; }
+
+/* An empty slot, greyed out ("ausgegraut", Patryk): a thin dashed line with
+   room to say what it is for — the four-per-type cap reads at a glance. */
+.agx-free{
+  flex:none; height:52px; width:100%;
+  display:flex; align-items:center; justify-content:center; gap:6px;
+  border-radius:var(--radius-lg); background:none; border:1px dashed var(--border-strong);
+  font-size:var(--text-xs); font-weight:500; color:var(--muted-foreground); opacity:.7;
+  transition:opacity 150ms var(--ease-out), background-color 150ms var(--ease-out), transform 120ms var(--ease-out);
+}
+@media (hover:hover) and (pointer:fine){
+  .agx-free:hover{ opacity:1; color:var(--foreground); background:var(--tint-1); }
+}
+
+/* --- One agent, opened: a card over its own role ------------------------- */
+.agx-info{
+  position:absolute; inset:0; z-index:3; display:flex; flex-direction:column;
+  border-radius:inherit; background:var(--card); border:1px solid var(--border-strong);
+  box-shadow:var(--shadow-float);
+  /* Grows out of the card that opened it and shrinks back into it: the clip
+     runs between that card's box (--agx-from, set from its measured rect)
+     and the role's. A transition, not keyframes, so a close that starts
+     halfway through the open turns around from where it is. */
+  clip-path:inset(0 round var(--radius-lg));
+  transition:clip-path 340ms var(--ease-out);
+}
+.agx-info > *{ transition:opacity 220ms var(--ease-out) 60ms; }
+/* Where it starts on mount: the box of the card it came from. */
+@starting-style{
+  .agx-info{ clip-path:var(--agx-from); }
+  .agx-info > *{ opacity:0; }
+}
+.agx-info[data-phase="closing"]{ clip-path:var(--agx-from); }
+.agx-info[data-phase="closing"] > *{ opacity:0; }
+/* Leaving is quicker than arriving, and the words go first. */
+.agx-info[data-phase="closing"]{ transition-duration:260ms; }
+.agx-info[data-phase="closing"] > *{ transition-duration:120ms; transition-delay:0ms; }
+@media (prefers-reduced-motion:reduce){
+  .agx-info, .agx-info > *{ transition:none; }
+  .agx-cards-grid.is-sliding{ animation:none; }
+}
+.agx-info-head{
+  flex:none; display:flex; align-items:center; gap:var(--sp-3);
+  padding:var(--sp-4) var(--sp-4) var(--sp-3) var(--sp-5);
+}
+.agx-info-id{ flex:1; min-width:0; }
+.agx-info-id h3{
+  margin:0; font-family:var(--font-display); font-size:var(--text-lg); font-weight:600;
+  letter-spacing:-0.01em; color:var(--foreground);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.agx-info-id p{ margin:2px 0 0; font-size:var(--text-xs); color:var(--muted-foreground); }
+.agx-info-close{
+  flex:none; width:30px; height:30px; display:flex; align-items:center; justify-content:center;
+  border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--tint-1);
+  color:var(--secondary-foreground);
+}
+@media (hover:hover) and (pointer:fine){ .agx-info-close:hover{ background:var(--tint-3); color:var(--foreground); } }
+
+.agx-info-body{
+  flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain;
+  padding:var(--sp-4) var(--sp-5) var(--sp-5); display:flex; flex-direction:column; gap:var(--sp-5);
+  scrollbar-width:thin; scrollbar-color:var(--tint-4) transparent;
+}
+.agx-info-desc{ margin:0; max-width:64ch; font-size:var(--text-sm); line-height:1.55; color:var(--secondary-foreground); }
+.agx-info-stats{ display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); margin:0; }
+.agx-info-stats > div{ padding:0 var(--sp-4); }
+.agx-info-stats > div:first-child{ padding-left:0; }
+.agx-info-stats > div + div{ border-left:1px solid var(--border); }
+.agx-info-stats dt{ font-size:var(--text-2xs); color:var(--muted-foreground); white-space:nowrap; }
+.agx-info-stats dd{
+  margin:4px 0 0; font-family:var(--font-display); font-size:var(--text-lg); font-weight:600;
+  color:var(--foreground); font-variant-numeric:tabular-nums;
+}
+.agx-info-level{ display:flex; align-items:center; gap:var(--sp-2); }
+.agx-info-level .level-seg{ width:10px; }
+
+.agx-info-block h4{ margin:0 0 var(--sp-2); font-size:var(--text-xs); font-weight:600; color:var(--foreground); }
+.agx-info-block li + li{ border-top:1px solid var(--border); }
+.agx-info-row{
+  display:flex; align-items:center; gap:var(--sp-2); padding:9px 0;
+  text-decoration:none; color:var(--muted-foreground);
+}
+.agx-info-row svg{ flex:none; }
+.agx-info-t{
+  flex:1; min-width:0; font-size:var(--text-sm); font-weight:500; color:var(--foreground);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; transition:color 150ms var(--ease-out);
+}
+@media (hover:hover) and (pointer:fine){ .agx-info-row:hover .agx-info-t{ color:var(--primary-soft); } }
+.agx-info-p{
+  flex:none; max-width:40%; font-size:var(--text-2xs); color:var(--muted-foreground);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.agx-info-d{ flex:none; font-family:var(--font-mono); font-size:var(--text-3xs); color:var(--muted-foreground); }
+.agx-info-proj{ flex-wrap:wrap; row-gap:2px; }
+.agx-info-s{
+  flex-basis:100%; font-size:var(--text-2xs); line-height:1.45; color:var(--muted-foreground);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.agx-info-ind{
+  flex:none; padding:2px 8px; border-radius:var(--radius-pill); font-size:var(--text-3xs); font-weight:500;
+  color:var(--secondary-foreground); background:var(--tint-3);
+}
+.agx-info-tag{
+  flex:none; display:inline-flex; align-items:center; gap:4px;
+  padding:2px 8px; border-radius:var(--radius-pill); font-size:var(--text-3xs); font-weight:600;
+  color:var(--foreground); background:color-mix(in srgb, var(--primary-soft) 18%, transparent);
+}
+.agx-info-tag svg{ color:var(--primary-soft); }
+.agx-info-none{ margin:0; font-size:var(--text-xs); color:var(--muted-foreground); }
+
+.agx-info-foot{
+  flex:none; display:flex; justify-content:flex-end;
+  padding:var(--sp-3) var(--sp-4);
+}
+
+/* Higher contrast asked for: every edge solid enough to find without hunting. */
+@media (prefers-contrast:more){
+  .agx-role, .agx-card, .agx-tabs, .agx-docs-btn{ border-color:var(--border-strong); }
+  .agx-meta, .agx-stat dt{ color:var(--secondary-foreground); }
+}
+
+/* --- Narrower windows ------------------------------------------------------ */
+@media (max-width:1100px){
+  .agx-board{ flex:none; }
+  .agx-split{ flex:none; grid-template-columns:1fr; grid-template-rows:none; gap:var(--sp-6); }
+  .agx-role{ height:460px; }
+}
+@media (max-width:760px){
+  .agx-main{ padding:0 var(--sp-4) var(--sp-5); }
+  .agx-role{ padding:var(--sp-4); }
+  .agx-stats{ width:100%; justify-content:space-around; padding:0; }
+  .agx-stat{ padding:0 var(--sp-3); }
+  .agx-bars{ display:none; }
+  /* A phone: the card grows to its content, the documents button under the numbers. */
+  .agx-card{ height:auto; }
+  .agx-card-stats{ flex-wrap:wrap; row-gap:var(--sp-2); }
+  .agx-card-stats > .agx-docs-btn{ flex-basis:100%; height:32px; margin-left:0; border-left:1px solid var(--glass-hairline); }
+
+  .agx-role{ height:520px; }
+  .agx-info-stats{ grid-template-columns:1fr 1fr; row-gap:var(--sp-3); }
+  .agx-info-stats > div:nth-child(odd){ padding-left:0; border-left:none; }
+}
+
+/* =============================================================================
+   THE TWO WAYS IN — 2026-10-01 (Ana: "fă mai bine butoanele alea").
+
+   The seat lost its "Your consultant" headline; the cards carry it now. They
+   no longer stretch to the panel's full height with the words floating at
+   the bottom — two compact cards, centred in the seat, each showing who you
+   would get: a new level-1 robot with a plus, or your furthest-grown one.
+   The action at the bottom is drawn as a button, because it reads as one.
+   ============================================================================= */
+.panel > .panel-head.panel-head-back{ padding:var(--sp-4) var(--sp-5) 0; justify-content:flex-start; }
+
+/* Two big cards, a picture and one line each (Ana, 2026-10-01: "super
+   puțin text"), a step smaller than the whole seat, with light in them:
+   two blurred glows behind the robot and a soft pool it stands in. */
+.panel .pick-empty:not(.pick-waiting){ justify-content:center; align-items:center; padding:var(--sp-6); }
+.panel .pick-cards{
+  flex:none; margin:auto; width:100%; max-width:860px; height:min(100%, 560px); min-height:0;
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); grid-auto-rows:1fr; gap:var(--sp-5);
+}
+.panel .pick-empty .picker-card{
+  position:relative; isolation:isolate; overflow:hidden;
+  height:auto; min-height:0; width:auto;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:var(--sp-5);
+  padding:var(--sp-7) var(--sp-6); border-radius:22px;
+  background:linear-gradient(170deg, rgba(255,255,255,0.045), rgba(255,255,255,0.01) 60%), rgba(14,14,18,0.35);
+  backdrop-filter:blur(24px) saturate(1.7);
+  border:1px solid var(--border);
+  box-shadow:0 30px 60px -40px rgba(0,0,0,0.9);
+  transition:border-color 240ms var(--ease-out), transform 160ms var(--ease-out);
+}
+/* The two glows: a big one in the accent behind the robot, and a second,
+   cooler one low in the corner — different per card, so the two read as two. */
+.panel .pick-empty .picker-card::before,
+.panel .pick-empty .picker-card::after{
+  content:""; position:absolute; z-index:-1; border-radius:50%; pointer-events:none;
+  transition:opacity 480ms var(--ease-out), transform 640ms var(--ease-out);
+}
+.panel .pick-empty .picker-card::before{
+  width:72%; aspect-ratio:1; left:50%; top:38%; translate:-50% -50%;
+  background:radial-gradient(circle,
+    color-mix(in srgb, var(--primary-soft) 50%, #8CC8FF) 0,
+    color-mix(in srgb, var(--primary-soft) 55%, transparent) 32%, transparent 66%);
+  filter:blur(36px); opacity:.6;
+}
+.panel .pick-empty .picker-card::after{
+  width:70%; aspect-ratio:1; right:-20%; bottom:-26%;
+  filter:blur(48px); opacity:.5;
+}
+.panel .pick-empty .pc-create::after{ background:radial-gradient(circle, rgba(132,112,255,0.95) 0, rgba(124,108,255,0.5) 30%, transparent 64%); }
+.panel .pick-empty .pc-train::after{
+  right:auto; left:-18%;
+  background:radial-gradient(circle, rgba(56,200,255,0.9) 0, rgba(46,196,255,0.45) 30%, transparent 64%);
+}
+html.light .panel .pick-empty .picker-card{
+  background:linear-gradient(170deg, rgba(255,255,255,0.9), rgba(250,250,252,0.7));
+  border-color:rgba(0,0,0,0.07);
+  box-shadow:0 24px 50px -36px rgba(var(--shadow-rgb),0.35);
+}
+html.light .panel .pick-empty .picker-card::before{ opacity:.22; }
+html.light .panel .pick-empty .picker-card::after{ opacity:.16; }
+
+/* The robot stands in a small pool of light. */
+.pc-face::after{
+  content:""; position:absolute; left:50%; bottom:-10px; translate:-50% 0; z-index:-1;
+  width:120px; height:22px; border-radius:50%;
+  background:radial-gradient(closest-side, color-mix(in srgb, var(--primary-soft) 55%, transparent), transparent);
+  filter:blur(8px); opacity:.6;
+  transition:opacity 400ms var(--ease-out), transform 400ms var(--ease-out);
+}
+/* The lift is on a wrapper: the mascot animates its own transform and
+   translate (breathing, idle), and either would override a lift set on it. */
+.pc-lift{ position:relative; display:flex; transition:transform 420ms var(--ease-out); }
+
+/* Hover: the light comes up and the robot rises off its pool. */
+@media (hover:hover) and (pointer:fine){
+  .panel .pick-empty .picker-card:hover:not([aria-disabled="true"]){
+    border-color:color-mix(in srgb, var(--primary-soft) 40%, transparent);
+  }
+  .panel .pick-empty .picker-card:hover::before{ opacity:.9; transform:scale(1.12); }
+  .panel .pick-empty .picker-card:hover::after{ opacity:.8; transform:scale(1.15); }
+  .panel .pick-empty .picker-card:hover .pc-lift{ transform:translateY(-6px); }
+  .panel .pick-empty .picker-card:hover .pc-face::after{ opacity:.35; transform:scaleX(.8); }
+  .panel .pick-empty .picker-card:hover:not([aria-disabled="true"]) .picker-card-title{ color:#fff; }
+  html.light .panel .pick-empty .picker-card:hover:not([aria-disabled="true"]) .picker-card-title{ color:var(--foreground); }
+}
+@media (prefers-reduced-motion:reduce){
+  .panel .pick-empty .picker-card::before, .panel .pick-empty .picker-card::after,
+  .pc-face::after, .pc-lift{ transition:opacity 200ms ease; transform:none !important; }
+}
+@media (prefers-reduced-transparency:reduce){
+  .panel .pick-empty .picker-card{ backdrop-filter:none; background:var(--card); }
+}
+
+/* Who you would get. */
+.pc-face{ position:relative; isolation:isolate; display:flex; justify-content:center; }
+.pc-face .mascot{ filter:drop-shadow(0 12px 26px rgba(0,0,0,0.5)); }
+.pc-badge{
+  position:absolute; right:-4px; bottom:8px;
+  width:32px; height:32px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  color:#fff; background:var(--primary-soft);
+  box-shadow:0 0 0 4px var(--card), 0 6px 16px -4px color-mix(in srgb, var(--primary-soft) 60%, transparent);
+}
+.pc-badge svg{ stroke-width:2.6; transition:transform 380ms var(--ease-out); }
+.pc-badge{ transition:transform 380ms var(--ease-out), box-shadow 380ms var(--ease-out); }
+/* The ring it sends out on hover: one ping, not a loop. */
+.pc-badge::after{
+  content:""; position:absolute; inset:0; border-radius:50%; pointer-events:none;
+  box-shadow:0 0 0 0 color-mix(in srgb, var(--primary-soft) 70%, transparent);
+  opacity:0;
+}
+@media (hover:hover) and (pointer:fine){
+  .picker-card:hover .pc-badge{
+    transform:scale(1.14);
+    box-shadow:0 0 0 4px var(--card), 0 8px 22px -4px color-mix(in srgb, var(--primary-soft) 80%, transparent);
+  }
+  /* A quarter turn: the plus lands back on itself, so it reads as a turn. */
+  .picker-card:hover .pc-badge svg{ transform:rotate(90deg); }
+  .picker-card:hover .pc-badge::after{ animation:pcPing 900ms var(--ease-out) 1; }
+}
+@keyframes pcPing{
+  0%{ opacity:.9; box-shadow:0 0 0 0 color-mix(in srgb, var(--primary-soft) 70%, transparent); }
+  100%{ opacity:0; box-shadow:0 0 0 14px color-mix(in srgb, var(--primary-soft) 0%, transparent); }
+}
+@media (prefers-reduced-motion:reduce){
+  .pc-badge, .pc-badge svg{ transition:none; }
+  .picker-card:hover .pc-badge, .picker-card:hover .pc-badge svg{ transform:none; }
+  .picker-card:hover .pc-badge::after{ animation:none; }
+}
+
+/* The one line: the card's name, big. */
+.panel .pick-empty .picker-card .picker-card-title{
+  margin:0; max-width:14ch; text-align:center; color:var(--foreground);
+  font-family:var(--font-display); font-size:clamp(22px, 2.1vw, 30px); font-weight:600; line-height:1.15;
+  letter-spacing:-0.025em; text-wrap:balance; transition:color 180ms var(--ease-out);
+}
+
+/* A narrow seat: the two cards stack, each still half the seat's height. */
+@container panel (max-width: 520px){
+  .panel .pick-cards{ grid-template-columns:1fr; }
+  .panel .pick-empty .picker-card{ padding:var(--sp-5); gap:var(--sp-4); }
+  .panel .pick-empty .picker-card .picker-card-title{ font-size:var(--text-xl); }
+}
+
+/* =============================================================================
+   LIGHT, PROPERLY — 2026-10-01 (Ana: "arată bine cam numa pe dark").
+
+   Every pass above was drawn on the dark theme and then given an html.light
+   line that turned its glass white. On a #FAFAFA room that made the whole
+   screen white on white: panels, cards and fields had no edge, the shadows
+   were grey fog, and the pale-blue buttons washed out against the page.
+
+   Light gets its own structure instead of an inverted dark one:
+     - the room is a cool grey desk (--background in globals.css);
+     - anything that holds content is a SOLID white sheet on it;
+     - a card inside a sheet is one step grey, so the nesting reads;
+     - edges come from a hairline and a short tight shadow, not translucency;
+     - filled primaries are the deep accent with white ink.
+   Dark is untouched: every rule here is scoped to html.light. Last in the
+   file on purpose — it has to outrank each dated html.light line above.
+   ============================================================================= */
+
+/* --- The room: the accent as a faint light, and much less dust ------------ */
+html.light .app{
+  background:
+    radial-gradient(62% 50% at 8% -10%, color-mix(in srgb, var(--primary-soft) 12%, transparent), transparent 68%),
+    radial-gradient(58% 52% at 100% 108%, color-mix(in srgb, var(--primary) 9%, transparent), transparent 70%),
+    var(--background);
+}
+html.light main.workspace::before, html.light main.workspace::after{ background:none; }
+/* Dark specks on a light room read as dirt on the screen, not dust in the
+   light, so they are fewer-looking and much fainter here. */
+html.light{
+  --dust-1:color-mix(in srgb, var(--primary) 16%, transparent);
+  --dust-2:color-mix(in srgb, var(--primary) 22%, transparent);
+  --dust-3:color-mix(in srgb, var(--primary-soft) 30%, transparent);
+}
+
+/* --- The bar --------------------------------------------------------------- */
+html.light .app > header.navbar{
+  border-color:var(--border);
+  box-shadow:0 1px 2px rgba(var(--shadow-rgb),0.05), 0 8px 24px -16px rgba(var(--shadow-rgb),0.22);
+}
+html.light .app > header.navbar::after{ background:rgba(255,255,255,0.88); }
+html.light .navbar .nb-item{ color:var(--secondary-foreground); }
+html.light .navbar .nb-item svg{ color:var(--muted-foreground); }
+/* The selected item: a grey pill on the white bar. A white pill on a white
+   bar was the old one, and it was invisible. */
+html.light .navbar .nb-item.active{
+  color:var(--foreground); background:var(--tint-3); border-color:transparent; box-shadow:none;
+}
+html.light .navbar .nb-item.active svg{ color:var(--foreground); }
+@media (hover:hover) and (pointer:fine){
+  html.light .navbar .nb-item:not(.active):hover{ color:var(--foreground); background:var(--tint-2); }
+  html.light .navbar .nb-item:not(.active):hover svg{ color:var(--foreground); }
+  html.light .navbar .icon-btn:hover{ color:var(--foreground); background:var(--tint-2); border-color:var(--border-strong); }
+}
+html.light .navbar .icon-btn{ color:var(--secondary-foreground); background:#FFFFFF; border-color:var(--border); }
+html.light .navbar .nb-rule{ background:var(--border); }
+html.light .navbar .brand-logo-text .name{ color:var(--foreground); }
+
+/* --- The two chat panels: solid sheets ------------------------------------ */
+html.light .panel.consultant, html.light .panel.coach{
+  background:#FFFFFF; backdrop-filter:none;
+  border:1px solid var(--border); --head-bg:rgba(255,255,255,0.92);
+  box-shadow:0 1px 2px rgba(var(--shadow-rgb),0.04), 0 18px 40px -26px rgba(var(--shadow-rgb),0.24);
+}
+html.light .chat-head{ --muted-foreground:#5A5F6B; }
+
+/* The composer: a field on a white sheet needs an edge of its own. */
+html.light .chat-input.pb{
+  background:#FFFFFF;
+  box-shadow:0 0 0 1px var(--input), 0 1px 2px rgba(var(--shadow-rgb),0.05), 0 8px 20px -14px rgba(var(--shadow-rgb),0.18);
+}
+html.light .chat-input.pb:focus-within{
+  box-shadow:0 0 0 1px color-mix(in srgb, var(--primary-soft) 55%, transparent),
+             0 0 0 4px color-mix(in srgb, var(--primary-soft) 14%, transparent),
+             0 8px 20px -14px rgba(var(--shadow-rgb),0.18);
+}
+html.light .pb-send{ background:var(--tint-3); color:var(--muted-foreground); }
+html.light .pb-send.can-send, html.light .pb-send.pb-stop{ background:var(--foreground); color:#FFFFFF; }
+
+/* The user's own bubble keeps the deep accent; the glow under it was a
+   blue smear on white, so it becomes a plain short shadow. */
+html.light .msg-user{
+  background:var(--primary-grad); color:#FFFFFF;
+  box-shadow:0 1px 2px rgba(var(--shadow-rgb),0.08), 0 8px 18px -12px color-mix(in srgb, var(--primary) 55%, transparent);
+}
+
+/* --- The picker: two ways in ---------------------------------------------- */
+html.light .panel .pick-empty .picker-card{
+  background:#F6F7F9; backdrop-filter:none;
+  border:1px solid var(--border); box-shadow:none;
+}
+html.light .panel .pick-empty .picker-card::before{ opacity:.16; }
+html.light .panel .pick-empty .picker-card::after{ opacity:.10; }
+@media (hover:hover) and (pointer:fine){
+  html.light .panel .pick-empty .picker-card:hover:not([aria-disabled="true"]){
+    background:#FFFFFF;
+    border-color:color-mix(in srgb, var(--primary-soft) 40%, transparent);
+    box-shadow:var(--shadow-float);
+  }
+}
+/* The dark mascot on a pale card: a soft contact shadow, not a black halo. */
+html.light .pc-face .mascot{ filter:drop-shadow(0 10px 16px rgba(var(--shadow-rgb),0.22)); }
+html.light .pc-badge{ background:var(--primary-grad); }
+
+/* --- The agent dashboard -------------------------------------------------- */
+html.light .agx-role{
+  background:#FFFFFF; backdrop-filter:none;
+  border-color:var(--border);
+  box-shadow:0 1px 2px rgba(var(--shadow-rgb),0.04), 0 18px 40px -28px rgba(var(--shadow-rgb),0.22);
+}
+/* A card inside the white role sheet: one step grey, a hairline, no fog. */
+html.light .agx-card{
+  background:#F6F7F9; backdrop-filter:none;
+  border-color:var(--border); box-shadow:none;
+}
+html.light .agx-card::after{ background:none; }
+@media (hover:hover) and (pointer:fine){
+  html.light .agx-card:hover{ background:#FFFFFF; border-color:var(--border-strong); box-shadow:var(--shadow-float); }
+}
+html.light .agx-card-stats{ border-top-color:var(--border); }
+html.light .agx-card-stats > * + *{ border-left-color:var(--border); }
+html.light .agx-docs-btn{ background:#FFFFFF; border-color:var(--border); }
+html.light .agx-card-stats > .agx-docs-btn{ border-left-color:var(--border); }
+html.light .agx-free{ opacity:1; color:var(--muted-foreground); border-color:var(--border-strong); background:rgba(255,255,255,0.5); }
+@media (hover:hover) and (pointer:fine){
+  html.light .agx-free:hover{ color:var(--foreground); background:#FFFFFF; border-color:color-mix(in srgb, var(--primary-soft) 45%, transparent); }
+}
+
+/* The type tabs: a segmented control — a grey track, the chosen tab a white
+   key on it. */
+html.light .agx-tabs.navbar{ border-color:transparent; box-shadow:none; }
+html.light .agx-tabs.navbar::after{ background:var(--accent); backdrop-filter:none; }
+html.light .agx-tabs.navbar .nb-item.active{
+  background:#FFFFFF; border-color:transparent;
+  box-shadow:0 1px 2px rgba(var(--shadow-rgb),0.10), 0 0 0 1px rgba(var(--shadow-rgb),0.06);
+}
+html.light .agx-tabs-more.is-right{ background:linear-gradient(to right, transparent, var(--accent) 58%); }
+html.light .agx-tabs-more.is-left{ background:linear-gradient(to left, transparent, var(--accent) 58%); }
+
+/* --- The list pages -------------------------------------------------------- */
+html.light .flat-view .list-sheet{ background:#FFFFFF; border-color:var(--border); }
+@media (hover:hover) and (pointer:fine){
+  html.light .list-sheet .project-row:hover{ background:var(--tint-2); }
+}
+
+/* --- Floating things: menus, dialogs, sheets, the cookie note --------------- */
+html.light .popover, html.light .head-pop, html.light .head-pop.artf-pop, html.light .ver-menu,
+html.light .modal, html.light .sheet{ border-color:var(--border); }
+html.light .cookie-note{ border-color:var(--border); box-shadow:var(--shadow-modal); }
+
+/* --- Primary buttons: the same deep fill everywhere --------------------------
+   The dark theme's lift is a long accent glow; on white that turned into a
+   blue haze round the button. Here it is a short shadow and a lit top edge. */
+html.light :is(.btn-hero, .btn-plum, .btn-solid, .detail-select-btn, .btn-primary-wide, .dr-select){
+  color:#FFFFFF;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.22),
+             0 1px 2px rgba(var(--shadow-rgb),0.12),
+             0 8px 18px -10px color-mix(in srgb, var(--primary) 55%, transparent);
+}
+html.light :is(.btn-hero, .btn-solid, .detail-select-btn, .btn-primary-wide):disabled{
+  color:var(--muted-foreground); box-shadow:none;
+}
+html.light .avatar{
+  color:#FFFFFF;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.3), 0 0 0 1px rgba(var(--shadow-rgb),0.06);
+}
+
+/* --- The login room -------------------------------------------------------- */
+html.light .auth::before{ background:radial-gradient(38vw 38vw at 18% -10%, color-mix(in srgb, var(--primary-soft) 10%, transparent), transparent 70%); }
+
+/* --- The narrow screen's Consultant / Coach switch ---------------------------
+   A 12% accent wash over the grey room made the chosen tab look like the
+   disabled one next to a white tab. Light inverts it: the chosen tab is the
+   white sheet, the other one sits back on the room. */
+@media (max-width:1000px){
+  html.light .ps-tab{ background:rgba(255,255,255,0.45); border-color:var(--border); }
+  html.light .ps-tab.on{
+    background:#FFFFFF; color:var(--foreground);
+    border-color:color-mix(in srgb, var(--primary-soft) 50%, transparent);
+    box-shadow:var(--shadow-float);
+  }
+}

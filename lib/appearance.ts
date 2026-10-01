@@ -20,7 +20,8 @@ import { useSyncExternalStore } from "react";
  * paint before this lands is already correct — no flash.
  */
 
-/** The dot field behind everything. */
+/** The dust behind everything. The ids are the stored values and predate the
+ *  two-plane version, so "dots" still means "the field, holding still". */
 export type BackgroundMode = "plain" | "dots" | "drift";
 /** How much of the room shows through the floating surfaces. */
 export type GlassLevel = "solid" | "light" | "full";
@@ -33,9 +34,9 @@ export interface Appearance {
 export const DEFAULT_APPEARANCE: Appearance = { background: "drift", glass: "full" };
 
 export const BACKGROUND_OPTIONS: { id: BackgroundMode; label: string; hint: string }[] = [
-  { id: "plain", label: "Plain", hint: "Just the room, no pattern" },
-  { id: "dots", label: "Dots", hint: "A still field of dots" },
-  { id: "drift", label: "Drifting", hint: "The dots move, slowly enough to notice only if you look" },
+  { id: "plain", label: "Plain", hint: "Just the room, nothing in the air" },
+  { id: "dots", label: "Still", hint: "The dust, held in place" },
+  { id: "drift", label: "Drifting", hint: "Two planes of dust on the move, slowly enough to notice only if you look" },
 ];
 
 export const GLASS_OPTIONS: { id: GlassLevel; label: string; hint: string }[] = [

@@ -122,26 +122,39 @@
 }
 
 html.light {
-  --background:#FAFAFA;
-  --foreground:#18181B;
+  /* Light, take two (Ana, 2026-10-01: "arată bine cam numa pe dark").
+     The first light theme was the dark one inverted: a #FAFAFA room under
+     white glass, so every surface was white on white and the screen had no
+     edges. Light needs the opposite structure — a cool grey desk and solid
+     white sheets on it, separated by a hairline and a short, tight shadow
+     rather than by translucency. */
+  --background:#ECEEF2;
+  --foreground:#111318;
 
   --card:#FFFFFF;
-  --card-foreground:#18181B;
+  --card-foreground:#111318;
   --popover:#FFFFFF;
-  --popover-foreground:#18181B;
+  --popover-foreground:#111318;
 
-  --secondary:#F2F2F3;
-  --secondary-foreground:#52525B;
-  --muted:#F2F2F3;
-  --muted-foreground:#63636B;   /* 5.0–5.9:1 on the light surfaces (AA) */
-  --accent:#EFEFF1;
-  --accent-foreground:#18181B;
-  --surface-elevated:#EAEAEC;
+  /* On white, the pale end of the accent is a 2:1 smear with dark ink on
+     it. Light buttons are the deep accent with white ink instead — mixed from
+     the accent, so Settings still repaints them. 6.4:1 at the light end on
+     Blue, and every accent's --primary clears 6:1 against white. */
+  --primary-foreground:#FFFFFF;
+  --primary-grad:linear-gradient(140deg, color-mix(in srgb, var(--primary-soft) 55%, var(--primary)), var(--primary));
+
+  --secondary:#F1F2F5;
+  --secondary-foreground:#3D414A;
+  --muted:#F1F2F5;
+  --muted-foreground:#5A5F6B;   /* 6.5:1 on white, 5.6:1 on the room (AA) */
+  --accent:#ECEEF2;
+  --accent-foreground:#111318;
+  --surface-elevated:#F3F4F7;
 
   --destructive:#B84B3E;
   --destructive-foreground:#FBEAE6;
-  --success:#4F7D58;
-  --warn:#A56A17;
+  --success:#2F7A4A;
+  --warn:#9A6012;
 
   /* The light theme takes the same green a shade deeper, so the pill still
      carries against white instead of glowing off it. */
@@ -150,19 +163,21 @@ html.light {
   --go-fill:linear-gradient(180deg, #8DEFBF 0%, #4FD597 60%, #2BBE7C 100%);
   --go-glow:rgba(31,169,104,0.45);
 
-  --coach-1:#F0F0F2; --coach-2:#E4E4E8; --coach-3:#F7F7F8;
-  --consultant-1:#EFEFF1; --consultant-2:#E2E2E6; --consultant-3:#F8F8F9;
+  --coach-1:#E6E9EF; --coach-2:#DDE1E8; --coach-3:#F1F3F6;
+  --consultant-1:#E4E8EF; --consultant-2:#DADFE7; --consultant-3:#F2F4F7;
 
-  --border:rgba(0,0,0,0.09);
-  --border-strong:rgba(0,0,0,0.18);
-  --input:rgba(0,0,0,0.13);
+  /* Hairlines carry the structure now, so they are a step firmer than
+     before, and slightly cool so they sit with the room. */
+  --border:rgba(16,24,40,0.10);
+  --border-strong:rgba(16,24,40,0.19);
+  --input:rgba(16,24,40,0.15);
   --hl:rgba(255,255,255,0.7);
-  --tint-1:rgba(0,0,0,0.02);
-  --tint-2:rgba(0,0,0,0.04);
-  --tint-3:rgba(0,0,0,0.06);
-  --tint-4:rgba(0,0,0,0.09);
+  --tint-1:rgba(16,24,40,0.025);
+  --tint-2:rgba(16,24,40,0.045);
+  --tint-3:rgba(16,24,40,0.065);
+  --tint-4:rgba(16,24,40,0.095);
   --ink-max:#000000;
-  --shadow-rgb:24,24,28;
+  --shadow-rgb:16,24,40;
 }
 
 /* ── Dark mode base ─────────────────────────────────────────────────────────── */
@@ -209,17 +224,20 @@ body {
   --shadow-modal:0 24px 48px -20px rgba(var(--shadow-rgb),0.75);
 }
 html.light {
-  --glass-fill:linear-gradient(145deg, rgba(255,255,255,0.82), rgba(246,246,248,0.60) 50%, rgba(238,238,242,0.55));
-  --glass-fill-strong:linear-gradient(145deg, rgba(255,255,255,0.92), rgba(248,248,250,0.76) 50%, rgba(240,240,244,0.70));
-  --glass-body:rgba(255,255,255,0.45);
-  --glass-body-strong:rgba(255,255,255,0.62);
-  --glass-hairline:rgba(0,0,0,0.10);
-  --glass-inner:inset 0 1px 0 rgba(255,255,255,0.95), inset 0 -18px 36px -24px rgba(var(--shadow-rgb),0.08);
+  --glass-fill:linear-gradient(145deg, rgba(255,255,255,0.94), rgba(250,251,252,0.86) 50%, rgba(246,247,250,0.84));
+  --glass-fill-strong:linear-gradient(145deg, #FFFFFF, rgba(252,252,253,0.94) 50%, rgba(248,249,251,0.92));
+  /* Glass on a light room has almost nothing behind it to frost, so the
+     bodies are close to opaque: translucency there only reads as grey. */
+  --glass-body:rgba(255,255,255,0.84);
+  --glass-body-strong:rgba(255,255,255,0.94);
+  --glass-hairline:rgba(16,24,40,0.10);
+  --glass-inner:inset 0 1px 0 rgba(255,255,255,1);
   --glass-spec:linear-gradient(150deg, rgba(255,255,255,0.95), rgba(255,255,255,0.35) 36%, transparent 64%);
-  --glass-drop:0 22px 50px -26px rgba(var(--shadow-rgb),0.34);
-  --glow-sep:rgba(0,0,0,0.12);
-  --shadow-float:0 10px 24px -14px rgba(var(--shadow-rgb),0.28);
-  --shadow-modal:0 20px 40px -20px rgba(var(--shadow-rgb),0.3);
+  --glass-drop:0 1px 2px rgba(var(--shadow-rgb),0.06), 0 18px 40px -22px rgba(var(--shadow-rgb),0.28);
+  --glow-sep:rgba(16,24,40,0.10);
+  /* Short and tight: a sheet on a desk, not a card floating in fog. */
+  --shadow-float:0 1px 2px rgba(var(--shadow-rgb),0.06), 0 10px 26px -14px rgba(var(--shadow-rgb),0.24);
+  --shadow-modal:0 2px 6px rgba(var(--shadow-rgb),0.06), 0 28px 56px -24px rgba(var(--shadow-rgb),0.32);
 }
 
 /* ── Print: export the Transformation Concept as a clean PDF ──────────── */

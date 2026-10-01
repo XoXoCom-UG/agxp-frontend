@@ -38,6 +38,9 @@ export const IconFilter = make("filter");
 export const IconChevronDown = make("chevronDown");
 export const IconFolder = make("folder");
 export const IconHistory = make("history");
+export const IconClock = make("clock");
+export const IconTrash = make("trash");
+export const IconChart = make("chart");
 export const IconMore = make("more");
 export const IconUser = make("user");
 export const IconLogout = make("logout");
@@ -73,3 +76,7 @@ export const IconMail = make("mail");
 // --- Forms ---
 export const IconEye = make("eye");
 export const IconEyeOff = make("eyeOff");
+
+// --- Agent Dashboard ---
+export const IconMoreV = make("moreV");
+export const IconArchive = make("archive");

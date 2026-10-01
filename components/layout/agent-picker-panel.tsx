@@ -5,73 +5,36 @@ import type { Agent, AgentType, Method } from "@/lib/agents";
 import { listAllMethods, createAgent } from "@/lib/agents";
 import { assignAgent, type Project } from "@/lib/projects";
 import { levelFor, LEVEL_ORDER } from "@/lib/agent-progress";
+import { TYPE_CATALOG, MAX_PER_TYPE, type TypeTemplate } from "@/lib/agent-types";
 import { methodLabel } from "@/lib/method-labels";
 import { dateStr } from "@/lib/utils";
 import { describeDbError } from "@/lib/db-error";
 import { AgentMascot } from "@/components/layout/agent-mascot";
 import { useMascotReplies, levelFromReplies } from "@/lib/mascot-level";
 import {
-  IconBack, IconArrow, IconSearch, IconCheck, IconAlert, IconRefresh,
+  IconBack, IconArrow, IconSearch, IconCheck, IconAlert, IconRefresh, IconPlus,
 } from "@/components/layout/agxp-icons";
 
 type PanelState = "empty" | "list" | "detail" | "type" | "configure";
 
 const ROLE_LABEL: Record<AgentType, string> = { consultant: "Consultant", coach: "Coach" };
-// Plain words only. Patryk's review (2026-09-10): someone with no IT or
-// consulting background must not meet jargon on the first screen, or they
-// lose interest before the conversation starts.
-const ROLE_HEAD: Record<AgentType, { title: string; emptyTitle: string; emptyDesc: string }> = {
-  coach: {
-    title: "Your coach",
-    emptyTitle: "No coach yet",
-    emptyDesc: "Make a new one, or pick a coach you have worked with before.",
-  },
+/**
+ * Ana's two ways in (agxp-frontend-ana): make one, or train one you have.
+ *
+ * Cut to one line each on 2026-09-30, when the empty state grew a headline.
+ * The old copy explained the choice in three lines per card, and then the
+ * headline said the same thing again above them — the picker round Ana chose
+ * ("Billboard") keeps the headline and drops the explanation.
+ */
+const PICKER_HEAD: Record<AgentType, { create: string; train: string }> = {
   consultant: {
-    title: "Your consultant",
-    emptyTitle: "No consultant yet",
-    emptyDesc: "Make a new one, or pick a consultant you have worked with before.",
-  },
-};
-
-/** Ana's two ways in (agxp-frontend-ana): make one, or train one you have. */
-const PICKER_COPY: Record<AgentType, { createDesc: string; trainDesc: string }> = {
-  consultant: {
-    createDesc: "Choose the kind of help you need, then give your consultant a name.",
-    trainDesc: "Pick one you have worked with. It keeps what it learned in your earlier projects.",
+    create: "Create new AI consultant",
+    train: "Train one of your AI team members",
   },
   coach: {
-    createDesc: "Choose the kind of support you need, then give your coach a name.",
-    trainDesc: "Pick one you have worked with. It keeps what it learned about your team.",
+    create: "Create new AI coach",
+    train: "Train one of your AI team members",
   },
-};
-
-// Agent "type" catalog — a type carries fixed methods (Patryk, 2026-09-02:
-// the user shouldn't pick methods à la carte, the type decides them), all
-// grounded in methods that actually exist in the DB.
-interface TypeTemplate { type: string; sub: string; description: string; primary: string[]; secondary: string[]; status: "confirmed" | "preview"; }
-const TYPE_CATALOG: Record<AgentType, TypeTemplate[]> = {
-  consultant: [
-    { type: "AI Strategy Consultant", sub: "Strategy & AI transformation", status: "confirmed",
-      description: "Strategic analysis and structured guidance for AI and IT transformation projects.",
-      primary: ["As-Is/To-Be", "Gap-Analyse", "Requirements Engineering"], secondary: ["Process Mapping", "Impact Mapping"] },
-    { type: "Solution Architect", sub: "Systems & integration", status: "preview",
-      description: "Designs target-state systems and integration blueprints.",
-      primary: ["Gap-Analyse", "Process Mapping"], secondary: ["Impact Mapping"] },
-    { type: "Digital Transformation Manager", sub: "Roadmap & adoption", status: "preview",
-      description: "Coordinates roadmap execution and change adoption across teams.",
-      primary: ["Impact Mapping", "Process Mapping"], secondary: ["Requirements Engineering"] },
-  ],
-  coach: [
-    { type: "AI Business Analyst", sub: "Process & requirements", status: "confirmed",
-      description: "Supports structured project discovery, requirements clarification and project execution.",
-      primary: ["Requirements Engineering", "Process Mapping"], secondary: ["As-Is/To-Be"] },
-    { type: "Agile Coach / Scrum Master", sub: "Delivery & team flow", status: "preview",
-      description: "Coaches delivery teams on flow, ceremonies and iterative planning.",
-      primary: ["Process Mapping"], secondary: ["Impact Mapping"] },
-    { type: "Change Manager", sub: "Change & adoption", status: "preview",
-      description: "Guides teams through the human side of AI/IT transformations.",
-      primary: ["Impact Mapping", "As-Is/To-Be"], secondary: ["Gap-Analyse"] },
-  ],
 };
 
 export function AgentPickerPanel({ role, project, agents, ensureProject, onAssigned, onAgentCreated, projectCounts = {}, assignedAgent, onChangeAgent }: {
@@ -89,7 +52,6 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   onChangeAgent?: () => void;
 }) {
   const totalProjects = (a: Agent) => a.last_projects.length + (projectCounts[a.id] ?? 0);
-  const head = ROLE_HEAD[role];
   const [state, setState] = useState<PanelState>("empty");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -101,7 +63,8 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   const searchId = useId();
   const lockedHintId = useId();
 
-  const roleAgents = agents.filter(a => a.type === role);
+  // Archived agents keep their place on old projects but are not offered here.
+  const roleAgents = agents.filter(a => a.type === role && !a.archived_at);
   const filtered = roleAgents.filter(a => {
     const q = search.toLowerCase().trim();
     if (!q) return true;
@@ -162,17 +125,16 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
 
   return (
     <section className={`panel ${role}`}>
-      <div className="panel-head">
-        <AgentMascot role={role} size={51} enter level={trainedLevel} />
-        <div className="panel-head-main">
-          <h2>{head.title}</h2>
-        </div>
-        {showBack && (
+      {/* No "Your consultant" headline any more (Ana, 2026-10-01): the two
+          cards say what the seat is for. What is left of the head is the way
+          back, in the steps that have one. */}
+      {showBack && (
+        <div className="panel-head panel-head-back">
           <button className="back-link" onClick={() => setState(state === "detail" ? "list" : state === "configure" ? "type" : "empty")}>
             <IconBack size={11} /> Back
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {selectError && (
         <div className="inline-error" role="alert">
@@ -184,50 +146,50 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
         </div>
       )}
 
-      {state === "empty" ? (
-        // Two cards, one per way in. They sit side by side in the wide panel
-        // and stack in the narrow one — a container query on .panel, so it
-        // follows the panel's own width, not the window's.
+      {state === "empty" && locked ? (
+        // "…oder dieses ganze Fenster auch gar nicht haben, sondern es
+        // erscheint erst nachdem man Start geklickt hat." Greying the two
+        // cards out was the other option; an empty seat that simply says when
+        // it opens is quieter than two dimmed buttons nobody may press.
+        <div className="pick-empty pick-waiting">
+          <AgentMascot role={role} size={64} />
+          <p className="pw-title">Your coach joins next</p>
+          <p className="pw-sub" id={lockedHintId}>Pick a Consultant first. This seat opens once there is one.</p>
+        </div>
+      ) : state === "empty" ? (
+        // Patryk, 2026-09-30: the card said "Create new AI Consultant", then
+        // explained it in three lines, then said "Create new agent" again
+        // underneath — the same sentence twice, in two different words.
+        // "Also das reicht ja, oder? Es reicht." So a heading and a button,
+        // and nothing between them.
         <div className="pick-empty">
           <div className="pick-cards">
             {/* The whole card is the control, not just the strip at the
                 bottom — a card that lifts under the cursor but only counts a
                 click on its last 50px is a trap. So the CTA is a span and the
                 card itself is the button. */}
-            {/* Locked, the cards stay focusable (aria-disabled, not disabled)
-                so a keyboard user can reach them and hear why — and the same
-                reason is written under them for everyone else. */}
-            <button className="picker-card" aria-disabled={locked || undefined}
-              aria-describedby={locked ? lockedHintId : undefined}
-              data-tooltip={locked ? "Pick a Consultant first" : undefined}
-              onClick={() => { if (!locked) setState("type"); }}>
-              <span className="picker-card-head">
-                <span className="picker-card-title">Create new AI {ROLE_LABEL[role]}</span>
-                <span className="picker-card-desc">{PICKER_COPY[role].createDesc}</span>
+            {/* Two big cards, a picture and one line each (Ana, 2026-10-01:
+                "super puțin text"). The picture is who you would get: a
+                brand-new level-1 robot, or the furthest-grown one you have.
+                The whole card is the button; its line is its label. */}
+            <button className="picker-card pc-create" onClick={() => setState("type")}>
+              <span className="pc-face" aria-hidden="true">
+                {/* The badge rides with the robot when it lifts, and turns on hover. */}
+                <span className="pc-lift">
+                  <AgentMascot role={role} size={104} level={1} />
+                  <span className="pc-badge"><IconPlus size={16} /></span>
+                </span>
               </span>
-              <span className="picker-card-cta">
-                <span>Create new agent</span><IconArrow className="btn-arrow-end" />
-              </span>
+              <span className="picker-card-title">{PICKER_HEAD[role].create}</span>
             </button>
 
-            <button className="picker-card" aria-disabled={locked || undefined}
-              aria-describedby={locked ? lockedHintId : undefined}
-              data-tooltip={locked ? "Pick a Consultant first" : undefined}
-              onClick={() => { if (!locked) setState("list"); }}>
-              <span className="picker-card-head">
-                <span className="picker-card-title">Train existing AI {ROLE_LABEL[role]}</span>
-                <span className="picker-card-desc">{PICKER_COPY[role].trainDesc}</span>
+            <button className="picker-card pc-train" onClick={() => setState("list")}>
+              <span className="pc-face" aria-hidden="true">
+                <span className="pc-lift"><AgentMascot role={role} size={104} level={trainedLevel} /></span>
               </span>
-              <span className="picker-card-cta">
-                <span>Train existing agent</span><IconArrow className="btn-arrow-end" />
-              </span>
+              <span className="picker-card-title">{PICKER_HEAD[role].train}</span>
             </button>
           </div>
-          {locked && (
-            <p className="pick-locked-hint" id={lockedHintId}>
-              Pick a Consultant first. The Coach joins once there is one.
-            </p>
-          )}
         </div>
 
       ) : state === "list" ? (
@@ -278,11 +240,27 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
         <>
           <div className="step-eyebrow">Step 1 of 2: what kind of help?</div>
           <div className="type-wrap">
-            {TYPE_CATALOG[role].map(t => (
-              <div key={t.type} className="type-card">
+            {TYPE_CATALOG[role].map(t => {
+              // Four per type is the cap (Patryk, 2026-09-30). Past it the
+              // answer is not a failed insert — it is "delete one first",
+              // said before the click.
+              const used = roleAgents.filter(a => a.tagline === t.sub).length;
+              const full = used >= MAX_PER_TYPE;
+              return (
+              <div key={t.type} className={`type-card${full ? " is-full" : ""}`}>
                 <div className="type-card-top">
-                  <div><h3>{t.type}</h3><div className="desc">{t.description}</div></div>
-                  <button className="btn btn-ghost" onClick={() => { setDraft(t); setState("configure"); }}>Select <IconArrow /></button>
+                  <div>
+                    <h3>{t.type}</h3>
+                    <div className="desc">{t.description}</div>
+                  </div>
+                  <div className="tc-right">
+                    <span className="tc-count">{used} of {MAX_PER_TYPE}</span>
+                    {full ? (
+                      <span className="tc-full">Full — delete one first</span>
+                    ) : (
+                      <button className="btn btn-ghost" onClick={() => { setDraft(t); setState("configure"); }}>Select <IconArrow /></button>
+                    )}
+                  </div>
                 </div>
                 <div className="detail-section flush">
                   <span className="lbl">Can help with</span>
@@ -291,7 +269,8 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
                   </ul>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </>
 

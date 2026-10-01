@@ -115,6 +115,17 @@ const LEARNING_INSTRUCTION =
   `"deutsche Anbieter wegen DSGVO". NICHT ins Gedächtnis gehören Detailzahlen dieses einen Prozesses ` +
   `(die gehören ins Dokument) und keine sensiblen personenbezogenen Daten über einzelne Mitarbeiter.`;
 
+// The Agent Dashboard shows which industries an agent has worked in (Patryk,
+// 2026-09-30: "Branche, also z.B. Bank oder Software"). Nothing stores it, so
+// the agent names it once in a marker, the same way it reports progress;
+// lib/team-stats.ts reads it back. English labels, because the dashboard is.
+const INDUSTRY_INSTRUCTION =
+  `\n\nBRANCHE: Sobald klar ist, in welcher Branche das Projekt des Nutzers liegt, hänge EINMAL ` +
+  `am Ende deiner Antwort einen Marker an (eigene Zeile, wird herausgefiltert): ` +
+  `[[INDUSTRY: Name]] — 1 bis 3 Wörter auf Englisch, z.B. Banking, Insurance, Logistics, Retail, ` +
+  `Healthcare, Software & IT, Manufacturing, Public sector. Nicht raten: nur wenn der Nutzer es ` +
+  `gesagt hat oder es eindeutig ist. Danach nur wiederholen, wenn sich die Branche ändert.`;
+
 function memoryPrompt(memory: string[]): string {
   if (!memory.length) return "";
   return (
@@ -200,6 +211,7 @@ function systemPrompt(type: AgentType, name: string, memory: string[], experienc
     // so the prompt and the progress rail in the UI can't drift apart.
     agendaPrompt(DELIVERABLES[type]) +
     LEARNING_INSTRUCTION +
+    INDUSTRY_INSTRUCTION +
     memoryPrompt(memory) +
     experiencePrompt(experience) +
     peerPrompt(type, peer)

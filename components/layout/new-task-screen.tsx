@@ -8,6 +8,7 @@ import { listAgents, type Agent, type AgentType } from "@/lib/agents";
 import { projectCountsByAgent } from "@/lib/agent-progress";
 import type { PanelSnapshot, PeerContext } from "@/lib/peer-context";
 import { useChatSplit, useSplitLocked, broadcastSplit, clampShare, MIN_SHARE, MAX_SHARE } from "@/lib/chat-split";
+import { rememberProject } from "@/lib/last-project";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { describeDbError } from "@/lib/db-error";
 import { AgentNav } from "@/components/layout/agent-nav";
@@ -241,6 +242,13 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
 
   useEffect(() => { if (!authLoading && !token) router.replace("/login"); }, [token, authLoading, router]);
 
+  // The bar's way back, written from the only screen that knows which project
+  // is open. Named projects only — "New Project" as a button label tells the
+  // user nothing about where it goes.
+  useEffect(() => {
+    if (project?.id) rememberProject({ id: project.id, name: project.name });
+  }, [project?.id, project?.name]);
+
   useEffect(() => {
     if (!token) return;
     let alive = true;
@@ -430,6 +438,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
         startEnabled={!!project?.consultant_agent_id}
         startHint={!started && !!project?.consultant_agent_id && !!project?.coach_agent_id}
         started={started}
+        projectName={project?.name}
         onStart={started ? undefined : () => setStarted(true)} />
       {/* No page title and no description: clicking "New Task" should show the
           two agents and nothing else (Patryk, 2026-09-11 — "wenn es so clean

@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
+import { Fragment, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/lib/auth-context";
-import { IconSun, IconMoon, IconUser, IconLogout, IconArrow } from "@/components/layout/agxp-icons";
+import { IconSun, IconMoon, IconUser, IconLogout, IconArrow, IconPlus, IconFolder, IconClock, IconChart } from "@/components/layout/agxp-icons";
+import { PLACEHOLDER_PROJECT_NAME } from "@/lib/projects";
+import { useLastProject } from "@/lib/last-project";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { usePresence, phaseClass } from "@/lib/use-presence";
 import { SettingsSheet } from "@/components/layout/settings-sheet";
@@ -22,10 +24,11 @@ function activeTab(pathname: string): Tab {
 
 /** The two places you can go from the workspace. "New task" is not one of
  *  them — it is the workspace itself, so it sits with the brand on the left
- *  (Ana, 2026-09-28 mockup) instead of in this group. */
-const TABS: { id: Tab; href: string; label: string }[] = [
-  { id: "history", href: "/dashboard/history", label: "Project history" },
-  { id: "agents", href: "/dashboard/agents", label: "Agent dashboard" },
+ *  (Ana, 2026-09-28 mockup) instead of in this group. Each carries an icon:
+ *  a bar is easier to scan by shape than by reading four words twice. */
+const TABS: { id: Tab; href: string; label: string; icon: typeof IconClock }[] = [
+  { id: "history", href: "/dashboard/history", label: "Project History", icon: IconClock },
+  { id: "agents", href: "/dashboard/agents", label: "Agent Dashboard", icon: IconChart },
 ];
 
 type PopoverName = "avatar" | null;
@@ -52,18 +55,30 @@ function useIsApple(): boolean {
   return useSyncExternalStore(noSubscribe, detectApple, () => true);
 }
 
-export function AgentNav({ startEnabled, startHint, started, onStart }: {
+/** A project that was never renamed from its first message still carries the
+ *  placeholder, which is no use as a label. */
+function projectLabel(name: string): string {
+  return name === PLACEHOLDER_PROJECT_NAME ? "Untitled task" : name;
+}
+
+export function AgentNav({ startEnabled, startHint, started, projectName, onStart }: {
   /** Both halves chosen? The Start button lights up. */
   startEnabled?: boolean;
   /** Everything is picked and nothing has started — say so, once. */
   startHint?: boolean;
-  /** The conversation is running: the green pill turns into a label. */
+  /** The conversation is running: the green pill turns into the switcher. */
   started?: boolean;
+  /** The project this bar is sitting on, so the chip can name it. */
+  projectName?: string;
   /** Omitted once the conversation has started — then there is nothing to start. */
   onStart?: () => void;
 }) {
   const { user, profileName, signOut } = useAuth();
   const pathname = usePathname();
+  const router = useRouter();
+  /** Where the bar goes back to. Written by the workspace whenever a project
+   *  is open, so History and the Agent Dashboard both have a way back. */
+  const lastProject = useLastProject();
   const { setTheme } = useTheme();
   const [popover, setPopover] = useState<PopoverName>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -152,11 +167,12 @@ export function AgentNav({ startEnabled, startHint, started, onStart }: {
   }
 
   return (
-    // A glass capsule in two halves (Ana, 2026-09-28 mockup): the brand, the
-    // state of this project and New Task on the left — everything about the
-    // work in front of you; the two other places, the theme and the account
-    // on the right. The blue is a light in the room behind the bar, seen
-    // through the glass, not painted on it.
+    // One rounded bar, read left to right (Ana's 2026-09-30 mockup): the mark,
+    // a hairline, then this project and the way to start another; the two
+    // other places, the theme and the account are pushed to the far end, each
+    // pair split by its own hairline. Every item carries an icon, so the bar
+    // is scanned by shape rather than read twice. The blue is a light in the
+    // room behind the glass, not paint on the bar.
     <>
     {/* First thing a keyboard reaches: jump past the bar to the work. */}
     <a className="skip-link" href="#main-content">Skip to content</a>
@@ -168,13 +184,17 @@ export function AgentNav({ startEnabled, startHint, started, onStart }: {
             agent or sends a message (see NewTaskScreen.ensureProject), so
             abandoned starts don't leave empty projects behind. */}
         <Link className="brand nb-brand" href="/dashboard" aria-label="AgentiX Projects, new task">
-          <BrandLogo size={30} />
+          <BrandLogo size={26} />
         </Link>
+
+        <span className="nb-rule" aria-hidden="true" />
 
         {onStart ? (
           <div className="start-wrap">
             {/* aria-disabled, not disabled: it stays focusable, so the reason
-                can be reached and read, not only hovered. */}
+                can be reached and read, not only hovered. Green, where the
+                blue "Current project" chip will stand once it is pressed:
+                one slot, two states, so the bar does not reflow. */}
             <button className={`btn btn-start${startHint ? " is-ready" : ""}`}
               aria-disabled={!startEnabled || undefined}
               aria-describedby={startEnabled ? undefined : startWhyId}
@@ -185,16 +205,26 @@ export function AgentNav({ startEnabled, startHint, started, onStart }: {
             {!startEnabled && <span className="visually-hidden" id={startWhyId}>Pick a Consultant first.</span>}
             {startHint && <span className="start-nudge">Both agents ready — press Start</span>}
           </div>
+        ) : lastProject && tab !== "newtask" ? (
+          /* One button, not a dropdown. From History or the Agent Dashboard
+             the only way back into a conversation was New Task, which starts
+             over; this returns you to the one you were last in. A dropdown
+             was tried and dropped on 2026-09-30 — "lieber kein Dropdown,
+             weil das verwirrt". */
+          <button className="nb-current" onClick={() => router.push(`/dashboard/project/${lastProject.id}`)}>
+            <IconFolder size={15} />
+            <span className="nbc-name">{projectLabel(lastProject.name)}</span>
+          </button>
         ) : started ? (
-          /* Started: the green pill stops being a button and becomes the
-             label for where you are — the same chip in the same place, so
-             pressing Start doesn't make the bar jump. */
-          <span className="nb-current">Current project</span>
+          <span className="nb-current is-static">
+            <IconFolder size={15} />
+            <span className="nbc-name">{projectName ? projectLabel(projectName) : "Current Project"}</span>
+          </span>
         ) : null}
 
-        <Link href="/dashboard" className={`nb-tab nb-lead${tab === "newtask" ? " active" : ""}`}
+        <Link href="/dashboard" className={`nb-item nb-lead${tab === "newtask" && !started ? " active" : ""}`}
           aria-current={tab === "newtask" ? "page" : undefined}>
-          New Task
+          <IconPlus size={15} />New Task
         </Link>
       </div>
 
@@ -202,13 +232,18 @@ export function AgentNav({ startEnabled, startHint, started, onStart }: {
         {/* Links, not buttons: they are places, so they open in a new tab,
             show their address on hover and announce which one you are on. */}
         <nav className="nb-tabs" aria-label="Main">
-          {TABS.map(t => (
-            <Link key={t.id} href={t.href} className={`nb-tab${tab === t.id ? " active" : ""}`}
-              aria-current={tab === t.id ? "page" : undefined}>
-              {t.label}
-            </Link>
+          {TABS.map((t, i) => (
+            <Fragment key={t.id}>
+              {i > 0 && <span className="nb-rule" aria-hidden="true" />}
+              <Link href={t.href} className={`nb-item${tab === t.id ? " active" : ""}`}
+                aria-current={tab === t.id ? "page" : undefined}>
+                <t.icon size={15} />{t.label}
+              </Link>
+            </Fragment>
           ))}
         </nav>
+
+        <span className="nb-rule" aria-hidden="true" />
 
         <div className="util">
 

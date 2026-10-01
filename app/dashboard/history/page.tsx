@@ -169,115 +169,122 @@ export default function ProjectHistoryPage() {
         </div>
         <div className="flat-view" onClick={() => setMenuFor(null)}>
           <div className="flat-col">
-            <div className="list-toolbar list-toolbar-flat">
-              <div className="search-box"><IconSearch size={13} />
-                <label className="visually-hidden" htmlFor={searchId}>Search projects</label>
-                <input id={searchId} type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search projects…" />
+
+            {/* One sheet for the whole list: the bar above is a defined
+                surface, and a bare column under it read as an unfinished
+                screen. Solid, never glass — glass on a content container
+                is a defect in the material model this app follows. */}
+            <div className="list-sheet">
+              <div className="list-toolbar list-toolbar-flat">
+                <div className="search-box"><IconSearch size={13} />
+                  <label className="visually-hidden" htmlFor={searchId}>Search projects</label>
+                  <input id={searchId} type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search projects…" />
+                </div>
               </div>
-            </div>
 
-            {actionError && (
-              <div className="load-error" role="alert">
-                <IconAlert size={14} />
-                <span className="le-text">{actionError}</span>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setActionError(null)}>Dismiss</button>
-              </div>
-            )}
+              {actionError && (
+                <div className="load-error" role="alert">
+                  <IconAlert size={14} />
+                  <span className="le-text">{actionError}</span>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setActionError(null)}>Dismiss</button>
+                </div>
+              )}
 
-            {loading && <SkeletonRows count={4} />}
+              {loading && <SkeletonRows count={4} />}
 
-            {!loading && loadError && (
-              <div className="load-error" role="alert">
-                <IconAlert size={14} />
-                <span className="le-text">Your projects couldn&apos;t be loaded. Check your connection and try again.</span>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={retry}><IconRefresh size={12} />Retry</button>
-              </div>
-            )}
+              {!loading && loadError && (
+                <div className="load-error" role="alert">
+                  <IconAlert size={14} />
+                  <span className="le-text">Your projects couldn&apos;t be loaded. Check your connection and try again.</span>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={retry}><IconRefresh size={12} />Retry</button>
+                </div>
+              )}
 
-            {!loading && !loadError && filtered.length === 0 && (
-              search.trim() ? (
-                <EmptyState title="No project by that name"
-                  body="Nothing here matches what you typed. Try a shorter word. The search only looks at project names." />
-              ) : (
-                <EmptyState title="Nothing here yet"
-                  body="Start a task and it turns up here on its own, with the agents that worked on it and everything they produced."
-                  action={<button className="btn btn-hero" onClick={() => router.push("/dashboard")}><IconPlus />New task</button>} />
-              )
-            )}
+              {!loading && !loadError && filtered.length === 0 && (
+                search.trim() ? (
+                  <EmptyState title="No project by that name"
+                    body="Nothing here matches what you typed. Try a shorter word. The search only looks at project names." />
+                ) : (
+                  <EmptyState title="Nothing here yet"
+                    body="Start a task and it turns up here on its own, with the agents that worked on it and everything they produced."
+                    action={<button className="btn btn-hero" onClick={() => router.push("/dashboard")}><IconPlus />New task</button>} />
+                )
+              )}
 
-            <div className="project-list">
-              {!loading && !loadError && filtered.map((p, i) => {
-                const name = displayName(p.name);
-                const isRenaming = renamingId === p.id;
-                const menuOpen = menuFor === p.id;
-                const menuId = `${uid}-menu-${p.id}`;
-                const content = (
-                  <>
-                    {/* Who worked on it, not a folder glyph — you recognise a
-                        project by its team faster than by its name. */}
-                    {team(p).length > 0 ? (
-                      <div className="pr-team" aria-hidden="true">
-                        {team(p).map(([r, id]) => (
-                          <span key={r} className={`pr-team-face ${r}`}><AgentMascot role={r} size={34} agentId={id} /></span>
-                        ))}
+              <div className="project-list">
+                {!loading && !loadError && filtered.map((p, i) => {
+                  const name = displayName(p.name);
+                  const isRenaming = renamingId === p.id;
+                  const menuOpen = menuFor === p.id;
+                  const menuId = `${uid}-menu-${p.id}`;
+                  const content = (
+                    <>
+                      {/* Who worked on it, not a folder glyph — you recognise a
+                          project by its team faster than by its name. */}
+                      {team(p).length > 0 ? (
+                        <div className="pr-team" aria-hidden="true">
+                          {team(p).map(([r, id]) => (
+                            <span key={r} className={`pr-team-face ${r}`}><AgentMascot role={r} size={34} agentId={id} /></span>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="pr-icon" aria-hidden="true"><IconFolder /></div>
+                      )}
+                      <div className="pr-main">
+                        <div className="pr-top">
+                          {isRenaming ? (
+                            <input ref={renameRef} className="pr-rename-input" type="text" value={renameDraft}
+                              aria-label="Project name" placeholder="Untitled task"
+                              onChange={e => setRenameDraft(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === "Enter") { e.preventDefault(); commitRename(p, true); }
+                                else if (e.key === "Escape") { e.preventDefault(); cancelRename(p); }
+                              }}
+                              onBlur={() => commitRename(p, false)} />
+                          ) : (
+                            <span className="pr-name">{name}</span>
+                          )}
+                          <span className={`status-pill ${statusClass(p.status)}`}><span className="sd" />{p.status}</span>
+                        </div>
+                        <div className="pr-meta">
+                          <span className="m">{teamLabel(p)}</span><span className="sep" aria-hidden="true">·</span>
+                          <span className="m">Updated {dateStr(p.last_activity_at)}</span>
+                        </div>
                       </div>
-                    ) : (
-                      <div className="pr-icon" aria-hidden="true"><IconFolder /></div>
-                    )}
-                    <div className="pr-main">
-                      <div className="pr-top">
-                        {isRenaming ? (
-                          <input ref={renameRef} className="pr-rename-input" type="text" value={renameDraft}
-                            aria-label="Project name" placeholder="Untitled task"
-                            onChange={e => setRenameDraft(e.target.value)}
-                            onKeyDown={e => {
-                              if (e.key === "Enter") { e.preventDefault(); commitRename(p, true); }
-                              else if (e.key === "Escape") { e.preventDefault(); cancelRename(p); }
-                            }}
-                            onBlur={() => commitRename(p, false)} />
-                        ) : (
-                          <span className="pr-name">{name}</span>
-                        )}
-                        <span className={`status-pill ${statusClass(p.status)}`}><span className="sd" />{p.status}</span>
-                      </div>
-                      <div className="pr-meta">
-                        <span className="m">{teamLabel(p)}</span><span className="sep" aria-hidden="true">·</span>
-                        <span className="m">Updated {dateStr(p.last_activity_at)}</span>
-                      </div>
+                      <span className="open-action" aria-hidden="true"><IconArrow /></span>
+                    </>
+                  );
+                  return (
+                    // The row is a link (the whole of it is clickable, see
+                    // .pr-link) with the ⋯ button beside it, not inside it.
+                    <div key={p.id} className="project-row row-in" style={{ "--i": i } as React.CSSProperties}>
+                      {isRenaming
+                        ? <div className="pr-link">{content}</div>
+                        : <Link href={`/dashboard/project/${p.id}`} className="pr-link">{content}</Link>}
+                      {!isRenaming && (
+                        <button ref={el => { moreRefs.current[p.id] = el; }} type="button" className="overflow-btn"
+                          data-tooltip="More" aria-label={`More actions for ${name}`}
+                          aria-haspopup="menu" aria-expanded={menuOpen} aria-controls={menuOpen ? menuId : undefined}
+                          onClick={e => { e.stopPropagation(); setMenuFor(menuOpen ? null : p.id); }}>
+                          <IconMore />
+                        </button>
+                      )}
+                      {menuOpen && (
+                        <div ref={menuRef} id={menuId} className="popover row-menu" role="menu" aria-label={`Actions for ${name}`}
+                          onClick={e => e.stopPropagation()} onKeyDown={e => menuKeyDown(closeMenu)(e)}>
+                          <button type="button" role="menuitem" tabIndex={-1} className="mi" onClick={() => startRename(p)}>
+                            <IconFolder size={13} />Rename project
+                          </button>
+                          <button type="button" role="menuitem" tabIndex={-1} className="mi"
+                            onClick={() => { setMenuFor(null); setConfirmArchive(p); }}>
+                            Archive project
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <span className="open-action" aria-hidden="true"><IconArrow /></span>
-                  </>
-                );
-                return (
-                  // The row is a link (the whole of it is clickable, see
-                  // .pr-link) with the ⋯ button beside it, not inside it.
-                  <div key={p.id} className="project-row row-in" style={{ "--i": i } as React.CSSProperties}>
-                    {isRenaming
-                      ? <div className="pr-link">{content}</div>
-                      : <Link href={`/dashboard/project/${p.id}`} className="pr-link">{content}</Link>}
-                    {!isRenaming && (
-                      <button ref={el => { moreRefs.current[p.id] = el; }} type="button" className="overflow-btn"
-                        data-tooltip="More" aria-label={`More actions for ${name}`}
-                        aria-haspopup="menu" aria-expanded={menuOpen} aria-controls={menuOpen ? menuId : undefined}
-                        onClick={e => { e.stopPropagation(); setMenuFor(menuOpen ? null : p.id); }}>
-                        <IconMore />
-                      </button>
-                    )}
-                    {menuOpen && (
-                      <div ref={menuRef} id={menuId} className="popover row-menu" role="menu" aria-label={`Actions for ${name}`}
-                        onClick={e => e.stopPropagation()} onKeyDown={e => menuKeyDown(closeMenu)(e)}>
-                        <button type="button" role="menuitem" tabIndex={-1} className="mi" onClick={() => startRename(p)}>
-                          <IconFolder size={13} />Rename project
-                        </button>
-                        <button type="button" role="menuitem" tabIndex={-1} className="mi"
-                          onClick={() => { setMenuFor(null); setConfirmArchive(p); }}>
-                          Archive project
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>

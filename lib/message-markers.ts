@@ -22,6 +22,8 @@ export interface ParsedMessage {
   doc: string | null;
   /** Lessons the agent wants to carry into later projects ([[MEMORY: ...]]). */
   memories: MemoryNote[];
+  /** The project's industry, once the agent knows it ([[INDUSTRY: Banking]]). */
+  industry: string | null;
 }
 
 /**
@@ -67,6 +69,13 @@ export function parseMarkers(raw: string): ParsedMessage {
     text = text.replace(docMatch[0], "");
   }
 
+  let industry: string | null = null;
+  const industryMatch = text.match(/\[\[INDUSTRY:\s*([^\]]*)\]\]/i);
+  if (industryMatch) {
+    industry = industryMatch[1].trim() || null;
+    text = text.replace(industryMatch[0], "");
+  }
+
   // Unlike the others, MEMORY can appear more than once in one answer.
   const memories: MemoryNote[] = [];
   const raws = text.match(/\[\[MEMORY:\s*[^\]]*\]\]/gi) ?? [];
@@ -80,7 +89,7 @@ export function parseMarkers(raw: string): ParsedMessage {
   }
 
   text = text.replace(/\n{3,}/g, "\n\n").trim();
-  return { text, choices, progress, topic, doc, memories };
+  return { text, choices, progress, topic, doc, memories, industry };
 }
 
 /** Escapes a string for use inside a RegExp. */

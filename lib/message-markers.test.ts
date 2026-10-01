@@ -11,6 +11,7 @@ const REPLY = [
   "[[TOPIC: 4/8 Pain points]]",
   "[[PROGRESS: 35]]",
   "[[MEMORY: branche | Der Nutzer arbeitet in der Logistik]]",
+  "[[INDUSTRY: Logistics]]",
 ].join("\n");
 
 test("parseMarkers pulls every marker out of the visible text", () => {
@@ -22,6 +23,7 @@ test("parseMarkers pulls every marker out of the visible text", () => {
   assert.equal(p.topic?.total, 8);
   assert.equal(p.topic?.label, "Pain points");
   assert.deepEqual(p.memories, [{ kind: "branche", fact: "Der Nutzer arbeitet in der Logistik" }]);
+  assert.equal(p.industry, "Logistics");
 });
 
 test("no marker fragment is ever visible while streaming", () => {

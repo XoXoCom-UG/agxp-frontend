@@ -65,17 +65,30 @@ export const BRAND_MARK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="40
 </svg>`;
 
 /**
- * Mark plus word mark: "Agenti" with the x in the accent blue, and PROJECTS
- * spaced out underneath. The old sub was set tight enough to read as one
- * smudged word — this one is wide, small and quiet, so it looks deliberate.
+ * Mark plus word mark: "AgentiX" with the X in the accent blue, and PROJECTS
+ * underneath, set to exactly the width of the name above it.
+ *
+ * That fit is done by the layout, not by a letter-spacing value someone
+ * eyeballed: the letters are flex items with `space-between`, so they spread
+ * to whatever width the name happens to be. A hand-picked tracking only lines
+ * up at one font size, in one browser, until someone changes the name.
+ *
+ * The letters are hidden from assistive tech and the word is carried by the
+ * visually-hidden span beside them — read letter by letter, "P R O J E C T S"
+ * is not the product's name.
  */
 export function BrandLogo({ size = 30 }: { size?: number }) {
   return (
     <span className="brand-logo">
       <BrandMark size={size} />
       <span className="brand-logo-text">
-        <span className="name">Agenti<span className="x">x</span></span>
-        <span className="sub">Projects</span>
+        <span className="name">Agenti<span className="x">X</span></span>
+        <span className="sub">
+          <span className="visually-hidden">Projects</span>
+          <span className="sub-fit" aria-hidden="true">
+            {[..."PROJECTS"].map((c, i) => <i key={i}>{c}</i>)}
+          </span>
+        </span>
       </span>
     </span>
   );

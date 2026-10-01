@@ -27,6 +27,14 @@ export interface Agent {
   description: string | null;
   expertise: string | null;
   knowledge_level: string;
+  /** Who made it; null for the seeded catalog. Only the creator may archive it. */
+  created_by: string | null;
+  /**
+   * Set when the user archived it (Ana, 2026-10-01: archive, not delete).
+   * An archived agent leaves the picker and frees its slot, but stays on the
+   * projects it worked on and can be restored from the Agent Dashboard.
+   */
+  archived_at: string | null;
   created_at: string;
   methods: Method[];
   primaryMethods: Method[];
@@ -44,7 +52,10 @@ export async function listAgents(): Promise<Agent[]> {
   const [{ data: agents, error: agentsErr }, { data: agentMethods, error: amErr }, { data: projects, error: projErr }] =
     await Promise.all([
       supabase.from("agents")
-        .select("id, type, name, avatar_placeholder, tagline, description, expertise, knowledge_level, created_at")
+        // "*" rather than a column list: archived_at only exists once
+        // migration 0006 has run, and naming it before then would fail the
+        // whole page instead of just showing nothing as archived.
+        .select("*")
         .order("created_at", { ascending: true }),
       supabase.from("agent_methods").select("agent_id, methods(id, skill_id, name, is_primary, description)"),
       supabase.from("agent_projects").select("id, agent_id, name, summary, created_at").order("created_at", { ascending: false }),
@@ -75,6 +86,7 @@ export async function listAgents(): Promise<Agent[]> {
     const methods = methodsByAgent.get(a.id) ?? [];
     return {
       ...a,
+      archived_at: a.archived_at ?? null,
       methods,
       primaryMethods: methods.filter(m => m.is_primary),
       secondaryMethods: methods.filter(m => !m.is_primary),
@@ -86,6 +98,30 @@ export async function listAgents(): Promise<Agent[]> {
 export async function getAgent(id: string): Promise<Agent | null> {
   const agents = await listAgents();
   return agents.find(a => a.id === id) ?? null;
+}
+
+/**
+ * Archives an agent the user created, or brings it back (archived = false).
+ * Returns the new archived_at.
+ *
+ * Archive, not delete (Ana, 2026-10-01): the cap of four per type needs a way
+ * to free a slot, but an agent's history and what it learned stay. RLS does
+ * not answer a forbidden UPDATE with an error — it filters the row out and
+ * reports success — so the row is read back, and "nothing changed" becomes an
+ * error describeDbError() turns into the fix (migration 0006).
+ */
+export async function setAgentArchived(id: string, archived: boolean): Promise<string | null> {
+  const supabase = createClient();
+  const archivedAt = archived ? new Date().toISOString() : null;
+  const { data, error } = await supabase.from("agents")
+    .update({ archived_at: archivedAt }).eq("id", id).select("id");
+  if (error) {
+    // The column is missing: migration 0006 has not run yet.
+    if (error.code === "42703" || error.code === "PGRST204") throw { code: "AGXP_ARCHIVE_DENIED", message: error.message };
+    throw error;
+  }
+  if (!data?.length) throw { code: "AGXP_ARCHIVE_DENIED", message: "The database did not allow changing this agent." };
+  return archivedAt;
 }
 
 export async function listAllMethods(): Promise<Method[]> {
