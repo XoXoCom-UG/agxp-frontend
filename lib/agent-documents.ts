@@ -22,9 +22,8 @@ export interface AgentDocument {
   createdAt: string;
 }
 
-/** How far back to look, and how many documents to keep. High enough to be
- *  "all of them" for anyone using this today — the Agent Dashboard lists every
- *  concept an agent wrote and shows the count on the card (lib/team-stats.ts). */
+/** How far back to look. One document per project survives the filter below,
+ *  so MAX_DOCS is a ceiling on projects, not on versions. */
 const MAX_PROJECTS = 100;
 const MAX_DOCS = 200;
 const MAX_MESSAGES = 2000;
@@ -54,6 +53,12 @@ export async function loadAgentDocuments(agentId: string, role: AgentType): Prom
     .limit(MAX_MESSAGES);
   if (mErr) throw mErr;
 
+  // Only the newest document per project. Every regeneration used to show up
+  // as its own entry, which turned three projects into nineteen rows — Patryk
+  // on 2026-10-02: "Ich denke, das ist to much. Eins reicht, immer das
+  // aktuellste reicht." The query is already ordered newest first, so the
+  // first one seen for a project IS the current one.
+  const seen = new Set<string>();
   const out: AgentDocument[] = [];
   for (const m of msgs ?? []) {
     const content = m.content as string;
@@ -61,6 +66,9 @@ export async function loadAgentDocuments(agentId: string, role: AgentType): Prom
     // The marker is the reliable signal; looksLikeDocument is the fallback for
     // the replies where the model forgot to write one.
     if (!p.doc && !looksLikeDocument(p.text)) continue;
+    const project = m.project_id as string;
+    if (seen.has(project)) continue;
+    seen.add(project);
     out.push({
       id: m.id as string,
       projectId: m.project_id as string,

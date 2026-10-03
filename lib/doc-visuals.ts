@@ -204,6 +204,127 @@ function stakeholders(body: string): string {
   return out ? `<div class="v-stake">${out}</div>` : "";
 }
 
+
+/* ---------------------------------------------------------------------------
+   The methods agreed with Patryk on 2026-10-02.
+   --------------------------------------------------------------------------- */
+
+/**
+ * Lexicon — `Thema | Begriff | Erklärung`, clustered by theme.
+ *
+ * Patryk's point (00:22:22): the first thing separating a beginner from an
+ * expert is the vocabulary, so the concept opens by explaining its own words.
+ * It has to survive being printed and handed to someone else, which is why it
+ * is `<details open>` rather than a collapsed drawer — the shared PDF is
+ * readable by default and the reader can fold it away once they know the terms.
+ */
+function lexicon(body: string): string {
+  const byTheme = new Map<string, [string, string][]>();
+  for (const r of rows(body)) {
+    const [theme, term, meaning] = [r[0] ?? "", r[1] ?? "", r.slice(2).join(" — ")];
+    if (!term) continue;
+    const key = theme || "Allgemein";
+    if (!byTheme.has(key)) byTheme.set(key, []);
+    byTheme.get(key)!.push([term, meaning]);
+  }
+  if (!byTheme.size) return "";
+
+  const groups = [...byTheme.entries()].map(([theme, terms]) => {
+    const list = terms.map(([term, meaning]) =>
+      `<div class="v-lex-row"><dt>${term}</dt><dd>${meaning || "—"}</dd></div>`).join("");
+    return `<section class="v-lex-grp"><h4>${theme}</h4><dl>${list}</dl></section>`;
+  }).join("");
+
+  const count = [...byTheme.values()].reduce((n, t) => n + t.length, 0);
+  return `<details class="v-lex" open>` +
+    `<summary><span class="v-lex-t">Lexikon</span>` +
+    `<span class="v-lex-n">${count} Begriffe</span></summary>` +
+    `<div class="v-lex-body">${groups}</div></details>`;
+}
+
+/**
+ * At a glance — `Zeile | Inhalt`, a label/value table.
+ *
+ * Was a bullet list, and Patryk's objection (00:37:00) was that you still have
+ * to read it: "Kann man das nicht besser verpacken?" A two-column table gives
+ * each line a weight a bullet cannot.
+ */
+function glance(body: string): string {
+  const out = rows(body).map(r => {
+    const label = r[0] ?? "";
+    const value = r.slice(1).join(" | ");
+    if (!label || !value) return "";
+    // Semicolons in the value are a list — React; Node; Postgres.
+    const parts = value.split(";").map(s => s.trim()).filter(Boolean);
+    const cell = parts.length > 1
+      ? `<span class="v-gl-tags">${parts.map(p => `<i>${p}</i>`).join("")}</span>`
+      : value;
+    return `<div class="v-gl-row"><span class="k">${label}</span><span class="v">${cell}</span></div>`;
+  }).join("");
+  return out ? `<div class="v-gl">${out}</div>` : "";
+}
+
+/**
+ * Gap analysis — `Dimension | heute | ziel | Lücke`.
+ *
+ * Patryk asked for the diff table from Matfeld (00:44:34), across goals,
+ * maturity, capabilities and skills, technologies, people and resources.
+ * Unlike `agxp-gap` this takes words, not numbers: "kein zentrales System"
+ * against "ein System, alle Regionen" is the honest answer for most rows, and
+ * forcing it into a bar chart was what made the old section feel invented.
+ */
+function diff(body: string): string {
+  const out = rows(body).map(r => {
+    const [dim, now, want] = [r[0] ?? "", r[1] ?? "", r[2] ?? ""];
+    const lack = r.slice(3).join(" — ");
+    if (!dim) return "";
+    return `<div class="v-diff-row">` +
+      `<span class="d">${dim}</span>` +
+      `<span class="now">${now || "—"}</span>` +
+      `<span class="arrow" aria-hidden="true"></span>` +
+      `<span class="want">${want || "—"}</span>` +
+      (lack ? `<span class="lack">${lack}</span>` : `<span class="lack muted">—</span>`) +
+      `</div>`;
+  }).join("");
+  if (!out) return "";
+  return `<div class="v-diff">` +
+    `<div class="v-diff-head"><span>Dimension</span><span>Heute</span><span></span>` +
+    `<span>Ziel</span><span>Lücke</span></div>${out}</div>`;
+}
+
+/**
+ * SWOT — four labelled lines, each a `;`-separated list.
+ *
+ * Patryk explained it on a shared screen (01:02:35): strengths, weaknesses,
+ * risks and opportunities OF THE PLAN, not of the company. The grid keeps the
+ * internal pair on top and the external pair below, which is how the tool is
+ * normally drawn and how the two halves are meant to be read against each
+ * other.
+ */
+function swot(body: string): string {
+  const want: [string, string, string][] = [
+    ["stärken", "Stärken", "good"],
+    ["schwächen", "Schwächen", "bad"],
+    ["chancen", "Chancen", "good"],
+    ["risiken", "Risiken", "warn"],
+  ];
+  const found = new Map<string, string[]>();
+  for (const line of body.split("\n")) {
+    const at = line.indexOf(":");
+    if (at < 0) continue;
+    const key = line.slice(0, at).trim().toLowerCase();
+    const items = line.slice(at + 1).split(";").map(s => s.trim()).filter(Boolean);
+    if (items.length) found.set(key, items);
+  }
+  const cells = want.map(([key, label, tone]) => {
+    const items = found.get(key) ?? [];
+    if (!items.length) return "";
+    return `<section class="v-swot-c ${tone}">` +
+      `<h4>${label}</h4><ul>${items.map(i => `<li>${i}</li>`).join("")}</ul></section>`;
+  }).filter(Boolean).join("");
+  return cells ? `<div class="v-swot">${cells}</div>` : "";
+}
+
 const RENDERERS: Record<string, (body: string) => string> = {
   "agxp-kpi": kpi,
   "agxp-gap": gap,
@@ -211,6 +332,10 @@ const RENDERERS: Record<string, (body: string) => string> = {
   "agxp-roadmap": roadmap,
   "agxp-risks": risks,
   "agxp-stakeholders": stakeholders,
+  "agxp-lexicon": lexicon,
+  "agxp-glance": glance,
+  "agxp-diff": diff,
+  "agxp-swot": swot,
 };
 
 /** Every block type the agent may use, for the system prompt. */

@@ -70,7 +70,31 @@ const VISUAL_SPEC =
   "6) Stakeholder-Board — `Gruppe | Anzahl | Haltung | Einfluss | Sorge`. Haltung ist " +
   "`Unterstützer`, `neutral` oder `skeptisch`, Einfluss `gering|mittel|hoch`, die Sorge möglichst " +
   "im Wortlaut der Betroffenen:\n" +
-  "```agxp-stakeholders\nDisponenten | 5 | skeptisch | hoch | \"Kein Computer kennt die B75 besser\"\n```";
+  "```agxp-stakeholders\nDisponenten | 5 | skeptisch | hoch | \"Kein Computer kennt die B75 besser\"\n```" +
+  "\n\n7) Lexikon — `Thema | Begriff | Erklärung`, nach Thema geclustert. Schreibe JEDEN Fachbegriff " +
+  "und jedes Fremdwort auf, das im Dokument vorkommt, und erklär ihn in einem Satz, den jemand " +
+  "ohne Vorwissen versteht:\n" +
+  "```agxp-lexicon\nSoftware | React | Baukasten für Benutzeroberflächen im Browser\n" +
+  "Software | API | Schnittstelle, über die zwei Programme miteinander reden\n" +
+  "Infrastruktur | Hosting | Der Server, auf dem die Anwendung tatsächlich läuft\n```\n\n" +
+  "8) Auf einen Blick — `Zeile | Inhalt`, eine Tabelle statt einer Aufzählung. Mehrere Werte in " +
+  "einer Zeile mit `;` trennen, sie werden dann zu einzelnen Chips:\n" +
+  "```agxp-glance\nKernproblem | Zwei Freigaben nacheinander kosten zwei von drei Wochen\n" +
+  "Beschreibung | Jeder Antrag wartet vier bis fünf Tage bei der Abteilungsleitung\n" +
+  "Benötigte Technologien | React; Node; Postgres\n" +
+  "Empfohlene Richtung | Erste Freigabe abschaffen, zweite automatisieren\n```\n\n" +
+  "9) Gap-Tabelle — `Dimension | heute | ziel | Lücke`. Anders als agxp-gap nimmt sie WORTE, " +
+  "nicht nur Zahlen. Für die Gap-Analyse über Ziele, Reifegrad, Fähigkeiten, Technologien, " +
+  "Menschen und Ressourcen:\n" +
+  "```agxp-diff\nReifegrad | Excel und E-Mail | ein System für alle Regionen | kein zentrales System\n" +
+  "Fähigkeiten | niemand kennt React | zwei Entwickler im Team | Schulung oder Einstellung\n" +
+  "Menschen | 5 Disponenten, kein Produktowner | Produktowner benannt | Rolle unbesetzt\n```\n\n" +
+  "10) SWOT — genau vier Zeilen `stärken:`, `schwächen:`, `chancen:`, `risiken:`, Punkte mit " +
+  "`;` getrennt. Bewertet wird DER PLAN, nicht das Unternehmen:\n" +
+  "```agxp-swot\nstärken: Prozess ist allen klar; Budget steht\n" +
+  "schwächen: kein Entwickler im Haus; Daten liegen in drei Systemen\n" +
+  "chancen: gleiche Lösung für die zweite Region; weniger Nachtschichten\n" +
+  "risiken: Disponenten blockieren; Freigabe hängt an einer Person\n```";
 
 /**
  * Is this user message the button, rather than something the person typed?
@@ -103,11 +127,17 @@ export const DELIVERABLES: Record<AgentType, Deliverable> = {
       { label: "Risks & dependencies", goal: "Was könnte das Projekt zum Scheitern bringen, welche Entscheidungen/Freigaben hängen an anderen Personen." },
     ],
     sections: [
-      { title: "Auf einen Blick", must: "Ein `agxp-kpi` Block mit 4 Kennzahlen aus dem Gespräch, danach 3-4 Bullets: Kern des Problems, empfohlene Richtung, erwarteter Nutzen." },
+      // Agreed with Patryk on 2026-10-02. The Lexicon comes first because the
+      // first thing separating a beginner from an expert is the vocabulary
+      // (00:22:22), and the whole concept is unreadable until that is fixed.
+      { title: "Lexikon", must: "Ein `agxp-lexicon` Block mit JEDEM Fachbegriff und Fremdwort, das weiter unten im Dokument vorkommt, nach Thema geclustert. Davor genau 2 Bullets: die Geschäftshypothese (der Mehrwert in einem Satz) und wofür das Ganze verwendet wird." },
+      { title: "Auf einen Blick", must: "Ein `agxp-glance` Block mit genau diesen Zeilen: Kernproblem, Beschreibung, Benötigte Technologien, Empfohlene Richtung. Danach ein `agxp-kpi` Block mit 4 Kennzahlen aus dem Gespräch. Keine Bullets." },
       { title: "Prozess: heute und morgen", must: "Ein `agxp-flow` Block mit je 4-6 Schritten in as-is und to-be (`*` an jedem automatisierten Schritt), danach 3-5 Bullets zu den Unterschieden." },
-      { title: "Gap-Analyse", must: "Ein `agxp-gap` Block mit 3-5 Indikatoren, danach pro Indikator ein Bullet: was blockiert das heute." },
+      { title: "Gap-Analyse", must: "Ein `agxp-diff` Block mit einer Zeile je Dimension: Ziele, Reifegrad, Fähigkeiten und Skills, Technologien, Menschen, sonstige Ressourcen. Nur die Dimensionen, über die der Nutzer tatsächlich gesprochen hat — lieber vier echte Zeilen als sechs erfundene. Danach höchstens 3 Bullets zur größten Lücke." },
+      { title: "SMART-Ziele", must: "Eine Tabelle: Ziel | Messbar woran | Bis wann | Wer. Jedes Ziel muss mit Ja oder Nein beantwortbar sein — \"die App wird genutzt\" ist kein Ziel, \"20 Touren pro Woche laufen über die App\" ist eins. 2-4 Zeilen, kein Visual." },
+      { title: "SWOT", must: "Ein `agxp-swot` Block mit allen vier Feldern, je 2-4 Punkte. Bewertet wird der PLAN, nicht das Unternehmen. Danach genau 1 Bullet: welche Schwäche zuerst angegangen wird." },
       { title: "Tools und Technologien", must: "Eine Tabelle mit 2-4 namentlich benannten Optionen: Tool | Passt weil | Pro | Contra | Aufwand. Danach 1-2 Bullets mit der Empfehlung und der Begründung." },
-      { title: "Maßnahmen", must: "Ein `agxp-roadmap` Block mit 3 Phasen und je 1-3 Maßnahmen, danach pro Maßnahme ein Bullet mit Verantwortlichem." },
+      { title: "Maßnahmen", must: "Ein `agxp-roadmap` Block mit 3 Phasen und je 1-3 Maßnahmen, nach Priorität geordnet, danach pro Maßnahme ein Bullet mit Verantwortlichem." },
       { title: "Erfolgsmessung", must: "Ein `agxp-gap` Block mit den Kennzahlen (heute vs. Ziel), danach pro Kennzahl ein Bullet: wie und wann gemessen." },
       { title: "Risiken", must: "Ein `agxp-risks` Block mit 3-5 Risiken, danach pro Risiko ein Bullet mit der Gegenmaßnahme." },
       { title: "Nächste Schritte", must: "Genau 3 Bullets, jedes mit Verantwortlichem und Termin. Kein Visual." },
