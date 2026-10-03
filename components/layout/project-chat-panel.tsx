@@ -247,6 +247,12 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
 
   const stationIdx = station ? station.index - 1 : (messages.length > 0 ? 0 : -1);
   const stationLabel = station?.label || deliverable.stations[Math.max(0, stationIdx)]?.label || "";
+  // How many stations this conversation actually has, from the agent rather
+  // than from the full agenda. A capped plan is told it has three of eight,
+  // so a rail built from deliverable.stations.length would draw five ticks
+  // the interview never reaches and read "Step 3 of 8" at 100%. The marker is
+  // the one place that knows which agenda the agent was given.
+  const totalStations = station?.total ?? deliverable.stations.length;
 
   const busy = sending || !!leavingId;
 
@@ -259,7 +265,7 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
         unread={unread} sending={sending} totalProjects={totalProjects}
         memory={memory} learned={learned}
         doc={{
-          pct, stationIdx, stationLabel,
+          pct, stationIdx, stationLabel, totalStations,
           currentDoc: docFor(currentVersion), currentVersion, restored: restoredVersion !== null,
           versions: docs.map((d, i) => ({ version: i + 1, createdAt: d.m.created_at })),
         }}

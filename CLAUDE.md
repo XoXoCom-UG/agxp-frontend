@@ -19,7 +19,9 @@ Tests use Node's built-in test runner (`node:test`), not Jest/Vitest — test fi
 - Run one file: `node --experimental-strip-types --test lib/message-markers.test.ts`
 - Filter by test name: add `--test-name-pattern="<substring>"`
 
-Required env vars (`.env.local`): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `ANTHROPIC_API_KEY` (server-only, used by the chat API route), `NEXT_PUBLIC_SENTRY_DSN` (optional, Sentry only initializes when `NODE_ENV === "production"`).
+Required env vars (`.env.local`): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `ANTHROPIC_API_KEY` (server-only, used by the chat API route), `SUPABASE_SERVICE_ROLE_KEY` (server-only — plans and usage are written with it precisely because the user must not be able to write them; see Plans and metering below), `NEXT_PUBLIC_SENTRY_DSN` (optional, Sentry only initializes when `NODE_ENV === "production"`).
+
+Without `SUPABASE_SERVICE_ROLE_KEY` the app still runs: every account reads as the free plan and nothing is metered. That is deliberate — a missing key must not lock anyone out — but it also means a silent misconfiguration looks exactly like a working free tier. If `agxp_usage` stays empty after real conversations, the key is missing.
 
 ## Big picture
 
@@ -58,6 +60,14 @@ This is **Agentix Projects (AgXP)**: a user pairs with two AI agents on one proj
 - Owner-scoped, per-user data: `agxp_projects`, `agxp_project_messages` (later migrations) — this is what actually gets written to at runtime, and it's what agent memory is read back from.
 - An agent's `knowledge_level` ("New"/"Medium"/"High") is **derived per-viewing-user** from how many of *that user's* projects it's been assigned to ([lib/agent-progress.ts](lib/agent-progress.ts)), not stored on the shared `agents` row — storing it there would leak one user's usage into everyone else's view of the same agent.
 - Loose SQL fix/diagnostic scripts live directly under `supabase/` (`fix_create_agent.sql`, `ensure_policies.sql`, `URGENT_fix_rls.sql`, `diagnose_agents.sql`), separate from `supabase/migrations/`. These are meant to be run manually in the Supabase SQL editor when RLS drifts from what the code expects — [lib/db-error.ts](lib/db-error.ts) maps Postgres error codes (e.g. `42501` row-level security) to which script fixes them, so a raw DB error surfacing in the UI should point at one of these files.
+
+### Plans and metering
+
+- **[lib/plans.ts](lib/plans.ts) is the single source of truth** for what Free / Mid / Max allow — imported by the API route that enforces it and the UI that shows it, the same discipline as `deliverables.ts`. Two numbers per plan, only one ever shown: `projects` is what the customer buys; `tokenCeiling` is an invisible backstop that exists because cost grows with the SQUARE of conversation length (the whole history is resent every turn), so one runaway conversation can cost more than a subscription.
+- **The plan is not in user metadata, on purpose.** `lib/auth-context.tsx` writes `auth.users.raw_user_meta_data` from the browser, so anything stored there is user-writable — a plan there is a plan they can set to `max` themselves. Plans live in `agxp_entitlements` and usage in `agxp_usage`; the user may `select` both and write neither ([0007_plans_and_usage.sql](supabase/migrations/0007_plans_and_usage.sql)). Every write goes through `SUPABASE_SERVICE_ROLE_KEY` in [lib/entitlement-server.ts](lib/entitlement-server.ts), which starts with `import "server-only"` so it can never reach a client bundle.
+- **Enforcement is split, and the split is the design.** The token ceiling runs server-side in the chat route and cannot be bypassed. The project count is checked in the browser (`lib/entitlement.ts`) for a clear message — it is a product rule, not the cost control, and someone who skips it still hits the ceiling. If it ever guards real revenue it wants a database trigger too.
+- **Usage is recorded after the stream closes**, from `stream.finalMessage().usage` — real numbers from the API, not an estimate. Deliberately fire-and-forget: the answer is already delivered, so a lost count is cheaper than a thrown error on a finished response.
+- **The system prompt is split into a cached block and a volatile one.** Prompt caching is a prefix match and `system` renders before `messages`, so the stable prompt carries the breakpoint and the peer transcript — which grows whenever the other panel answers — sits after it. Moving the peer block into the last user message would cache more, but it would restate another model's output as something the user said, which is what `peerPrompt()` exists to prevent. When there is no peer block the history gets a breakpoint too. Check `cache_read_input_tokens` in `agxp_usage`: if it stays zero, something is invalidating the prefix.
 
 ### Misc
 

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase";
+import { readEntitlement, QuotaError } from "@/lib/entitlement";
 import type { AgentType } from "@/lib/agents";
 
 export type ProjectStatus = "Not Started" | "In Progress" | "Completed" | "Archived";
@@ -75,6 +76,18 @@ export async function createProject(input: { name: string; description?: string;
   const { data: userData } = await supabase.auth.getUser();
   const ownerId = userData.user?.id;
   if (!ownerId) throw new Error("Nicht angemeldet.");
+
+  // The visible allowance. This stops the action early and explains why; it
+  // is not the cost control — that is the token ceiling in the chat route,
+  // which runs server-side and cannot be edited from the browser.
+  const left = await readEntitlement();
+  if (left.projectsLeft <= 0) {
+    throw new QuotaError(
+      left.plan.period === "week"
+        ? `You have used all ${left.plan.projects} projects on the ${left.plan.label} plan this week. The allowance resets on Monday.`
+        : `You have used all ${left.plan.projects} projects on the ${left.plan.label} plan this month.`,
+    );
+  }
 
   const { data, error } = await supabase
     .from("agxp_projects")

@@ -40,6 +40,8 @@ export interface HeadDocState {
   pct: number;
   stationIdx: number;
   stationLabel: string;
+  /** From the agent's own marker — a capped plan has fewer than the agenda. */
+  totalStations: number;
   /** The version Open shows — the newest, or the one Restore brought back. */
   currentDoc: DeliverableDoc | null;
   currentVersion: number;
@@ -223,7 +225,7 @@ export function ChatHead({
         >
           <DeliverableRail
             title={deliverable.title}
-            totalStations={deliverable.stations.length}
+            totalStations={doc.totalStations}
             pct={pct}
             stationIdx={doc.stationIdx}
             stationLabel={doc.stationLabel}

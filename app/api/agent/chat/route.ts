@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { AgentType } from "@/lib/agents";
 import { DELIVERABLES, agendaPrompt } from "@/lib/deliverables";
 import type { PeerContext } from "@/lib/peer-context";
+import { allowanceFor, blocked, recordUsage, peerReadingAllowed } from "@/lib/entitlement-server";
 
 const MODEL = "claude-sonnet-5";
 
@@ -213,7 +214,7 @@ ${text}
   );
 }
 
-function systemPrompt(type: AgentType, name: string, memory: string[], experience?: { level?: string; projects?: number }, peer?: PeerContext): string {
+function systemPrompt(type: AgentType, name: string, memory: string[], experience?: { level?: string; projects?: number }, stations?: number | null): string {
   return (
     ROLE_PROMPTS[type](name) +
     CONVERSATIONAL_STYLE +
@@ -221,12 +222,11 @@ function systemPrompt(type: AgentType, name: string, memory: string[], experienc
     CHOICES_INSTRUCTION +
     // The interview agenda and the finished document live in lib/deliverables
     // so the prompt and the progress rail in the UI can't drift apart.
-    agendaPrompt(DELIVERABLES[type]) +
+    agendaPrompt(DELIVERABLES[type], stations ?? null) +
     LEARNING_INSTRUCTION +
     INDUSTRY_INSTRUCTION +
     memoryPrompt(memory) +
-    experiencePrompt(experience) +
-    peerPrompt(type, peer)
+    experiencePrompt(experience)
   );
 }
 
@@ -272,22 +272,78 @@ export async function POST(req: NextRequest) {
     return fail(400, "bad_request", "The request was incomplete. Reload the page and try again.");
   }
 
+  // What this account is allowed, and what it has already spent. Read before
+  // the model call so a user over the ceiling is told rather than billed.
+  const allowance = await allowanceFor(userId);
+  const hit = blocked(allowance);
+  if (hit) return fail(402, hit.kind, hit.message);
+
+  // The free tier sees the Coach read along exactly once. Hiding the feature
+  // completely would mean the free user never meets the one thing they would
+  // be paying for; after the demonstration it is off until they upgrade.
+  const coachTurns = body.messages.filter(m => m.role === "assistant").length;
+  const peer = body.agentType === "coach" && !peerReadingAllowed(allowance.plan, coachTurns)
+    ? undefined
+    : body.peer;
+
   const anthropic = new Anthropic({ apiKey });
 
   // Streamed, not awaited whole: the answer used to appear after 15-20 seconds
   // of "is thinking...", which is the single biggest reason the app felt slow.
   // The body is plain text — the client appends every chunk as it lands.
-  const stream = anthropic.messages.stream({
-    model: MODEL,
-    max_tokens: 8192,
-    system: systemPrompt(
+  const sys = systemPrompt(
       body.agentType,
       body.agentName || "dein Agent",
       (body.memory ?? []).filter(m => typeof m === "string").slice(0, 20),
       body.experience,
-      body.peer,
-    ),
-    messages: body.messages.map(m => ({ role: m.role, content: m.content })),
+      allowance.plan.stations,
+  );
+
+  /*
+   * Prompt caching. A cache read costs a tenth of a fresh input token, and
+   * this app resends the whole history every turn, so without caching the
+   * bill grows with the SQUARE of the conversation length.
+   *
+   * Caching is a PREFIX match and the render order is system then messages,
+   * so everything after the first byte that changes misses. That decides the
+   * layout below:
+   *
+   *   block 1  the stable system prompt — role, style, agenda, memory. Does
+   *            not change within a conversation, so it is the breakpoint.
+   *   block 2  the other agent's transcript. This GROWS every time the other
+   *            panel answers, so it must come after the breakpoint. Putting
+   *            it in block 1 would invalidate the cache on most turns; moving
+   *            it into the last user message would cache more, but it would
+   *            also restate the other model's output as something the user
+   *            said, which is exactly the framing peerPrompt() exists to
+   *            prevent. Safety wins; the saving is smaller and honest.
+   *
+   * When there is no peer block — a single agent, or the free tier with peer
+   * reading spent — nothing volatile sits between the system prompt and the
+   * history, so the history gets a breakpoint too and the saving is much
+   * larger.
+   */
+  const peerBlock = peerPrompt(body.agentType, peer);
+  const system: Anthropic.TextBlockParam[] = [
+    { type: "text", text: sys, cache_control: { type: "ephemeral" } },
+  ];
+  if (peerBlock) system.push({ type: "text", text: peerBlock });
+
+  const msgs: Anthropic.MessageParam[] = body.messages.map(m => ({ role: m.role, content: m.content }));
+  const last = msgs.length - 1;
+  if (!peerBlock && last >= 0) {
+    const m = msgs[last];
+    msgs[last] = {
+      role: m.role,
+      content: [{ type: "text", text: m.content as string, cache_control: { type: "ephemeral" } }],
+    };
+  }
+
+  const stream = anthropic.messages.stream({
+    model: MODEL,
+    max_tokens: 8192,
+    system,
+    messages: msgs,
   });
 
   const encoder = new TextEncoder();
@@ -306,6 +362,22 @@ export async function POST(req: NextRequest) {
         console.error("[agent/chat] stream failed:", err);
       } finally {
         controller.close();
+        // What the request actually cost, from the API rather than an
+        // estimate. Deliberately after close(): the user already has their
+        // answer, so metering must not be able to delay or break it. A lost
+        // count is cheaper than a thrown error on a finished response.
+        try {
+          const done = await stream.finalMessage();
+          const u = done.usage;
+          await recordUsage(userId, allowance.periodStart, {
+            input: u.input_tokens ?? 0,
+            output: u.output_tokens ?? 0,
+            cacheRead: u.cache_read_input_tokens ?? 0,
+            cacheWrite: u.cache_creation_input_tokens ?? 0,
+          });
+        } catch (err) {
+          console.error("[agent/chat] usage not recorded:", err);
+        }
       }
     },
     cancel() {

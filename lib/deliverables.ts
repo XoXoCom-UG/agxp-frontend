@@ -193,14 +193,39 @@ export const DELIVERABLES: Record<AgentType, Deliverable> = {
  * comes from staying on a station and asking real follow-ups, not from firing a
  * numbered list of questions at the user.
  */
-export function agendaPrompt(d: Deliverable): string {
-  const total = d.stations.length;
-  const agenda = d.stations
+/**
+ * @param limit  How many stations this plan may work through. The free tier
+ *               stops at 3 of 8: the user meets the real product and hits a
+ *               wall that explains itself, instead of a counter that cuts
+ *               them off mid-answer. It is also what makes that tier
+ *               affordable — our cost grows with the SQUARE of the
+ *               conversation length, because the whole history is resent
+ *               every turn, so a third of the turns is far less than a third
+ *               of the price.
+ */
+export function agendaPrompt(d: Deliverable, limit: number | null = null): string {
+  const capped = limit !== null && limit < d.stations.length;
+  const stations = capped ? d.stations.slice(0, limit) : d.stations;
+  const total = stations.length;
+  const agenda = stations
     .map((s, i) => `${i + 1}. ${s.label} — ${s.goal}`)
     .join("\n");
   const sections = d.sections
     .map(s => `## ${s.title}\n   → ${s.must}`)
     .join("\n");
+
+  // A capped interview still produces a document — a shorter, honest one that
+  // names what is missing. A free tier that ends with nothing to show has
+  // demonstrated nothing.
+  const cap = capped
+    ? `
+
+WICHTIG — dieser Nutzer ist auf der kostenlosen Stufe: Das Interview endet nach Station ` +
+      `${total}. Danach erstellst du das Dokument mit dem, was du hast. Sektionen, für die dir die ` +
+      `Angaben fehlen, schreibst du trotzdem — mit "offen: dafür fehlen die Angaben aus den weiteren ` +
+      `Stationen" statt erfundener Inhalte. Sag dem Nutzer EINMAL, am Ende des Dokuments, dass die ` +
+      `vollständige Fassung die restlichen Stationen braucht. Ein Satz, kein Verkaufstext.`
+    : "";
 
   return (
     `\n\nDein Ergebnis-Dokument ist "${d.title}". Um es erstellen zu können, führst du den Nutzer ` +
@@ -269,6 +294,7 @@ export function agendaPrompt(d: Deliverable): string {
     `keinen Block weg.\n` +
     `- Keine Floskeln, keine Wiederholung der Interviewfragen, kein Meta-Kommentar über das Dokument.\n` +
     `- Jede neue Version ist eine vollständige Neuerstellung und konkreter als die vorherige.\n\n` +
-    `Am Ende des Dokuments stellst du eine kurze Frage (mit CHOICES), was angepasst werden soll.`
+    `Am Ende des Dokuments stellst du eine kurze Frage (mit CHOICES), was angepasst werden soll.` +
+    cap
   );
 }
