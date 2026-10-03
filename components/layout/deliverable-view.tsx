@@ -6,7 +6,7 @@ import type { AgentType } from "@/lib/agents";
 import { md, handleCodeCopyClick } from "@/lib/markdown";
 import { useDialogFocus } from "@/lib/use-dialog-focus";
 import { AgentMascot } from "@/components/layout/agent-mascot";
-import { IconX, IconCopy, IconCheck, IconDownload, IconPrint } from "@/components/layout/agxp-icons";
+import { IconX, IconCopy, IconCheck, IconDownload, IconPrint, IconList } from "@/components/layout/agxp-icons";
 
 export interface DeliverableDoc {
   /** "Transformation Concept" | "Change Plan" — whatever the agent titled it. */
@@ -52,6 +52,33 @@ function outline(markdown: string): Heading[] {
   return out;
 }
 
+/**
+ * Wraps every `##` section in a <details>, so a chapter can be folded away.
+ *
+ * Done on the rendered HTML rather than in md(): the chat uses the same
+ * renderer and a collapsible heading there would be absurd. <details> is the
+ * right primitive — keyboard operable, and it prints open through the same
+ * ::details-content rule the Lexicon uses.
+ *
+ * The <h2> keeps its md-h2 class inside the <summary>, which is what the
+ * contents panel and the scroll spy look for.
+ */
+function chapterise(html: string): string {
+  const parts = html.split(/(?=<h2 class="md-h2")/);
+  if (parts.length < 2) return html;
+  return parts
+    .map(part => {
+      if (!part.startsWith('<h2 class="md-h2"')) return part;
+      const close = part.indexOf("</h2>");
+      if (close < 0) return part;
+      const head = part.slice(0, close + 5);
+      const body = part.slice(close + 5);
+      return `<details class="doc-ch" open><summary>${head}</summary>` +
+        `<div class="doc-ch-body">${body}</div></details>`;
+    })
+    .join("");
+}
+
 function slug(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "document";
 }
@@ -66,6 +93,8 @@ export function DeliverableView({ doc, onClose }: { doc: DeliverableDoc; onClose
   /** After the first copy, the icon swap animates both ways. */
   const [copyUsed, setCopyUsed] = useState(false);
   const [active, setActive] = useState(0);
+  /** The contents panel is 190px the document could be using. */
+  const [tocOpen, setTocOpen] = useState(true);
   const paperRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -73,7 +102,7 @@ export function DeliverableView({ doc, onClose }: { doc: DeliverableDoc; onClose
   useDialogFocus(modalRef);
 
   const toc = useMemo(() => outline(doc.content), [doc.content]);
-  const html = useMemo(() => md(doc.content), [doc.content]);
+  const html = useMemo(() => chapterise(md(doc.content)), [doc.content]);
 
   useEffect(() => () => { if (copyTimer.current) clearTimeout(copyTimer.current); }, []);
 
@@ -86,9 +115,18 @@ export function DeliverableView({ doc, onClose }: { doc: DeliverableDoc; onClose
     return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
   }, [onClose]);
 
+  /**
+   * The document's own headings, in order.
+   *
+   * Selected by the classes md() gives them, NOT by tag name. The document
+   * graphics render their own <h4> elements — one per lexicon theme, four
+   * per SWOT — so a tag query returns those too, and the positional index
+   * from outline() then points at a theme label or runs off the end of the
+   * list. That is why the contents panel did nothing when you clicked it.
+   */
   function headingNodes(): HTMLElement[] {
     if (!bodyRef.current) return [];
-    return Array.from(bodyRef.current.querySelectorAll<HTMLElement>("h1,h2,h3,h4"));
+    return Array.from(bodyRef.current.querySelectorAll<HTMLElement>(".md-h1, .md-h2, .md-h3, .md-h4"));
   }
 
   function jumpTo(h: Heading) {
@@ -174,8 +212,12 @@ export function DeliverableView({ doc, onClose }: { doc: DeliverableDoc; onClose
   return createPortal(
     <div className="doc-portal">
       <div className="doc-overlay" onClick={onClose} />
-      <div ref={modalRef} className="doc-modal" role="dialog" aria-modal="true" aria-label={doc.title}>
+      <div ref={modalRef} className={`doc-modal${tocOpen ? "" : " toc-closed"}`} role="dialog" aria-modal="true" aria-label={doc.title}>
         <button className="doc-close" onClick={onClose} data-tooltip="Close (Esc)" aria-label="Close"><IconX size={15} /></button>
+        <button className="doc-toc-toggle" onClick={() => setTocOpen(v => !v)} aria-expanded={tocOpen}
+          data-tooltip={tocOpen ? "Hide contents" : "Show contents"} aria-label="Toggle contents">
+          <IconList size={15} />
+        </button>
         <div className="doc-main">
           <aside className="doc-toc">
             <div className="doc-side-head">

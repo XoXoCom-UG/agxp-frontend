@@ -5825,3 +5825,129 @@ html.light .auth::before{ background:radial-gradient(38vw 38vw at 18% -10%, colo
 @media print{
   .v-risk, .v-risk-row, .v-gap-row{ break-inside:avoid; }
 }
+
+/* =============================================================================
+   THE DOCUMENT READS AS CHAPTERS — 2026-10-04
+
+   The brief: make it feel like a great deal was said, with exactly the words
+   that are already there. So nothing here asks the model for more text. Every
+   rule takes something the document already contains and gives it the weight
+   it deserves.
+
+   Three moves do almost all of the work:
+
+     1. Chapters are numbered and announced. A heading with a number in the
+        margin and real air above it reads as a chapter; the same heading at
+        20px with 16px of space reads as a paragraph label.
+     2. The interpretation sentence becomes a lead statement. The spec already
+        requires exactly one fully bold sentence after each graphic, so the
+        content is sitting there — it was just rendering as bold body text.
+        Pulled out at 19px with a rule beside it, it carries the section.
+     3. The chapters fold. A reader who wants the numbers can close the prose
+        and still see the graphics; a reader who wants the argument can close
+        everything but the Summary.
+   ============================================================================= */
+
+/* --- Chapters ------------------------------------------------------------- */
+.doc-body{ counter-reset:chapter; }
+
+.doc-ch{ border:none; margin:0; }
+.doc-ch > summary{
+  list-style:none; cursor:pointer; position:relative;
+  margin:var(--sp-7) 0 var(--sp-5);
+  padding-top:var(--sp-5);
+  border-top:1px solid var(--border);
+}
+.doc-ch:first-of-type > summary{ margin-top:var(--sp-4); border-top:none; padding-top:0; }
+.doc-ch > summary::-webkit-details-marker{ display:none; }
+
+/* The number lives in the margin: present when you scan the left edge,
+   absent when you read the line. */
+.doc-ch > summary .md-h2{
+  counter-increment:chapter;
+  font-family:var(--font-display);
+  font-size:30px; font-weight:600; letter-spacing:-0.035em; line-height:1.15;
+  color:var(--foreground);
+  margin:0; padding-left:48px;
+}
+.doc-ch > summary .md-h2::before{
+  content:counter(chapter, decimal-leading-zero);
+  position:absolute; left:0; top:calc(var(--sp-5) + 7px);
+  font-family:var(--font-mono); font-size:var(--text-xs); font-weight:500;
+  letter-spacing:0.08em; color:var(--primary-soft);
+}
+.doc-ch:first-of-type > summary .md-h2::before{ top:7px; }
+/* The ::before the base stylesheet puts on every h2 would collide with it. */
+.doc-ch > summary .md-h2::after{ display:none; }
+
+/* A fold affordance that only shows itself to a pointer — it must not look
+   like a control in a printed document. */
+.doc-ch > summary::after{
+  content:""; position:absolute; right:2px; top:calc(var(--sp-5) + 14px);
+  width:8px; height:8px; opacity:0;
+  border-right:1.5px solid var(--text-muted); border-bottom:1.5px solid var(--text-muted);
+  transform:rotate(45deg); transition:opacity .15s var(--ease-out), transform .18s var(--ease-out);
+}
+.doc-ch[open] > summary::after{ transform:rotate(-135deg); }
+@media (hover:hover) and (pointer:fine){
+  .doc-ch > summary:hover::after{ opacity:1; }
+  .doc-ch > summary:hover .md-h2{ color:var(--primary-soft); }
+}
+.doc-ch > summary:focus-visible{ outline:2px solid var(--primary-soft); outline-offset:4px; border-radius:6px; }
+.doc-ch-body{ padding-bottom:var(--sp-5); }
+
+/* --- The lead statement ---------------------------------------------------
+   A paragraph that is entirely bold is the interpretation sentence the spec
+   asks for after every graphic. It was rendering as slightly heavier body
+   copy; at this size it becomes the thing the eye lands on. */
+.doc-body p:has(> strong:only-child){
+  margin:var(--sp-5) 0;
+  padding:2px 0 2px var(--sp-5);
+  border-left:2px solid color-mix(in srgb, var(--primary-soft) 55%, transparent);
+}
+.doc-body p:has(> strong:only-child) > strong{
+  display:block;
+  font-family:var(--font-display);
+  font-size:19px; font-weight:500; line-height:1.5; letter-spacing:-0.015em;
+  color:var(--foreground);
+}
+
+/* --- Reading rhythm -------------------------------------------------------
+   A consultancy document is read in one pass, so the measure matters more
+   than the density: ~70 characters is where the eye stops having to hunt for
+   the start of the next line. */
+.doc-body p, .doc-body li{ max-width:72ch; }
+.doc-body ul, .doc-body ol{ margin:0 0 var(--sp-5); }
+.doc-body li{ margin-bottom:9px; }
+.doc-body li::marker{ color:var(--text-muted); }
+.doc-body h3.md-h3{
+  font-family:var(--font-display); font-size:17px; font-weight:600;
+  letter-spacing:-0.02em; margin:var(--sp-5) 0 var(--sp-2);
+}
+
+/* The Management Summary is the one block of continuous prose, so it gets
+   the opening treatment: a touch larger, and set apart from what follows. */
+.doc-ch:nth-of-type(2) .doc-ch-body > p{
+  font-size:15.5px; line-height:1.85; color:var(--foreground); max-width:66ch;
+}
+
+/* --- The contents panel folds away ---------------------------------------- */
+.doc-toc-toggle{
+  position:absolute; top:14px; right:56px; z-index:3;
+  width:32px; height:32px; border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  border:1px solid var(--border); background:transparent; color:var(--text-muted);
+  transition:color .15s var(--ease-out), background-color .15s var(--ease-out);
+}
+@media (hover:hover) and (pointer:fine){
+  .doc-toc-toggle:hover{ color:var(--text-primary); background:var(--hl); }
+}
+.doc-modal.toc-closed .doc-toc{ display:none; }
+
+@media print{
+  .doc-ch > summary{ break-after:avoid; }
+  .doc-ch{ break-inside:auto; }
+  .doc-ch::details-content{ content-visibility:visible !important; }
+  .doc-ch > summary::after, .doc-toc-toggle{ display:none; }
+  .doc-body p:has(> strong:only-child){ break-inside:avoid; }
+}

@@ -56,6 +56,8 @@ export const ICON_PATHS = {
   /* The ⋮ on an Agent Dashboard card. */
   moreV: '<circle cx="12" cy="5" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="12" cy="19" r="1.2"/>',
   alert: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  /** Putting the document's contents panel away. */
+  list: '<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>',
 } as const;
 
 export type IconName = keyof typeof ICON_PATHS;

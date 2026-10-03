@@ -142,7 +142,7 @@ export const DELIVERABLES: Record<AgentType, Deliverable> = {
       { title: "Tools und Technologien", must: "Eine Tabelle mit 3-5 namentlich benannten Optionen: Tool | Passt weil | Pro | Contra | Aufwand. Danach eine begründete Empfehlung in 3-4 Bullets: welche Option, warum gerade diese gegen die zweitbeste, was man sich damit einhandelt, und unter welcher Bedingung die Empfehlung kippt." },
       { title: "Maßnahmen", must: "Ein `agxp-roadmap` Block mit 3 Phasen und je 2-3 Maßnahmen, nach Priorität geordnet. Danach pro Maßnahme ein Bullet mit Verantwortlichem, Aufwand und der Abhängigkeit, die sie blockieren könnte — und ein letztes Bullet dazu, was die erste Phase unbrauchbar machen würde." },
       { title: "Erfolgsmessung", must: "Ein `agxp-gap` Block mit den Kennzahlen (heute vs. Ziel), danach pro Kennzahl ein Bullet: wie und wann gemessen." },
-      { title: "Risiken", must: "Ein `agxp-risks` Block mit 3-5 Risiken, danach pro Risiko ein Bullet mit der Gegenmaßnahme." },
+      { title: "Risiken", must: "Ein `agxp-risks` Block mit 3-5 Risiken — die Gegenmaßnahme steht IM Block, in der vierten Spalte. Wiederhole sie danach NICHT als Bullet; jeder Risikoname stünde sonst zweimal auf der Seite. Die Bullets darunter sagen etwas Neues: welches Risiko zuerst adressiert wird und warum, und welche zwei Risiken zusammen eintreten würden." },
       { title: "Nächste Schritte", must: "Genau 3 Bullets, jedes mit Verantwortlichem, Termin und dem, was danach entschieden werden kann. Kein Visual." },
     ],
     generatePrompt:

@@ -80,3 +80,4 @@ export const IconEyeOff = make("eyeOff");
 // --- Agent Dashboard ---
 export const IconMoreV = make("moreV");
 export const IconArchive = make("archive");
+export const IconList = make("list");
