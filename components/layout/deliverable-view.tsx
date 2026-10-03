@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { AgentType } from "@/lib/agents";
 import { md, handleCodeCopyClick } from "@/lib/markdown";
@@ -98,17 +98,51 @@ export function DeliverableView({ doc, onClose }: { doc: DeliverableDoc; onClose
     scroller.scrollTo({ top: node.offsetTop - 24, behavior: "smooth" });
   }
 
-  // Scroll spy: the last heading that has passed the top of the sheet wins.
-  function onScroll() {
-    const scroller = paperRef.current;
-    if (!scroller) return;
+  /**
+   * Scroll spy: the last heading that has passed the top of the sheet wins.
+   *
+   * The offsets are measured once per document rather than per scroll event.
+   * This used to call querySelectorAll and then read `offsetTop` for every
+   * heading on every single scroll event — and reading offsetTop forces the
+   * browser to flush layout synchronously. On a long concept that is dozens
+   * of forced layouts a second while the compositor is mid-scroll, which is
+   * what made the document flicker on the way down.
+   */
+  const offsets = useRef<number[]>([]);
+  const measure = useCallback(() => {
     const nodes = headingNodes();
-    let idx = 0;
-    toc.forEach((h, i) => {
-      const node = nodes[h.domIndex];
-      if (node && node.offsetTop - 60 <= scroller.scrollTop) idx = i;
+    offsets.current = toc.map(h => nodes[h.domIndex]?.offsetTop ?? 0);
+  }, [toc]);
+
+  useEffect(() => {
+    measure();
+    // Fonts land and the document visuals size themselves after first paint,
+    // so the offsets taken a moment ago are already wrong.
+    const body = bodyRef.current;
+    if (!body || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(body);
+    return () => ro.disconnect();
+  }, [measure, html]);
+
+  // One update per frame at most, and no React render unless the heading
+  // actually changed — returning the same value bails out of the re-render.
+  const frame = useRef(0);
+  useEffect(() => () => { if (frame.current) cancelAnimationFrame(frame.current); }, []);
+
+  function onScroll() {
+    if (frame.current) return;
+    frame.current = requestAnimationFrame(() => {
+      frame.current = 0;
+      const scroller = paperRef.current;
+      if (!scroller) return;
+      const top = scroller.scrollTop;
+      let idx = 0;
+      for (let i = 0; i < offsets.current.length; i++) {
+        if (offsets.current[i] - 60 <= top) idx = i;
+      }
+      setActive(a => (a === idx ? a : idx));
     });
-    setActive(idx);
   }
 
   async function copy() {
