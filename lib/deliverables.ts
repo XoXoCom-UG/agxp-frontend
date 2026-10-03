@@ -64,9 +64,11 @@ const VISUAL_SPEC =
   "4) Zeitschiene — `Phase | Punkt; Punkt; Punkt`, 3-4 Phasen, chronologisch:\n" +
   "```agxp-roadmap\nsofort | Aufträge zentral sammeln; Lieferscheine per App\n30 Tage | Pilot mit einer Region\n" +
   "90 Tage | Rollout alle Regionen\n```\n\n" +
-  "5) Risiko-Matrix — `Risiko | Wahrscheinlichkeit | Auswirkung`, beide nur `gering`, `mittel` " +
-  "oder `hoch`:\n" +
-  "```agxp-risks\nDisponenten blockieren | hoch | hoch\nDatenqualität | mittel | mittel\n```\n\n" +
+  "5) Risiko-Register — `Risiko | Wahrscheinlichkeit | Auswirkung | Gegenmaßnahme`. Beide " +
+  "Stufen nur `gering`, `mittel` oder `hoch`. Die Gegenmaßnahme gehört MIT in die Zeile, nicht " +
+  "in ein Bullet darunter — sonst steht der Risikoname zweimal da:\n" +
+  "```agxp-risks\nDisponenten blockieren | hoch | hoch | Pilot mit Freiwilligen, Nutzen früh zeigen\n" +
+  "Datenqualität | mittel | mittel | Altdaten vor dem Start einmal bereinigen\n```\n\n" +
   "6) Stakeholder-Board — `Gruppe | Anzahl | Haltung | Einfluss | Sorge`. Haltung ist " +
   "`Unterstützer`, `neutral` oder `skeptisch`, Einfluss `gering|mittel|hoch`, die Sorge möglichst " +
   "im Wortlaut der Betroffenen:\n" +
@@ -238,13 +240,30 @@ export function agendaPrompt(d: Deliverable): string {
     VISUAL_SPEC +
     `\n\nAufbau des Dokuments: "# ${d.title}" als Titel, danach genau diese Sektionen als ` +
     `"##"-Überschriften, in dieser Reihenfolge:\n${sections}\n\n` +
-    `Qualitätsanspruch — das Dokument wird gescannt, nicht gelesen:\n` +
-    `- KEINE Absätze. Jede Sektion ist: der vorgesehene Visual-Block, danach kurze Bullets ` +
-    `(höchstens 15 Wörter pro Bullet, höchstens 5 Bullets pro Sektion).\n` +
+    // The 2026-09-09 rule was "graphics, barely any words", because the
+    // document was a wall of prose. It overshot: on 2026-10-03 the user's
+    // verdict was "mult prea scurt… nu imi explica destul", about the one
+    // artefact the product is sold on. The graphic still leads every
+    // section — what changed is that it now has to be explained, and a
+    // 15-word bullet cannot explain anything.
+    `Qualitätsanspruch — dieses Dokument ist das Ergebnis, für das der Nutzer bezahlt. Es wird ` +
+    `ausgedruckt, weitergegeben und einer Entscheiderin vorgelegt, die beim Gespräch nicht dabei ` +
+    `war. Sie muss es allein verstehen:\n` +
+    `- Jede Sektion hat genau diesen Aufbau: zuerst der vorgesehene Visual-Block, dann EIN fetter ` +
+    `Satz, der sagt, was man daraus mitnimmt (die Einordnung), dann 3-6 Bullets.\n` +
+    `- Der fette Satz interpretiert, er wiederholt nicht. Nicht "Die Wartezeit liegt bei 19 Tagen" ` +
+    `— das steht in der Grafik —, sondern "Zwei Drittel der Durchlaufzeit entstehen, bevor jemand ` +
+    `überhaupt arbeitet".\n` +
+    `- Jedes Bullet trägt einen Grund oder eine Folge, nicht nur ein Etikett. Bis zu 25 Wörter. ` +
+    `"Schulung nötig" ist kein Bullet; "Niemand im Team kennt React, also entscheidet die Wahl ` +
+    `des Tools auch, ob extern eingekauft werden muss" ist eins.\n` +
+    `- Beschreibe NIE in Worten, was die Grafik schon zeigt. Die Grafik liefert die Zahlen, der ` +
+    `Text liefert die Bedeutung.\n` +
     `- Jede Sektion wird ausgefüllt, und jeder Visual-Block enthält echte Werte aus dem Gespräch — ` +
     `keine Platzhalter, keine erfundenen Zahlen.\n` +
-    `- Fehlt eine Zahl, schreibe sie als Annahme in das Bullet darunter ("Annahme: ...") oder ` +
-    `markiere den Punkt als "offen: ..." — lass aber keinen Block weg.\n` +
+    `- Fehlt eine Zahl, schreib sie als Annahme in ein Bullet ("Annahme: …") oder markiere den ` +
+    `Punkt als "offen: …". Eine ehrliche Lücke ist wertvoller als eine erfundene Zahl — aber lass ` +
+    `keinen Block weg.\n` +
     `- Keine Floskeln, keine Wiederholung der Interviewfragen, kein Meta-Kommentar über das Dokument.\n` +
     `- Jede neue Version ist eine vollständige Neuerstellung und konkreter als die vorherige.\n\n` +
     `Am Ende des Dokuments stellst du eine kurze Frage (mit CHOICES), was angepasst werden soll.`

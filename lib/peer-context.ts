@@ -108,7 +108,7 @@ export function previewLine(text: string, max = 120): string {
 
 export const READ_ALONG_PROMPT =
   "(Systemhinweis, nicht vom Nutzer geschrieben. Du hast das parallele Gespräch mitgelesen. " +
-  "Melde dich EINMAL kurz von selbst: zwei bis drei Sätze dazu, was dir dort an der MENSCHLICHEN " +
+  "Melde dich EINMAL kurz von selbst: HÖCHSTENS zwei Sätze dazu, was dir dort an der MENSCHLICHEN " +
   "Seite aufgefallen ist — wer Kontrolle abgibt, wer übergangen wird, wo Widerstand entsteht — " +
   "und genau eine Frage dazu. Keine Begrüßung, keine Zusammenfassung des Gesagten, kein Dokument, " +
   "und wiederhole nicht, was der andere Agent ohnehin schon abdeckt.)";

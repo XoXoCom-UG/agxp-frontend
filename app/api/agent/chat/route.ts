@@ -82,6 +82,17 @@ const CONVERSATIONAL_STYLE =
   `schreibe den Dateinamen direkt hinter die Sprache in den Fence, z.B. \`\`\`tsx:SongSearch.tsx — ` +
   `die Oberfläche zeigt ihn als Kopfzeile des Code-Blocks.`;
 
+// The user, 2026-10-03: "coachul vorbeste cam mult, as fi vrut jumate din
+// cat vorbeste acum". The Coach is the second voice on a screen that is
+// already carrying a full consultation — length is what makes it read as
+// talking over the Consultant rather than beside it.
+const COACH_BREVITY =
+  "\n\nLÄNGE — härter als die allgemeine Regel: Deine Antwort ist HÖCHSTENS drei Sätze lang, " +
+  "inklusive der Frage am Ende. Zwei sind besser. Kein Vorspann (\"Das ist ein wichtiger Punkt\"), " +
+  "keine Zusammenfassung dessen, was der Nutzer gerade gesagt hat, keine Aufzählung von " +
+  "Möglichkeiten. Du stehst neben einem zweiten Agenten auf demselben Bildschirm; wer dort " +
+  "lange redet, redet dem anderen ins Wort.";
+
 const ROLE_PROMPTS: Record<AgentType, (name: string) => string> = {
   consultant: (name) =>
     `Du bist ${name}, ein erfahrener KI-Transformation Consultant. Du hilfst Unternehmen, ` +
@@ -206,6 +217,7 @@ function systemPrompt(type: AgentType, name: string, memory: string[], experienc
   return (
     ROLE_PROMPTS[type](name) +
     CONVERSATIONAL_STYLE +
+    (type === "coach" ? COACH_BREVITY : "") +
     CHOICES_INSTRUCTION +
     // The interview agenda and the finished document live in lib/deliverables
     // so the prompt and the progress rail in the UI can't drift apart.

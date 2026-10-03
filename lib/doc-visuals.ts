@@ -94,6 +94,10 @@ function gap(body: string): string {
     }
 
     const scale = Math.max(today, target, 1);
+    // pct() returns a formatted string for CSS; the dumbbell also needs the
+    // two positions as numbers to work out which end comes first.
+    const a = Number(pct(today, scale));
+    const b = Number(pct(target, scale));
     const better = target < today;
     const delta = today > 0 ? Math.round(((target - today) / today) * 100) : 0;
     const deltaTxt = delta === 0 ? "" :
@@ -102,9 +106,14 @@ function gap(body: string): string {
     return `<div class="v-gap-row">` +
       `<div class="top"><span class="n">${label}</span>` +
         `<span class="d"><b>${todayRaw}${u}</b> → <b>${targetRaw}${u}</b> ${deltaTxt}</span></div>` +
+      // Dumbbell: a dot where it is now, a dot where it should be, and the
+      // distance between them drawn as the only heavy mark. A filled bar
+      // implied the value was a quantity being filled up; most of these are
+      // durations and counts that need to come DOWN.
       `<div class="track">` +
-        `<i class="now" style="width:${pct(today, scale)}%"></i>` +
-        `<i class="goal" style="left:${pct(target, scale)}%"></i>` +
+        `<i class="span" style="left:${Math.min(a, b)}%; width:${Math.abs(b - a)}%"></i>` +
+        `<i class="now" style="left:${a}%"></i>` +
+        `<i class="goal" style="left:${b}%"></i>` +
       `</div></div>`;
   }).join("");
   return out ? `<div class="v-gap">${out}</div>` : "";
@@ -157,30 +166,46 @@ function roadmap(body: string): string {
  * legend underneath, which meant reading the chart was a lookup exercise.
  */
 function risks(body: string): string {
+  const SEV = [
+    { at: 4, cls: "crit", label: "kritisch" },
+    { at: 3, cls: "high", label: "hoch" },
+    { at: 2, cls: "mid", label: "mittel" },
+    { at: 0, cls: "low", label: "gering" },
+  ];
+  const WORD = ["gering", "mittel", "hoch"];
+
   const items = rows(body)
     .filter(r => r[0])
-    .map(([name, p = "", im = ""]) => ({ name, p: rank(p), im: rank(im) }));
+    .map(r => {
+      const p = rank(r[1] ?? "");
+      const im = rank(r[2] ?? "");
+      return { name: r[0], p, im, sev: p + im, fix: r.slice(3).join(" — ") };
+    })
+    // Worst first. A register is read top-down and acted on in that order,
+    // which a grid cannot express at all.
+    .sort((a, b) => b.sev - a.sev);
   if (!items.length) return "";
 
-  const cells: string[] = [];
-  for (let r = 0; r < 3; r++) {
-    const impact = 2 - r; // top row = highest impact
-    for (let c = 0; c < 3; c++) {
-      const here = items.filter(x => x.im === impact && x.p === c);
-      const sev = impact + c; // 0..4
-      // Only a cell that holds a risk gets a colour. Tinting the empty ones
-      // by position made the matrix look like it had findings where it had
-      // none — the severity is already carried by where the name sits.
-      const cls = here.length === 0 ? "" : sev >= 3 ? "hot" : sev === 2 ? "warm" : "";
-      const labels = here.map(x => `<span class="rname">${x.name}</span>`).join("");
-      cells.push(`<div class="cell${cls ? ` ${cls}` : ""}">${labels}</div>`);
-    }
-  }
+  const dots = (n: number) =>
+    [0, 1, 2].map(i => `<i${i <= n ? ' class="on"' : ""}></i>`).join("");
+
+  const out = items.map(x => {
+    const s = SEV.find(v => x.sev >= v.at)!;
+    return `<div class="v-risk-row ${s.cls}">` +
+      `<span class="sev">${s.label}</span>` +
+      `<span class="rn">${x.name}</span>` +
+      `<span class="sc" title="Wahrscheinlichkeit ${WORD[x.p]}">` +
+        `<em>W</em>${dots(x.p)}</span>` +
+      `<span class="sc" title="Auswirkung ${WORD[x.im]}">` +
+        `<em>A</em>${dots(x.im)}</span>` +
+      `<span class="fix">${x.fix || "—"}</span>` +
+      `</div>`;
+  }).join("");
 
   return `<div class="v-risk">` +
-    `<div class="grid">${cells.join("")}</div>` +
-    `<div class="axes"><span>Likelihood →</span><span>↑ Impact</span></div>` +
-    `</div>`;
+    `<div class="v-risk-head"><span>Schwere</span><span>Risiko</span>` +
+    `<span>Wahrsch.</span><span>Auswirkung</span><span>Gegenmaßnahme</span></div>` +
+    out + `</div>`;
 }
 
 /** `group | count | stance | influence | concern` — the Coach's stakeholder board. */

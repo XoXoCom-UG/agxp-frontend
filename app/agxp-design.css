@@ -1006,30 +1006,6 @@ html.light .m-antenna{ stroke:color-mix(in srgb, var(--primary) 45%, transparent
 .v-road-phase .it{ font-size:var(--text-2xs); color:var(--secondary-foreground); }
 
 /* Likelihood against impact. The risk is written in its own cell. */
-.v-risk{ margin:var(--sp-3) 0 var(--sp-5); }
-.v-risk .grid{ display:grid; grid-template-columns:repeat(3, 1fr); gap:4px; }
-.v-risk .cell{
-  min-height:56px; border-radius:var(--radius-xs); padding:6px;
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
-  text-align:center; font-size:var(--text-3xs); line-height:1.25; color:var(--muted-foreground);
-  border:1px solid var(--border);
-  background:color-mix(in srgb, var(--foreground) 4%, transparent);
-}
-.v-risk .cell.warm{
-  color:var(--foreground);
-  background:color-mix(in srgb, var(--warn) 22%, transparent);
-  border-color:color-mix(in srgb, var(--warn) 40%, transparent);
-}
-.v-risk .cell.hot{
-  color:var(--foreground);
-  background:color-mix(in srgb, var(--destructive) 26%, transparent);
-  border-color:color-mix(in srgb, var(--destructive) 45%, transparent);
-}
-.v-risk .rname{ display:block; }
-.v-risk .axes{
-  display:flex; justify-content:space-between; margin-top:var(--sp-2);
-  font-family:var(--font-mono); font-size:var(--text-3xs); letter-spacing:0.08em; color:var(--muted-foreground);
-}
 
 /* Who is affected, and what they actually said. */
 .v-stake{ display:grid; gap:6px; margin:var(--sp-3) 0 var(--sp-5); }
@@ -1064,12 +1040,10 @@ html.light .m-antenna{ stroke:color-mix(in srgb, var(--primary) 45%, transparent
   .v-kpi, .v-gap-row, .v-flow, .v-road-phase, .v-risk, .v-stake-row{ break-inside:avoid; }
   .v-gap-row .goal{ box-shadow:none !important; background:#154E80 !important; }
   .v-gap-row .now{ background:#9aa3ad !important; }
-  .v-tile, .v-flow .step, .v-risk .cell, .v-stake-row{
+  .v-tile, .v-flow .step, .v-risk-row, .v-stake-row{
     border-color:#d5d8dd !important; background:#fff !important;
   }
   .v-flow .step.auto{ background:#e9eff6 !important; border-color:#154E80 !important; color:#0f3d66 !important; }
-  .v-risk .cell.hot{ background:#fdeceb !important; }
-  .v-risk .cell.warm{ background:#fdf5e7 !important; }
   .v-tile b{ color:#111 !important; }
   .v-tile.t-bad b{ color:#b3372a !important; }
   .v-tile.t-good b{ color:#2f7a58 !important; }
@@ -1171,7 +1145,6 @@ html.light .m-antenna{ stroke:color-mix(in srgb, var(--primary) 45%, transparent
   .v-tile b{ font-size:var(--text-xl); }
   .v-flow-lane{ flex-direction:column; gap:6px; }
   .v-flow-lane .k{ width:auto; padding-top:0; }
-  .v-risk .cell{ min-height:46px; }
   .v-road-phase{ grid-template-columns:60px 1fr; gap:var(--sp-2); }
 }
 
@@ -5739,4 +5712,116 @@ html.light .auth::before{ background:radial-gradient(38vw 38vw at 18% -10%, colo
   .v-lex > summary::before{ display:none; }
   .v-lex::details-content{ content-visibility:visible !important; }
   .v-swot{ grid-template-columns:repeat(2, 1fr); }
+}
+
+/* =============================================================================
+   RISK REGISTER AND DUMBBELL — 2026-10-03
+
+   Two graphics replaced after reading the dataviz guide, not after squinting
+   at them.
+
+   The risk matrix was a 3x3 grid holding three or four risks, so five of nine
+   cells were always empty and one cell had two names crammed into it. The
+   guide's form table is explicit: past about seven classes that all carry
+   meaning, the form is a table, and the job here is "rank these and say what
+   you will do about each" — which a scatter grid cannot express at all. The
+   countermeasures also lived in a bullet list underneath, so every risk name
+   appeared twice. They are one row now.
+
+   The gap bars were a filled track, which reads as a quantity filling up.
+   Most of these indicators are durations and error counts that have to come
+   DOWN, so a full bar meant "bad". A dumbbell — a dot where you are, a dot
+   where you want to be, the distance between them as the only heavy mark —
+   is the guide's named form for before/after per item.
+   ============================================================================= */
+
+.v-risk{
+  margin:var(--sp-3) 0 var(--sp-4);
+  border:1px solid var(--border); border-radius:var(--radius-md); overflow:hidden;
+}
+.v-risk-head, .v-risk-row{
+  display:grid;
+  grid-template-columns:76px minmax(0,1.3fr) 58px 58px minmax(0,1.7fr);
+  gap:var(--sp-3); align-items:start; padding:11px var(--sp-4);
+}
+.v-risk-head{
+  font-family:var(--font-mono); font-size:9px; letter-spacing:0.16em; text-transform:uppercase;
+  color:var(--text-muted); background:color-mix(in srgb, var(--card) 60%, transparent);
+}
+.v-risk-row{ border-top:1px solid var(--border); font-size:var(--text-xs); line-height:1.55; }
+.v-risk-row .rn{ font-weight:600; color:var(--foreground); }
+.v-risk-row .fix{ color:var(--secondary-foreground); }
+
+/* Severity is a reserved status colour, so it ships with its word rather than
+   as colour alone — the guide's rule, and the only way the register survives
+   a greyscale print. */
+.v-risk-row .sev{
+  display:inline-block; padding:2px 8px; border-radius:var(--r-pill);
+  font-size:9.5px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase;
+  border:1px solid currentColor; white-space:nowrap;
+}
+.v-risk-row.crit .sev{ color:var(--destructive); background:color-mix(in srgb, var(--destructive) 15%, transparent); }
+.v-risk-row.high .sev{ color:var(--destructive); background:color-mix(in srgb, var(--destructive) 9%, transparent); }
+.v-risk-row.mid  .sev{ color:var(--warn); background:color-mix(in srgb, var(--warn) 12%, transparent); }
+.v-risk-row.low  .sev{ color:var(--text-muted); background:transparent; }
+/* A hairline on the left repeats the severity where the eye scans down. */
+.v-risk-row{ box-shadow:inset 2px 0 0 transparent; }
+.v-risk-row.crit{ box-shadow:inset 2px 0 0 var(--destructive); }
+.v-risk-row.high{ box-shadow:inset 2px 0 0 color-mix(in srgb, var(--destructive) 55%, transparent); }
+.v-risk-row.mid{ box-shadow:inset 2px 0 0 var(--warn); }
+
+/* Two three-dot scales, labelled W and A so the columns are readable without
+   the header — the header disappears on narrow widths. */
+.v-risk-row .sc{ display:inline-flex; align-items:center; gap:3px; padding-top:3px; }
+.v-risk-row .sc em{
+  font-style:normal; font-family:var(--font-mono); font-size:8.5px;
+  color:var(--text-muted); margin-right:2px;
+}
+.v-risk-row .sc i{
+  width:5px; height:5px; border-radius:50%; background:var(--border-strong);
+}
+.v-risk-row .sc i.on{ background:var(--text-secondary); }
+.v-risk-row.crit .sc i.on, .v-risk-row.high .sc i.on{ background:var(--destructive); }
+.v-risk-row.mid .sc i.on{ background:var(--warn); }
+
+/* --- The dumbbell --------------------------------------------------------- */
+.v-gap-row .track{
+  position:relative; height:14px; margin-top:7px;
+}
+/* The baseline the two dots sit on. Recessive, as the guide asks of grids. */
+.v-gap-row .track::before{
+  content:""; position:absolute; left:0; right:0; top:6px; height:2px;
+  border-radius:2px; background:var(--border);
+}
+/* The distance IS the finding, so it is the only heavy mark. */
+.v-gap-row .track .span{
+  position:absolute; top:6px; height:2px; border-radius:2px;
+  background:linear-gradient(90deg,
+    color-mix(in srgb, var(--primary-soft) 35%, transparent), var(--primary-soft));
+}
+.v-gap-row .track .now,
+.v-gap-row .track .goal{
+  position:absolute; top:1px; width:12px; height:12px; margin-left:-6px;
+  border-radius:50%; box-sizing:border-box;
+}
+/* Today is hollow — where you are is a fact, not a target. */
+.v-gap-row .track .now{
+  background:var(--card); border:2px solid var(--text-muted);
+}
+/* The goal is filled, with a surface ring so it still reads when the two
+   dots land on top of each other. */
+.v-gap-row .track .goal{
+  background:var(--primary-soft);
+  box-shadow:0 0 0 2px var(--card);
+}
+
+@media (max-width: 720px){
+  .v-risk-head{ display:none; }
+  .v-risk-row{ grid-template-columns:auto 1fr; gap:6px var(--sp-3); }
+  .v-risk-row .sc{ grid-column:auto; }
+  .v-risk-row .fix{ grid-column:1 / -1; }
+}
+
+@media print{
+  .v-risk, .v-risk-row, .v-gap-row{ break-inside:avoid; }
 }
