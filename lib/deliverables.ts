@@ -133,16 +133,17 @@ export const DELIVERABLES: Record<AgentType, Deliverable> = {
       // first thing separating a beginner from an expert is the vocabulary
       // (00:22:22), and the whole concept is unreadable until that is fixed.
       { title: "Lexikon", must: "Ein `agxp-lexicon` Block mit JEDEM Fachbegriff und Fremdwort, das weiter unten im Dokument vorkommt, nach Thema geclustert. Davor genau 2 Bullets: die Geschäftshypothese (der Mehrwert in einem Satz) und wofür das Ganze verwendet wird." },
+      { title: "Management Summary", must: "KEIN Visual — die einzige Stelle im Dokument, an der zusammenhängender Text steht. 5-8 Sätze für eine Entscheiderin, die sonst nichts liest: Ausgangslage, was der Zustand heute kostet (mit Zahl), was empfohlen wird, was es dafür braucht, und was passiert, wenn nichts passiert. Keine Aufzählung, keine Überschriften, und keine Wiederholung der Zahlen aus den folgenden Sektionen — hier steht der Zusammenhang, dort stehen die Belege." },
       { title: "Auf einen Blick", must: "Ein `agxp-glance` Block mit genau diesen Zeilen: Kernproblem, Beschreibung, Benötigte Technologien, Empfohlene Richtung. Danach ein `agxp-kpi` Block mit 4 Kennzahlen aus dem Gespräch. Keine Bullets." },
       { title: "Prozess: heute und morgen", must: "Ein `agxp-flow` Block mit je 4-6 Schritten in as-is und to-be (`*` an jedem automatisierten Schritt), danach 3-5 Bullets zu den Unterschieden." },
       { title: "Gap-Analyse", must: "Ein `agxp-diff` Block mit einer Zeile je Dimension: Ziele, Reifegrad, Fähigkeiten und Skills, Technologien, Menschen, sonstige Ressourcen. Nur die Dimensionen, über die der Nutzer tatsächlich gesprochen hat — lieber vier echte Zeilen als sechs erfundene. Danach höchstens 3 Bullets zur größten Lücke." },
       { title: "SMART-Ziele", must: "Eine Tabelle: Ziel | Messbar woran | Bis wann | Wer. Jedes Ziel muss mit Ja oder Nein beantwortbar sein — \"die App wird genutzt\" ist kein Ziel, \"20 Touren pro Woche laufen über die App\" ist eins. 2-4 Zeilen, kein Visual." },
       { title: "SWOT", must: "Ein `agxp-swot` Block mit allen vier Feldern, je 2-4 Punkte. Bewertet wird der PLAN, nicht das Unternehmen. Danach genau 1 Bullet: welche Schwäche zuerst angegangen wird." },
-      { title: "Tools und Technologien", must: "Eine Tabelle mit 2-4 namentlich benannten Optionen: Tool | Passt weil | Pro | Contra | Aufwand. Danach 1-2 Bullets mit der Empfehlung und der Begründung." },
-      { title: "Maßnahmen", must: "Ein `agxp-roadmap` Block mit 3 Phasen und je 1-3 Maßnahmen, nach Priorität geordnet, danach pro Maßnahme ein Bullet mit Verantwortlichem." },
+      { title: "Tools und Technologien", must: "Eine Tabelle mit 3-5 namentlich benannten Optionen: Tool | Passt weil | Pro | Contra | Aufwand. Danach eine begründete Empfehlung in 3-4 Bullets: welche Option, warum gerade diese gegen die zweitbeste, was man sich damit einhandelt, und unter welcher Bedingung die Empfehlung kippt." },
+      { title: "Maßnahmen", must: "Ein `agxp-roadmap` Block mit 3 Phasen und je 2-3 Maßnahmen, nach Priorität geordnet. Danach pro Maßnahme ein Bullet mit Verantwortlichem, Aufwand und der Abhängigkeit, die sie blockieren könnte — und ein letztes Bullet dazu, was die erste Phase unbrauchbar machen würde." },
       { title: "Erfolgsmessung", must: "Ein `agxp-gap` Block mit den Kennzahlen (heute vs. Ziel), danach pro Kennzahl ein Bullet: wie und wann gemessen." },
       { title: "Risiken", must: "Ein `agxp-risks` Block mit 3-5 Risiken, danach pro Risiko ein Bullet mit der Gegenmaßnahme." },
-      { title: "Nächste Schritte", must: "Genau 3 Bullets, jedes mit Verantwortlichem und Termin. Kein Visual." },
+      { title: "Nächste Schritte", must: "Genau 3 Bullets, jedes mit Verantwortlichem, Termin und dem, was danach entschieden werden kann. Kein Visual." },
     ],
     generatePrompt:
       "Create the complete Transformation Concept now, based on our whole conversation. " +
@@ -250,11 +251,13 @@ export function agendaPrompt(d: Deliverable): string {
     `ausgedruckt, weitergegeben und einer Entscheiderin vorgelegt, die beim Gespräch nicht dabei ` +
     `war. Sie muss es allein verstehen:\n` +
     `- Jede Sektion hat genau diesen Aufbau: zuerst der vorgesehene Visual-Block, dann EIN fetter ` +
-    `Satz, der sagt, was man daraus mitnimmt (die Einordnung), dann 3-6 Bullets.\n` +
+    `Satz, der sagt, was man daraus mitnimmt (die Einordnung), dann 4-8 Bullets. Die einzige ` +
+    `Ausnahme ist die Management Summary: dort steht zusammenhängender Text und sonst nichts.\n` +
     `- Der fette Satz interpretiert, er wiederholt nicht. Nicht "Die Wartezeit liegt bei 19 Tagen" ` +
     `— das steht in der Grafik —, sondern "Zwei Drittel der Durchlaufzeit entstehen, bevor jemand ` +
     `überhaupt arbeitet".\n` +
-    `- Jedes Bullet trägt einen Grund oder eine Folge, nicht nur ein Etikett. Bis zu 25 Wörter. ` +
+    `- Jedes Bullet trägt einen Grund oder eine Folge, nicht nur ein Etikett. 15 bis 35 Wörter — ` +
+    `ein Bullet aus vier Wörtern ist eine Überschrift, keine Aussage. ` +
     `"Schulung nötig" ist kein Bullet; "Niemand im Team kennt React, also entscheidet die Wahl ` +
     `des Tools auch, ob extern eingekauft werden muss" ist eins.\n` +
     `- Beschreibe NIE in Worten, was die Grafik schon zeigt. Die Grafik liefert die Zahlen, der ` +
