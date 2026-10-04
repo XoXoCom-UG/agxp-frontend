@@ -5741,7 +5741,9 @@ html.light .auth::before{ background:radial-gradient(38vw 38vw at 18% -10%, colo
 }
 .v-risk-head, .v-risk-row{
   display:grid;
-  grid-template-columns:76px minmax(0,1.3fr) 58px 58px minmax(0,1.7fr);
+  /* 76px, not 58: the header words are uppercase 9px with wide tracking and
+     cannot break, so a narrower column spills "Auswirkung" into the next one. */
+  grid-template-columns:76px minmax(0,1.3fr) 76px 76px minmax(0,1.7fr);
   gap:var(--sp-3); align-items:start; padding:11px var(--sp-4);
 }
 .v-risk-head{
