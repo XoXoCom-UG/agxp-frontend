@@ -6048,8 +6048,19 @@ html.light .auth::before{ background:radial-gradient(38vw 38vw at 18% -10%, colo
     var(--background);
 }
 .bg-card{
-  width:100%; max-width:430px;
+  width:100%; max-width:440px;
+  padding:var(--sp-7);
+  border-radius:22px;
+  border:1px solid var(--border);
+  background:linear-gradient(165deg,
+    color-mix(in srgb, var(--card) 96%, #FFFFFF 4%),
+    color-mix(in srgb, var(--background) 92%, #000000));
+  box-shadow:0 40px 90px -36px #000, inset 0 1px 0 rgba(255,255,255,0.05);
   animation:viewIn 340ms var(--ease-out) backwards;
+}
+html.light .bg-card{
+  background:#FFFFFF;
+  box-shadow:0 24px 54px -30px rgba(24,39,60,0.40);
 }
 .bg-eyebrow{
   display:block; margin-bottom:14px;
@@ -6062,7 +6073,7 @@ html.light .auth::before{ background:radial-gradient(38vw 38vw at 18% -10%, colo
 }
 .bg-card > p{
   margin:0 0 var(--sp-6); font-size:var(--text-sm); line-height:1.65;
-  color:var(--text-secondary); max-width:38ch;
+  color:var(--text-secondary);
 }
 .bg-field{ display:block; margin-bottom:var(--sp-4); }
 .bg-field > span{
@@ -6090,4 +6101,51 @@ html.light .auth::before{ background:radial-gradient(38vw 38vw at 18% -10%, colo
 .beta-gate .btn-hero{ width:100%; justify-content:center; height:48px; }
 .bg-foot{
   margin:var(--sp-6) 0 0; font-size:var(--text-2xs); color:var(--text-muted); line-height:1.6;
+}
+
+
+/* --- Settings → the team's own switches -----------------------------------
+   Set apart from the rest of Settings on purpose: these are not preferences,
+   they are a key to the building, and they should not read like a choice of
+   accent colour. */
+.ss-dev{
+  padding:var(--sp-4); border-radius:var(--radius-md);
+  border:1px dashed color-mix(in srgb, var(--warn) 34%, transparent);
+  background:color-mix(in srgb, var(--warn) 5%, transparent);
+}
+.ss-dev .ss-label em{
+  font-style:normal; margin-left:8px; color:var(--warn);
+  font-family:var(--font-mono); font-size:9px; letter-spacing:0.16em; text-transform:uppercase;
+}
+.ss-keymint{ display:flex; gap:var(--sp-2); margin-bottom:var(--sp-3); }
+.ss-keymint input{
+  flex:1; min-width:0; height:32px; padding:0 11px;
+  background:var(--surface-1); border:1px solid var(--border-medium); border-radius:9px;
+  color:var(--text-primary); font-size:var(--text-xs); outline:none;
+}
+.ss-keymint input::placeholder{ color:var(--text-muted); }
+.ss-keymint .btn{ flex-shrink:0; height:32px; }
+
+.ss-keys{ margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:6px; }
+.ss-keys li{ display:flex; align-items:center; gap:var(--sp-3); min-width:0; }
+.ss-keys li.spent{ opacity:.45; }
+.ss-key-code{
+  display:inline-flex; align-items:center; gap:8px; flex-shrink:0;
+  padding:5px 10px; border-radius:8px;
+  border:1px solid var(--border); background:var(--surface-1);
+  color:var(--text-primary);
+}
+.ss-key-code code{
+  font-family:var(--font-mono); font-size:var(--text-2xs); letter-spacing:0.08em;
+  background:none; padding:0; color:inherit;
+}
+@media (hover:hover) and (pointer:fine){
+  .ss-key-code:hover{ border-color:var(--border-strong); }
+}
+.ss-key-meta{
+  font-size:var(--text-3xs); color:var(--text-muted);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.ss-dev-error{
+  margin:0; font-size:var(--text-xs); color:var(--destructive);
 }

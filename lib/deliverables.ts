@@ -139,6 +139,13 @@ export const DELIVERABLES: Record<AgentType, Deliverable> = {
       { title: "Gap-Analyse", must: "Ein `agxp-diff` Block mit einer Zeile je Dimension: Ziele, Reifegrad, Fähigkeiten und Skills, Technologien, Menschen, sonstige Ressourcen. Nur die Dimensionen, über die der Nutzer tatsächlich gesprochen hat — lieber vier echte Zeilen als sechs erfundene. Danach höchstens 3 Bullets zur größten Lücke." },
       { title: "SMART-Ziele", must: "Eine Tabelle: Ziel | Messbar woran | Bis wann | Wer. Jedes Ziel muss mit Ja oder Nein beantwortbar sein — \"die App wird genutzt\" ist kein Ziel, \"20 Touren pro Woche laufen über die App\" ist eins. 2-4 Zeilen, kein Visual." },
       { title: "SWOT", must: "Ein `agxp-swot` Block mit allen vier Feldern, je 2-4 Punkte. Bewertet wird der PLAN, nicht das Unternehmen. Danach genau 1 Bullet: welche Schwäche zuerst angegangen wird." },
+      // Patryk, 2026-10-02 at 01:06:41, counted three methods that day:
+      // gap analysis, SWOT, and this one. The distinction he drew is the
+      // whole point of it — a gap analysis compares today against what you
+      // WANT, this compares today against what the market would ALLOW. It is
+      // marked "falls applicable" because a conversation that never went
+      // near the market should say so rather than invent an opportunity.
+      { title: "Marktchancen", must: "Ein `agxp-diff` Block, aber mit anderer Achse als die Gap-Analyse: links was der Betrieb heute bedient, rechts was er bedienen KÖNNTE, und in der Lücke was ihn heute daran hindert. 2-4 Zeilen. Wenn im Gespräch nichts über Markt, Kunden oder Wettbewerb vorkam, lass den Block weg und schreib genau einen Satz: dass dafür die Angaben fehlen und welche Frage sie liefern würde. Erfinde keine Marktchance." },
       { title: "Tools und Technologien", must: "Eine Tabelle mit 3-5 namentlich benannten Optionen: Tool | Passt weil | Pro | Contra | Aufwand. Danach eine begründete Empfehlung in 3-4 Bullets: welche Option, warum gerade diese gegen die zweitbeste, was man sich damit einhandelt, und unter welcher Bedingung die Empfehlung kippt." },
       { title: "Maßnahmen", must: "Ein `agxp-roadmap` Block mit 3 Phasen und je 2-3 Maßnahmen, nach Priorität geordnet. Danach pro Maßnahme ein Bullet mit Verantwortlichem, Aufwand und der Abhängigkeit, die sie blockieren könnte — und ein letztes Bullet dazu, was die erste Phase unbrauchbar machen würde." },
       { title: "Erfolgsmessung", must: "Ein `agxp-gap` Block mit den Kennzahlen (heute vs. Ziel), danach pro Kennzahl ein Bullet: wie und wann gemessen." },

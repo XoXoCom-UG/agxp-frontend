@@ -24,6 +24,9 @@ import { planFor, periodStart, INVITE_ONLY, type Plan } from "@/lib/plans";
 export interface Entitlement {
   /** False while we are invite-only and this account has redeemed no key. */
   admitted: boolean;
+  /** The team's switch. Readable here only to decide whether to draw the
+   *  controls — every action behind it is checked again in the database. */
+  canSwitch: boolean;
   plan: Plan;
   /** Conversation threads started in the current window. */
   projects: number;
@@ -37,6 +40,7 @@ const UNKNOWN: Entitlement = {
   // invited tester for a moment on every load would be worse than a blank
   // pause, and nothing can be spent before the read finishes anyway.
   admitted: true,
+  canSwitch: false,
   plan: planFor(null),
   projects: 0,
   projectsLeft: planFor(null).projects,
@@ -51,7 +55,7 @@ export async function readEntitlement(): Promise<Entitlement> {
 
   const { data: ent } = await supabase
     .from("agxp_entitlements")
-    .select("plan")
+    .select("plan,can_switch_plan")
     .eq("user_id", uid)
     .maybeSingle();
 
@@ -68,6 +72,7 @@ export async function readEntitlement(): Promise<Entitlement> {
   const used = count ?? 0;
   return {
     admitted,
+    canSwitch: !!(ent as { can_switch_plan?: boolean } | null)?.can_switch_plan,
     plan,
     projects: used,
     projectsLeft: Math.max(0, plan.projects - used),

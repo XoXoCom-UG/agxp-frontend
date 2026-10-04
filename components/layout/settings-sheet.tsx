@@ -11,6 +11,7 @@ import { IconX, IconCheck, IconMonitor, IconSun, IconMoon } from "@/components/l
 import { useDialogFocus } from "@/lib/use-dialog-focus";
 import { useEntitlement } from "@/lib/entitlement";
 import { PLANS, projectsLabel, type Plan } from "@/lib/plans";
+import { DevPlanTools } from "@/components/layout/dev-plan-tools";
 
 type Tab = "profile" | "plan" | "appearance";
 const TABS: { id: Tab; label: string }[] = [
@@ -274,7 +275,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
  * in words at the moment it matters.
  */
 function PlanTab() {
-  const { plan, projects, projectsLeft, loading } = useEntitlement();
+  const { plan, projects, projectsLeft, loading, canSwitch, refresh } = useEntitlement();
   const order: Plan[] = [PLANS.free, PLANS.mid, PLANS.max];
   const window = plan.period === "week" ? "this week" : "this month";
   const resets = plan.period === "week" ? "Resets Monday." : "Resets on the 1st.";
@@ -322,6 +323,8 @@ function PlanTab() {
         </div>
         <span className="ss-hint">Upgrading isn&apos;t wired up yet — get in touch and we&apos;ll move your account.</span>
       </div>
+
+      {canSwitch && <DevPlanTools current={plan.id} onChanged={refresh} />}
     </>
   );
 }
