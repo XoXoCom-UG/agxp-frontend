@@ -57,6 +57,13 @@ const SPEC: ConfigFinding[] = [
       "Resend account owner. Set a sender on a verified domain to reach anyone else.",
   },
   {
+    key: "INVITE_TEMPLATE",
+    level: "optional",
+    consequence:
+      "Invitations use the email built into the code. Set a published Resend template " +
+      "id or alias to let the copy be edited without a deploy.",
+  },
+  {
     key: "NEXT_PUBLIC_SENTRY_DSN",
     level: "optional",
     consequence: "No error reports from production. Sentry is wired but has nowhere to send.",

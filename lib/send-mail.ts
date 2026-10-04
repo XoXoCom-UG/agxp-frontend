@@ -48,26 +48,59 @@ export function looksLikeEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value.trim());
 }
 
+/** The two variables an invitation template has to declare, by these keys. */
+export const TEMPLATE_VARS = ["CODE", "APP_URL"] as const;
+
+/** A published template id or alias, when one is configured. */
+export function inviteTemplate(): string | null {
+  return process.env.INVITE_TEMPLATE?.trim() || null;
+}
+
 export async function sendInvite(to: string, code: string, appUrl: string): Promise<MailResult> {
   const key = process.env.RESEND_API_KEY;
   if (!key) {
     return { sent: false, reason: "Email isn't set up on the server (RESEND_API_KEY)." };
   }
-  const from = inviteFrom();
   if (!looksLikeEmail(to)) {
     return { sent: false, reason: "That doesn't look like an email address." };
   }
 
+  const template = inviteTemplate();
+  if (template) {
+    const viaTemplate = await post(key, {
+      // Resend rejects the request if html/text are sent alongside a
+      // template, so this payload carries one or the other, never both.
+      template: { id: template, variables: { CODE: code, APP_URL: appUrl } },
+    }, to);
+    if (viaTemplate.sent) return viaTemplate;
+
+    /*
+     * The template failed — renamed, unpublished, a variable it expects that
+     * we do not send. The recipient still needs the code, so the built-in
+     * email goes out instead and the panel is told both things. Falling back
+     * silently would leave a broken template broken forever; not falling
+     * back would lose an invitation over a copy edit.
+     */
+    const fallback = await post(key, { text: inviteText(code, appUrl), html: inviteHtml(code, appUrl) }, to);
+    return fallback.sent
+      ? { sent: true, reason: `Template "${template}" failed (${viaTemplate.reason}) — sent the built-in email instead.` }
+      : fallback;
+  }
+
+  return post(key, { text: inviteText(code, appUrl), html: inviteHtml(code, appUrl) }, to);
+}
+
+/** One request to Resend. `content` is either the template or the html/text. */
+async function post(key: string, content: Record<string, unknown>, to: string): Promise<MailResult> {
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from,
+        from: inviteFrom(),
         to: [to.trim()],
         subject: "Your invitation to AgentiX Projects",
-        text: inviteText(code, appUrl),
-        html: inviteHtml(code, appUrl),
+        ...content,
       }),
       // A hung provider must not hold the request open: the key is already
       // minted by this point and the caller is waiting to be shown it.
