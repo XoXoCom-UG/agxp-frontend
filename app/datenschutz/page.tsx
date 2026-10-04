@@ -48,6 +48,10 @@ export default function DatenschutzPage() {
         <p>• Nutzungsinhalte: deine Chat-Nachrichten und die daraus erzeugten Dokumente
           (Transformation Concept, Change Plan) samt Projektnamen. Diese Inhalte enthalten
           typischerweise Angaben über dein Unternehmen, die du selbst eingibst.</p>
+        <p>• Angehängte Dateien: PDFs, Bilder und Textdateien, die du selbst an eine
+          Nachricht anhängst. Sie werden in einem privaten Speicher abgelegt, der nur deinem
+          Konto zugänglich ist, und bei jeder weiteren Nachricht desselben Gesprächs erneut
+          an Anthropic übermittelt, damit der Agent sie weiter berücksichtigen kann.</p>
         <p>• Nutzungsumfang: Anzahl der Anfragen und der verarbeiteten Token pro
           Abrechnungszeitraum, um die Grenzen deines Plans durchzusetzen. Keine Inhalte,
           nur Zahlen.</p>
@@ -103,8 +107,9 @@ export default function DatenschutzPage() {
 
       <LegalSection heading="7. Speicherdauer">
         <p>Konto, Projekte und Nachrichten speichern wir, solange dein Konto besteht. Löschst du
-          ein Projekt, werden seine Nachrichten mitgelöscht. Wird das Konto gelöscht, entfallen
-          damit auch Projekte, Nachrichten und Nutzungszähler.</p>
+          ein Projekt, werden seine Nachrichten und die daran angehängten Dateien mitgelöscht.
+          Wird das Konto gelöscht, entfallen damit auch Projekte, Nachrichten, Dateien und
+          Nutzungszähler.</p>
         <p>Für Log- und Fehlerdaten gelten die Fristen der jeweiligen Anbieter; konkrete Angaben
           werden ergänzt.</p>
       </LegalSection>

@@ -12,6 +12,15 @@ export interface MemoryNote {
   fact: string;
 }
 
+/** A file the user attached, as stored in Supabase Storage. */
+export interface FileRef {
+  /** Object path inside the bucket: "<userId>/<projectId>/<uuid>.<ext>". */
+  path: string;
+  /** What the file was called on the user's machine, for the chip. */
+  name: string;
+  mime: string;
+}
+
 export interface ParsedMessage {
   text: string;
   choices: string[];
@@ -24,6 +33,8 @@ export interface ParsedMessage {
   memories: MemoryNote[];
   /** The project's industry, once the agent knows it ([[INDUSTRY: Banking]]). */
   industry: string | null;
+  /** Files attached to this message ([[FILE: path | name | mime]]). */
+  files: FileRef[];
 }
 
 /**
@@ -88,8 +99,21 @@ export function parseMarkers(raw: string): ParsedMessage {
     text = text.replace(raw, "");
   }
 
+  // FILE is the only marker the USER writes rather than the model: the
+  // composer appends one per attachment. It lives in the same protocol so
+  // that an attachment survives a reload for free — the message row is the
+  // whole record, exactly as it already is for memory.
+  const files: FileRef[] = [];
+  const fileRaws = text.match(/\[\[FILE:\s*[^\]]*\]\]/gi) ?? [];
+  for (const rawFile of fileRaws) {
+    const inner = rawFile.replace(/^\[\[FILE:\s*/i, "").replace(/\]\]$/, "");
+    const [path, name, mime] = inner.split("|").map(x => x.trim());
+    if (path) files.push({ path, name: name || path.split("/").pop() || "Datei", mime: mime || "" });
+    text = text.replace(rawFile, "");
+  }
+
   text = text.replace(/\n{3,}/g, "\n\n").trim();
-  return { text, choices, progress, topic, doc, memories, industry };
+  return { text, choices, progress, topic, doc, memories, industry, files };
 }
 
 /** Escapes a string for use inside a RegExp. */

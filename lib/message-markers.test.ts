@@ -53,3 +53,50 @@ test("a long sectioned answer counts as a document even without the marker", () 
   assert.equal(looksLikeDocument(doc, "Transformation Concept"), true);
   assert.equal(looksLikeDocument(parseMarkers(REPLY).text, "Transformation Concept"), false);
 });
+
+test("an attachment is parsed out of the user's own message", () => {
+  const sent = [
+    "Hier ist unsere Prozessbeschreibung.",
+    "[[FILE: 7f3a/2b11/c9.pdf | Prozess Rechnungseingang.pdf | application/pdf]]",
+  ].join("\n");
+  const p = parseMarkers(sent);
+  assert.equal(p.text, "Hier ist unsere Prozessbeschreibung.");
+  assert.deepEqual(p.files, [{
+    path: "7f3a/2b11/c9.pdf",
+    name: "Prozess Rechnungseingang.pdf",
+    mime: "application/pdf",
+  }]);
+});
+
+test("several attachments, and a name containing a pipe is not lost to the split", () => {
+  const p = parseMarkers([
+    "Zwei Dateien:",
+    "[[FILE: u/p/a.png | Organigramm.png | image/png]]",
+    "[[FILE: u/p/b.csv | preise.csv | text/csv]]",
+  ].join("\n"));
+  assert.equal(p.files.length, 2);
+  assert.deepEqual(p.files.map(f => f.name), ["Organigramm.png", "preise.csv"]);
+  assert.equal(p.text, "Zwei Dateien:");
+});
+
+test("a message that is only an attachment leaves no stray whitespace", () => {
+  const p = parseMarkers("[[FILE: u/p/a.pdf | a.pdf | application/pdf]]");
+  assert.equal(p.text, "");
+  assert.equal(p.files.length, 1);
+});
+
+test("a malformed FILE marker is dropped rather than shown", () => {
+  // No path: nothing to fetch, so it is not an attachment. It must still not
+  // survive into the visible text as raw marker syntax.
+  const p = parseMarkers("Text\n[[FILE: ]]");
+  assert.deepEqual(p.files, []);
+  assert.equal(p.text, "Text");
+});
+
+test("a half-written FILE marker never flashes while the text streams", () => {
+  const full = "Hier.\n[[FILE: u/p/a.pdf | a.pdf | application/pdf]]";
+  for (let i = 1; i <= full.length; i++) {
+    const shown = streamingText(full.slice(0, i));
+    assert.ok(!shown.includes("[["), `leaked at ${i}: ${JSON.stringify(shown)}`);
+  }
+});

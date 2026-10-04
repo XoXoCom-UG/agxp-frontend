@@ -187,7 +187,10 @@ export function useAgentConversation(opts: ConversationOptions) {
       // a project "(Systemhinweis, nicht vom Nutzer geschrieben…" once was
       // enough to make that obvious.
       if (isFirstEver && !isDeliverableCommand(t) && !isReadAlongCommand(t) && !isReviewCommand(t)) {
-        renameFromFirstMessage(project, t)
+        // parseMarkers, not the raw text: the composer appends a [[FILE:]]
+        // marker per attachment, and a project whose first message is only a
+        // file would otherwise be named after a storage path.
+        renameFromFirstMessage(project, parseMarkers(t).text)
           .then(name => { if (name) optsRef.current.onProjectNamed?.(name); })
           .catch(e => console.warn("[chat] naming the project failed:", e));
       }

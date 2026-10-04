@@ -3522,6 +3522,59 @@ html.light .chat-input.pb:focus-within{ box-shadow:0 0 0 1px rgba(var(--shadow-r
 .chat-input.pb.is-wide .pb-attach{ grid-row:2; }
 .chat-input.pb.is-wide .pb-send{ grid-row:2; }
 
+/* Attachments, above the text rather than beside it: a file name is longer
+   than the gap next to a 30px button, and truncating the one thing that says
+   which file you picked defeats the chip. */
+.pb-files{
+  display:flex; flex-wrap:wrap; gap:6px; align-items:center;
+  margin-bottom:8px;
+}
+.pb-chip{
+  display:inline-flex; align-items:center; gap:6px; min-width:0; max-width:100%;
+  padding:3px 3px 3px 10px; border-radius:var(--radius-pill);
+  border:1px solid var(--border); background:var(--surface-elevated);
+  font-size:var(--text-2xs); color:var(--secondary-foreground);
+}
+.pb-chip svg{ flex-shrink:0; color:var(--muted-foreground); }
+.pb-chip b{
+  font-weight:500; color:var(--foreground);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:200px;
+}
+/* 24px, not the 17px the glyph needs: below that a close button on a phone
+   is a coin toss between removing the file and focusing the text. The chip
+   is padded to sit around it rather than the other way round. */
+.pb-chip button{
+  flex-shrink:0; display:inline-flex; align-items:center; justify-content:center;
+  width:24px; height:24px; border-radius:50%; color:var(--muted-foreground);
+}
+@media (hover:hover) and (pointer:fine){
+  .pb-chip button:hover{ color:var(--foreground); background:var(--border); }
+}
+.pb-chip.is-busy{ opacity:.6; }
+.pb-chip.is-busy b{ color:var(--secondary-foreground); }
+.pb-file-error{
+  flex-basis:100%; font-size:var(--text-2xs); line-height:1.5; color:var(--destructive);
+}
+
+/* The same chip inside a message already sent. No remove button there —
+   the bytes are what the agent was given, and the record should match. */
+.mu-files{ display:flex; flex-wrap:wrap; gap:5px; margin-bottom:7px; }
+.mu-chip{
+  display:inline-flex; align-items:center; gap:5px; min-width:0;
+  padding:3px 9px; border-radius:var(--radius-pill);
+  /* Outlined, not filled. A 10% white fill over the bubble's gradient left
+     the label at 4.59:1 — passing, but the accent is user-settable
+     (lib/accent.ts), and a lighter one would take it under. A border does
+     not sit between the text and its background at all. */
+  border:1px solid color-mix(in srgb, #FFFFFF 30%, transparent);
+  font-size:var(--text-3xs); line-height:1.5;
+}
+.mu-chip svg{ flex-shrink:0; opacity:.75; }
+/* Same cap as the composer chip: a long file name must not push the bubble
+   wider than the column. */
+.mu-chip{ max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.msg-user:has(.mu-files){ display:flex; flex-direction:column; align-items:flex-end; }
+
 .chat-input.pb .pb-input{
   min-width:0; width:100%; min-height:30px; max-height:220px;
   padding:4px 4px; margin:0;

@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
+import path from "node:path";
 
 const securityHeaders = [
   // Prevent the site from being embedded in iframes (clickjacking)
@@ -31,6 +32,13 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // There is an unrelated package-lock.json in the user's home directory, and
+  // Turbopack picks the outermost lockfile as the workspace root. Left alone
+  // it watches and resolves from C:\Users\<name>, which is slower and not
+  // what anyone meant. Pinning it is a one-line fix that does not require
+  // deleting a file outside this repository.
+  turbopack: { root: path.join(__dirname) },
+
   async headers() {
     return [
       {
@@ -59,6 +67,6 @@ export default withSentryConfig(nextConfig, {
   telemetry: false,
   // Quiet unless CI is reading the log.
   silent: !process.env.CI,
-  // Drops Sentry's own debug logging out of the client bundle.
-  disableLogger: true,
+  // No disableLogger here: it is deprecated, and it was never applied under
+  // Turbopack, which is what this project builds with.
 });

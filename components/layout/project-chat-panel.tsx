@@ -328,7 +328,8 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
         )}
       </div>
 
-      <ChatComposer role={role} sending={sending} canSend={loaded} inputRef={inputRef}
+      <ChatComposer role={role} sending={sending} canSend={loaded} projectId={project.id}
+        inputRef={inputRef}
         onSend={chat.send} onStop={chat.stop} onAttentiveChange={setAttentive} />
       <div className="visually-hidden" role="status" aria-live="polite">{announce}</div>
       {confirmChange && onChangeAgent && (

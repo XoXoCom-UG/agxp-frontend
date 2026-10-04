@@ -75,7 +75,23 @@ export function ChatMessage({ entry, agentName, docTitle, isNew, isLeaving, isLa
       );
     }
     if (entry.isCommand) return null;
-    return <div className={`msg-user${isNew ? " is-new" : ""}`}>{m.content}</div>;
+    // m.content, not p.text, when there is nothing to strip: a person may
+    // legitimately type square brackets, and parsing a plain message would
+    // quietly eat them. With an attachment the marker has to come out.
+    return (
+      <div className={`msg-user${isNew ? " is-new" : ""}`}>
+        {p.files.length > 0 && (
+          <span className="mu-files">
+            {p.files.map(f => (
+              <span key={f.path} className="mu-chip" title={f.name}>
+                <IconDoc size={11} />{f.name}
+              </span>
+            ))}
+          </span>
+        )}
+        {p.files.length ? p.text : m.content}
+      </div>
+    );
   }
 
   if (entry.isError) {

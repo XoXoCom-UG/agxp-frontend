@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { AgentType } from "@/lib/agents";
 import { DELIVERABLES } from "@/lib/deliverables";
 import { systemPrompt, peerPrompt } from "@/lib/agent-prompt";
+import { withAttachments } from "@/lib/message-files";
 import type { PeerContext } from "@/lib/peer-context";
 import { allowanceFor, blocked, recordUsage, peerReadingAllowed } from "@/lib/entitlement-server";
 
@@ -157,14 +158,29 @@ export async function POST(req: NextRequest) {
   ];
   if (peerBlock) system.push({ type: "text", text: peerBlock });
 
-  const msgs: Anthropic.MessageParam[] = body.messages.map(m => ({ role: m.role, content: m.content }));
+  /*
+   * Attachments are resolved here, not sent by the client: the message only
+   * carries a [[FILE:]] path, and lib/message-files.ts reads it back under
+   * the caller's own token so a forged path reaches nothing.
+   */
+  const bearer = (req.headers.get("authorization") ?? "").slice(7).trim();
+  const msgs: Anthropic.MessageParam[] = await withAttachments(body.messages, bearer);
+
   const last = msgs.length - 1;
   if (!peerBlock && last >= 0) {
+    // The breakpoint goes on the LAST block of the last message, whatever
+    // shape it has. It used to assume a plain string, which an attachment
+    // turns into an array — and a cache_control on the wrong thing silently
+    // stops the prefix from being reused.
     const m = msgs[last];
-    msgs[last] = {
-      role: m.role,
-      content: [{ type: "text", text: m.content as string, cache_control: { type: "ephemeral" } }],
-    };
+    const blocks: Anthropic.ContentBlockParam[] = typeof m.content === "string"
+      ? [{ type: "text", text: m.content }]
+      : [...m.content];
+    const tail = blocks[blocks.length - 1];
+    if (tail) {
+      blocks[blocks.length - 1] = { ...tail, cache_control: { type: "ephemeral" } } as Anthropic.ContentBlockParam;
+      msgs[last] = { role: m.role, content: blocks };
+    }
   }
 
   /*
