@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
+import { DEMO_GUEST } from "@/lib/plans";
 import { useTheme } from "next-themes";
 import { AgentMascot } from "@/components/layout/agent-mascot";
 import { IconSun, IconMoon, IconArrow, IconCheck, IconEye, IconEyeOff } from "@/components/layout/agxp-icons";
@@ -62,7 +63,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
-  const [busy, setBusy] = useState<"form" | "google" | "forgot" | null>(null);
+  const [busy, setBusy] = useState<"form" | "google" | "forgot" | "guest" | null>(null);
   const [note, setNote] = useState<{ text: string; ok: boolean } | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
 
@@ -176,6 +177,30 @@ export default function LoginPage() {
     setNote(error
       ? { text: friendlyError(error.message), ok: false }
       : { text: "If that address has an account, a reset link is on its way.", ok: true });
+  }
+
+  /**
+   * Supabase anonymous sign-in: a real session with a real user row, so row
+   * level security works exactly as it does for anyone else — a guest can
+   * only ever see their own projects. No email, so a guest can never be a
+   * team member (migration 0012 wants a confirmed company address).
+   *
+   * Only reachable where DEMO_GUEST is on, and the server checks the same
+   * flag before letting a guest spend anything, so this button appearing is
+   * not what admits anyone.
+   */
+  async function guestSignIn() {
+    setBusy("guest");
+    setNote(null);
+    const { error } = await createClient().auth.signInAnonymously();
+    if (error) {
+      setBusy(null);
+      // The usual cause is the one thing this cannot fix from here:
+      // anonymous sign-in is switched off in the Supabase project.
+      setNote({ text: "Guest access isn't switched on for this project yet.", ok: false });
+      return;
+    }
+    router.replace("/dashboard");
   }
 
   async function googleSignIn() {
@@ -298,6 +323,19 @@ export default function LoginPage() {
             )}
             Continue with Google
           </button>
+
+          {DEMO_GUEST && (
+            <>
+              <button type="button" className="btn-guest" onClick={guestSignIn} disabled={!!busy}>
+                {busy === "guest" ? <span className="spinner" aria-hidden="true" /> : <IconEye size={15} />}
+                Look around without an account
+              </button>
+              <p className="auth-guest-note">
+                A guest session. Nothing you write is tied to you, and it is gone
+                when you clear your browser.
+              </p>
+            </>
+          )}
 
           <div className="auth-legal">
             <Link href="/impressum">Impressum</Link>

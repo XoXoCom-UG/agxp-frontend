@@ -1,6 +1,6 @@
 import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { PLANS, DEFAULT_PLAN, INVITE_ONLY, planFor, periodStart, type Plan, type LimitHit } from "@/lib/plans";
+import { PLANS, DEFAULT_PLAN, INVITE_ONLY, DEMO_GUEST, planFor, periodStart, type Plan, type LimitHit } from "@/lib/plans";
 
 /**
  * entitlement-server.ts — what this user is allowed, and what they have spent.
@@ -59,7 +59,7 @@ const FREE: Allowance = {
  * the conversation is the product. If the database is unreachable the user
  * gets their conversation and we lose a count.
  */
-export async function allowanceFor(userId: string): Promise<Allowance> {
+export async function allowanceFor(userId: string, isGuest = false): Promise<Allowance> {
   const db = admin();
   if (!db) return FREE;
 
@@ -71,7 +71,9 @@ export async function allowanceFor(userId: string): Promise<Allowance> {
 
   // No row means two different things depending on the phase. In beta it
   // means "not invited"; once sign-up opens it means the free plan.
-  const admitted = !INVITE_ONLY || !!ent?.plan;
+  // A guest counts as admitted only where the demo is switched on. The
+  // browser's copy of this decision is a courtesy; this one is the gate.
+  const admitted = !INVITE_ONLY || !!ent?.plan || (DEMO_GUEST && isGuest);
   const plan = planFor(ent?.plan as string | undefined);
   const start = periodStart(plan.period);
 

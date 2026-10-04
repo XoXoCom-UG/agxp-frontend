@@ -16,7 +16,7 @@ const MODEL = "claude-sonnet-5";
  * the URL could send prompts and spend our Anthropic budget. The browser sends
  * its Supabase access token, which is verified against Supabase here.
  */
-async function callerId(req: NextRequest): Promise<string | null> {
+async function callerId(req: NextRequest): Promise<{ id: string; guest: boolean } | null> {
   const header = req.headers.get("authorization") ?? "";
   const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
   if (!token) return null;
@@ -29,7 +29,10 @@ async function callerId(req: NextRequest): Promise<string | null> {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const { data, error } = await supabase.auth.getUser(token);
-  return error || !data.user ? null : data.user.id;
+  if (error || !data.user) return null;
+  // is_anonymous comes from the verified token, not from the request body,
+  // so a caller cannot claim to be a guest or claim not to be one.
+  return { id: data.user.id, guest: data.user.is_anonymous === true };
 }
 
 /**
@@ -81,10 +84,11 @@ function fail(status: number, code: string, error: string) {
 }
 
 export async function POST(req: NextRequest) {
-  const userId = await callerId(req);
-  if (!userId) {
+  const caller = await callerId(req);
+  if (!caller) {
     return fail(401, "unauthorized", "Your session has expired. Sign in again.");
   }
+  const userId = caller.id;
   if (overLimit(userId)) {
     return fail(429, "rate_limited", "Too many messages in a short time. Wait a minute, then try again.");
   }
@@ -103,7 +107,7 @@ export async function POST(req: NextRequest) {
 
   // What this account is allowed, and what it has already spent. Read before
   // the model call so a user over the ceiling is told rather than billed.
-  const allowance = await allowanceFor(userId);
+  const allowance = await allowanceFor(userId, caller.guest);
   const hit = blocked(allowance);
   if (hit) return fail(402, hit.kind, hit.message);
 

@@ -114,6 +114,23 @@ export const DEFAULT_PLAN: PlanId = "free";
  */
 export const INVITE_ONLY = true;
 
+/**
+ * Lets someone look around without making an account, through Supabase
+ * anonymous sign-in. Read from NEXT_PUBLIC_DEMO_GUEST so it can be on for a
+ * preview deployment and off in production, and because the SERVER reads the
+ * same flag: with it off, an anonymous session is refused the moment it tries
+ * to spend anything, whatever the browser shows.
+ *
+ * That matters, because anonymous sign-in is a project-wide Supabase setting:
+ * turning it on for the preview turns it on for production too. This flag is
+ * what keeps production closed anyway.
+ *
+ * A guest gets the free plan, so the token ceiling applies per guest. It does
+ * NOT stop someone making guest after guest — the protection there is that
+ * the preview link is unlisted, not this.
+ */
+export const DEMO_GUEST = process.env.NEXT_PUBLIC_DEMO_GUEST === "1";
+
 export function planFor(id: string | null | undefined): Plan {
   return PLANS[(id ?? DEFAULT_PLAN) as PlanId] ?? PLANS[DEFAULT_PLAN];
 }

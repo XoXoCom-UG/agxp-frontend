@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase";
-import { planFor, periodStart, INVITE_ONLY, type Plan } from "@/lib/plans";
+import { planFor, periodStart, INVITE_ONLY, DEMO_GUEST, type Plan } from "@/lib/plans";
 
 /**
  * entitlement.ts — the browser's read-only view of the plan and what is left.
@@ -67,7 +67,10 @@ export async function readEntitlement(): Promise<Entitlement> {
     .eq("user_id", uid)
     .maybeSingle();
 
-  const admitted = !INVITE_ONLY || !!ent?.plan;
+  // Mirrors the server's rule (lib/entitlement-server.ts). This one only
+  // decides what is DRAWN — the refusal that matters happens server-side.
+  const guest = userData.user?.is_anonymous === true;
+  const admitted = !INVITE_ONLY || !!ent?.plan || (DEMO_GUEST && guest);
   const plan = planFor(ent?.plan as string | undefined);
   const start = periodStart(plan.period);
 
