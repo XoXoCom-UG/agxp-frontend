@@ -99,9 +99,19 @@ export function DevPlanTools({ current, onChanged }: { current: PlanId; onChange
       // The key exists whatever the mail did, so this is a note beside it,
       // never an error that makes the key look like it failed.
       if (to) {
-        setSentNote(r.emailed
-          ? { ok: true, text: `Sent to ${to}.` }
-          : { ok: false, text: `Key created, but not sent: ${r.emailError ?? "the email didn't go out."} Copy it below.` });
+        if (!r.emailed) {
+          setSentNote({ ok: false, text: `Key created, but not sent: ${r.emailError ?? "the email didn't go out."} Copy it below.` });
+        } else if (r.emailError) {
+          // Sent, but not the one that was configured — the fallback ran.
+          setSentNote({ ok: false, text: `Sent to ${to}. ${r.emailError}` });
+        } else {
+          // Naming which email went is the whole point: with a template
+          // configured, "it arrived" does not tell you which one arrived.
+          const which = r.via === "template"
+            ? ` using the "${r.template}" template`
+            : r.template ? " using the built-in email" : "";
+          setSentNote({ ok: true, text: `Sent to ${to}${which}.` });
+        }
       }
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(null); }

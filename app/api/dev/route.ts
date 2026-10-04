@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { missingConfig } from "@/lib/config-check";
-import { sendInvite, mailConfigured, usingSandboxSender } from "@/lib/send-mail";
+import { sendInvite, mailConfigured, usingSandboxSender, inviteTemplate } from "@/lib/send-mail";
 
 /**
  * The team's own switches: change your plan, mint an invitation, list them.
@@ -176,9 +176,15 @@ export async function POST(req: NextRequest) {
      */
     const mail = email
       ? await sendInvite(email, code, siteUrl(req))
-      : { sent: false, reason: null };
+      : { sent: false, reason: null, via: undefined };
 
-    return NextResponse.json({ code, emailed: mail.sent, emailError: mail.reason });
+    return NextResponse.json({
+      code,
+      emailed: mail.sent,
+      emailError: mail.reason,
+      via: mail.via,
+      template: inviteTemplate(),
+    });
   }
 
   return NextResponse.json({ error: "Unknown action." }, { status: 400 });

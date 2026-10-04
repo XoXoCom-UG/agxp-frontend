@@ -17,6 +17,13 @@ export interface MailResult {
   sent: boolean;
   /** Why not, in words a team member can act on. Null when it went out. */
   reason: string | null;
+  /**
+   * Which email actually went: the Resend template, or the one built into
+   * this file. Without this the two are indistinguishable from the outside,
+   * and "the template is configured but the plain email arrived" is a
+   * question you cannot answer by looking at the inbox.
+   */
+  via?: "template" | "built-in";
 }
 
 /**
@@ -88,7 +95,7 @@ export async function sendInvite(to: string, code: string, appUrl: string): Prom
       // template, so this payload carries one or the other, never both.
       template: { id: template, variables: { BETA_KEY: code, APP_URL: appUrl } },
     }, to);
-    if (viaTemplate.sent) return viaTemplate;
+    if (viaTemplate.sent) return { ...viaTemplate, via: "template" };
 
     /*
      * The template failed — renamed, unpublished, a variable it expects that
@@ -99,11 +106,16 @@ export async function sendInvite(to: string, code: string, appUrl: string): Prom
      */
     const fallback = await post(key, { text: inviteText(code, appUrl), html: inviteHtml(code, appUrl) }, to);
     return fallback.sent
-      ? { sent: true, reason: `Template "${template}" failed (${viaTemplate.reason}) — sent the built-in email instead.` }
+      ? {
+          sent: true,
+          via: "built-in",
+          reason: `Template "${template}" failed (${viaTemplate.reason}) — sent the built-in email instead.`,
+        }
       : fallback;
   }
 
-  return post(key, { text: inviteText(code, appUrl), html: inviteHtml(code, appUrl) }, to);
+  const plain = await post(key, { text: inviteText(code, appUrl), html: inviteHtml(code, appUrl) }, to);
+  return plain.sent ? { ...plain, via: "built-in" } : plain;
 }
 
 /** One request to Resend. `content` is either the template or the html/text. */
