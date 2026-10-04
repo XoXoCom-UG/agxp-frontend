@@ -52,6 +52,11 @@ export function DevPlanTools({ current, onChanged }: { current: PlanId; onChange
   const [config, setConfig] = useState<ConfigFinding[]>([]);
   const [copied, setCopied] = useState<string | null>(null);
   const [note, setNote] = useState("");
+  const [email, setEmail] = useState("");
+  /** Whether the server can send at all, so the field can say so up front. */
+  const [mailReady, setMailReady] = useState(true);
+  /** What happened to the last key: sent, or made but not sent and why. */
+  const [sentNote, setSentNote] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -60,6 +65,7 @@ export function DevPlanTools({ current, onChanged }: { current: PlanId; onChange
         if (!alive) return;
         setKeys(r.keys as BetaKey[]);
         setConfig((r.config as ConfigFinding[]) ?? []);
+        setMailReady(r.mail !== false);
       })
       .catch(() => { if (alive) setKeys([]); });
     return () => { alive = false; };
@@ -77,11 +83,23 @@ export function DevPlanTools({ current, onChanged }: { current: PlanId; onChange
 
   async function mint() {
     if (busy) return;
-    setBusy("key"); setError(null);
+    setBusy("key"); setError(null); setSentNote(null);
+    const forNote = note.trim();
+    const to = email.trim();
     try {
-      const r = await call("POST", { action: "key", plan: "max", uses: 1, note: note.trim() });
-      setNote("");
-      setKeys(k => [{ code: r.code, plan: "max", used_count: 0, max_uses: 1, note: note.trim() || null }, ...(k ?? [])]);
+      const r = await call("POST", { action: "key", plan: "max", uses: 1, note: forNote, email: to });
+      setNote(""); setEmail("");
+      setKeys(k => [
+        { code: r.code, plan: "max", used_count: 0, max_uses: 1, note: forNote || to || null },
+        ...(k ?? []),
+      ]);
+      // The key exists whatever the mail did, so this is a note beside it,
+      // never an error that makes the key look like it failed.
+      if (to) {
+        setSentNote(r.emailed
+          ? { ok: true, text: `Sent to ${to}.` }
+          : { ok: false, text: `Key created, but not sent: ${r.emailError ?? "the email didn't go out."} Copy it below.` });
+      }
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(null); }
   }
@@ -139,10 +157,21 @@ export function DevPlanTools({ current, onChanged }: { current: PlanId; onChange
         <div className="ss-keymint">
           <input value={note} onChange={e => setNote(e.target.value)}
             placeholder="Who is this for?" aria-label="Who the key is for" />
+          <input value={email} onChange={e => setEmail(e.target.value)}
+            type="email" inputMode="email" autoComplete="off"
+            placeholder={mailReady ? "Email it to… (optional)" : "Email isn't set up"}
+            aria-label="Email the key to this address"
+            disabled={!mailReady}
+            onKeyDown={e => { if (e.key === "Enter" && !busy) mint(); }} />
           <button className="btn btn-hero btn-sm" disabled={!!busy} onClick={mint}>
-            <IconPlus size={12} />{busy === "key" ? "…" : "New key"}
+            <IconPlus size={12} />
+            {busy === "key" ? "…" : email.trim() ? "Send key" : "New key"}
           </button>
         </div>
+
+        {sentNote && (
+          <p className={`ss-sent${sentNote.ok ? " is-ok" : ""}`} role="status">{sentNote.text}</p>
+        )}
 
         {keys === null && <span className="ss-hint">Loading…</span>}
         {keys !== null && keys.length === 0 && (

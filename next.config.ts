@@ -39,6 +39,21 @@ const nextConfig: NextConfig = {
   // deleting a file outside this repository.
   turbopack: { root: path.join(__dirname) },
 
+  /*
+   * Sentry's Node SDK instruments other modules at require() time through
+   * require-in-the-middle, which Turbopack cannot bundle: the dev server
+   * died on boot with "Cannot find module
+   * require-in-the-middle-<hash>" the moment instrumentation.ts loaded it.
+   * Sentry only works around this on the webpack path, so these have to be
+   * left to Node's own resolver here.
+   */
+  serverExternalPackages: [
+    "@sentry/nextjs",
+    "@sentry/node",
+    "require-in-the-middle",
+    "import-in-the-middle",
+  ],
+
   async headers() {
     return [
       {

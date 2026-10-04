@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { missingConfig } from "@/lib/config-check";
+import { sendInvite, mailConfigured } from "@/lib/send-mail";
 
 /**
  * The team's own switches: change your plan, mint an invitation, list them.
@@ -65,13 +66,48 @@ function admin(): SupabaseClient | null {
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
-/** P0001 is a refusal written for the person reading it; anything else is ours. */
+/**
+ * P0001 is a refusal written for the person reading it. Everything else used
+ * to collapse into "Something went wrong on our side", which is true and
+ * useless: the actual cause is almost always a migration that was never run,
+ * and the only person who sees this is on the team and can run it. So the
+ * Postgres code is translated the way lib/db-error.ts does for RLS.
+ */
+const DB_HINTS: Record<string, string> = {
+  // undefined_table / undefined_function: the object the function needs does
+  // not exist here. A plpgsql body is not resolved when it is created, so
+  // 0010 can be applied while 0009 is not and nothing complains until now.
+  "42P01": "A table this needs is missing. Run supabase/migrations/0009_beta_keys.sql.",
+  "42883": "A function this needs is missing. Run supabase/migrations/0010_dev_plan_switch.sql.",
+  "42703": "A column this needs is missing. Run supabase/migrations/0010_dev_plan_switch.sql.",
+  "42501": "The database refused the write. Check supabase/ensure_policies.sql.",
+};
+
 function fail(error: { code?: string; message: string }, where: string) {
   if (error.code === "P0001") {
     return NextResponse.json({ error: error.message }, { status: 403 });
   }
-  console.error(`[dev] ${where}:`, error.message);
-  return NextResponse.json({ error: "Something went wrong on our side." }, { status: 500 });
+  console.error(`[dev] ${where}:`, error.code, error.message);
+  const hint = error.code ? DB_HINTS[error.code] : undefined;
+  return NextResponse.json(
+    {
+      // Team-only endpoint, so the real cause is safe to show and is the
+      // whole point. supabase/health_check.sql lists everything at once.
+      error: hint ?? `${where} failed: ${error.message}`,
+      code: error.code,
+    },
+    { status: 500 },
+  );
+}
+
+/**
+ * Where the invitation tells people to go. The request's own origin is right
+ * in every environment we actually run in — localhost, a preview deploy, and
+ * production each send the link to themselves — and NEXT_PUBLIC_SITE_URL
+ * overrides it when the app sits behind a different public domain.
+ */
+function siteUrl(req: NextRequest): string {
+  return process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") || req.nextUrl.origin;
 }
 
 /** The invitations, for the panel that hands them out. */
@@ -87,11 +123,11 @@ export async function GET(req: NextRequest) {
   const config = missingConfig();
 
   const db = admin();
-  if (!db) return NextResponse.json({ keys: [], config });
+  if (!db) return NextResponse.json({ keys: [], config, mail: mailConfigured() });
 
   const { data, error } = await db.rpc("list_beta_keys", { p_user: userId });
   if (error) return fail(error, "list_beta_keys");
-  return NextResponse.json({ keys: data ?? [], config });
+  return NextResponse.json({ keys: data ?? [], config, mail: mailConfigured() });
 }
 
 export async function POST(req: NextRequest) {
@@ -99,7 +135,7 @@ export async function POST(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: "Sign in again." }, { status: 401 });
 
   const body = (await req.json().catch(() => null)) as
-    | { action?: "plan" | "key"; plan?: string; uses?: number; note?: string }
+    | { action?: "plan" | "key"; plan?: string; uses?: number; note?: string; email?: string }
     | null;
 
   const db = admin();
@@ -126,7 +162,23 @@ export async function POST(req: NextRequest) {
       p_note: (body.note ?? "").trim() || null,
     });
     if (error) return fail(error, "mint_beta_key");
-    return NextResponse.json({ code: data as string });
+
+    const code = data as string;
+    const email = (body.email ?? "").trim();
+
+    /*
+     * The key exists from here on, whatever happens next. Sending is a
+     * separate thing that can fail for reasons that have nothing to do with
+     * the key — an unverified domain, a provider having a bad minute — and
+     * failing the request over that would throw away a key already written
+     * to the database. So the mail result rides along and the panel shows
+     * the code either way.
+     */
+    const mail = email
+      ? await sendInvite(email, code, siteUrl(req))
+      : { sent: false, reason: null };
+
+    return NextResponse.json({ code, emailed: mail.sent, emailError: mail.reason });
   }
 
   return NextResponse.json({ error: "Unknown action." }, { status: 400 });

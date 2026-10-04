@@ -6193,13 +6193,20 @@ html.light .bg-card{
   font-style:normal; margin-left:8px; color:var(--warn);
   font-family:var(--font-mono); font-size:9px; letter-spacing:0.16em; text-transform:uppercase;
 }
-.ss-keymint{ display:flex; gap:var(--sp-2); margin-bottom:var(--sp-3); }
+/* Two inputs and a button. They sit on one row while there is room and wrap
+   to their own lines when there is not — the settings sheet is narrow, and
+   three things squeezed onto one row turn a name into four characters. */
+.ss-keymint{ display:flex; flex-wrap:wrap; gap:var(--sp-2); margin-bottom:var(--sp-3); }
 .ss-keymint input{
-  flex:1; min-width:0; height:32px; padding:0 11px;
+  /* 140px, not the min-width:0 this had while it was the only input on the
+     row: with two of them, zero lets both squeeze to about 46px instead of
+     wrapping, and an email field showing four characters is not a field. */
+  flex:1 1 130px; min-width:112px; height:32px; padding:0 11px;
   background:var(--surface-elevated); border:1px solid var(--border-strong); border-radius:9px;
   color:var(--foreground); font-size:var(--text-xs); outline:none;
 }
 .ss-keymint input::placeholder{ color:var(--muted-foreground); }
+.ss-keymint input:disabled{ opacity:.5; cursor:not-allowed; }
 .ss-keymint .btn{ flex-shrink:0; height:32px; }
 
 .ss-keys{ margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:6px; }
@@ -6222,6 +6229,15 @@ html.light .bg-card{
   font-size:var(--text-3xs); color:var(--muted-foreground);
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
+/* Outcome of the last invitation. Not an error even when it says the mail
+   did not go: the key was still created, and saying otherwise would make a
+   team member think they had to make another one. */
+.ss-sent{
+  margin:0 0 var(--sp-3); font-size:var(--text-2xs); line-height:1.55;
+  color:var(--warn);
+}
+.ss-sent.is-ok{ color:var(--success); }
+
 .ss-dev-error{
   margin:0; font-size:var(--text-xs); color:var(--destructive);
 }

@@ -45,6 +45,16 @@ const SPEC: ConfigFinding[] = [
       "beta keys cannot be redeemed. Nothing errors — it just looks like a working free tier.",
   },
   {
+    key: "RESEND_API_KEY",
+    level: "optional",
+    consequence: "Invitations can't be emailed. They are still created, to copy by hand.",
+  },
+  {
+    key: "INVITE_FROM",
+    level: "optional",
+    consequence: "No verified sender address, so invitations can't be emailed.",
+  },
+  {
     key: "NEXT_PUBLIC_SENTRY_DSN",
     level: "optional",
     consequence: "No error reports from production. Sentry is wired but has nowhere to send.",
