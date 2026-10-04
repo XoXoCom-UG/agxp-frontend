@@ -57,12 +57,18 @@ export async function sendInvite(to: string, code: string, appUrl: string): Prom
     if (!res.ok) {
       const body = (await res.json().catch(() => ({}))) as { message?: string };
       console.error("[mail] resend refused:", res.status, body.message);
-      // 403 here is almost always an unverified sending domain, which is a
-      // setup step rather than a bug, so it is worth naming.
+      /*
+       * Resend's own words first. A 403 is a setup step rather than a bug,
+       * but there are two different setup steps behind it — an unverified
+       * domain, and the sandbox sender that may only write to the account
+       * owner — and collapsing both into "domain isn't verified" sends you
+       * to edit DNS when the actual fix is the recipient address.
+       */
+      if (body.message) return { sent: false, reason: body.message };
       if (res.status === 403) {
-        return { sent: false, reason: "The sending domain isn't verified with Resend yet." };
+        return { sent: false, reason: "Resend refused it: check the sender domain and the recipient." };
       }
-      return { sent: false, reason: body.message || "The email provider refused it." };
+      return { sent: false, reason: "The email provider refused it." };
     }
     return { sent: true, reason: null };
   } catch (e) {
@@ -119,7 +125,9 @@ function inviteHtml(code: string, appUrl: string): string {
             Open AgentiX Projects
           </a>
         </td></tr>
-        <tr><td style="font-size:12px;line-height:1.6;color:#98a2b3;">
+        <!-- #667085, not a lighter grey: this line is an instruction, and at
+             #98a2b3 it sat at 2.6:1 on white, which is not readable text. -->
+        <tr><td style="font-size:12px;line-height:1.6;color:#667085;">
           Sign in first, then enter the key when it asks. If you weren't expecting this,
           you can ignore it — the key does nothing until someone uses it.
         </td></tr>
