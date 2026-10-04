@@ -55,6 +55,8 @@ export function DevPlanTools({ current, onChanged }: { current: PlanId; onChange
   const [email, setEmail] = useState("");
   /** Whether the server can send at all, so the field can say so up front. */
   const [mailReady, setMailReady] = useState(true);
+  /** On Resend's sandbox sender, which only reaches the account owner. */
+  const [sandbox, setSandbox] = useState(false);
   /** What happened to the last key: sent, or made but not sent and why. */
   const [sentNote, setSentNote] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -66,6 +68,7 @@ export function DevPlanTools({ current, onChanged }: { current: PlanId; onChange
         setKeys(r.keys as BetaKey[]);
         setConfig((r.config as ConfigFinding[]) ?? []);
         setMailReady(r.mail !== false);
+        setSandbox(r.sandbox === true);
       })
       .catch(() => { if (alive) setKeys([]); });
     return () => { alive = false; };
@@ -171,6 +174,14 @@ export function DevPlanTools({ current, onChanged }: { current: PlanId; onChange
 
         {sentNote && (
           <p className={`ss-sent${sentNote.ok ? " is-ok" : ""}`} role="status">{sentNote.text}</p>
+        )}
+
+        {mailReady && sandbox && (
+          <p className="ss-sent">
+            Sending from Resend&apos;s test address, which only reaches the Resend account
+            owner. Set <code>INVITE_FROM</code> to an address on a verified domain to reach
+            anyone else.
+          </p>
         )}
 
         {keys === null && <span className="ss-hint">Loading…</span>}

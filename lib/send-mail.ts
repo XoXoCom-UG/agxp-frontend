@@ -19,8 +19,28 @@ export interface MailResult {
   reason: string | null;
 }
 
+/**
+ * Resend's sandbox sender. It needs no DNS and works the moment there is an
+ * API key — but it may only write to the address the Resend account was
+ * opened with, so it gets you a real end-to-end test and nothing more.
+ * Resend refuses anything else with a message this file passes straight
+ * through, so the limit announces itself rather than failing quietly.
+ */
+const SANDBOX_FROM = "AgentiX Projects <onboarding@resend.dev>";
+
+/** The address invitations are sent from. */
+export function inviteFrom(): string {
+  return process.env.INVITE_FROM?.trim() || SANDBOX_FROM;
+}
+
+/** True once sending is possible at all, which takes only the API key. */
 export function mailConfigured(): boolean {
-  return !!process.env.RESEND_API_KEY && !!process.env.INVITE_FROM;
+  return !!process.env.RESEND_API_KEY;
+}
+
+/** Whether we are still on the sandbox sender, which the panel says out loud. */
+export function usingSandboxSender(): boolean {
+  return !process.env.INVITE_FROM?.trim();
 }
 
 /** A plausible address. Not validation — the provider decides that. */
@@ -30,10 +50,10 @@ export function looksLikeEmail(value: string): boolean {
 
 export async function sendInvite(to: string, code: string, appUrl: string): Promise<MailResult> {
   const key = process.env.RESEND_API_KEY;
-  const from = process.env.INVITE_FROM;
-  if (!key || !from) {
-    return { sent: false, reason: "Email isn't set up on the server (RESEND_API_KEY, INVITE_FROM)." };
+  if (!key) {
+    return { sent: false, reason: "Email isn't set up on the server (RESEND_API_KEY)." };
   }
+  const from = inviteFrom();
   if (!looksLikeEmail(to)) {
     return { sent: false, reason: "That doesn't look like an email address." };
   }

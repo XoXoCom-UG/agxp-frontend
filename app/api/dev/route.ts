@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { missingConfig } from "@/lib/config-check";
-import { sendInvite, mailConfigured } from "@/lib/send-mail";
+import { sendInvite, mailConfigured, usingSandboxSender } from "@/lib/send-mail";
 
 /**
  * The team's own switches: change your plan, mint an invitation, list them.
@@ -123,11 +123,11 @@ export async function GET(req: NextRequest) {
   const config = missingConfig();
 
   const db = admin();
-  if (!db) return NextResponse.json({ keys: [], config, mail: mailConfigured() });
+  if (!db) return NextResponse.json({ keys: [], config, mail: mailConfigured(), sandbox: usingSandboxSender() });
 
   const { data, error } = await db.rpc("list_beta_keys", { p_user: userId });
   if (error) return fail(error, "list_beta_keys");
-  return NextResponse.json({ keys: data ?? [], config, mail: mailConfigured() });
+  return NextResponse.json({ keys: data ?? [], config, mail: mailConfigured(), sandbox: usingSandboxSender() });
 }
 
 export async function POST(req: NextRequest) {

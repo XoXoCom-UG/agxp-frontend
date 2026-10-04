@@ -52,7 +52,9 @@ const SPEC: ConfigFinding[] = [
   {
     key: "INVITE_FROM",
     level: "optional",
-    consequence: "No verified sender address, so invitations can't be emailed.",
+    consequence:
+      "Invitations are sent from Resend's sandbox address, which only reaches the " +
+      "Resend account owner. Set a sender on a verified domain to reach anyone else.",
   },
   {
     key: "NEXT_PUBLIC_SENTRY_DSN",
