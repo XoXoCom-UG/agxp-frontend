@@ -6,7 +6,7 @@ import { listMessages, addMessage, deleteMessage, touchProjectActivity, renameFr
 import { askAgent, AgentError } from "@/lib/ask-agent";
 import { parseMarkers, streamIsDocument, type ParsedMessage } from "@/lib/message-markers";
 import { isDeliverableCommand, type Deliverable } from "@/lib/deliverables";
-import { isReadAlongCommand, type PeerContext } from "@/lib/peer-context";
+import { isReviewCommand, isReadAlongCommand, type PeerContext } from "@/lib/peer-context";
 import { ERROR_PREFIX, isErrorLine, isDocReply, cutUnfinishedMarker, parseEntries, deriveConversation } from "@/lib/conversation-state";
 
 /** The answer Try again replaces fades out for this long before it goes. */
@@ -186,7 +186,7 @@ export function useAgentConversation(opts: ConversationOptions) {
       // document buttons and the Coach's own nudge are commands, and naming
       // a project "(Systemhinweis, nicht vom Nutzer geschrieben…" once was
       // enough to make that obvious.
-      if (isFirstEver && !isDeliverableCommand(t) && !isReadAlongCommand(t)) {
+      if (isFirstEver && !isDeliverableCommand(t) && !isReadAlongCommand(t) && !isReviewCommand(t)) {
         renameFromFirstMessage(project, t)
           .then(name => { if (name) optsRef.current.onProjectNamed?.(name); })
           .catch(e => console.warn("[chat] naming the project failed:", e));

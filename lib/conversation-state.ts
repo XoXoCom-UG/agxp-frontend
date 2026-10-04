@@ -11,7 +11,10 @@
 
 import type { ProjectMessage } from "@/lib/projects";
 import { parseMarkers, looksLikeDocument, type ParsedMessage, type TopicMarker } from "@/lib/message-markers";
-import { isReadAlongCommand } from "@/lib/peer-context";
+import { isReadAlongCommand, isReviewCommand } from "@/lib/peer-context";
+
+/** A turn the machine sent, not the person: never shown, never named a project. */
+const isUnprompted = (t: string) => isReadAlongCommand(t) || isReviewCommand(t);
 import { isDeliverableCommand } from "@/lib/deliverables";
 
 /** A failed turn is kept in the list (never saved) with this prefix. */
@@ -48,8 +51,11 @@ export function parseEntries(messages: ProjectMessage[], docTitle: string): Entr
     return {
       m, p, isError,
       isDoc: assistant && !isError && isDocReply(p, docTitle),
-      isAside: assistant && !!before && before.role === "user" && isReadAlongCommand(before.content),
-      isCommand: !assistant && (isDeliverableCommand(m.content) || isReadAlongCommand(m.content)),
+      // Both unprompted turns wear the same card: one is the Coach reading
+      // along, the other is it reviewing the finished document. Neither was
+      // asked for, which is the thing the card is saying.
+      isAside: assistant && !!before && before.role === "user" && isUnprompted(before.content),
+      isCommand: !assistant && (isDeliverableCommand(m.content) || isUnprompted(m.content)),
     };
   });
 }

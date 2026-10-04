@@ -235,7 +235,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
       const old = prev[role];
         if (old && old.name === s.name && old.transcript === s.transcript
         && old.lastLine === s.lastLine && old.busy === s.busy
-        && old.agentTurns === s.agentTurns) return prev;
+        && old.agentTurns === s.agentTurns && old.docCount === s.docCount) return prev;
       return { ...prev, [role]: s };
     });
   }, []);
@@ -314,7 +314,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
     const other = OTHER[role];
     const s = snaps[other];
     if (!s?.transcript) return undefined;
-    return { role: other, name: s.name, transcript: s.transcript, turns: s.agentTurns };
+    return { role: other, name: s.name, transcript: s.transcript, turns: s.agentTurns, docs: s.docCount };
   }
 
   function panelFor(role: AgentType) {

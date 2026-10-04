@@ -203,7 +203,7 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
   useChoiceKeys({ choices: convo.choices, active: keyboardActive, sending, panelRef, onPick: chat.sendRef });
   useReadAlongNudge({
     enabled: role === "coach", loaded, hasHistory: messages.length > 0,
-    peerTurns: peer?.turns ?? 0, sending, sendRef: chat.sendRef,
+    peerTurns: peer?.turns ?? 0, peerDocs: peer?.docs ?? 0, sending, sendRef: chat.sendRef,
   });
 
   // A conversation opened from history already holds that many answers; the
@@ -229,8 +229,9 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
     const answers = said.filter(e => e.m.role === "assistant");
     const last = answers[answers.length - 1];
     const lastLine = (last && previewLine(last.p.text)) || OPENING[role];
-    snapCb.current?.({ name: agent.name, transcript: peerTranscript(turns, agent.name), lastLine, agentTurns: answers.length, busy: sending });
-  }, [entries, sending, agent.name, role]);
+    snapCb.current?.({ name: agent.name, transcript: peerTranscript(turns, agent.name), lastLine,
+      agentTurns: answers.length, docCount: docs.length, busy: sending });
+  }, [entries, sending, agent.name, role, docs.length]);
 
   const latest = docs.length;
   const restoredVersion = restore && restore.atCount === latest && restore.version < latest ? restore.version : null;

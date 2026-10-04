@@ -17,6 +17,9 @@ export interface PeerContext {
   transcript: string;
   /** How many times the other agent has answered. Drives the nudge below. */
   turns: number;
+  /** Finished documents the other agent has produced. A new one is what
+   *  triggers the second reader (see REVIEW_PROMPT). */
+  docs: number;
 }
 
 /**
@@ -79,6 +82,8 @@ export interface PanelSnapshot {
   /** Replies this agent has given — the other panel counts them to decide
    *  when enough has happened to be worth speaking up about. */
   agentTurns: number;
+  /** Finished documents produced here. */
+  docCount: number;
   busy: boolean;
 }
 
@@ -123,6 +128,32 @@ export function isReadAlongCommand(text: string): boolean {
  * often enough to feel like someone is listening, rare enough that it never
  * feels like a second agent talking over the first.
  */
+/* ---------------------------------------------------------------------------
+   THE SECOND READER
+
+   Patryk's whole argument for the Lexicon (2026-10-02, 00:33:33) was that
+   someone who was not in the conversation gets the printed document and has
+   to understand it. But the document is written by the agent that ran the
+   interview, and that agent knows everything — it cannot tell what it left
+   out, because nothing is missing from where it is standing.
+
+   The other agent can. It has read the conversation but did not write the
+   document, which is as close to a stranger as we can get for free, and the
+   channel for it already exists.
+   --------------------------------------------------------------------------- */
+
+export const REVIEW_PROMPT =
+  "(Systemhinweis, nicht vom Nutzer geschrieben. Der andere Agent hat gerade sein Dokument " +
+  "fertiggestellt. Lies es als jemand, der beim Gespräch NICHT dabei war: dieser Mensch bekommt " +
+  "nur das PDF. Nenne HÖCHSTENS zwei Stellen, an denen so jemand aussteigen würde — ein Begriff " +
+  "ohne Erklärung, eine Zahl ohne Bezug, eine Empfehlung ohne Begründung. Keine Lobeshymne, keine " +
+  "Zusammenfassung, keine Stilkritik. Wenn das Dokument allein verständlich ist, sag genau das in " +
+  "einem Satz. Zwei bis drei Sätze insgesamt, danach eine Frage.)";
+
+export function isReviewCommand(text: string): boolean {
+  return text.trim() === REVIEW_PROMPT.trim();
+}
+
 export const NUDGE_EVERY = 3;
 /** Nothing to read along with before this — the Coach would be guessing. */
 export const NUDGE_AFTER = 2;

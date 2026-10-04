@@ -125,7 +125,17 @@ const LEARNING_INSTRUCTION =
   `Höchstens 2 pro Antwort, und nur wirklich Übertragbares — die Branche, die Systemlandschaft, der ` +
   `übliche Budgetrahmen, wie entschieden wird, welche Widerstände typisch sind, Vorlieben wie ` +
   `"deutsche Anbieter wegen DSGVO". NICHT ins Gedächtnis gehören Detailzahlen dieses einen Prozesses ` +
-  `(die gehören ins Dokument) und keine sensiblen personenbezogenen Daten über einzelne Mitarbeiter.`;
+  `(die gehören ins Dokument) und keine sensiblen personenbezogenen Daten über einzelne Mitarbeiter.` +
+  // The product is sold on agents that learn, and the moment someone tells
+  // you that you got it wrong is the most valuable thing that happens in a
+  // session — it was the one signal being thrown away. A correction to the
+  // document is almost always about HOW this person wants to be worked with,
+  // which is exactly what transfers to the next project.
+  `\n\nBesonders wichtig: wenn der Nutzer dein Dokument KORRIGIERT — eine Sektion anders haben ` +
+  `will, eine Darstellung ablehnt, eine Formulierung ändert — dann steckt darin fast immer eine ` +
+  `Vorliebe, die auch im nächsten Projekt gilt. Schreib sie als [[MEMORY: vorliebe | ...]] auf, aber ` +
+  `nur die übertragbare Form: nicht "will Abschnitt 3 kürzer", sondern "will Zahlen pro Quartal statt ` +
+  `pro Monat" oder "will keine Lieferantennamen im Dokument".`;
 
 // The Agent Dashboard shows which industries an agent has worked in (Patryk,
 // 2026-09-30: "Branche, also z.B. Bank oder Software"). Nothing stores it, so
@@ -214,6 +224,29 @@ ${text}
   );
 }
 
+/**
+ * Today, and what to do about it.
+ *
+ * The model has no clock, so a Change Plan that says "30 Tage" and a user
+ * who comes back seven weeks later never meet. One line of date plus one
+ * rule turns a document that was filed away into a conversation that picks
+ * itself up.
+ *
+ * This does change the cached prefix — but once a day, not once a request,
+ * which is the difference between a date and a timestamp. A timestamp here
+ * would miss the cache on every single turn.
+ */
+function todayPrompt(): string {
+  const today = new Date().toISOString().slice(0, 10);
+  return (
+    `\n\nHeute ist der ${today}. Der Nutzer kann Tage oder Wochen nach dem letzten Mal ` +
+    `zurückkommen. Wenn im bisherigen Gespräch schon ein Dokument mit Zeitschiene steht und eine ` +
+    `Phase inzwischen fällig oder überfällig ist, frag als ERSTES danach — eine Frage, konkret, zu ` +
+    `genau der Phase ("Die 30 Tage für den Pilot sind um. Läuft er?"). Danach weiter wie gewohnt. ` +
+    `Wenn keine Zeitschiene existiert oder nichts fällig ist, erwähne das Datum nicht.`
+  );
+}
+
 function systemPrompt(type: AgentType, name: string, memory: string[], experience?: { level?: string; projects?: number }, stations?: number | null): string {
   return (
     ROLE_PROMPTS[type](name) +
@@ -226,7 +259,8 @@ function systemPrompt(type: AgentType, name: string, memory: string[], experienc
     LEARNING_INSTRUCTION +
     INDUSTRY_INSTRUCTION +
     memoryPrompt(memory) +
-    experiencePrompt(experience)
+    experiencePrompt(experience) +
+    todayPrompt()
   );
 }
 
