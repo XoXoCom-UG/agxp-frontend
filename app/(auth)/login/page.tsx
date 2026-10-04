@@ -45,7 +45,9 @@ const HERO_POINTS = [
 
 export default function LoginPage() {
   const router = useRouter();
-  const supabase = createClient();
+  // Not created at render: this page prerenders on the server at build
+  // time, and building the client there turns a missing NEXT_PUBLIC_*
+  // into a failed BUILD. Every use below is in an effect or a handler.
   const { token, loading: authLoading } = useAuth();
   const { setTheme } = useTheme();
 
@@ -135,13 +137,13 @@ export default function LoginPage() {
     setBusy("form");
     try {
       if (mode === "signin") {
-        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+        const { error } = await createClient().auth.signInWithPassword({ email: email.trim(), password });
         if (error) setNote({ text: friendlyError(error.message), ok: false });
         else router.replace("/dashboard");
         return;
       }
 
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await createClient().auth.signUp({
         email: email.trim(),
         password,
         options: {
@@ -165,7 +167,7 @@ export default function LoginPage() {
     // Only the address matters here; a half-typed password is not an error.
     if (reportInvalid(validate(false))) return;
     setBusy("forgot");
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+    const { error } = await createClient().auth.resetPasswordForEmail(email.trim(), {
       redirectTo: `${window.location.origin}/reset`,
     });
     setBusy(null);
@@ -179,7 +181,7 @@ export default function LoginPage() {
   async function googleSignIn() {
     setBusy("google");
     setNote(null);
-    const { error } = await supabase.auth.signInWithOAuth({
+    const { error } = await createClient().auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     });

@@ -14,7 +14,9 @@ import { BrandLogo } from "@/components/layout/brand-logo";
  * carried in the hash, hence the short poll at the end.
  */
 export default function AuthCallbackPage() {
-  const supabase = createClient();
+  // Not created at render: this page prerenders on the server at build
+  // time, and building the client there turns a missing NEXT_PUBLIC_*
+  // into a failed BUILD. Every use below is in an effect or a handler.
   const router = useRouter();
   const [failed, setFailed] = useState(false);
 
@@ -23,12 +25,12 @@ export default function AuthCallbackPage() {
     let iv: ReturnType<typeof setInterval> | undefined;
 
     (async () => {
-      const { data: s0 } = await supabase.auth.getSession();
+      const { data: s0 } = await createClient().auth.getSession();
       if (s0.session) { router.replace("/dashboard"); return; }
 
       const code = new URLSearchParams(window.location.search).get("code");
       if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        const { error } = await createClient().auth.exchangeCodeForSession(code);
         if (cancelled) return;
         if (!error) { router.replace("/dashboard"); return; }
       }
@@ -36,7 +38,7 @@ export default function AuthCallbackPage() {
       let tries = 0;
       iv = setInterval(async () => {
         tries++;
-        const { data } = await supabase.auth.getSession();
+        const { data } = await createClient().auth.getSession();
         if (data.session) { clearInterval(iv); router.replace("/dashboard"); }
         else if (tries > 12) { clearInterval(iv); setFailed(true); }
       }, 400);

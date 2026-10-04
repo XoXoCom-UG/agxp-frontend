@@ -45,7 +45,9 @@ function describeError(error: AuthError): { text: string; linkSpent: boolean } {
  */
 export default function ResetPage() {
   const router = useRouter();
-  const supabase = createClient();
+  // Not created at render: this page prerenders on the server at build
+  // time, and building the client there turns a missing NEXT_PUBLIC_*
+  // into a failed BUILD. Every use below is in an effect or a handler.
   const [linkState, setLinkState] = useState<LinkState>("checking");
   const [password, setPassword] = useState("");
   const [again, setAgain] = useState("");
@@ -67,16 +69,18 @@ export default function ResetPage() {
     // getSession waits for the client to finish reading the link, so no
     // session afterwards means the link didn't produce one — used, expired, or
     // opened in another browser than the one that asked for it.
-    supabase.auth.getSession()
+    createClient().auth.getSession()
       .then(({ data }) => { if (alive) setLinkState(s => s === "ready" ? s : data.session ? "ready" : "invalid"); })
       .catch(() => { if (alive) setLinkState("invalid"); });
 
     // Belt and braces: the recovery event can land after getSession resolved.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = createClient().auth.onAuthStateChange((event, session) => {
       if (alive && session && (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN")) setLinkState("ready");
     });
     return () => { alive = false; subscription.unsubscribe(); };
-  }, [supabase]);
+    // No dependency: the client is memoised at module scope, so there is
+    // nothing here that can change and re-run this.
+  }, []);
 
   function validate(): FieldErrors {
     const next: FieldErrors = {};
@@ -98,7 +102,7 @@ export default function ResetPage() {
     setBusy(true);
     let error: AuthError | null = null;
     try {
-      ({ error } = await supabase.auth.updateUser({ password }));
+      ({ error } = await createClient().auth.updateUser({ password }));
     } catch {
       setBusy(false);
       setNote({ text: "No connection to the server. Check your internet, then try again.", ok: false });

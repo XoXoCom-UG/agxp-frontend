@@ -67,7 +67,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // user id it belongs to, so switching accounts can never show the wrong name
   // and no effect is needed to clear it.
   const [nameEdit, setNameEdit] = useState<{ uid: string; name: string } | null>(null);
-  const supabase = createClient();
+  // Deliberately NOT created here. This component prerenders on the server at
+  // build time, and building the Supabase client there made a missing
+  // NEXT_PUBLIC_* break the BUILD instead of the running app. Every use below
+  // is inside an effect or a handler, so each calls createClient() itself —
+  // it is memoised at module scope, so this is still one client for the app.
 
   const userId = session?.user?.id ?? null;
   const token = session?.access_token ?? null;
@@ -83,14 +87,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /** setProfileName only painted the new name on screen; it was gone on the
    *  next reload. This is the half that actually writes it to the account. */
   const saveProfileName = async (n: string) => {
-    const { error } = await supabase.auth.updateUser({ data: { full_name: n } });
+    const { error } = await createClient().auth.updateUser({ data: { full_name: n } });
     if (error) throw new Error(error.message);
   };
 
   useEffect(() => {
     // Always resolve loading — even on error — so the app never hangs on the
     // skeleton (a corrupt session cookie used to strand it forever).
-    supabase.auth.getSession()
+    createClient().auth.getSession()
       .then(({ data }) => {
         setSession(data.session);
         // No session, but the proxy's gate cookie is still around: stale. Clear it
@@ -104,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Safety net: if getSession never settles (network stall), stop loading.
     const failsafe = setTimeout(() => setLoading(false), 5000);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: { subscription } } = createClient().auth.onAuthStateChange((_event, s) => {
       setSession(s);
       setLoading(false);
       // Covers the case that produced the loop in the first place: a refresh token
@@ -116,7 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await createClient().auth.signOut();
   };
 
   return (
