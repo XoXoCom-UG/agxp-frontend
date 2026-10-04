@@ -6,14 +6,17 @@ import { sendInvite, mailConfigured, usingSandboxSender, inviteTemplate } from "
 /**
  * The team's own switches: change your plan, mint an invitation, list them.
  *
- * Every one of these is privileged, and the privilege is a single boolean on
- * the entitlement row (`can_switch_plan`, migration 0010). The check lives
- * inside the database functions rather than here, so this route cannot
- * forget it and a second caller written later inherits it for free. All this
- * file does is verify who is asking and pass it on with the service role.
+ * Every one of these is privileged, and the privilege is one question:
+ * is_team_member() in migration 0012, which is true only for an account that
+ * was granted can_switch_plan AND whose confirmed address is on the company
+ * domain. The check lives inside the database functions rather than here, so
+ * this route cannot forget it and a second caller written later inherits it
+ * for free. All this file does is verify who is asking and pass it on with
+ * the service role.
  *
- * The flag is false for everyone by default. A tester who finds this
- * endpoint gets the same refusal as an anonymous caller.
+ * Nobody has it by default. A tester who finds this endpoint gets the same
+ * refusal as an anonymous caller, and so does a team member signing in from
+ * a private address.
  */
 
 async function callerId(req: NextRequest): Promise<string | null> {
@@ -33,14 +36,17 @@ async function callerId(req: NextRequest): Promise<string | null> {
 }
 
 /**
- * The team flag, read with the CALLER's own token rather than the service
- * role. That matters for one case only, and it is the case that matters most:
- * when SUPABASE_SERVICE_ROLE_KEY is the thing that is missing, admin() is null
- * and the usual path would 500 before it could ever say so. agxp_entitlements
- * is select-own under RLS, so this works with nothing but the user's session —
- * and it still cannot be spoofed, because RLS decides which row comes back.
+ * Is the caller on the team? Asked with the CALLER's own token, not the
+ * service role, for one case that matters most: when
+ * SUPABASE_SERVICE_ROLE_KEY is the thing that is missing, admin() is null and
+ * the usual path would 500 before it could ever say so.
+ *
+ * am_i_team() takes no argument and reads auth.uid() from the verified token,
+ * so it cannot be aimed at someone else's account, and it applies the same
+ * rule the privileged functions apply: the grant AND a confirmed address on
+ * the company domain (migration 0012).
  */
-async function callerCanSwitch(req: NextRequest, userId: string): Promise<boolean> {
+async function callerIsTeam(req: NextRequest): Promise<boolean> {
   const header = req.headers.get("authorization") ?? "";
   const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -51,12 +57,8 @@ async function callerCanSwitch(req: NextRequest, userId: string): Promise<boolea
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
-  const { data } = await supabase
-    .from("agxp_entitlements")
-    .select("can_switch_plan")
-    .eq("user_id", userId)
-    .maybeSingle();
-  return data?.can_switch_plan === true;
+  const { data, error } = await supabase.rpc("am_i_team");
+  return !error && data === true;
 }
 
 function admin(): SupabaseClient | null {
@@ -115,7 +117,7 @@ export async function GET(req: NextRequest) {
   const userId = await callerId(req);
   if (!userId) return NextResponse.json({ error: "Sign in again." }, { status: 401 });
 
-  if (!(await callerCanSwitch(req, userId))) {
+  if (!(await callerIsTeam(req))) {
     return NextResponse.json({ error: "Not for this account." }, { status: 403 });
   }
 

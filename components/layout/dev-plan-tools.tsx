@@ -11,9 +11,15 @@ import { IconCopy, IconCheck, IconPlus, IconAlert } from "@/components/layout/ag
  * Switching your own plan is the only way to actually look at what a tier
  * gives you without editing the database between every check. It is also the
  * one thing that must never reach a tester: a plan the user can set is not a
- * plan. So this whole panel is drawn only when `can_switch_plan` is true on
- * the account, and — the part that matters — every action it fires is
- * checked again inside the database function. Hiding the buttons is a
+ * plan.
+ *
+ * So this panel is drawn only for the team, and "the team" is two conditions
+ * at once (migration 0012): the account was granted `can_switch_plan`, AND
+ * its confirmed address is on the company domain. The grant alone is not
+ * enough, and neither is the address.
+ *
+ * The part that matters: every action it fires is checked again inside the
+ * database function, which asks the same question. Hiding the buttons is a
  * courtesy; the refusal is the security.
  */
 

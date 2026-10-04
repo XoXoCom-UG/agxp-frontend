@@ -76,6 +76,12 @@ This is **Agentix Projects (AgXP)**: a user pairs with two AI agents on one proj
 - Claude reads PDFs and images natively (`document` / `image` blocks), so no parser dependency was added; text files are inlined. Caps: 10 MB per file (enforced on the bucket, not just the browser) and 24 MB per conversation, because the whole history is resent every turn.
 - Deleting a project cascades to messages through a foreign key but **not** to storage — the link is a string inside a message — so `delete_project_files()` in 0011 is what stops orphaned, paid-for objects.
 
+### The team-only panels
+
+Switch plan, Invitations and Agent memory in Settings → Plan are drawn only for the team, and "the team" is **two conditions at once** ([0012](supabase/migrations/0012_team_domain.sql)): the account was granted `can_switch_plan`, **and** its confirmed `auth.users.email` is on `@xoxocom.net`. Neither half alone opens anything — a flag granted by mistake is useless from a private address, and a company address is useless without the grant.
+
+The rule lives in one place, `is_team_member()`, and every privileged function asks it. Clients and the API route ask `am_i_team()`, which takes no argument and reads `auth.uid()` from the verified token, so it cannot be aimed at another account. Hiding a panel is a courtesy; the refusal inside the function is the security.
+
 ### When something is misconfigured
 
 - [lib/config-check.ts](lib/config-check.ts) names every missing environment variable at boot (from `register()` in [instrumentation.ts](instrumentation.ts)) and in the team-only Settings panel. It exists for `SUPABASE_SERVICE_ROLE_KEY` above all: without it nothing errors, every account just reads as free and `agxp_usage` stays empty. The dev route reads the team flag with the *caller's* token precisely so it can still report the case where the service role is what's missing.

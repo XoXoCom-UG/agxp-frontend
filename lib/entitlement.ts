@@ -53,9 +53,17 @@ export async function readEntitlement(): Promise<Entitlement> {
   const uid = userData.user?.id;
   if (!uid) return { ...UNKNOWN, loading: false };
 
+  /*
+   * Whether to DRAW the team panels. Asked of the database rather than worked
+   * out here, so there is one answer and not two that can drift: am_i_team()
+   * checks the grant and the company domain together (migration 0012). An
+   * error means no — a panel that fails open is not a gate.
+   */
+  const { data: team } = await supabase.rpc("am_i_team");
+
   const { data: ent } = await supabase
     .from("agxp_entitlements")
-    .select("plan,can_switch_plan")
+    .select("plan")
     .eq("user_id", uid)
     .maybeSingle();
 
@@ -72,7 +80,7 @@ export async function readEntitlement(): Promise<Entitlement> {
   const used = count ?? 0;
   return {
     admitted,
-    canSwitch: !!(ent as { can_switch_plan?: boolean } | null)?.can_switch_plan,
+    canSwitch: team === true,
     plan,
     projects: used,
     projectsLeft: Math.max(0, plan.projects - used),

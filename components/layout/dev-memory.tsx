@@ -14,7 +14,10 @@ import { IconRefresh, IconSpark } from "@/components/layout/agxp-icons";
  * reason this is on screen instead of in a query someone has to remember to
  * run.
  *
- * It reads the signed-in account's own rows and nothing else.
+ * It reads the signed-in account's own rows and nothing else — so unlike the
+ * panel above it, hiding this one is about keeping Settings uncluttered for
+ * a tester, not about protecting anything. The team check that draws it is
+ * the grant plus the company domain (migration 0012).
  */
 export function DevMemory() {
   const [audit, setAudit] = useState<MemoryAudit | null>(null);
