@@ -103,7 +103,14 @@ export async function POST(req: NextRequest) {
     | null;
 
   const db = admin();
-  if (!db) return NextResponse.json({ error: "Not configured on the server." }, { status: 500 });
+  if (!db) {
+    // Name it. This is the same trap the GET reports, and a team member
+    // clicking a plan that silently refuses has no way to connect the two.
+    return NextResponse.json(
+      { error: "SUPABASE_SERVICE_ROLE_KEY is not set on the server, so plans cannot be written." },
+      { status: 500 },
+    );
+  }
 
   if (body?.action === "plan") {
     const { data, error } = await db.rpc("set_own_plan", { p_user: userId, p_plan: body.plan });
