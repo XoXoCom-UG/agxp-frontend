@@ -6030,3 +6030,64 @@ html.light .auth::before{ background:radial-gradient(38vw 38vw at 18% -10%, colo
 }
 .ss-plan.on li{ color:var(--text-primary); }
 .ss-plan.on li::before{ background:var(--primary-soft); }
+
+
+/* =============================================================================
+   THE BETA GATE
+
+   Shown instead of the workspace to a signed-in account that has redeemed no
+   key. It carries the same room as the login page — the person has just come
+   from there, and a second, different-looking door would read as a mistake.
+   ============================================================================= */
+
+.beta-gate{
+  position:fixed; inset:0; z-index:60; overflow:auto;
+  display:flex; align-items:center; justify-content:center; padding:var(--sp-6);
+  background:
+    radial-gradient(64% 46% at 50% -6%, color-mix(in srgb, var(--primary-soft) 15%, transparent), transparent 70%),
+    var(--background);
+}
+.bg-card{
+  width:100%; max-width:430px;
+  animation:viewIn 340ms var(--ease-out) backwards;
+}
+.bg-eyebrow{
+  display:block; margin-bottom:14px;
+  font-family:var(--font-mono); font-size:var(--text-3xs); letter-spacing:0.28em;
+  text-transform:uppercase; color:var(--primary-soft);
+}
+.bg-card h1{
+  font-family:var(--font-display); font-size:30px; font-weight:600;
+  letter-spacing:-0.035em; line-height:1.15; margin:0 0 12px; color:var(--foreground);
+}
+.bg-card > p{
+  margin:0 0 var(--sp-6); font-size:var(--text-sm); line-height:1.65;
+  color:var(--text-secondary); max-width:38ch;
+}
+.bg-field{ display:block; margin-bottom:var(--sp-4); }
+.bg-field > span{
+  display:block; margin-bottom:8px;
+  font-family:var(--font-mono); font-size:var(--text-3xs); letter-spacing:0.19em;
+  text-transform:uppercase; color:var(--text-muted);
+}
+.bg-field input{
+  width:100%; height:48px; padding:0 15px;
+  background:var(--surface-1); border:1px solid var(--border-medium); border-radius:var(--radius-md);
+  color:var(--text-primary); font-family:var(--font-mono); font-size:16px; letter-spacing:0.08em;
+  outline:none; box-shadow:inset 0 1px 2px rgba(0,0,0,0.2);
+  transition:border-color .16s ease, box-shadow .16s ease;
+}
+.bg-field input::placeholder{ color:var(--text-muted); letter-spacing:0.08em; }
+.bg-field input:focus{
+  border-color:var(--border-strong);
+  box-shadow:inset 0 1px 2px rgba(0,0,0,0.2), 0 0 0 3px color-mix(in srgb, var(--ring) 13%, transparent);
+}
+.bg-field input[aria-invalid="true"]{ border-color:color-mix(in srgb, var(--destructive) 60%, transparent); }
+.bg-error{
+  margin:0 0 var(--sp-4); font-size:var(--text-xs); line-height:1.5;
+  color:var(--destructive);
+}
+.beta-gate .btn-hero{ width:100%; justify-content:center; height:48px; }
+.bg-foot{
+  margin:var(--sp-6) 0 0; font-size:var(--text-2xs); color:var(--text-muted); line-height:1.6;
+}

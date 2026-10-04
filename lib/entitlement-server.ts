@@ -1,6 +1,6 @@
 import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { PLANS, DEFAULT_PLAN, planFor, periodStart, type Plan, type LimitHit } from "@/lib/plans";
+import { PLANS, DEFAULT_PLAN, INVITE_ONLY, planFor, periodStart, type Plan, type LimitHit } from "@/lib/plans";
 
 /**
  * entitlement-server.ts — what this user is allowed, and what they have spent.
@@ -30,6 +30,8 @@ function admin(): SupabaseClient | null {
 }
 
 export interface Allowance {
+  /** False while the product is invite-only and this account has no key. */
+  admitted: boolean;
   plan: Plan;
   periodStart: string;
   /** Tokens in + out already spent this period. */
@@ -39,6 +41,10 @@ export interface Allowance {
 }
 
 const FREE: Allowance = {
+  // When the service role key is missing nothing can be read, and locking
+  // everyone out over a configuration mistake is worse than metering
+  // nothing. A misconfigured server is generous, not shut.
+  admitted: true,
   plan: PLANS[DEFAULT_PLAN],
   periodStart: periodStart(PLANS[DEFAULT_PLAN].period),
   spent: 0,
@@ -63,8 +69,9 @@ export async function allowanceFor(userId: string): Promise<Allowance> {
     .eq("user_id", userId)
     .maybeSingle();
 
-  // No row means the default plan. Signing up therefore needs no extra write,
-  // and a failed insert can never lock someone out of the product.
+  // No row means two different things depending on the phase. In beta it
+  // means "not invited"; once sign-up opens it means the free plan.
+  const admitted = !INVITE_ONLY || !!ent?.plan;
   const plan = planFor(ent?.plan as string | undefined);
   const start = periodStart(plan.period);
 
@@ -81,6 +88,7 @@ export async function allowanceFor(userId: string): Promise<Allowance> {
   ]);
 
   return {
+    admitted,
     plan,
     periodStart: start,
     spent: Number(usage?.input_tokens ?? 0) + Number(usage?.output_tokens ?? 0),
@@ -97,6 +105,15 @@ export async function allowanceFor(userId: string): Promise<Allowance> {
  * the sentence, not be cut off in the middle of it.
  */
 export function blocked(a: Allowance): LimitHit | null {
+  // The gate that matters while we are invite-only: an account nobody
+  // invited must not be able to spend anything, whatever else is true.
+  if (!a.admitted) {
+    return {
+      kind: "invite",
+      plan: a.plan.id,
+      message: "AgentiX is in closed beta. Enter the key you were given to get started.",
+    };
+  }
   if (a.spent < a.plan.tokenCeiling) return null;
   return {
     kind: "tokens",

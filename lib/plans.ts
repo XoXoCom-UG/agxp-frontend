@@ -101,6 +101,19 @@ export const PLANS: Record<PlanId, Plan> = {
 
 export const DEFAULT_PLAN: PlanId = "free";
 
+/**
+ * Invite only, while the product is in beta.
+ *
+ * With this true, an account with no row in agxp_entitlements has not been
+ * admitted: it can sign in and see the app shell, and the chat route refuses
+ * to spend anything on it. Redeeming a beta key writes the row.
+ *
+ * Flip this to false on the day sign-up opens to everyone; a missing row
+ * then means the free plan again, which is what the rest of the code already
+ * assumes. It is the only line that has to change.
+ */
+export const INVITE_ONLY = true;
+
 export function planFor(id: string | null | undefined): Plan {
   return PLANS[(id ?? DEFAULT_PLAN) as PlanId] ?? PLANS[DEFAULT_PLAN];
 }
@@ -131,7 +144,7 @@ export function periodStart(period: Plan["period"], now = new Date()): string {
 }
 
 /** What the API route sends back when a limit is hit, and the UI explains. */
-export type LimitKind = "projects" | "tokens" | "stations";
+export type LimitKind = "projects" | "tokens" | "stations" | "invite";
 
 export interface LimitHit {
   kind: LimitKind;

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase";
-import { planFor, periodStart, type Plan } from "@/lib/plans";
+import { planFor, periodStart, INVITE_ONLY, type Plan } from "@/lib/plans";
 
 /**
  * entitlement.ts — the browser's read-only view of the plan and what is left.
@@ -22,6 +22,8 @@ import { planFor, periodStart, type Plan } from "@/lib/plans";
  */
 
 export interface Entitlement {
+  /** False while we are invite-only and this account has redeemed no key. */
+  admitted: boolean;
   plan: Plan;
   /** Conversation threads started in the current window. */
   projects: number;
@@ -31,6 +33,10 @@ export interface Entitlement {
 }
 
 const UNKNOWN: Entitlement = {
+  // Assume admitted until we know otherwise: flashing the beta gate at an
+  // invited tester for a moment on every load would be worse than a blank
+  // pause, and nothing can be spent before the read finishes anyway.
+  admitted: true,
   plan: planFor(null),
   projects: 0,
   projectsLeft: planFor(null).projects,
@@ -49,6 +55,7 @@ export async function readEntitlement(): Promise<Entitlement> {
     .eq("user_id", uid)
     .maybeSingle();
 
+  const admitted = !INVITE_ONLY || !!ent?.plan;
   const plan = planFor(ent?.plan as string | undefined);
   const start = periodStart(plan.period);
 
@@ -60,6 +67,7 @@ export async function readEntitlement(): Promise<Entitlement> {
 
   const used = count ?? 0;
   return {
+    admitted,
     plan,
     projects: used,
     projectsLeft: Math.max(0, plan.projects - used),
@@ -75,14 +83,17 @@ export class QuotaError extends Error {
   }
 }
 
-export function useEntitlement(): Entitlement {
+export function useEntitlement(): Entitlement & { refresh: () => void } {
   const [state, setState] = useState<Entitlement>(UNKNOWN);
+  // Bumped after a key is redeemed, so the gate closes behind the person
+  // without a page reload.
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let alive = true;
     readEntitlement().then(e => { if (alive) setState(e); }).catch(() => {
       if (alive) setState(s => ({ ...s, loading: false }));
     });
     return () => { alive = false; };
-  }, []);
-  return state;
+  }, [attempt]);
+  return { ...state, refresh: () => setAttempt(a => a + 1) };
 }
