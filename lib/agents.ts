@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase";
+import { readEntitlement, QuotaError } from "@/lib/entitlement";
+import { PLANS } from "@/lib/plans";
 
 export type AgentType = "consultant" | "coach";
 
@@ -139,6 +141,17 @@ export async function createAgent(input: {
   tagline?: string;
   methodIds: string[];
 }): Promise<Agent> {
+  // "Train Your Agent" is the product's whole pitch, which is why building
+  // one from scratch sits at the top of the plan table rather than being
+  // given away. The agents catalogue stays shared and readable either way.
+  const { plan } = await readEntitlement();
+  if (!plan.createAgents) {
+    throw new QuotaError(
+      `Building your own agent is part of the ${PLANS.max.label} plan. ` +
+      `On ${plan.label} you can work with the agents already in the directory.`,
+    );
+  }
+
   const supabase = createClient();
   const { data: userData } = await supabase.auth.getUser();
   const createdBy = userData.user?.id;

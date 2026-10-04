@@ -22,6 +22,14 @@ export function describeDbError(e: unknown, what = "The write"): string {
   const base = err.message || "Unknown database error.";
   const extra = [err.details, err.hint].filter(Boolean).join(" — ");
 
+  // A plan limit is not a fault, and it already carries a sentence written
+  // for the person who hit it. Passing it through here means every call site
+  // shows it properly without knowing plans exist — wrapping it in
+  // "Row-Level Security blocked this insert" would be both wrong and
+  // frightening. P0001 is the same thing raised by the quota trigger.
+  if ((e as { name?: string })?.name === "QuotaError") return base;
+  if (err.code === "P0001") return base;
+
   switch (err.code) {
     // insufficient_privilege — the row was rejected by RLS
     case "42501":

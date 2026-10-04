@@ -11,6 +11,7 @@ import { useLastProject } from "@/lib/last-project";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { usePresence, phaseClass } from "@/lib/use-presence";
 import { SettingsSheet } from "@/components/layout/settings-sheet";
+import { PlanBadge } from "@/components/layout/plan-badge";
 import { readAccent, applyAccent } from "@/lib/accent";
 import { readAppearance, applyAppearance } from "@/lib/appearance";
 
@@ -246,6 +247,9 @@ export function AgentNav({ startEnabled, startHint, started, projectName, onStar
         <span className="nb-rule" aria-hidden="true" />
 
         <div className="util">
+          {/* Before the controls, not after: what is left has to be read on
+              the way to pressing New Task, not discovered afterwards. */}
+          <PlanBadge />
 
           <button className="icon-btn" data-tooltip="Switch light or dark theme" aria-label="Switch light or dark theme"
             onClick={e => { e.stopPropagation(); setTheme(document.documentElement.classList.contains("light") ? "dark" : "light"); }}>

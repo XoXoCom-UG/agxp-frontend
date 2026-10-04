@@ -9,10 +9,13 @@ import { SPLIT_PRESETS, useChatSplit, useSplitLocked, broadcastSplit, broadcastS
 import { BACKGROUND_OPTIONS, GLASS_OPTIONS, useAppearance, setAppearance } from "@/lib/appearance";
 import { IconX, IconCheck, IconMonitor, IconSun, IconMoon } from "@/components/layout/agxp-icons";
 import { useDialogFocus } from "@/lib/use-dialog-focus";
+import { useEntitlement } from "@/lib/entitlement";
+import { PLANS, projectsLabel, type Plan } from "@/lib/plans";
 
-type Tab = "profile" | "appearance";
+type Tab = "profile" | "plan" | "appearance";
 const TABS: { id: Tab; label: string }[] = [
   { id: "profile", label: "Profile" },
+  { id: "plan", label: "Plan" },
   { id: "appearance", label: "Appearance" },
 ];
 
@@ -116,7 +119,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="ss-body" role="tabpanel" id={`${uid}-panel`} aria-labelledby={`${uid}-tab-${tab}`}>
-          {tab === "profile" ? (
+          {tab === "plan" ? <PlanTab /> : tab === "profile" ? (
             <>
               <div className="ss-identity">
                 <span className="ss-avatar" aria-hidden="true">{initials}</span>
@@ -257,5 +260,68 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
       </div>
     </div>,
     document.body,
+  );
+}
+
+/**
+ * The plan, and what is left of it.
+ *
+ * Shows the allowance as a count rather than as tokens. Tokens are our unit,
+ * not the customer's: a ceiling exists behind every plan (cost grows with the
+ * square of conversation length, so "unlimited" always has a real number
+ * behind it) but quoting it here would mean explaining our billing instead of
+ * their allowance. If someone ever hits the ceiling, the chat route says so
+ * in words at the moment it matters.
+ */
+function PlanTab() {
+  const { plan, projects, projectsLeft, loading } = useEntitlement();
+  const order: Plan[] = [PLANS.free, PLANS.mid, PLANS.max];
+  const window = plan.period === "week" ? "this week" : "this month";
+  const resets = plan.period === "week" ? "Resets Monday." : "Resets on the 1st.";
+  const pct = plan.projects >= 1000 ? 0 : Math.min(100, (projects / plan.projects) * 100);
+
+  return (
+    <>
+      <div className="ss-field">
+        <span className="ss-label">Your plan</span>
+        <div className="ss-plan-now">
+          <b>{plan.label}</b>
+          {plan.projects >= 1000
+            ? <span className="ss-plan-left">Unlimited projects</span>
+            : <span className={`ss-plan-left${projectsLeft <= 1 ? " low" : ""}`}>
+                {loading ? "…" : `${projectsLeft} of ${plan.projects} projects left ${window}`}
+              </span>}
+        </div>
+        {plan.projects < 1000 && (
+          <div className="ss-plan-bar" role="presentation"><span style={{ width: `${pct}%` }} /></div>
+        )}
+        <span className="ss-hint">{resets} A project is one conversation — rebuilding its document as often as you like costs nothing extra.</span>
+      </div>
+
+      <div className="ss-field">
+        <span className="ss-label">What each plan includes</span>
+        <div className="ss-plans">
+          {order.map(p => (
+            <div key={p.id} className={`ss-plan${p.id === plan.id ? " on" : ""}`}>
+              <div className="ss-plan-h">
+                <b>{p.label}</b>
+                {p.id === plan.id && <span className="ss-plan-tag">Current</span>}
+              </div>
+              <ul>
+                <li><b>{projectsLabel(p)}</b> projects per {p.period}</li>
+                <li>{p.stations === null ? "Full interview" : `${p.stations} of 8 interview steps`}</li>
+                <li>{p.peerReading === "full"
+                  ? "Coach reads the consultation"
+                  : "Coach reads it once, as a preview"}</li>
+                <li>{p.nudges ? "Coach speaks up on its own" : "Coach answers when asked"}</li>
+                <li>{p.agentSlots === null ? "Every agent" : `${p.agentSlots} agents`}
+                  {p.createAgents ? ", and you can build your own" : ""}</li>
+              </ul>
+            </div>
+          ))}
+        </div>
+        <span className="ss-hint">Upgrading isn&apos;t wired up yet — get in touch and we&apos;ll move your account.</span>
+      </div>
+    </>
   );
 }

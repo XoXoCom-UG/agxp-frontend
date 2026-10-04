@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase";
 import { readEntitlement, QuotaError } from "@/lib/entitlement";
+import { projectCountsByAgent } from "@/lib/agent-progress";
 import type { AgentType } from "@/lib/agents";
 
 export type ProjectStatus = "Not Started" | "In Progress" | "Completed" | "Archived";
@@ -109,6 +110,21 @@ export async function assignAgent(projectId: string, column: AgentType, agentId:
   const supabase = createClient();
   const project = await getProject(projectId);
   if (!project) throw new Error("Projekt nicht gefunden.");
+
+  // Agent slots. "Agents you have" is the set that appears across your
+  // projects, so an agent you have already worked with is always free to
+  // bring back — the limit is on how many different ones you collect, which
+  // is what the plan actually promises.
+  const { plan } = await readEntitlement();
+  if (plan.agentSlots !== null) {
+    const mine = new Set(Object.keys(await projectCountsByAgent()));
+    if (!mine.has(agentId) && mine.size >= plan.agentSlots) {
+      throw new QuotaError(
+        `The ${plan.label} plan covers ${plan.agentSlots} agents, and you are working with ${mine.size}. ` +
+        `Pick one you have used before, or move to a bigger plan.`,
+      );
+    }
+  }
 
   const patch: Record<string, unknown> = {
     activity: addActivity(project.activity, agentActionLabel),
