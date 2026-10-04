@@ -48,8 +48,24 @@ export function looksLikeEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value.trim());
 }
 
-/** The two variables an invitation template has to declare, by these keys. */
-export const TEMPLATE_VARS = ["CODE", "APP_URL"] as const;
+/**
+ * The variables an invitation template has to declare, spelled exactly like
+ * this. They match the "Beta Invitation" template in Resend: BETA_KEY sits in
+ * the key panel, APP_URL is used bare and with /login, /impressum and
+ * /datenschutz appended — so it must carry no trailing slash. Nothing here
+ * warns you if a template asks for a different name; the send simply renders
+ * the fallback value, which for a key means an empty box.
+ */
+export const TEMPLATE_VARS = ["BETA_KEY", "APP_URL"] as const;
+
+/**
+ * The line that shows up in the inbox. A template carries its own design but
+ * not the subject, so this applies either way and is worth setting: it is the
+ * only part of the email a recipient reads before deciding to open it.
+ */
+export function inviteSubject(): string {
+  return process.env.INVITE_SUBJECT?.trim() || "Your invitation to AgentiX Projects";
+}
 
 /** A published template id or alias, when one is configured. */
 export function inviteTemplate(): string | null {
@@ -70,7 +86,7 @@ export async function sendInvite(to: string, code: string, appUrl: string): Prom
     const viaTemplate = await post(key, {
       // Resend rejects the request if html/text are sent alongside a
       // template, so this payload carries one or the other, never both.
-      template: { id: template, variables: { CODE: code, APP_URL: appUrl } },
+      template: { id: template, variables: { BETA_KEY: code, APP_URL: appUrl } },
     }, to);
     if (viaTemplate.sent) return viaTemplate;
 
@@ -99,7 +115,7 @@ async function post(key: string, content: Record<string, unknown>, to: string): 
       body: JSON.stringify({
         from: inviteFrom(),
         to: [to.trim()],
-        subject: "Your invitation to AgentiX Projects",
+        subject: inviteSubject(),
         ...content,
       }),
       // A hung provider must not hold the request open: the key is already
