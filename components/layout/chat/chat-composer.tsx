@@ -154,7 +154,7 @@ export function ChatComposer({ role, sending, canSend, projectId, inputRef, onSe
           onChange={e => pick(e.target.files)} />
         <button type="button" className="pb-btn pb-attach"
           aria-disabled={!canAttach || undefined}
-          data-tooltip={canAttach ? "Attach a file" : "Send a message first"}
+          data-tooltip={canAttach ? "Attach a file" : sending ? "Wait for the answer" : "Not available yet"}
           aria-label="Attach a file"
           onClick={() => { if (canAttach) pickRef.current?.click(); }}>
           <IconAttach size={16} />
