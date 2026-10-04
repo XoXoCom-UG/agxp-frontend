@@ -12,6 +12,7 @@ import { rememberProject } from "@/lib/last-project";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { describeDbError } from "@/lib/db-error";
 import { AgentNav } from "@/components/layout/agent-nav";
+import { TeamIntro, TeamRail } from "@/components/layout/team-intro";
 import { AgentPickerPanel } from "@/components/layout/agent-picker-panel";
 import { ProjectChatPanel } from "@/components/layout/project-chat-panel";
 import { DeliverableView, type DeliverableDoc } from "@/components/layout/deliverable-view";
@@ -83,6 +84,8 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
   /** The Coach is coming back from the pill: its slot eases in instead of
    *  appearing in one frame. Only then — not on first load. */
   const [unfolding, setUnfolding] = useState(false);
+  /** Dismissed by "Build your team"; see introDone below. */
+  const [skipIntro, setSkipIntro] = useState(false);
   /** The saved preference, shared with the Settings sheet through the store.
    *  While the seam is being dragged, `live` takes over so the panels follow
    *  the pointer without writing to storage on every frame. */
@@ -432,6 +435,14 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
     onFocus: () => setLastPanel(role),
   });
 
+  /*
+   * The redesign's entry screen, shown only before either agent is picked.
+   * It sits IN FRONT of the panels rather than replacing them: dismissing it
+   * reveals exactly the flow that worked yesterday. If the design is not
+   * kept, what goes is this flag, one block below, and team-intro.tsx.
+   */
+  const introDone = !!project?.consultant_agent_id || !!project?.coach_agent_id || skipIntro;
+
   return (
     <div className="app">
       <AgentNav
@@ -443,7 +454,14 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
       {/* No page title and no description: clicking "New Task" should show the
           two agents and nothing else (Patryk, 2026-09-11 — "wenn es so clean
           ist, weiß der User sofort, was als nächstes zu tun ist"). */}
-      <div className="view-root view-enter">
+      {!introDone && (
+        <div className="view-root view-enter ti-root">
+          <TeamIntro agents={agents} onBuild={() => setSkipIntro(true)} />
+          <TeamRail />
+        </div>
+      )}
+
+      <div className={`view-root view-enter${introDone ? "" : " is-hidden"}`}>
         {/* Only shown once the layout stacks (CSS) — both panels stay mounted,
             so switching never loses a conversation or a half-typed message.
             Roving tabindex: Tab lands on the selected tab, arrows move. */}

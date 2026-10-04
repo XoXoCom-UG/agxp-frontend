@@ -6338,3 +6338,209 @@ html.light .bg-card{
   .ss-mem-top{ gap:var(--sp-3); }
   .ss-mem-split{ width:100%; justify-content:space-between; }
 }
+
+/* ===========================================================================
+   REDESIGN — New Task entry screen and its rail (branch design-preview).
+   Kept in one block at the end on purpose: if the design is not kept, this
+   block, components/layout/team-intro.tsx and one flag in new-task-screen
+   are the whole of it. Nothing above was rewritten to make room.
+   =========================================================================== */
+
+:root{
+  /* The redesign gives each role a hue; today's --consultant-* / --coach-*
+     are near-monochrome greys and are left exactly as they are, so nothing
+     already drawn shifts underneath this screen. */
+  --role-consultant:#3B82F6;
+  --role-coach:#A855F7;
+  --ti-cta:linear-gradient(100deg, var(--role-consultant), var(--role-coach));
+}
+html.light{
+  --role-consultant:#1D4ED8;
+  --role-coach:#7E22CE;
+}
+
+/* The panels stay MOUNTED behind the intro — hiding, never unmounting, is
+   what keeps a live stream and a half-typed message alive (the rule the
+   whole two-panel screen is built on). */
+.view-root.is-hidden{ display:none; }
+
+.ti-root{
+  display:grid; grid-template-columns:minmax(0,1fr) 360px; gap:var(--sp-5);
+  align-items:start;
+}
+@media (max-width:1100px){
+  .ti-root{ grid-template-columns:minmax(0,1fr); }
+}
+
+/* --- The hero ----------------------------------------------------------- */
+.ti{
+  display:flex; flex-direction:column; align-items:center; text-align:center;
+  padding:var(--sp-7) var(--sp-5) var(--sp-6);
+  border:1px solid var(--border); border-radius:26px;
+  background:var(--card);
+  position:relative; overflow:hidden;
+}
+.ti-eyebrow{
+  margin:0; font-family:var(--font-mono); font-size:var(--text-3xs);
+  letter-spacing:0.34em; text-transform:uppercase; color:var(--muted-foreground);
+}
+.ti-title{
+  margin:var(--sp-4) 0 0; font-family:var(--font-display);
+  font-size:clamp(34px, 5.2vw, 56px); line-height:1.12; font-weight:600;
+  letter-spacing:-0.035em; color:var(--foreground);
+}
+.ti-title span{
+  /* inline-block + the padding, because background-clip:text crops to the
+     line box: at 1.04 the descenders of "project" were cut off. The looser
+     line-height above is the real fix; this is the belt for a font whose
+     descenders go further. */
+  display:inline-block; padding-bottom:0.06em;
+  background:var(--ti-cta); -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+.ti-sub{
+  margin:var(--sp-4) 0 0; font-size:var(--text-sm); line-height:1.6;
+  color:var(--secondary-foreground);
+}
+
+/* --- The two agents, with the orbit behind them -------------------------- */
+.ti-stage{
+  position:relative; width:100%; margin:var(--sp-6) 0 var(--sp-5);
+  display:flex; justify-content:center; gap:clamp(40px, 12vw, 180px);
+  flex-wrap:wrap;
+}
+.ti-orbit{
+  position:absolute; inset:0; top:18px; width:100%; height:200px;
+  pointer-events:none;
+}
+.ti-orbit ellipse{
+  fill:none; stroke:color-mix(in srgb, var(--role-consultant) 38%, transparent);
+  stroke-width:1;
+}
+.ti-orbit .ti-node{
+  fill:var(--role-coach);
+  /* No animation: the orbit is scenery, and a moving thing beside the only
+     button on the screen competes with it. */
+}
+.ti-agent{
+  position:relative; display:flex; flex-direction:column; align-items:center;
+  min-width:0; max-width:300px;
+}
+.ti-agent h2{
+  margin:var(--sp-4) 0 0; font-family:var(--font-display);
+  font-size:var(--text-xl); font-weight:600; letter-spacing:-0.02em; color:var(--foreground);
+}
+.ti-agent > p{
+  margin:5px 0 0; font-size:var(--text-xs); color:var(--muted-foreground);
+}
+.ti-chips{
+  margin:var(--sp-4) 0 0; padding:0; list-style:none;
+  display:flex; flex-wrap:wrap; justify-content:center; gap:7px;
+}
+.ti-chips li{
+  padding:6px 12px; border-radius:var(--radius-pill);
+  border:1px solid var(--border); background:var(--surface-elevated);
+  font-size:var(--text-2xs); color:var(--secondary-foreground);
+}
+.ti-agent.consultant .ti-chips li{ border-color:color-mix(in srgb, var(--role-consultant) 34%, transparent); }
+.ti-agent.coach .ti-chips li{ border-color:color-mix(in srgb, var(--role-coach) 34%, transparent); }
+
+/* --- The one button ------------------------------------------------------ */
+.ti-cta{
+  display:inline-flex; align-items:center; gap:9px;
+  padding:15px 34px; border-radius:var(--radius-pill);
+  background:var(--ti-cta); color:#FFFFFF;
+  font-size:var(--text-sm); font-weight:600; letter-spacing:-0.01em;
+  box-shadow:0 14px 34px -16px color-mix(in srgb, var(--role-consultant) 90%, transparent);
+}
+@media (hover:hover) and (pointer:fine){
+  .ti-cta:hover{ filter:brightness(1.08); }
+}
+.ti-cta:active{ transform:scale(0.985); }
+
+/* --- Recent teams -------------------------------------------------------- */
+.ti-recent{ width:100%; max-width:760px; margin-top:var(--sp-7); }
+.ti-recent-h{
+  margin:0 0 var(--sp-4); font-family:var(--font-mono); font-size:var(--text-3xs);
+  letter-spacing:0.28em; text-transform:uppercase; color:var(--muted-foreground);
+}
+.ti-recent ul{
+  margin:0; padding:0; list-style:none;
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:var(--sp-3);
+}
+.ti-recent li button{
+  width:100%; display:flex; align-items:center; gap:var(--sp-3); text-align:left;
+  padding:13px var(--sp-4); border-radius:16px;
+  border:1px solid var(--border); background:var(--surface-elevated);
+  color:var(--foreground);
+}
+@media (hover:hover) and (pointer:fine){
+  .ti-recent li button:hover{ border-color:var(--border-strong); }
+}
+.ti-duo{ display:inline-flex; align-items:center; gap:2px; flex-shrink:0; }
+.ti-duo i{ font-style:normal; color:var(--muted-foreground); font-size:var(--text-xs); }
+.ti-duo-txt{ display:flex; flex-direction:column; gap:2px; min-width:0; flex:1; }
+.ti-duo-txt b{
+  font-size:var(--text-xs); font-weight:500;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.ti-duo-txt em{ font-style:normal; font-size:var(--text-3xs); color:var(--muted-foreground); }
+.ti-recent li svg{ flex-shrink:0; color:var(--muted-foreground); }
+
+/* --- The right rail ------------------------------------------------------ */
+.tr{ display:flex; flex-direction:column; gap:var(--sp-4); }
+.tr-card{
+  padding:var(--sp-5); border-radius:22px;
+  border:1px solid var(--border); background:var(--card);
+}
+.tr-head{ display:flex; align-items:center; justify-content:space-between; gap:var(--sp-3); }
+.tr-head h2{
+  margin:0; font-family:var(--font-display); font-size:var(--text-lg);
+  font-weight:600; letter-spacing:-0.02em; color:var(--foreground);
+}
+.tr-count{
+  font-family:var(--font-mono); font-size:var(--text-3xs); letter-spacing:0.12em;
+  padding:4px 10px; border-radius:var(--radius-pill);
+  border:1px solid var(--border); color:var(--muted-foreground);
+}
+.tr-slots{ margin:var(--sp-5) 0 0; padding:0; list-style:none; display:flex; flex-direction:column; gap:var(--sp-4); }
+.tr-slots li{ display:flex; align-items:center; gap:var(--sp-3); min-width:0; opacity:.62; }
+.tr-slots li.on{ opacity:1; }
+.tr-slots span{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+.tr-slots b{ font-size:var(--text-xs); font-weight:500; color:var(--foreground); }
+.tr-slots em{
+  font-style:normal; font-size:var(--text-2xs); color:var(--muted-foreground);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+
+.tr-why{ text-align:center; }
+.tr-rings{
+  display:block; width:46px; height:22px; margin:0 auto var(--sp-4);
+  border-radius:var(--radius-pill);
+  border:1.5px solid color-mix(in srgb, var(--role-consultant) 55%, transparent);
+  position:relative;
+}
+.tr-rings::after{
+  content:""; position:absolute; left:17px; top:-1.5px; width:46px; height:22px;
+  border-radius:var(--radius-pill);
+  border:1.5px solid color-mix(in srgb, var(--role-coach) 55%, transparent);
+}
+.tr-why h2{
+  margin:0; font-family:var(--font-display); font-size:var(--text-lg);
+  font-weight:600; letter-spacing:-0.02em; color:var(--foreground);
+}
+.tr-why h2 span{
+  background:var(--ti-cta); -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+.tr-why > p{
+  margin:var(--sp-4) 0 0; font-size:var(--text-2xs); line-height:1.65;
+  color:var(--secondary-foreground);
+}
+.tr-gains{
+  margin:var(--sp-5) 0 0; padding:0; list-style:none;
+  display:flex; flex-direction:column; gap:10px; text-align:left;
+}
+.tr-gains li{
+  display:flex; align-items:center; gap:10px;
+  font-size:var(--text-2xs); color:var(--secondary-foreground);
+}
+.tr-gains svg{ flex-shrink:0; color:var(--role-consultant); }
