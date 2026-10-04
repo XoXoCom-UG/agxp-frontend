@@ -12,6 +12,7 @@ import { useDialogFocus } from "@/lib/use-dialog-focus";
 import { useEntitlement } from "@/lib/entitlement";
 import { PLANS, projectsLabel, type Plan } from "@/lib/plans";
 import { DevPlanTools } from "@/components/layout/dev-plan-tools";
+import { DevMemory } from "@/components/layout/dev-memory";
 
 type Tab = "profile" | "plan" | "appearance";
 const TABS: { id: Tab; label: string }[] = [
@@ -325,6 +326,7 @@ function PlanTab() {
       </div>
 
       {canSwitch && <DevPlanTools current={plan.id} onChanged={refresh} />}
+      {canSwitch && <DevMemory />}
     </>
   );
 }
