@@ -69,6 +69,23 @@ This is **Agentix Projects (AgXP)**: a user pairs with two AI agents on one proj
 - **Usage is recorded after the stream closes**, from `stream.finalMessage().usage` — real numbers from the API, not an estimate. Deliberately fire-and-forget: the answer is already delivered, so a lost count is cheaper than a thrown error on a finished response.
 - **The system prompt is split into a cached block and a volatile one.** Prompt caching is a prefix match and `system` renders before `messages`, so the stable prompt carries the breakpoint and the peer transcript — which grows whenever the other panel answers — sits after it. Moving the peer block into the last user message would cache more, but it would restate another model's output as something the user said, which is what `peerPrompt()` exists to prevent. When there is no peer block the history gets a breakpoint too. Check `cache_read_input_tokens` in `agxp_usage`: if it stays zero, something is invalidating the prefix.
 
+### Attachments
+
+- The paper clip uploads to a private Supabase Storage bucket (`project-files`, [0011](supabase/migrations/0011_project_files.sql)) at `<user id>/<project id>/<uuid>.<ext>`, and **there is no table** — what a message carries is a `[[FILE: path | name | mime]]` marker in its own text, the same trick as agent memory. The owner is the first path segment, so one condition covers select/insert/delete, and there is deliberately no update policy: the bytes behind a sent message must not change afterwards.
+- **The server resolves the markers, the client never sends bytes.** [lib/message-files.ts](lib/message-files.ts) downloads each path on every turn using the **caller's bearer token, not the service role** — a marker is text in a client-sent message, so with the service role a forged path would read another customer's document. Under RLS it reads nothing.
+- Claude reads PDFs and images natively (`document` / `image` blocks), so no parser dependency was added; text files are inlined. Caps: 10 MB per file (enforced on the bucket, not just the browser) and 24 MB per conversation, because the whole history is resent every turn.
+- Deleting a project cascades to messages through a foreign key but **not** to storage — the link is a string inside a message — so `delete_project_files()` in 0011 is what stops orphaned, paid-for objects.
+
+### When something is misconfigured
+
+- [lib/config-check.ts](lib/config-check.ts) names every missing environment variable at boot (from `register()` in [instrumentation.ts](instrumentation.ts)) and in the team-only Settings panel. It exists for `SUPABASE_SERVICE_ROLE_KEY` above all: without it nothing errors, every account just reads as free and `agxp_usage` stays empty. The dev route reads the team flag with the *caller's* token precisely so it can still report the case where the service role is what's missing.
+- [supabase/health_check.sql](supabase/health_check.sql) answers "which migrations are actually applied here" — tables, columns, functions, triggers and RLS — in the SQL editor. A missing migration does not look like an error from the app.
+- Sentry runs through [instrumentation.ts](instrumentation.ts) / [instrumentation-client.ts](instrumentation-client.ts), **not** `sentry.client.config.ts`: the SDK only picks that file up via its webpack plugin, and this project builds with Turbopack. `onRequestError` is what catches errors thrown while rendering. No session replay, `sendDefaultPii: false`.
+
+### Legal pages
+
+[lib/company.ts](lib/company.ts) is the only place the company's details are written; all three pages read from it, and while a required field is blank every page says so **in production too** (`MissingDataNotice`). That matters because the warning used to be dev-only while the `[placeholder]` text stayed visible — a live page looked finished and nobody saw a warning. The AGB's plan limits are generated from [lib/plans.ts](lib/plans.ts) so terms cannot promise something the code doesn't enforce; the liability and cancellation clauses are deliberately not drafted.
+
 ### Misc
 
 - `next.config.ts` sets a real CSP + security headers on every route — check it before adding a new external script/style/connect source.
