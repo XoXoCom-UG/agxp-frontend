@@ -1,45 +1,61 @@
 import type { Metadata } from "next";
-import { LegalShell, LegalSection, TodoNotice } from "@/components/layout/legal";
+import { LegalShell, LegalSection, MissingDataNotice, Fact } from "@/components/layout/legal";
+import { COMPANY } from "@/lib/company";
 
 export const metadata: Metadata = { title: "Impressum" };
 
+/**
+ * Pflichtangaben nach § 5 DDG / § 18 Abs. 2 MStV.
+ *
+ * Every fact comes from lib/company.ts; nothing is written twice. While that
+ * file is blank the page says so out loud, in production as well — see
+ * MissingDataNotice.
+ */
 export default function ImpressumPage() {
+  const { registerCourt, registerNumber, vatId, phone } = COMPANY;
+
   return (
     <LegalShell title="Impressum">
-      <TodoNotice>
-        Platzhalter — bitte vor dem Launch mit euren echten Angaben ausfüllen und
-        rechtlich prüfen lassen. Pflichtangaben nach § 5 DDG / § 18 Abs. 2 MStV.
-      </TodoNotice>
+      <MissingDataNotice />
 
       <LegalSection heading="Angaben gemäß § 5 DDG">
-        <p>[Firmenname / Anbieter]</p>
-        <p>[Straße und Hausnummer]</p>
-        <p>[PLZ, Ort]</p>
-        <p>[Land]</p>
+        <Fact field="name" />
+        <Fact field="street" />
+        <p>
+          {COMPANY.postalCode || COMPANY.city
+            ? `${COMPANY.postalCode} ${COMPANY.city}`.trim()
+            : <span className="legal-gap">— noch nicht eingetragen —</span>}
+        </p>
+        <Fact field="country" />
       </LegalSection>
 
       <LegalSection heading="Vertreten durch">
-        <p>[Name der vertretungsberechtigten Person(en) / Geschäftsführung]</p>
+        <Fact field="representedBy" />
       </LegalSection>
 
       <LegalSection heading="Kontakt">
-        <p>Telefon: [Telefonnummer]</p>
-        <p>E-Mail: [E-Mail-Adresse]</p>
+        {phone && <p>Telefon: {phone}</p>}
+        <Fact field="email" prefix="E-Mail" />
       </LegalSection>
 
-      <LegalSection heading="Registereintrag">
-        <p>Eintragung im Handelsregister.</p>
-        <p>Registergericht: [z. B. Amtsgericht …]</p>
-        <p>Registernummer: [HRB …]</p>
-      </LegalSection>
+      {/* Only shown once there is an entry. A sole trader has none, and an
+          empty "Registernummer:" line would suggest one is missing. */}
+      {(registerCourt || registerNumber) && (
+        <LegalSection heading="Registereintrag">
+          <p>Eintragung im Handelsregister.</p>
+          {registerCourt && <p>Registergericht: {registerCourt}</p>}
+          {registerNumber && <p>Registernummer: {registerNumber}</p>}
+        </LegalSection>
+      )}
 
-      <LegalSection heading="Umsatzsteuer-ID">
-        <p>Umsatzsteuer-Identifikationsnummer gemäß § 27 a UStG: [DE …]</p>
-      </LegalSection>
+      {vatId && (
+        <LegalSection heading="Umsatzsteuer-ID">
+          <p>Umsatzsteuer-Identifikationsnummer gemäß § 27 a UStG: {vatId}</p>
+        </LegalSection>
+      )}
 
       <LegalSection heading="Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV">
-        <p>[Name]</p>
-        <p>[Anschrift]</p>
+        <Fact field="contentResponsible" />
       </LegalSection>
 
       {/* The EU's online dispute resolution (ODR) platform was shut down in July

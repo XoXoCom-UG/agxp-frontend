@@ -29,7 +29,20 @@ const sans = Schibsted_Grotesk({ subsets: ["latin", "latin-ext"], display: "swap
 const display = Familjen_Grotesk({ subsets: ["latin", "latin-ext"], display: "swap", variable: "--font-display" });
 const mono = IBM_Plex_Mono({ subsets: ["latin", "latin-ext"], display: "swap", weight: ["400", "500"], variable: "--font-mono-face" });
 
+/**
+ * The origin that relative metadata URLs resolve against — the opengraph
+ * image above all. Without it Next falls back to http://localhost:3000, so a
+ * link shared from production carried a preview image nobody else could load.
+ * Vercel sets VERCEL_PROJECT_PRODUCTION_URL on every deployment; the literal
+ * is the fallback for a self-hosted build.
+ */
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+  ?? (process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : "http://localhost:3000");
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: {
     default: "AgentiX Projects · Train your AI project agents",
     template: "%s · AgentiX",

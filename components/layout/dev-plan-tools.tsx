@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase";
 import { PLANS, type PlanId } from "@/lib/plans";
-import { IconCopy, IconCheck, IconPlus } from "@/components/layout/agxp-icons";
+import { IconCopy, IconCheck, IconPlus, IconAlert } from "@/components/layout/agxp-icons";
 
 /**
  * The team's own controls, inside Settings → Plan.
@@ -16,6 +16,12 @@ import { IconCopy, IconCheck, IconPlus } from "@/components/layout/agxp-icons";
  * checked again inside the database function. Hiding the buttons is a
  * courtesy; the refusal is the security.
  */
+
+interface ConfigFinding {
+  key: string;
+  level: "fatal" | "silent" | "optional";
+  consequence: string;
+}
 
 interface BetaKey {
   code: string;
@@ -43,13 +49,18 @@ export function DevPlanTools({ current, onChanged }: { current: PlanId; onChange
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [keys, setKeys] = useState<BetaKey[] | null>(null);
+  const [config, setConfig] = useState<ConfigFinding[]>([]);
   const [copied, setCopied] = useState<string | null>(null);
   const [note, setNote] = useState("");
 
   useEffect(() => {
     let alive = true;
     call("GET")
-      .then(r => { if (alive) setKeys(r.keys as BetaKey[]); })
+      .then(r => {
+        if (!alive) return;
+        setKeys(r.keys as BetaKey[]);
+        setConfig((r.config as ConfigFinding[]) ?? []);
+      })
       .catch(() => { if (alive) setKeys([]); });
     return () => { alive = false; };
   }, []);
@@ -85,6 +96,28 @@ export function DevPlanTools({ current, onChanged }: { current: PlanId; onChange
 
   return (
     <>
+      {config.length > 0 && (
+        <div className="ss-field ss-dev ss-conf">
+          <span className="ss-label">Server configuration <em>team only</em></span>
+          <ul className="ss-conf-list">
+            {config.map(c => (
+              <li key={c.key} data-level={c.level}>
+                <IconAlert size={12} />
+                <div>
+                  <code>{c.key}</code>
+                  <p>{c.consequence}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <span className="ss-hint">
+            Set these where the server runs — <code>.env.local</code> here, project settings on
+            Vercel — then restart. A <b>silent</b> one costs you nothing visible, which is
+            exactly why it is listed.
+          </span>
+        </div>
+      )}
+
       <div className="ss-field ss-dev">
         <span className="ss-label">Switch plan <em>team only</em></span>
         <div className="ss-segment" role="group" aria-label="Plan">

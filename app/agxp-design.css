@@ -1447,6 +1447,27 @@ html.light .ico-when-dark{ display:none; }
 .legal-todo svg{ flex-shrink:0; margin-top:1px; }
 .legal-todo p{ font-size:var(--text-2xs); line-height:1.6; }
 
+/* The one notice a visitor also sees. Drawn in the destructive colour, not
+   the warn colour the team-only note uses, so the two are never confused:
+   this one says the page is legally incomplete right now. */
+.legal-missing{
+  border-color:color-mix(in srgb, var(--destructive) 42%, transparent);
+  background:color-mix(in srgb, var(--destructive) 9%, transparent);
+  color:var(--destructive);
+}
+.legal-missing code{
+  font-family:var(--font-mono); font-size:0.92em; color:inherit; background:none; padding:0;
+}
+
+/* A field that has no value yet. Reads as an admitted gap rather than as
+   "[Firmenname]", which looks like text someone forgot to replace. */
+.legal-gap{
+  color:var(--muted-foreground); font-style:italic;
+}
+
+.legal-list{ margin:0; padding-left:1.1em; display:flex; flex-direction:column; gap:7px; }
+.legal-list li{ line-height:1.65; }
+
 .cookie-note{
   position:fixed; bottom:16px; right:16px; left:16px; max-width:380px; z-index:var(--z-toast);
   margin-left:auto; padding:var(--sp-5);
@@ -6150,6 +6171,29 @@ html.light .bg-card{
 }
 .ss-dev-error{
   margin:0; font-size:var(--text-xs); color:var(--destructive);
+}
+
+/* Server configuration, team only. Drawn in the destructive colour rather
+   than the warn colour the other dev blocks use, because unlike them this is
+   not a switch you may flip — it is something already wrong. */
+.ss-conf{
+  border-color:color-mix(in srgb, var(--destructive) 34%, transparent);
+  background:color-mix(in srgb, var(--destructive) 6%, transparent);
+}
+.ss-conf .ss-label em{ color:var(--destructive); }
+.ss-conf-list{ margin:0 0 var(--sp-3); padding:0; list-style:none; display:flex; flex-direction:column; gap:10px; }
+.ss-conf-list li{ display:flex; gap:8px; align-items:flex-start; min-width:0; }
+.ss-conf-list li svg{ flex-shrink:0; margin-top:3px; color:var(--destructive); }
+.ss-conf-list li[data-level="optional"] svg{ color:var(--warn); }
+.ss-conf-list code{
+  font-family:var(--font-mono); font-size:var(--text-2xs); letter-spacing:0.04em;
+  color:var(--foreground); background:none; padding:0;
+}
+.ss-conf-list li p{
+  margin:3px 0 0; font-size:var(--text-2xs); line-height:1.55; color:var(--secondary-foreground);
+}
+.ss-conf .ss-hint code{
+  font-family:var(--font-mono); font-size:0.92em; background:none; padding:0; color:var(--secondary-foreground);
 }
 
 /* Settings → Plan, team only: the agent-memory read-out.

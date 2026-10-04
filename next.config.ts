@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const securityHeaders = [
   // Prevent the site from being embedded in iframes (clickjacking)
@@ -40,4 +41,24 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+/**
+ * Sentry is wired here, not by the two sentry.*.config.ts files alone — those
+ * only ever load because something imports them (instrumentation.ts) or because
+ * this wrapper is applied. The CSP above already allows the ingest endpoint:
+ * `connect-src` permits any https origin.
+ *
+ * Source maps are only uploaded when SENTRY_AUTH_TOKEN, SENTRY_ORG and
+ * SENTRY_PROJECT are set in the build environment. Without them the build still
+ * succeeds and errors still arrive — the stack traces are just minified.
+ */
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  // Nothing about our build goes to Sentry's own analytics.
+  telemetry: false,
+  // Quiet unless CI is reading the log.
+  silent: !process.env.CI,
+  // Drops Sentry's own debug logging out of the client bundle.
+  disableLogger: true,
+});

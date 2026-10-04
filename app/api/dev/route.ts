@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { missingConfig } from "@/lib/config-check";
 
 /**
  * The team's own switches: change your plan, mint an invitation, list them.
@@ -30,6 +31,33 @@ async function callerId(req: NextRequest): Promise<string | null> {
   return error || !data.user ? null : data.user.id;
 }
 
+/**
+ * The team flag, read with the CALLER's own token rather than the service
+ * role. That matters for one case only, and it is the case that matters most:
+ * when SUPABASE_SERVICE_ROLE_KEY is the thing that is missing, admin() is null
+ * and the usual path would 500 before it could ever say so. agxp_entitlements
+ * is select-own under RLS, so this works with nothing but the user's session —
+ * and it still cannot be spoofed, because RLS decides which row comes back.
+ */
+async function callerCanSwitch(req: NextRequest, userId: string): Promise<boolean> {
+  const header = req.headers.get("authorization") ?? "";
+  const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!token || !url || !key) return false;
+
+  const supabase = createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+  const { data } = await supabase
+    .from("agxp_entitlements")
+    .select("can_switch_plan")
+    .eq("user_id", userId)
+    .maybeSingle();
+  return data?.can_switch_plan === true;
+}
+
 function admin(): SupabaseClient | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -51,12 +79,19 @@ export async function GET(req: NextRequest) {
   const userId = await callerId(req);
   if (!userId) return NextResponse.json({ error: "Sign in again." }, { status: 401 });
 
+  if (!(await callerCanSwitch(req, userId))) {
+    return NextResponse.json({ error: "Not for this account." }, { status: 403 });
+  }
+
+  // Names of variables, never their values, and only to the team.
+  const config = missingConfig();
+
   const db = admin();
-  if (!db) return NextResponse.json({ error: "Not configured on the server." }, { status: 500 });
+  if (!db) return NextResponse.json({ keys: [], config });
 
   const { data, error } = await db.rpc("list_beta_keys", { p_user: userId });
   if (error) return fail(error, "list_beta_keys");
-  return NextResponse.json({ keys: data ?? [] });
+  return NextResponse.json({ keys: data ?? [], config });
 }
 
 export async function POST(req: NextRequest) {
