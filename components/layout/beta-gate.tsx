@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase";
 import { IconArrow } from "@/components/layout/agxp-icons";
+import { captureBetaKeyFromUrl, clearPendingBetaKey, usePendingBetaKey } from "@/lib/beta-key-handoff";
 
 /**
  * The door, while the product is in closed beta.
@@ -14,9 +15,18 @@ import { IconArrow } from "@/components/layout/agxp-icons";
  * network tab does not.
  */
 export function BetaGate({ onAdmitted }: { onAdmitted: () => void }) {
-  const [code, setCode] = useState("");
+  // What the person typed, or null while they haven't — in which case the
+  // field shows the key from the invitation link, if they came that way.
+  const [typed, setTyped] = useState<string | null>(null);
+  const invited = usePendingBetaKey();
+  const code = typed ?? invited ?? "";
+  const fromInvite = typed === null && !!invited;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Captured here too, not only on /login: a tester who is already signed in
+  // is sent straight to /dashboard with the fragment intact.
+  useEffect(() => { captureBetaKeyFromUrl(); }, []);
 
   async function redeem(e: React.FormEvent) {
     e.preventDefault();
@@ -35,6 +45,7 @@ export function BetaGate({ onAdmitted }: { onAdmitted: () => void }) {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "That didn't work. Try again.");
+      clearPendingBetaKey();
       onAdmitted();
     } catch (err) {
       setError((err as Error).message);
@@ -57,7 +68,7 @@ export function BetaGate({ onAdmitted }: { onAdmitted: () => void }) {
             <span>Your key</span>
             <input
               value={code}
-              onChange={e => { setCode(e.target.value.toUpperCase()); setError(null); }}
+              onChange={e => { setTyped(e.target.value.toUpperCase()); setError(null); }}
               placeholder="AGXP-XXXXXX"
               autoComplete="off"
               spellCheck={false}
@@ -65,6 +76,7 @@ export function BetaGate({ onAdmitted }: { onAdmitted: () => void }) {
               aria-invalid={!!error}
             />
           </label>
+          {fromInvite && !error && <p className="bg-hint">Filled in from your invitation.</p>}
           {error && <p className="bg-error" role="alert">{error}</p>}
           <button className="btn btn-hero" type="submit" disabled={busy || !code.trim()}>
             {busy ? "Checking…" : <>Let me in <IconArrow /></>}

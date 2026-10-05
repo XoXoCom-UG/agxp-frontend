@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
+  <meta name="color-scheme" content="light dark">
+  <meta name="supported-color-schemes" content="light dark">
+  <title>Your AgentiX beta key is here</title>
+  <!-- AgXP faces: Familjen Grotesk (display), Schibsted Grotesk (text), IBM Plex Mono. -->
+  <link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Schibsted+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!--
+    How the two themes work, and why everything is light by default:
+
+    - Apple Mail, iOS Mail and Outlook for Mac read prefers-color-scheme and
+      get the exact dark design below.
+    - The Gmail apps ignore it and invert the colours themselves. A surface
+      that is dark in the inline styles gets turned LIGHT, and its white text
+      turned dark — which is what broke the hero, the pass and the agents
+      panel. Built light, Gmail's inversion lands on a dark version instead.
+    - The Resend editor strips classes from inline elements (strong, span),
+      so every class that matters sits on a td, div or table.
+  -->
+  <style>
+    body { margin:0 !important; padding:0 !important; width:100% !important; -webkit-text-size-adjust:100%; }
+    a { text-decoration:none; }
+
+    @media (max-width: 620px) {
+      .px    { padding-left:20px !important; padding-right:20px !important; }
+      .h1    { font-size:30px !important; line-height:34px !important; letter-spacing:-0.8px !important; }
+      .lead  { font-size:15px !important; }
+      .key   { font-size:20px !important; letter-spacing:3px !important; }
+      .btnw  { width:100% !important; }
+      .chipm { font-size:11px !important; padding:4px 9px !important; }
+      .br    { display:none !important; }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .room   { background-color:#060607 !important; }
+      .card   { background-color:#0D0E11 !important; border-color:#1D2027 !important; }
+      .ink    { color:#ECECEE !important; }
+      .ink2   { color:#B4B4BC !important; }
+      .muted  { color:#8A8A93 !important; }
+      .faint  { color:#5E5E66 !important; }
+      .blue   { color:#7FB2E8 !important; }
+      .rule   { border-color:#1D2027 !important; }
+      /* The pass */
+      .tk     { background-color:#0A0E16 !important; }
+      .tkb    { border-color:#22304A !important; }
+      .tkh    { background-image:radial-gradient(ellipse 70% 120% at 0% 0%, rgba(30,140,255,0.28) 0%, rgba(30,140,255,0) 70%) !important; }
+      .tkf    { background-image:radial-gradient(ellipse 70% 90% at 100% 100%, rgba(122,80,255,0.26) 0%, rgba(122,80,255,0) 70%) !important; }
+      .tkr    { border-color:#2A3A52 !important; }
+      .notch  { background-color:#0D0E11 !important; border-color:#22304A !important; }
+      .pill   { background-color:#0F1B2A !important; border-color:#2A5C93 !important; color:#CFE1F5 !important; }
+      /* Steps */
+      .num    { background-color:#0A1019 !important; }
+      .n1     { color:#8CCBFF !important; }
+      .n2     { color:#9DB6FF !important; }
+      .n3     { color:#B9A6FF !important; }
+      /* Agents panel */
+      .ap     { background-color:#080C14 !important; border-color:#1E2836 !important; }
+      .chip1  { background-color:#0F1B2A !important; border-color:#2A5C93 !important; color:#DCE8F6 !important; }
+      .chip2  { background-color:#1A1430 !important; border-color:#5A46A6 !important; color:#E6DEFA !important; }
+    }
+  </style>
+  <!-- Gradient headline, in its own block and behind @supports: a client that
+       can't clip a background to text drops the whole rule and keeps the solid
+       blue, instead of showing transparent (invisible) text. -->
+  <style>
+    @supports (-webkit-background-clip: text) {
+      .grad {
+        display:inline-block !important;
+        background-image:linear-gradient(90deg, #1EAEFF 0%, #4A86F0 50%, #7C5CF0 100%) !important;
+        -webkit-background-clip:text !important;
+        background-clip:text !important;
+        -webkit-text-fill-color:transparent !important;
+        color:transparent !important;
+      }
+    }
+  </style>
+  <!-- Outlook.com's own dark mode, kept apart so a client that rejects the
+       attribute selectors can't take the rules above down with them. -->
+  <style>
+    [data-ogsc] .ink   { color:#ECECEE !important; }
+    [data-ogsc] .ink2  { color:#B4B4BC !important; }
+    [data-ogsc] .muted { color:#8A8A93 !important; }
+    [data-ogsc] .blue  { color:#7FB2E8 !important; }
+    [data-ogsb] .room  { background-color:#060607 !important; }
+    [data-ogsb] .card  { background-color:#0D0E11 !important; }
+    [data-ogsb] .tk    { background-color:#0A0E16 !important; }
+    [data-ogsb] .notch { background-color:#0D0E11 !important; }
+    [data-ogsb] .num   { background-color:#0A1019 !important; }
+    [data-ogsb] .ap    { background-color:#080C14 !important; }
+  </style>
+</head>
+<body class="room" style="margin:0;padding:0;background-color:#ECEEF2;">
+
+  <!-- Inbox preview line -->
+  <div style="display:none;max-height:0;max-width:0;overflow:hidden;opacity:0;mso-hide:all;font-size:1px;line-height:1px;">
+    Your key is inside. Sign in, enter it once, and start your first project.
+    &#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;
+  </div>
+
+  <table role="presentation" class="room" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#ECEEF2;">
+    <tr>
+      <td align="center" style="padding:32px 12px 40px;">
+
+        <!-- ================= Card ================= -->
+        <table role="presentation" class="card" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background-color:#FFFFFF;border:1px solid #E1E4EA;border-radius:22px;">
+
+          <!-- Brand -->
+          <tr>
+            <td align="center" style="padding:28px 24px 22px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="vertical-align:middle;padding-right:12px;">
+                    <img src="https://resend-attachments.s3.amazonaws.com/NG6t5kQNNKWwnDPxZNRSwG/7f81793a-03f6-4c18-ac12-ced0c049b8e5" width="40" height="40" alt="AgentiX" style="display:block;border:0;outline:none;width:40px;height:40px;">
+                  </td>
+                  <td style="vertical-align:middle;text-align:left;">
+                    <div class="ink" style="font-family:'Familjen Grotesk','Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:22px;line-height:24px;font-weight:600;letter-spacing:-0.5px;color:#111318;">Agenti<span style="color:#2E7BC4;">X</span></div>
+                    <div class="muted" style="font-family:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:10px;line-height:12px;letter-spacing:3.5px;color:#5A5F6B;padding-top:4px;">PROJECTS</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Hero image, framed: a picture is never inverted, so it reads the
+               same on a light card, a dark card and a Gmail-inverted one. -->
+          <tr>
+            <td class="px" style="padding:0 20px;">
+              <img src="https://landing-page-agxp.vercel.app/email/core.jpg" width="558" alt="Two agents orbiting one project" style="display:block;border:0;outline:none;width:100%;max-width:558px;height:auto;border-radius:16px;">
+            </td>
+          </tr>
+
+          <!-- Headline -->
+          <tr>
+            <td class="px" align="center" style="padding:30px 28px 0;font-family:'Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;">
+              <div class="blue" style="font-family:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:12px;line-height:14px;letter-spacing:4px;color:#1F64A8;">
+                CLOSED BETA
+              </div>
+              <h1 class="ink h1" style="margin:14px 0 0;font-family:'Familjen Grotesk','Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:44px;line-height:48px;font-weight:700;letter-spacing:-1.4px;color:#111318;">
+                You're in.
+              </h1>
+              <div class="blue grad h1" style="font-family:'Familjen Grotesk','Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:44px;line-height:48px;font-weight:700;letter-spacing:-1.4px;color:#1F64A8;">
+                Welcome to AgentiX.
+              </div>
+              <p class="ink2 lead" style="margin:20px 0 0;font-size:16px;line-height:26px;color:#454A55;">
+                Two AI agents take on one project with you.<br class="br">
+                The <strong>Consultant</strong> maps where you stand and the way forward.<br class="br">
+                The <strong>Coach</strong> makes sure your people come along.
+              </p>
+              <p class="muted" style="margin:12px 0 0;font-size:14px;line-height:22px;color:#5A5F6B;">
+                At the end, each one hands you a finished document.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Key: an access pass. Light by default, dark through the media
+               query; Gmail's inversion turns the light one dark by itself. -->
+          <tr>
+            <td class="px" style="padding:28px 20px 0;">
+              <table role="presentation" class="tk" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F3F7FC;border-radius:18px;">
+
+                <!-- Pass header -->
+                <tr>
+                  <td class="tk tkh tkb" style="background-color:#F3F7FC;background-image:radial-gradient(ellipse 70% 120% at 0% 0%, rgba(30,140,255,0.10) 0%, rgba(30,140,255,0) 70%);border:1px solid #C9D9EE;border-bottom:0;border-radius:18px 18px 0 0;padding:20px 24px 16px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="vertical-align:middle;">
+                          <div class="blue" style="font-family:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:11px;line-height:14px;letter-spacing:4px;color:#1F64A8;">BETA PASS</div>
+                          <div class="ink" style="margin-top:6px;font-family:'Familjen Grotesk','Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:17px;line-height:20px;font-weight:600;letter-spacing:-0.3px;color:#111318;">Agenti<span style="color:#2E7BC4;">X</span> Projects</div>
+                        </td>
+                        <td align="right" style="vertical-align:middle;">
+                          <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                              <td class="pill" style="padding:5px 11px;border:1px solid #BCD3EE;border-radius:999px;background-color:#EAF2FB;font-family:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:10px;line-height:12px;letter-spacing:2px;color:#154E80;white-space:nowrap;">
+                                <span style="color:#2DB874;">&#9679;</span>&nbsp; INVITE ONLY
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Perforation: two half-circle notches in the card colour, joined
+                     by a dashed tear line. -->
+                <tr>
+                  <td style="padding:0;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td class="tk" width="12" style="padding:0;background-color:#F3F7FC;font-size:0;line-height:0;">
+                          <div class="notch" style="width:11px;height:22px;background-color:#FFFFFF;border:1px solid #C9D9EE;border-left:0;border-radius:0 12px 12px 0;font-size:0;line-height:0;">&nbsp;</div>
+                        </td>
+                        <td class="tk" style="padding:0 8px;background-color:#F3F7FC;vertical-align:middle;font-size:0;line-height:0;">
+                          <div class="tkr" style="border-top:2px dashed #C9D6E8;height:0;font-size:0;line-height:0;">&nbsp;</div>
+                        </td>
+                        <td class="tk" width="12" style="padding:0;background-color:#F3F7FC;font-size:0;line-height:0;">
+                          <div class="notch" style="width:11px;height:22px;background-color:#FFFFFF;border:1px solid #C9D9EE;border-right:0;border-radius:12px 0 0 12px;font-size:0;line-height:0;">&nbsp;</div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Key + button -->
+                <tr>
+                  <td class="tk tkf tkb" align="center" style="background-color:#F3F7FC;background-image:radial-gradient(ellipse 70% 90% at 100% 100%, rgba(122,80,255,0.09) 0%, rgba(122,80,255,0) 70%);border:1px solid #C9D9EE;border-top:0;border-radius:0 0 18px 18px;padding:18px 24px 26px;">
+                    <div class="muted" style="font-family:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:11px;line-height:14px;letter-spacing:4px;color:#5A5F6B;">
+                      YOUR BETA KEY
+                    </div>
+                    <div class="ink key" style="margin-top:10px;font-family:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:30px;line-height:36px;font-weight:500;letter-spacing:6px;color:#111318;word-break:break-all;-webkit-user-select:all;user-select:all;">
+                      {{{BETA_KEY}}}
+                    </div>
+                    <div class="muted" style="margin-top:8px;font-family:'Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#5A5F6B;">
+                      Tap to select it, or let the button fill it in.
+                    </div>
+                    <!-- Pill, cyan-blue to violet, with a soft glow where box-shadow
+                         is supported. The solid colour is the fallback for clients
+                         without gradients (Outlook on Windows). -->
+                    <table role="presentation" align="center" class="btnw" cellpadding="0" cellspacing="0" border="0" style="margin:20px auto 0;">
+                      <tr>
+                        <td align="center" style="background-color:#3F6BFB;background-image:linear-gradient(90deg, #1AA0FF 0%, #2F7BFA 48%, #7A50FF 100%);border-radius:999px;box-shadow:0 10px 28px -8px rgba(58,110,255,0.6);">
+                          <a href="{{{APP_URL}}}/login#beta={{{BETA_KEY}}}" target="_blank" style="display:block;padding:17px 56px;font-family:'Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:17px;line-height:20px;font-weight:600;color:#FFFFFF;text-decoration:none;border-radius:999px;white-space:nowrap;">
+                            Open AgentiX &nbsp;&rarr;
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+
+          <!-- Steps -->
+          <tr>
+            <td class="px" style="padding:30px 20px 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="rule" style="border-top:1px solid #E6E8ED;">
+                <tr>
+                  <td align="center" class="blue" style="padding:24px 0 20px;font-family:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:12px;line-height:14px;letter-spacing:4px;color:#1F64A8;">
+                    HOW TO GET IN
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 12px;font-family:'Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;">
+                    <!-- The three steps as one path: each circle shifts from blue to
+                         violet, and a short gradient line joins it to the next. -->
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td width="52" style="vertical-align:middle;">
+                          <div class="num n1" style="width:38px;height:38px;border:1px solid #1AA0FF;border-radius:50%;background-color:#F3F7FC;text-align:center;font-family:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:13px;line-height:38px;font-weight:500;color:#1677C9;">01</div>
+                        </td>
+                        <td class="ink2" style="vertical-align:middle;font-size:15px;line-height:23px;color:#454A55;">
+                          <strong>Sign in</strong> with your email or Google, or create an account.
+                        </td>
+                      </tr>
+                      <tr>
+                        <td width="52" style="padding:5px 0;">
+                          <div style="margin-left:19px;width:2px;height:14px;font-size:0;line-height:0;background-color:#1AA0FF;background-image:linear-gradient(180deg, #1AA0FF, #4A6BF7);border-radius:2px;">&nbsp;</div>
+                        </td>
+                        <td style="font-size:0;line-height:0;">&nbsp;</td>
+                      </tr>
+                      <tr>
+                        <td width="52" style="vertical-align:middle;">
+                          <div class="num n2" style="width:38px;height:38px;border:1px solid #4A6BF7;border-radius:50%;background-color:#F3F7FC;text-align:center;font-family:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:13px;line-height:38px;font-weight:500;color:#3A55D6;">02</div>
+                        </td>
+                        <td class="ink2" style="vertical-align:middle;font-size:15px;line-height:23px;color:#454A55;">
+                          <strong>Confirm your key</strong> when the app asks. The button above fills it in.
+                        </td>
+                      </tr>
+                      <tr>
+                        <td width="52" style="padding:5px 0;">
+                          <div style="margin-left:19px;width:2px;height:14px;font-size:0;line-height:0;background-color:#4A6BF7;background-image:linear-gradient(180deg, #4A6BF7, #7A50FF);border-radius:2px;">&nbsp;</div>
+                        </td>
+                        <td style="font-size:0;line-height:0;">&nbsp;</td>
+                      </tr>
+                      <tr>
+                        <td width="52" style="vertical-align:middle;">
+                          <div class="num n3" style="width:38px;height:38px;border:1px solid #7A50FF;border-radius:50%;background-color:#F3F7FC;text-align:center;font-family:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:13px;line-height:38px;font-weight:500;color:#5B3FD0;">03</div>
+                        </td>
+                        <td class="ink2" style="vertical-align:middle;font-size:15px;line-height:23px;color:#454A55;">
+                          <strong>Pick a Consultant and a Coach</strong>, then tell them what you want to change.
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- The two agents. Light by default like the pass; the picture is
+               framed so it reads as a picture on either theme. -->
+          <tr>
+            <td class="px" style="padding:26px 20px 0;">
+              <table role="presentation" class="ap" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F7F8FA;border:1px solid #E6E8ED;border-radius:18px;">
+                <tr>
+                  <td class="ink2 lead" align="center" style="padding:24px 16px 16px;font-family:'Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:25px;color:#454A55;">
+                    One plans the change.<br>The other brings your people with it.
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 12px;">
+                    <img src="https://resend-attachments.s3.amazonaws.com/NG6t5kQNNKWwnDPxZNRSwG/2075d288-da87-4c03-aa90-184169e2a8e1" width="534" alt="The Consultant and the Coach, two AI agents on one project" style="display:block;border:0;outline:none;width:100%;max-width:534px;height:auto;border-radius:12px;">
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:16px 0 24px;font-family:'Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td width="50%" align="center" style="vertical-align:top;padding:0 4px;">
+                          <div class="ink" style="font-family:'Familjen Grotesk','Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:19px;line-height:24px;font-weight:600;color:#111318;">Consultant</div>
+                          <div class="muted" style="margin-top:3px;font-size:14px;line-height:20px;color:#5A5F6B;">Process, tools &amp; roadmap</div>
+                          <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:12px auto 0;">
+                            <tr>
+                              <td class="chip1 chipm" style="padding:5px 12px;border:1px solid #BCD3EE;border-radius:999px;background-color:#EAF2FB;font-size:12px;line-height:16px;color:#154E80;white-space:nowrap;">Transformation Concept</td>
+                            </tr>
+                          </table>
+                        </td>
+                        <td width="50%" align="center" style="vertical-align:top;padding:0 4px;">
+                          <div class="ink" style="font-family:'Familjen Grotesk','Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:19px;line-height:24px;font-weight:600;color:#111318;">Coach</div>
+                          <div class="muted" style="margin-top:3px;font-size:14px;line-height:20px;color:#5A5F6B;">People, resistance &amp; rollout</div>
+                          <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:12px auto 0;">
+                            <tr>
+                              <td class="chip2 chipm" style="padding:5px 12px;border:1px solid #D5C8FA;border-radius:999px;background-color:#F1ECFE;font-size:12px;line-height:16px;color:#5B3FD0;white-space:nowrap;">Change Plan</td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Signature + footer -->
+          <tr>
+            <td class="px" style="padding:24px 20px 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="rule" style="border-top:1px solid #E6E8ED;">
+                <tr>
+                  <td class="ink2" align="center" style="padding:24px 0 0;font-family:'Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:22px;color:#454A55;">
+                    See you inside,
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding:8px 0 0;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="vertical-align:middle;padding-right:10px;">
+                          <img src="https://resend-attachments.s3.amazonaws.com/NG6t5kQNNKWwnDPxZNRSwG/7f81793a-03f6-4c18-ac12-ced0c049b8e5" width="28" height="28" alt="" style="display:block;border:0;outline:none;width:28px;height:28px;">
+                        </td>
+                        <td class="ink" style="vertical-align:middle;font-family:'Familjen Grotesk','Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:17px;line-height:22px;font-weight:600;letter-spacing:-0.3px;color:#111318;">
+                          The Agenti<span style="color:#2E7BC4;">X</span> team
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="ink2" align="center" style="padding:22px 12px 0;font-family:'Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;line-height:21px;color:#454A55;">
+                    Questions or feedback? Just reply to this email.
+                  </td>
+                </tr>
+                <tr>
+                  <td class="muted" align="center" style="padding:8px 12px 0;font-family:'Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;line-height:19px;color:#5A5F6B;">
+                    Got this by mistake? You can ignore it. Nothing happens unless the key is entered.
+                  </td>
+                </tr>
+                <tr>
+                  <td class="ink2" align="center" style="padding:8px 12px 28px;font-family:'Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;line-height:19px;color:#454A55;">
+                    <a href="https://landing-page-agxp.vercel.app" target="_blank" style="color:inherit;text-decoration:none;">Website</a>
+                    &nbsp;&middot;&nbsp;
+                    <a href="{{{APP_URL}}}/impressum" target="_blank" style="color:inherit;text-decoration:none;">Imprint</a>
+                    &nbsp;&middot;&nbsp;
+                    <a href="{{{APP_URL}}}/datenschutz" target="_blank" style="color:inherit;text-decoration:none;">Privacy</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

@@ -6174,6 +6174,11 @@ html.light .bg-card{
   margin:0 0 var(--sp-4); font-size:var(--text-xs); line-height:1.5;
   color:var(--destructive);
 }
+/* Same slot as the error, so the field doesn't jump when one replaces the other. */
+.bg-hint{
+  margin:0 0 var(--sp-4); font-size:var(--text-xs); line-height:1.5;
+  color:var(--success);
+}
 .beta-gate .btn-hero{ width:100%; justify-content:center; height:48px; }
 .bg-foot{
   margin:var(--sp-6) 0 0; font-size:var(--text-2xs); color:var(--muted-foreground); line-height:1.6;

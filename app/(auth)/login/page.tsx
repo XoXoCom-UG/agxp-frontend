@@ -9,6 +9,7 @@ import { useTheme } from "next-themes";
 import { AgentMascot } from "@/components/layout/agent-mascot";
 import { IconSun, IconMoon, IconArrow, IconCheck, IconEye, IconEyeOff } from "@/components/layout/agxp-icons";
 import { BrandLogo } from "@/components/layout/brand-logo";
+import { captureBetaKeyFromUrl } from "@/lib/beta-key-handoff";
 
 type Mode = "signin" | "signup";
 const MODES: Mode[] = ["signin", "signup"];
@@ -78,6 +79,10 @@ export default function LoginPage() {
   const emailRef = useRef<HTMLInputElement>(null);
   const pwRef = useRef<HTMLInputElement>(null);
   const tabRefs = useRef<Partial<Record<Mode, HTMLButtonElement | null>>>({});
+
+  // The invitation email links here with the key in the fragment. Take it
+  // before anything navigates away and drops it (see lib/beta-key-handoff.ts).
+  useEffect(() => { captureBetaKeyFromUrl(); }, []);
 
   // Already signed in (came back to /login by hand or by an old bookmark).
   useEffect(() => { if (!authLoading && token) router.replace("/dashboard"); }, [token, authLoading, router]);

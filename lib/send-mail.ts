@@ -159,6 +159,15 @@ async function post(key: string, content: Record<string, unknown>, to: string): 
   }
 }
 
+/**
+ * Where the invitation's button points: the login page, with the key in the
+ * fragment so the BetaGate can fill it in (lib/beta-key-handoff.ts). The
+ * Resend template builds the same link from APP_URL and BETA_KEY.
+ */
+export function inviteLink(code: string, appUrl: string): string {
+  return `${appUrl}/login#beta=${encodeURIComponent(code)}`;
+}
+
 /** Plain text, sent alongside the HTML — some clients show only this one. */
 function inviteText(code: string, appUrl: string): string {
   return [
@@ -166,7 +175,7 @@ function inviteText(code: string, appUrl: string): string {
     "",
     `Your key: ${code}`,
     "",
-    `Open ${appUrl}, sign in, and enter the key when it asks.`,
+    `Open ${inviteLink(code, appUrl)} and sign in. The key is filled in for you.`,
     "",
     "An AI consultant and an AI coach work one transformation project through",
     "with you, and write the two documents at the end.",
@@ -201,7 +210,7 @@ function inviteHtml(code: string, appUrl: string): string {
                       border-radius:10px;padding:14px 18px;">${esc(code)}</div>
         </td></tr>
         <tr><td align="center" style="padding-bottom:20px;">
-          <a href="${esc(appUrl)}" style="display:inline-block;background:#154E80;color:#ffffff;
+          <a href="${esc(inviteLink(code, appUrl))}" style="display:inline-block;background:#154E80;color:#ffffff;
              text-decoration:none;font-size:14px;font-weight:600;padding:12px 22px;border-radius:9px;">
             Open AgentiX Projects
           </a>
