@@ -6864,3 +6864,35 @@ html.light{
   margin-left:auto; font-style:normal; font-size:var(--text-2xs);
   color:var(--muted-foreground); font-variant-numeric:tabular-nums;
 }
+
+
+/* --- Chat: time, the saved tick, the vote, the head's meta line -------- */
+
+/* The time and the tick ride inside the user's bubble, on their own line,
+   right-aligned. One tick, not two: two means "read" in every messaging app
+   and nothing here reads anything — it means the row came back saved. */
+.msg-sent{
+  display:flex; align-items:center; justify-content:flex-end; gap:5px;
+  margin-top:5px; opacity:.72;
+}
+.msg-sent svg{ flex-shrink:0; }
+.msg-time{
+  font-size:var(--text-3xs); font-variant-numeric:tabular-nums; letter-spacing:0.02em;
+}
+/* Under an answer the time sits at the end of the action row instead. */
+.msg-agent .msg-time, .msg-actions + .msg-time{
+  color:var(--muted-foreground); margin-left:auto; padding-left:var(--sp-3);
+}
+
+.ma-btn.is-voted{ color:var(--role-consultant); }
+.ma-btn.is-voted svg{ fill:color-mix(in srgb, var(--role-consultant) 22%, transparent); }
+/* Down is the same weight as up, not a warning: it is feedback, not an error. */
+.ma-btn.is-voted[aria-label="Not helpful"]{ color:var(--role-coach); }
+.ma-btn.is-voted[aria-label="Not helpful"] svg{
+  fill:color-mix(in srgb, var(--role-coach) 22%, transparent);
+}
+
+/* The separators in "Consultant · Level 2 · 3 together". */
+.who-txt .r i{
+  font-style:normal; margin:0 5px; opacity:.45;
+}

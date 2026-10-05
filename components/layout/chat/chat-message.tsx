@@ -8,7 +8,7 @@ import { md } from "@/lib/markdown";
 import { streamingText, streamIsDocument } from "@/lib/message-markers";
 import { ThinkingOrb } from "@/components/layout/thinking-orb";
 import { MessageActions } from "@/components/layout/message-actions";
-import { IconArrow, IconDoc, IconRefresh } from "@/components/layout/agxp-icons";
+import { IconArrow, IconCheck, IconDoc, IconRefresh } from "@/components/layout/agxp-icons";
 
 function wordCount(text: string): number {
   return text.split(/\s+/).filter(Boolean).length;
@@ -36,7 +36,20 @@ function Choices({ choices, disabled, onPick }: { choices: string[]; disabled: b
  * the person wrote, a document command, a failed answer, the finished
  * document as a card, or an ordinary answer.
  */
-export function ChatMessage({ entry, agentName, docTitle, isNew, isLeaving, isLast, version, sending, busy, onRetry, onPick, onOpenDoc }: {
+/** Hour and minute, in the reader's locale. Hidden from assistive tech:
+ *  a screen reader announcing a time after every line is noise, and the
+ *  full timestamp is on the element's title. */
+function Clock({ iso }: { iso: string }) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return (
+    <span className="msg-time" title={d.toLocaleString()} aria-hidden="true">
+      {d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+    </span>
+  );
+}
+
+export function ChatMessage({ entry, agentName, docTitle, isNew, isLeaving, isLast, version, sending, busy, vote, onVote, onRetry, onPick, onOpenDoc }: {
   entry: Entry;
   agentName: string;
   docTitle: string;
@@ -51,6 +64,9 @@ export function ChatMessage({ entry, agentName, docTitle, isNew, isLeaving, isLa
   sending: boolean;
   /** A reply is on its way or one is being replaced; Try again waits. */
   busy: boolean;
+  /** This reader's thumbs up/down on this answer, if any. */
+  vote?: 1 | -1 | null;
+  onVote?: (messageId: string, vote: 1 | -1 | null) => void;
   onRetry: () => void;
   onPick: (choice: string) => void;
   onOpenDoc: (title: string) => void;
@@ -90,6 +106,13 @@ export function ChatMessage({ entry, agentName, docTitle, isNew, isLeaving, isLa
           </span>
         )}
         {p.files.length ? p.text : m.content}
+        {/* One tick, not the two a messaging app uses: two means "read", and
+            nobody reads this — it means saved, which is what actually
+            happened when the row came back. */}
+        <span className="msg-sent" aria-hidden="true">
+          <Clock iso={m.created_at} />
+          <IconCheck size={11} />
+        </span>
       </div>
     );
   }
@@ -113,8 +136,12 @@ export function ChatMessage({ entry, agentName, docTitle, isNew, isLeaving, isLa
     ? <Choices choices={p.choices} disabled={sending} onPick={onPick} />
     : null;
   const actions = (
-    <MessageActions text={p.text} agentName={agentName}
-      onRetry={isLast ? onRetry : undefined} retryDisabled={busy} />
+    <>
+      <MessageActions text={p.text} agentName={agentName}
+        messageId={m.id} vote={vote} onVote={onVote}
+        onRetry={isLast ? onRetry : undefined} retryDisabled={busy} />
+      <Clock iso={m.created_at} />
+    </>
   );
 
   // A generated document is a document, not a 2000-word chat bubble.

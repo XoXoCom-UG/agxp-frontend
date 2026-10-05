@@ -49,6 +49,8 @@ export const IconSun = make("sun");
 export const IconMoon = make("moon");
 export const IconMonitor = make("monitor");
 export const IconCheck = make("check");
+export const IconThumbUp = make("thumbUp");
+export const IconThumbDown = make("thumbDown");
 export const IconX = make("x");
 export const IconAlert = make("alert");
 

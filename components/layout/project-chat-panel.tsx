@@ -21,6 +21,7 @@ import { IconRefresh } from "@/components/layout/agxp-icons";
 import { ChatHead } from "@/components/layout/chat/chat-head";
 import { ChatComposer } from "@/components/layout/chat/chat-composer";
 import { ChatMessage, ChatStreaming } from "@/components/layout/chat/chat-message";
+import { loadVotes, type Vote } from "@/lib/message-feedback";
 
 const OPENING: Record<AgentType, string> = {
   consultant: "Hey, what can I do for you today?",
@@ -81,6 +82,10 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
 
   // What the agent brings from this user's earlier projects, plus what it
   // picked up during this session.
+  /** This reader's thumbs on each answer. Loaded once with the history;
+   *  a vote is stored per person, so nobody sees anyone else's. */
+  const [votes, setVotes] = useState<Map<string, Vote>>(new Map());
+
   const [memory, setMemory] = useState<AgentMemory>(EMPTY_MEMORY);
   const [learned, setLearned] = useState<MemoryNote[]>([]);
   /** What the screen reader hears when an answer lands. */
@@ -157,6 +162,23 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
 
   // Every message parsed once per change of the list, not once per use per render.
   const entries = useMemo(() => parseEntries(messages, deliverable.title), [messages, deliverable.title]);
+
+  /*
+   * The reader's own thumbs, fetched for the answers now on screen. Keyed on
+   * the id list rather than on `messages`, so sending a message does not
+   * refetch votes for everything above it; a new id does.
+   */
+  const answerIds = useMemo(
+    () => messages.filter(m => m.role === "assistant").map(m => m.id).join(","),
+    [messages],
+  );
+  useEffect(() => {
+    const ids = answerIds ? answerIds.split(",") : [];
+    if (!ids.length) return;
+    let alive = true;
+    loadVotes(ids).then(v => { if (alive) setVotes(v); }).catch(() => {});
+    return () => { alive = false; };
+  }, [answerIds]);
   const convo = useMemo(() => deriveConversation(entries), [entries]);
   const { pct, station, docs, versionOf, lastAssistantIdx } = convo;
   const answered = useMemo(() => entries.filter(e => e.m.role === "assistant" && !e.isError).length, [entries]);
@@ -316,6 +338,12 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
             isLast={i === lastAssistantIdx}
             version={versionOf.get(entry.m.id) ?? 1}
             sending={sending} busy={busy}
+            vote={votes.get(entry.m.id) ?? null}
+            onVote={(id, v) => setVotes(prev => {
+              const next = new Map(prev);
+              if (v === null) next.delete(id); else next.set(id, v);
+              return next;
+            })}
             onRetry={chat.retry}
             onPick={chat.send}
             onOpenDoc={title => onOpenDoc?.(buildDoc(entry.p.text, title, entry.m.created_at, versionOf.get(entry.m.id) ?? 1))}

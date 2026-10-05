@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { IconCopy, IconCheck, IconShare, IconRefresh, IconMail, IconX } from "@/components/layout/agxp-icons";
+import { IconCopy, IconCheck, IconShare, IconRefresh, IconMail, IconX, IconThumbUp, IconThumbDown } from "@/components/layout/agxp-icons";
+import { setVote, type Vote } from "@/lib/message-feedback";
 import { useDialogFocus } from "@/lib/use-dialog-focus";
 
 /** Clipboard with a fallback for the cases the async API refuses (an
@@ -33,10 +34,15 @@ async function copyText(text: string): Promise<boolean> {
  * Try again is only offered on the newest answer — regenerating an older one
  * would have to throw away everything that was said after it.
  */
-export function MessageActions({ text, agentName, onRetry, retryDisabled }: {
+export function MessageActions({ text, agentName, messageId, vote, onVote, onRetry, retryDisabled }: {
   /** The answer as plain text (markers already stripped). */
   text: string;
   agentName: string;
+  /** Null for a reply that is not saved yet (still streaming). */
+  messageId?: string;
+  /** This reader's vote on it, or null for no opinion. */
+  vote?: Vote | null;
+  onVote?: (messageId: string, vote: Vote | null) => void;
   /** Omitted on every answer but the latest. */
   onRetry?: () => void;
   retryDisabled?: boolean;
@@ -66,6 +72,25 @@ export function MessageActions({ text, agentName, onRetry, retryDisabled }: {
           ? <IconCheck size={14} className="icon-swap" />
           : <IconCopy size={14} className={swapped ? "icon-swap" : undefined} />}
       </button>
+      {messageId && onVote && ([1, -1] as Vote[]).map(v => {
+        const on = vote === v;
+        const up = v === 1;
+        return (
+          <button key={v} className={`ma-btn${on ? " is-voted" : ""}`}
+            aria-pressed={on}
+            aria-label={up ? "Helpful" : "Not helpful"}
+            data-tooltip={up ? "Helpful" : "Not helpful"}
+            onClick={() => {
+              // Clicking the vote you already gave takes it back: no opinion
+              // is the absence of a row, not a third value.
+              const next = on ? null : v;
+              onVote(messageId, next);
+              void setVote(messageId, next).catch(() => onVote(messageId, vote ?? null));
+            }}>
+            {up ? <IconThumbUp size={14} /> : <IconThumbDown size={14} />}
+          </button>
+        );
+      })}
       <button className="ma-btn" onClick={() => setSharing(true)} aria-label="Share" data-tooltip="Share">
         <IconShare size={14} />
       </button>

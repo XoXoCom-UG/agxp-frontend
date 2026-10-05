@@ -126,8 +126,13 @@ export function ChatHead({
               station counter: the mascot and the stream already say whether
               the agent is doing anything, and a second, blue, changing word
               beside the name only added noise (Ana, 2026-09-28). */}
+          {/* Role, level and how far along the two of you are — the level
+              was only inside the popover, and it is the one number that says
+              how much this agent already knows about you. */}
           <span className="r"><span className={`role-dot ${role}`} />
             {role === "coach" ? "Coach" : "Consultant"}
+            <i>·</i>{level}
+            {totalProjects > 0 && <><i>·</i>{totalProjects} together</>}
           </span>
         </span>
         <IconChevronDown size={11} />
