@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AgentMascot } from "@/components/layout/agent-mascot";
-import { IconArrow, IconSpark } from "@/components/layout/agxp-icons";
+import { IconArrow, IconCheck } from "@/components/layout/agxp-icons";
 import { listProjects } from "@/lib/projects";
 import type { Agent } from "@/lib/agents";
 
@@ -66,18 +66,29 @@ export function TeamIntro({ agents, onBuild }: { agents: Agent[]; onBuild: () =>
       <p className="ti-sub">One plans the work.<br />The other plans the people.</p>
 
       <div className="ti-stage">
-        {/* Decorative: the pairing is already said in words above and below. */}
-        <svg className="ti-orbit" viewBox="0 0 900 260" aria-hidden="true" focusable="false">
-          <ellipse cx="450" cy="130" rx="300" ry="86" />
-          <circle className="ti-node" cx="450" cy="130" r="6" />
+        {/*
+          A lens, not an ellipse: two arcs that leave one mascot and meet at
+          the other, crossing in the middle. The box is exactly the height of
+          the mascot row so the curve passes BEHIND the heads instead of
+          floating under them and cutting through the names.
+
+          preserveAspectRatio="none" lets it stretch to whatever width the
+          row happens to be; non-scaling-stroke keeps the line 1px while it
+          does. Decorative — the pairing is said in words above and below.
+        */}
+        <svg className="ti-orbit" viewBox="0 0 900 140" preserveAspectRatio="none"
+          aria-hidden="true" focusable="false">
+          <path vectorEffect="non-scaling-stroke" d="M150,70 Q450,4 750,70" />
+          <path vectorEffect="non-scaling-stroke" d="M150,70 Q450,136 750,70" />
         </svg>
+        <span className="ti-node" aria-hidden="true" />
 
         {([
           { role: "consultant", name: "Consultant", tag: "Execution & expertise", chips: CONSULTANT_CHIPS },
           { role: "coach", name: "Coach", tag: "People & change", chips: COACH_CHIPS },
         ] as const).map(a => (
           <div key={a.role} className={`ti-agent ${a.role}`}>
-            <AgentMascot role={a.role} size={108} state="idle" level={3} />
+            <AgentMascot role={a.role} size={128} state="idle" level={3} />
             <h2>{a.name}</h2>
             <p>{a.tag}</p>
             <ul className="ti-chips">
@@ -155,7 +166,7 @@ export function TeamRail({ consultant, coach }: { consultant?: Agent; coach?: Ag
         </p>
         <ul className="tr-gains">
           {["Faster results", "Clearer structure", "Better team alignment"].map(g => (
-            <li key={g}><IconSpark size={13} />{g}</li>
+            <li key={g}><IconCheck size={13} />{g}</li>
           ))}
         </ul>
       </div>

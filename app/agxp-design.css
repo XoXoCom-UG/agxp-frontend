@@ -6386,7 +6386,9 @@ html.light{
 
 .ti-root{
   display:grid; grid-template-columns:minmax(0,1fr) 360px; gap:var(--sp-5);
-  align-items:start;
+  /* stretch, not start: the rail was two short cards against a tall hero,
+     with the column half empty under them. The "why" card takes the slack. */
+  align-items:stretch;
 }
 @media (max-width:1100px){
   .ti-root{ grid-template-columns:minmax(0,1fr); }
@@ -6425,25 +6427,36 @@ html.light{
 /* --- The two agents, with the orbit behind them -------------------------- */
 .ti-stage{
   position:relative; width:100%; margin:var(--sp-6) 0 var(--sp-5);
-  display:flex; justify-content:center; gap:clamp(40px, 12vw, 180px);
+  display:flex; justify-content:center; gap:clamp(26px, 5vw, 88px);
   flex-wrap:wrap;
 }
+/* Exactly as tall as the mascot row (128px) and pinned to its top, so the
+   curve crosses BEHIND the two heads. Sized to the row rather than to the
+   whole stage: the first version was a 200px ellipse over a 300px stage, so
+   it sat under the mascots and cut through the names and the chips. */
 .ti-orbit{
-  position:absolute; inset:0; top:18px; width:100%; height:200px;
+  position:absolute; left:8%; right:8%; top:0; height:128px;
+  width:auto; pointer-events:none;
+}
+.ti-orbit path{
+  fill:none; stroke-width:1;
+  stroke:color-mix(in srgb, var(--role-consultant) 34%, transparent);
+}
+.ti-orbit path:last-child{
+  stroke:color-mix(in srgb, var(--role-coach) 34%, transparent);
+}
+/* The crossing point. A real element, not an SVG circle, so it stays round
+   while the curve above it is stretched. */
+.ti-node{
+  position:absolute; left:50%; top:64px; width:7px; height:7px;
+  margin:-3.5px 0 0 -3.5px; border-radius:50%;
+  background:var(--role-coach);
+  box-shadow:0 0 12px 1px color-mix(in srgb, var(--role-coach) 60%, transparent);
   pointer-events:none;
-}
-.ti-orbit ellipse{
-  fill:none; stroke:color-mix(in srgb, var(--role-consultant) 38%, transparent);
-  stroke-width:1;
-}
-.ti-orbit .ti-node{
-  fill:var(--role-coach);
-  /* No animation: the orbit is scenery, and a moving thing beside the only
-     button on the screen competes with it. */
 }
 .ti-agent{
   position:relative; display:flex; flex-direction:column; align-items:center;
-  min-width:0; max-width:300px;
+  min-width:0; max-width:330px;
 }
 .ti-agent h2{
   margin:var(--sp-4) 0 0; font-family:var(--font-display);
@@ -6457,7 +6470,7 @@ html.light{
   display:flex; flex-wrap:wrap; justify-content:center; gap:7px;
 }
 .ti-chips li{
-  padding:6px 12px; border-radius:var(--radius-pill);
+  padding:5px 11px; border-radius:var(--radius-pill);
   border:1px solid var(--border); background:var(--surface-elevated);
   font-size:var(--text-2xs); color:var(--secondary-foreground);
 }
@@ -6532,17 +6545,25 @@ html.light{
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 
-.tr-why{ text-align:center; }
+.tr-why{
+  text-align:center; flex:1;
+  display:flex; flex-direction:column; justify-content:center;
+}
+/* Two overlapping circles — a Venn, which is what "two perspectives, one
+   plan" means. The first version was two stretched pills and read as a
+   capsule with a line through it. */
 .tr-rings{
-  display:block; width:46px; height:22px; margin:0 auto var(--sp-4);
-  border-radius:var(--radius-pill);
-  border:1.5px solid color-mix(in srgb, var(--role-consultant) 55%, transparent);
+  display:block; width:40px; height:24px; margin:0 auto var(--sp-4);
   position:relative;
 }
+.tr-rings::before, .tr-rings::after{
+  content:""; position:absolute; top:0; width:24px; height:24px; border-radius:50%;
+}
+.tr-rings::before{
+  left:0; border:1.5px solid color-mix(in srgb, var(--role-consultant) 70%, transparent);
+}
 .tr-rings::after{
-  content:""; position:absolute; left:17px; top:-1.5px; width:46px; height:22px;
-  border-radius:var(--radius-pill);
-  border:1.5px solid color-mix(in srgb, var(--role-coach) 55%, transparent);
+  right:0; border:1.5px solid color-mix(in srgb, var(--role-coach) 70%, transparent);
 }
 .tr-why h2{
   margin:0; font-family:var(--font-display); font-size:var(--text-lg);
