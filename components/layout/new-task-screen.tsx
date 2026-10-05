@@ -13,6 +13,8 @@ import { useMediaQuery } from "@/lib/use-media-query";
 import { describeDbError } from "@/lib/db-error";
 import { AgentNav } from "@/components/layout/agent-nav";
 import { TeamIntro, TeamRail } from "@/components/layout/team-intro";
+import { TeamPicker } from "@/components/layout/team-picker";
+import { assignAgent } from "@/lib/projects";
 import { AgentPickerPanel } from "@/components/layout/agent-picker-panel";
 import { ProjectChatPanel } from "@/components/layout/project-chat-panel";
 import { DeliverableView, type DeliverableDoc } from "@/components/layout/deliverable-view";
@@ -86,6 +88,9 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
   const [unfolding, setUnfolding] = useState(false);
   /** Dismissed by "Build your team"; see introDone below. */
   const [skipIntro, setSkipIntro] = useState(false);
+  /** Which agent the full-page picker is assigning, so only its card spins. */
+  const [picking, setPicking] = useState<string | null>(null);
+  const [pickError, setPickError] = useState<string | null>(null);
   /** The saved preference, shared with the Settings sheet through the store.
    *  While the seam is being dragged, `live` takes over so the panels follow
    *  the pointer without writing to storage on every frame. */
@@ -443,6 +448,35 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
    */
   const introDone = !!project?.consultant_agent_id || !!project?.coach_agent_id || skipIntro;
 
+  /*
+   * The redesign picks one role at a time on the whole page. AgentPickerPanel
+   * is untouched and still runs inside the panels — it is what "change agent"
+   * opens later, and the only place an agent can be created.
+   */
+  const needsRole: AgentType | null =
+    !introDone ? null
+    : !project?.consultant_agent_id ? "consultant"
+    : !project?.coach_agent_id ? "coach"
+    : null;
+
+  async function pickForRole(role: AgentType, agentId: string) {
+    if (picking) return;
+    setPicking(agentId); setPickError(null);
+    try {
+      const p = project ?? await ensureProject();
+      handleAssigned(await assignAgent(p.id, role, agentId, `${ROLE_NAME[role]} selected`));
+    } catch (e) {
+      setPickError(describeDbError(e, "Choosing an agent"));
+    } finally {
+      setPicking(null);
+    }
+  }
+
+  const chosen = {
+    consultant: agents.find(a => a.id === project?.consultant_agent_id),
+    coach: agents.find(a => a.id === project?.coach_agent_id),
+  };
+
   return (
     <div className="app">
       <AgentNav
@@ -461,7 +495,21 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
         </div>
       )}
 
-      <div className={`view-root view-enter${introDone ? "" : " is-hidden"}`}>
+      {needsRole && (
+        <div className="view-root view-enter ti-root">
+          <TeamPicker
+            role={needsRole}
+            step={needsRole === "consultant" ? 1 : 2}
+            agents={agents}
+            busy={picking}
+            error={pickError}
+            onSelect={id => pickForRole(needsRole, id)}
+            onBack={() => { if (needsRole === "consultant") setSkipIntro(false); }} />
+          <TeamRail consultant={chosen.consultant} coach={chosen.coach} showOutcome />
+        </div>
+      )}
+
+      <div className={`view-root view-enter${introDone && !needsRole ? "" : " is-hidden"}`}>
         {/* Only shown once the layout stacks (CSS) — both panels stay mounted,
             so switching never loses a conversation or a half-typed message.
             Roving tabindex: Tab lands on the selected tab, arrows move. */}

@@ -12,6 +12,7 @@ import { IconFolder, IconArrow, IconMore, IconSearch, IconPlus, IconAlert, IconR
 import { AgentMascot } from "@/components/layout/agent-mascot";
 import { SkeletonRows } from "@/components/layout/skeleton";
 import { EmptyState } from "@/components/layout/empty-state";
+import { HistoryRail, type StateFilter } from "@/components/layout/history-rail";
 import { dateStr, menuKeyDown, focusFirstMenuItem } from "@/lib/utils";
 
 function statusClass(s: Project["status"]) { return s.toLowerCase().replace(/\s+/g, "-"); }
@@ -29,6 +30,9 @@ export default function ProjectHistoryPage() {
   /** Bumped by Retry, which re-runs the load effect. */
   const [attempt, setAttempt] = useState(0);
   const [search, setSearch] = useState("");
+  /** The rail's filters. Both narrow the same list the rail counts. */
+  const [stateFilter, setStateFilter] = useState<StateFilter>("all");
+  const [byConsultant, setByConsultant] = useState<string[]>([]);
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [confirmArchive, setConfirmArchive] = useState<Project | null>(null);
   const [archiving, setArchiving] = useState(false);
@@ -145,7 +149,15 @@ export default function ProjectHistoryPage() {
   }
 
   const visible = projects.filter(p => p.status !== "Archived");
-  const filtered = visible.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+  const filtered = visible
+    .filter(p => p.name.toLowerCase().includes(search.toLowerCase()))
+    .filter(p => stateFilter === "all" || p.status === stateFilter)
+    // No ticks means no restriction, which is what an empty filter should do.
+    .filter(p => byConsultant.length === 0
+      || (p.consultant_agent_id !== null && byConsultant.includes(p.consultant_agent_id)));
+
+  const toggleConsultant = (id: string) =>
+    setByConsultant(ids => ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id]);
 
   if (authLoading || !token) return (
     <main className="app app-wait">
@@ -167,7 +179,7 @@ export default function ProjectHistoryPage() {
             "New task" button above it — "New Task" is already in the bar. The
             h1 stays for screen readers. */}
         <h1 className="visually-hidden">Project history</h1>
-        <div className="flat-view" onClick={() => setMenuFor(null)}>
+        <div className="flat-view hist-grid" onClick={() => setMenuFor(null)}>
           <div className="flat-col">
 
             {/* One sheet for the whole list: the bar above is a defined
@@ -287,6 +299,16 @@ export default function ProjectHistoryPage() {
               </div>
             </div>
           </div>
+
+          {/* Counted from `visible`, the same set the list starts from, so a
+              number here and the rows after clicking it always agree. */}
+          <HistoryRail
+            projects={visible}
+            agents={agents}
+            state={stateFilter}
+            onState={setStateFilter}
+            consultants={byConsultant}
+            onToggleConsultant={toggleConsultant} />
         </div>
       </main>
     </div>

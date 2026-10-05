@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AgentMascot } from "@/components/layout/agent-mascot";
-import { IconArrow, IconCheck } from "@/components/layout/agxp-icons";
+import { IconArrow, IconCheck, IconDoc } from "@/components/layout/agxp-icons";
 import { listProjects } from "@/lib/projects";
 import type { Agent } from "@/lib/agents";
 
@@ -130,7 +130,12 @@ export function TeamIntro({ agents, onBuild }: { agents: Agent[]; onBuild: () =>
 }
 
 /** The right-hand rail: who is picked, and what the pairing is for. */
-export function TeamRail({ consultant, coach }: { consultant?: Agent; coach?: Agent }) {
+export function TeamRail({ consultant, coach, showOutcome }: {
+  consultant?: Agent;
+  coach?: Agent;
+  /** The "What you'll get" note, shown while an agent is being chosen. */
+  showOutcome?: boolean;
+}) {
   const picked = (consultant ? 1 : 0) + (coach ? 1 : 0);
   return (
     <aside className="tr" aria-label="Your AI team">
@@ -164,12 +169,24 @@ export function TeamRail({ consultant, coach }: { consultant?: Agent; coach?: Ag
           Your Consultant analyses the challenge. Your Coach focuses on the people side.
           Together they turn your answers into a structured, visual deliverable.
         </p>
-        <ul className="tr-gains">
-          {["Faster results", "Clearer structure", "Better team alignment"].map(g => (
-            <li key={g}><IconCheck size={13} />{g}</li>
-          ))}
-        </ul>
+        {!showOutcome && (
+          <ul className="tr-gains">
+            {["Faster results", "Clearer structure", "Better team alignment"].map(g => (
+              <li key={g}><IconCheck size={13} />{g}</li>
+            ))}
+          </ul>
+        )}
       </div>
+
+      {showOutcome && (
+        <div className="tr-card tr-outcome">
+          <IconDoc size={15} />
+          <div>
+            <b>What you&apos;ll get</b>
+            <p>A structured plan with insights, visuals and clear next steps.</p>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }
