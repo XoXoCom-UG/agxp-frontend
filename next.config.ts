@@ -2,6 +2,19 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 import path from "node:path";
 
+/*
+ * Vercel's preview toolbar — the one that lets a reviewer leave comments on
+ * a deployment — loads from vercel.live, which the CSP below blocks. It is
+ * allowed only OUTSIDE production: a review tool has no business on the
+ * live site, and widening script-src there would be the one change in this
+ * file that actually costs something.
+ *
+ * VERCEL_ENV is "production", "preview" or "development" on Vercel, and
+ * unset elsewhere, so a local build gets it too.
+ */
+const previewToolbar = process.env.VERCEL_ENV && process.env.VERCEL_ENV !== "production";
+const live = previewToolbar ? " https://vercel.live" : "";
+
 const securityHeaders = [
   // Prevent the site from being embedded in iframes (clickjacking)
   { key: "X-Frame-Options", value: "DENY" },
@@ -18,11 +31,12 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      `script-src 'self' 'unsafe-inline' 'unsafe-eval'${live}`,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
       "connect-src 'self' https: wss:",
+      `frame-src 'self'${live}`,
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",

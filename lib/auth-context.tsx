@@ -60,9 +60,41 @@ function clearStaleAuthCookies(): number {
   return names.length;
 }
 
+/**
+ * What a deployment shows when its public Supabase variables are missing.
+ *
+ * Without this the app threw from the first effect and the browser showed
+ * Next's "This page couldn't load", with the real cause only in the console
+ * — which is where nobody looks first. The variables are NEXT_PUBLIC_*, so
+ * they are baked in at build time: this renders during prerender too, and
+ * the deployment comes up saying what is wrong instead of looking broken.
+ */
+function NotConfigured() {
+  return (
+    <main className="notcfg">
+      <h1>This deployment isn&apos;t configured yet</h1>
+      <p>
+        <code>NEXT_PUBLIC_SUPABASE_URL</code> and <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>
+        {" "}are missing from this build, so there is no database and no sign-in.
+      </p>
+      <p className="notcfg-fix">
+        On Vercel: Settings → Environment Variables, enable them for this
+        environment, then <b>redeploy</b>. A restart is not enough — these are
+        built into the page, not read when it runs.
+      </p>
+    </main>
+  );
+}
+
+const CONFIGURED =
+  !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Starts false when there is nothing to load: without the keys there is no
+  // session to ask for, and flipping it from inside the effect would be a
+  // synchronous setState there.
+  const [loading, setLoading] = useState(CONFIGURED);
   // An edit made in settings, before the session carries it. Stored with the
   // user id it belongs to, so switching accounts can never show the wrong name
   // and no effect is needed to clear it.
@@ -92,6 +124,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    // Nothing to ask without the keys, and asking would throw where the
+    // screen below already explains it. `loading` already starts false.
+    if (!CONFIGURED) return;
+
     // Always resolve loading — even on error — so the app never hangs on the
     // skeleton (a corrupt session cookie used to strand it forever).
     createClient().auth.getSession()
@@ -134,7 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       saveProfileName,
       signOut,
     }}>
-      {children}
+      {CONFIGURED ? children : <NotConfigured />}
     </AuthContext.Provider>
   );
 }

@@ -6564,3 +6564,30 @@ html.light{
   font-size:var(--text-2xs); color:var(--secondary-foreground);
 }
 .tr-gains svg{ flex-shrink:0; color:var(--role-consultant); }
+
+
+/* A deployment whose public Supabase keys are missing. Plain on purpose:
+   it must render before anything else works, and it is read by whoever can
+   fix it, not by a customer. */
+.notcfg{
+  min-height:100dvh; display:flex; flex-direction:column; justify-content:center;
+  gap:var(--sp-4); max-width:580px; margin:0 auto; padding:var(--sp-7) var(--sp-5);
+}
+.notcfg h1{
+  margin:0; font-family:var(--font-display); font-size:var(--text-2xl);
+  font-weight:600; letter-spacing:-0.03em; color:var(--foreground);
+}
+.notcfg p{
+  margin:0; font-size:var(--text-sm); line-height:1.65; color:var(--secondary-foreground);
+}
+.notcfg code{
+  font-family:var(--font-mono); font-size:0.92em; color:var(--foreground);
+  background:var(--surface-elevated); border:1px solid var(--border);
+  border-radius:6px; padding:1px 6px;
+}
+.notcfg-fix{
+  padding:var(--sp-4); border-radius:var(--radius-md);
+  border:1px solid color-mix(in srgb, var(--warn) 34%, transparent);
+  background:color-mix(in srgb, var(--warn) 6%, transparent);
+  font-size:var(--text-xs) !important;
+}
