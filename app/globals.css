@@ -11,21 +11,36 @@
    only the values in this block ever need to move.
    ============================================================================= */
 :root {
-  /* Neutral near-black graphite (Ana, 2026-09-27: "gri negru", not dark
-     blue). The blue lives only in the accent and in the lights behind the
-     panels, so the surfaces themselves carry no hue. */
-  --background:#060607;
-  --foreground:#ECECEE;
+  /*
+   * Taken value-for-value from the marketing site, so the product and the
+   * page that sells it are one brand rather than two near-misses. The old
+   * palette was deliberately hueless graphite; this one carries a cool blue
+   * through the surfaces themselves (--surface-2, --surface-elevated), which
+   * is what makes the landing page read as cold and deep rather than grey.
+   */
+  --background:#121316;
+  /* The deepest ground, behind the panels. */
+  --background-deep:#0B0C0E;
+  --foreground:#EDF2F8;
 
-  --card:#141416;
-  --card-foreground:#ECECEE;
-  --popover:#18181B;
-  --popover-foreground:#ECECEE;
+  --card:#1C1D1F;
+  --card-foreground:#EDF2F8;
+  --popover:#1F2530;
+  --popover-foreground:#EDF2F8;
 
-  /* Three faces, loaded in app/layout.tsx. The fallbacks matter: next/font
-     sets these variables on <html>, so anything rendered before that (or with
-     fonts blocked) still gets a sane stack instead of Times. */
-  --font-display:"Familjen Grotesk", var(--font-sans), -apple-system, "Segoe UI", sans-serif;
+  /* How strong the glow behind a lit element is. The landing page calls it
+     bloom and sets it once; everything that glows multiplies by it, so the
+     whole screen can be calmed from here. */
+  --bloom:0.55;
+  /* The hairline grid laid over the ground. Barely visible on purpose: it
+     gives the dark a surface instead of a void. */
+  --grid-line:rgba(255,255,255,0.045);
+
+  /* Three faces, loaded in app/layout.tsx — the same three the marketing
+     site uses. The fallbacks matter: next/font sets these variables on
+     <html>, so anything rendered before that (or with fonts blocked) still
+     gets a sane stack instead of Times. */
+  --font-display:"Space Grotesk", var(--font-sans), -apple-system, "Segoe UI", sans-serif;
   --font-mono:var(--font-mono-face), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
   --primary:#154E80;
@@ -38,14 +53,14 @@
   --primary-grad:linear-gradient(140deg, color-mix(in srgb, var(--primary-soft) 42%, #FFFFFF), var(--primary-soft));
 
   --secondary:#18181B;
-  --secondary-foreground:#AEAEB5;
+  --secondary-foreground:#A9B4C4;
   --muted:#18181B;
-  --muted-foreground:#8A8A93;   /* 5.0–5.4:1 on every dark surface (AA) */
+  --muted-foreground:#7C8798;   /* re-measured after the retheme, below */
   --accent:#1C1C20;
   --accent-foreground:#ECECEE;
   /* Ana's palette: a surface that is clearly lighter than the page, for the
      composer and the user's own messages — not a subtle tint like --accent. */
-  --surface-elevated:#202024;
+  --surface-elevated:#242C3A;
 
   --destructive:#E0574A;
   --destructive-foreground:#FBEAE6;
@@ -67,7 +82,7 @@
   --coach-1:#141416; --coach-2:#19191C; --coach-3:#0B0B0D;
   --consultant-1:#151517; --consultant-2:#1A1A1D; --consultant-3:#0D0D0F;
 
-  --border:rgba(255,255,255,0.075);
+  --border:rgba(255,255,255,0.10);
   --border-strong:rgba(255,255,255,0.20);
   --input:rgba(255,255,255,0.12);
   --ring:var(--primary-soft);

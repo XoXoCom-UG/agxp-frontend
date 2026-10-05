@@ -6896,3 +6896,115 @@ html.light{
 .who-txt .r i{
   font-style:normal; margin:0 5px; opacity:.45;
 }
+
+
+/* ===========================================================================
+   REDESIGN — the marketing site's own language, applied to the product.
+   Values read off landing-page-agxp.vercel.app: Space Grotesk at 500 with
+   -0.04em tracking, a hairline grid over the ground, and bloom behind what
+   is lit. Everything here rides on tokens, so one block moves every screen.
+   =========================================================================== */
+
+/* Display type at 500, not 600. The landing page sets its 73-97px headings
+   at 500 and that is what makes them read as wide and calm; at 600 the same
+   words look like a heavier, different brand. */
+.ti-title, .tp-title, .tr-head h2, .tr-why h2, .hr-card h2, .tp-card h2,
+.ti-agent h2, .notcfg h1{
+  font-weight:500; letter-spacing:-0.04em;
+}
+.ti-title{ font-size:clamp(40px, 6.4vw, 76px); }
+.tp-title{ font-size:clamp(34px, 4.6vw, 56px); }
+
+/* The ground: a hairline grid, which is what stops a very dark screen
+ * reading as an empty void — it gives the dark a surface.
+ *
+ * On BODY, not on .app: .app::before and .app::after are already the ambient
+ * lights (see above), and a second rule for them here silently replaced one.
+ * And no `.app > *` to lift the content above it either — forcing
+ * position:relative on every direct child is exactly what flattened the
+ * stacking of the folded-Coach pill once before. A negative z-index on a
+ * fixed layer needs neither.
+ */
+body::after{
+  content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
+  background:
+    linear-gradient(var(--grid-line) 1px, transparent 1px) 0 0 / 100% 72px,
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px) 0 0 / 72px 100%;
+  /* Faded out downwards: a hint at the top, gone where content is densest. */
+  mask-image:linear-gradient(180deg, #000 0%, transparent 62%);
+  -webkit-mask-image:linear-gradient(180deg, #000 0%, transparent 62%);
+}
+
+/* Bloom: the glow behind a lit surface, all scaled by one token so the whole
+   screen can be calmed from :root. */
+.ti-cta{
+  box-shadow:
+    0 14px 40px -14px color-mix(in srgb, var(--role-consultant) calc(var(--bloom) * 100%), transparent),
+    0 0 0 1px color-mix(in srgb, #FFFFFF 10%, transparent) inset;
+}
+.ti-node{
+  box-shadow:0 0 18px 2px color-mix(in srgb, var(--role-coach) calc(var(--bloom) * 90%), transparent);
+}
+
+/* Panels: the landing page's glass — a brighter edge than ours had, and a
+   deep, soft shadow rather than a hard one. */
+.ti, .tp, .tr-card, .hr-card{
+  box-shadow:0 24px 60px -20px rgba(0,0,0,0.75);
+  border-color:rgba(255,255,255,0.12);
+}
+
+/* The eyebrow and the step label, in the mono face the brand uses for small
+   caps everywhere. */
+.ti-eyebrow, .tp-step, .ti-recent-h{
+  font-family:var(--font-mono);
+}
+
+
+/* The hero stops being a card.
+ *
+ * Glass was the obvious way to let the grid show through it — and it is the
+ * wrong one here: this app follows Apple's two-layer rule (see the CHAT
+ * block above), where glass belongs to the floating functional layer and a
+ * content container that wears it is a defect in the material model. The
+ * landing page does not solve this with glass either; its sections are not
+ * cards at all. So the hero simply stops being one, and the ground, the grid
+ * and the bloom are behind the type because there is nothing in between.
+ *
+ * The rail keeps its cards: those are a distinct aside, not the content.
+ * The picker keeps its cards: those are objects you choose between.
+ */
+.ti{
+  background:transparent; border-color:transparent; box-shadow:none;
+  padding-top:var(--sp-7); padding-bottom:var(--sp-7);
+}
+/* One slow bloom behind the two agents, the width of the stage. Sits under
+   everything the hero draws and never takes a pointer. */
+.ti::before{
+  content:""; position:absolute; left:50%; top:16%;
+  width:min(900px, 90%); aspect-ratio:2 / 1; transform:translateX(-50%);
+  pointer-events:none; z-index:0;
+  background:
+    radial-gradient(42% 56% at 32% 50%,
+      color-mix(in srgb, var(--role-consultant) calc(var(--bloom) * 26%), transparent), transparent 70%),
+    radial-gradient(42% 56% at 68% 50%,
+      color-mix(in srgb, var(--role-coach) calc(var(--bloom) * 24%), transparent), transparent 70%);
+  filter:blur(18px);
+}
+.ti > *{ position:relative; z-index:1; }
+
+/* The two statements rise in, one after the other. Short and small — the
+   screen should feel like it settled, not like it performed. */
+@media (prefers-reduced-motion:no-preference){
+  .ti-eyebrow, .ti-title, .ti-sub, .ti-stage, .ti-cta, .ti-recent{
+    animation:tiRise 620ms var(--ease-out) backwards;
+  }
+  .ti-title{ animation-delay:60ms; }
+  .ti-sub{ animation-delay:120ms; }
+  .ti-stage{ animation-delay:180ms; }
+  .ti-cta{ animation-delay:260ms; }
+  .ti-recent{ animation-delay:320ms; }
+}
+@keyframes tiRise{
+  from{ opacity:0; transform:translateY(14px); }
+  to{ opacity:1; transform:none; }
+}
