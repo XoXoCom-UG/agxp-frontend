@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import type { Agent, AgentType, Method } from "@/lib/agents";
 import { listAllMethods, createAgent } from "@/lib/agents";
 import { assignAgent, type Project } from "@/lib/projects";
 import { levelFor, LEVEL_ORDER } from "@/lib/agent-progress";
-import { TYPE_CATALOG, MAX_PER_TYPE, type TypeTemplate } from "@/lib/agent-types";
+import { TYPE_CATALOG, MAX_PER_TYPE, groupByType, type TypeTemplate } from "@/lib/agent-types";
 import { methodLabel } from "@/lib/method-labels";
 import { dateStr } from "@/lib/utils";
 import { describeDbError } from "@/lib/db-error";
@@ -13,9 +13,12 @@ import { AgentMascot } from "@/components/layout/agent-mascot";
 import { useMascotReplies, levelFromReplies } from "@/lib/mascot-level";
 import {
   IconBack, IconArrow, IconSearch, IconCheck, IconAlert, IconRefresh, IconPlus,
+  IconUsers, IconSpark, IconChevronDown,
 } from "@/components/layout/agxp-icons";
+import { TYPE_ICON } from "@/components/layout/type-icon";
 
 type PanelState = "empty" | "list" | "detail" | "type" | "configure";
+
 
 const ROLE_LABEL: Record<AgentType, string> = { consultant: "Consultant", coach: "Coach" };
 /**
@@ -37,7 +40,7 @@ const PICKER_HEAD: Record<AgentType, { create: string; train: string }> = {
   },
 };
 
-export function AgentPickerPanel({ role, project, agents, ensureProject, onAssigned, onAgentCreated, projectCounts = {}, assignedAgent, onChangeAgent }: {
+export function AgentPickerPanel({ role, project, agents, ensureProject, onAssigned, onAgentCreated, projectCounts = {}, assignedAgent, onChangeAgent, intro }: {
   role: AgentType;
   /** Null until the project row exists — it's created lazily on the first real action. */
   project: Project | null;
@@ -50,6 +53,8 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   /** Already chosen, but the chat has not started yet: show who it is. */
   assignedAgent?: Agent | null;
   onChangeAgent?: () => void;
+  /** Drawn above the two entry cards — the team builder's heading. */
+  intro?: ReactNode;
 }) {
   const totalProjects = (a: Agent) => a.last_projects.length + (projectCounts[a.id] ?? 0);
   const [state, setState] = useState<PanelState>("empty");
@@ -57,6 +62,8 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState<TypeTemplate | null>(null);
+  /** Which type bands are open in "train existing"; unset means the default. */
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   /** Picking failed — which agent, so Retry can pick it again. */
   const [selectError, setSelectError] = useState<{ agentId: string; message: string } | null>(null);
   const replies = useMascotReplies();
@@ -71,6 +78,22 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
     const hay = [a.name, a.tagline ?? "", a.expertise ?? "", ...a.methods.map(m => m.name)].join(" ").toLowerCase();
     return hay.includes(q);
   });
+
+  // The bands of "train existing": one per type, then whatever matched none.
+  const filteredIds = new Set(filtered.map(a => a.id));
+  const byType = groupByType(roleAgents, role);
+  const groups: { key: string; title: string; description: string | null; template: TypeTemplate | null; agents: Agent[] }[] = [
+    ...byType.columns.map(c => ({
+      key: c.template.sub, title: c.template.type, description: c.template.description, template: c.template,
+      agents: c.agents.filter(a => filteredIds.has(a.id)),
+    })),
+    ...(byType.ungrouped.length ? [{
+      key: "other", title: "Other", description: null, template: null,
+      agents: byType.ungrouped.filter(a => filteredIds.has(a.id)),
+    }] : []),
+  ];
+  /** Open by default: the first band that has anyone in it. */
+  const firstFull = groups.find(g => g.agents.length > 0)?.key;
 
   /** Picking is the action — no "are you sure?" in between. If it was the
    *  wrong one you simply pick again (Patryk, 2026-09-11). */
@@ -162,7 +185,8 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
         // underneath — the same sentence twice, in two different words.
         // "Also das reicht ja, oder? Es reicht." So a heading and a button,
         // and nothing between them.
-        <div className="pick-empty">
+        <div className={`pick-empty${intro ? " has-intro" : ""}`}>
+          {intro && <div className="pick-intro">{intro}</div>}
           <div className="pick-cards">
             {/* The whole card is the control, not just the strip at the
                 bottom — a card that lifts under the cursor but only counts a
@@ -200,32 +224,71 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
               <input id={searchId} type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name or what they do…" />
             </div>
           </div>
-          <div className="list-section-label">People you have worked with</div>
-          {filtered.length === 0 ? (
+          {/* Grouped by type, the way the Agent Dashboard groups them (Ana,
+              2026-10-05): one band per type, the agents of that type as
+              cards inside it. A search opens every band that has a match. */}
+          {groups.every(g => g.agents.length === 0) && search.trim() ? (
             <div className="empty-search">
               <div className="t">No agents found</div>
               <div className="d">Try another name, or make a new one.</div>
               <button className="btn btn-ghost" onClick={() => setSearch("")}>Clear search</button>
             </div>
           ) : (
-            <div className="directory">
-              {/* A real button, so Enter and Space work without a handler.
-                  Its content is phrasing only (spans), which is all a button
-                  may hold; the name comes from the text, read in order. */}
-              {filtered.map(a => {
-                const total = totalProjects(a);
+            <div className="tgroups">
+              {groups.filter(g => !search.trim() || g.agents.length > 0).map(g => {
+                const open = search.trim() ? true : (openGroups[g.key] ?? g.key === firstFull);
+                const Icon = TYPE_ICON[g.title] ?? IconSpark;
                 return (
-                  <button key={a.id} type="button" className="dir-row"
-                    onClick={() => { setDetailId(a.id); setState("detail"); }}>
-                    <span className="dr-name">{a.name}</span>
-                    {a.tagline && <span className="dr-sub">{a.tagline}</span>}
-                    {a.primaryMethods.length > 0 && <span className="dr-methods"><span className="mlabel">Primary</span>{a.primaryMethods.map(m => methodLabel(m.name)).join(" · ")}</span>}
-                    {a.secondaryMethods.length > 0 && <span className="dr-methods secondary"><span className="mlabel">Secondary</span>{a.secondaryMethods.map(m => methodLabel(m.name)).join(" · ")}</span>}
-                    <span className="dr-foot">
-                      <span className="proj-count">{levelFor(total)} · {total} {total === 1 ? "project" : "projects"}</span>
-                      <span className="dr-select" aria-hidden="true">Select <IconArrow /></span>
-                    </span>
-                  </button>
+                  <section key={g.key} className={`tgroup${open ? " is-open" : ""}`}>
+                    <button className="tg-head" aria-expanded={open}
+                      onClick={() => setOpenGroups(o => ({ ...o, [g.key]: !open }))}>
+                      <span className="tt-icon" aria-hidden="true"><Icon size={18} /></span>
+                      <span className="tg-text">
+                        <span className="tg-title">{g.title}<span className="tg-count">{g.agents.length}</span></span>
+                      </span>
+                      <IconChevronDown size={16} className="tg-chev" />
+                    </button>
+                    {open && (g.agents.length === 0 ? (
+                      <div className="tg-empty">
+                        <span>No {g.title} yet.</span>
+                        {g.template && (
+                          <button className="btn btn-ghost" onClick={() => { setDraft(g.template); setState("configure"); }}>
+                            <IconPlus size={12} />Create one
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="tg-cards">
+                        {g.agents.map(a => {
+                          const total = totalProjects(a);
+                          return (
+                            <div key={a.id} className="ag-card">
+                              <div className="ag-top">
+                                <AgentMascot role={role} size={44} agentId={a.id} />
+                                <span className="ag-text">
+                                  {/* The name opens the full profile; Select picks straight away. */}
+                                  <button className="ag-name" onClick={() => { setDetailId(a.id); setState("detail"); }}>{a.name}</button>
+                                  <span className="ag-sub">{levelFor(total)} experience</span>
+                                </span>
+                              </div>
+                              {a.primaryMethods.length > 0 && (
+                                <ul className="chip-row" aria-label="Works with">
+                                  {a.primaryMethods.slice(0, 3).map(m => <li key={m.id}>{methodLabel(m.name)}</li>)}
+                                </ul>
+                              )}
+                              <div className="ag-foot">
+                                <span className="ag-proj"><IconUsers size={15} />{total} {total === 1 ? "project" : "projects"}</span>
+                                <button className="ag-select" disabled={busy} onClick={() => select(a.id)}
+                                  aria-label={`Select ${a.name}`}>
+                                  Select <IconArrow />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </section>
                 );
               })}
             </div>
@@ -239,36 +302,34 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
       ) : state === "type" ? (
         <>
           <div className="step-eyebrow">Step 1 of 2: what kind of help?</div>
-          <div className="type-wrap">
+          {/* One tile per type (Ana, 2026-10-05): what it is, one line on what
+              it does, what it works with, and how many of the four you hold. */}
+          <div className="type-grid">
             {TYPE_CATALOG[role].map(t => {
               // Four per type is the cap (Patryk, 2026-09-30). Past it the
               // answer is not a failed insert — it is "delete one first",
               // said before the click.
               const used = roleAgents.filter(a => a.tagline === t.sub).length;
               const full = used >= MAX_PER_TYPE;
+              const Icon = TYPE_ICON[t.type] ?? IconSpark;
               return (
-              <div key={t.type} className={`type-card${full ? " is-full" : ""}`}>
-                <div className="type-card-top">
-                  <div>
-                    <h3>{t.type}</h3>
-                    <div className="desc">{t.description}</div>
-                  </div>
-                  <div className="tc-right">
-                    <span className="tc-count">{used} of {MAX_PER_TYPE}</span>
-                    {full ? (
-                      <span className="tc-full">Full — delete one first</span>
-                    ) : (
-                      <button className="btn btn-ghost" onClick={() => { setDraft(t); setState("configure"); }}>Select <IconArrow /></button>
-                    )}
-                  </div>
-                </div>
-                <div className="detail-section flush">
-                  <span className="lbl">Can help with</span>
-                  <ul className="plist">
-                    {[...t.primary, ...t.secondary].map(m => <li key={m}>{methodLabel(m)}</li>)}
-                  </ul>
-                </div>
-              </div>
+                <button key={t.type} className={`type-tile${full ? " is-full" : ""}`}
+                  aria-disabled={full || undefined}
+                  onClick={() => { if (!full) { setDraft(t); setState("configure"); } }}>
+                  <span className="tt-icon" aria-hidden="true"><Icon size={20} /></span>
+                  <span className="tt-name">{t.type}</span>
+                  <span className="tt-desc">{t.description}</span>
+                  <span className="chip-row">
+                    {t.primary.map(m => <span key={m} className="chip">{methodLabel(m)}</span>)}
+                  </span>
+                  <span className="tt-foot">
+                    <IconUsers size={15} />
+                    <span className="tt-count">{full ? "Full, delete one first" : `${used} of ${MAX_PER_TYPE} in use`}</span>
+                    <span className="tt-dots" aria-hidden="true">
+                      {Array.from({ length: MAX_PER_TYPE }, (_, i) => <span key={i} className={i < used ? "on" : ""} />)}
+                    </span>
+                  </span>
+                </button>
               );
             })}
           </div>
@@ -388,10 +449,23 @@ function ConfigureView({ role, template, onCreated }: { role: AgentType; templat
     } finally { setSaving(false); }
   }
 
+  const Icon = TYPE_ICON[t.type] ?? IconSpark;
+
   return (
-    <>
-      <div className="step-eyebrow">Step 2 of 2: give them a name</div>
-      <div className="configure">
+    <div className="configure cfg">
+      <div className="cfg-card">
+        {/* Who you are making: a brand-new level-1 robot, its name as you
+            type it, and the type it was made from (Ana, 2026-10-05). */}
+        <div className="cfg-hero">
+          <span className="cfg-face" aria-hidden="true"><AgentMascot role={role} size={92} level={1} enter /></span>
+          <span className="team-step">
+            <span className="ts-pips" aria-hidden="true"><span className="ts-pip on" /><span className="ts-pip on" /></span>
+            Step 2 of 2 · Name your {ROLE_LABEL[role].toLowerCase()}
+          </span>
+          <p className="cfg-name" aria-hidden="true">{name.trim() || "Unnamed"}</p>
+          <span className="cfg-type"><Icon size={14} />{t.type}</span>
+        </div>
+
         <div className="field">
           <label htmlFor={nameId}>Name</label>
           <input id={nameId} type="text" value={name} onChange={e => setName(e.target.value)}
@@ -406,11 +480,16 @@ function ConfigureView({ role, template, onCreated }: { role: AgentType; templat
             is announced as a stray label. The list is named by its heading. */}
         <div className="field">
           <span className="field-label" id={helpsId}>Can help with</span>
-          <ul className="plist" aria-labelledby={helpsId}>{[...t.primary, ...t.secondary].map(m => <li key={m}>{methodLabel(m)}</li>)}</ul>
+          <ul className="chip-row" aria-labelledby={helpsId}>{[...t.primary, ...t.secondary].map(m => <li key={m}>{methodLabel(m)}</li>)}</ul>
         </div>
         <div className="field">
           <span className="field-label">Experience</span>
-          <div className="field-val">New. You two have not worked together yet.</div>
+          <div className="cfg-xp">
+            <span className="level-bar" aria-hidden="true">
+              {LEVEL_ORDER.map((l, i) => <span key={l} className={`level-seg ${i === 0 ? "on" : ""}`} />)}
+            </span>
+            <span className="field-val">New. You two have not worked together yet.</span>
+          </div>
         </div>
         {methodsError && (
           <div className="inline-error" role="alert">
@@ -423,7 +502,7 @@ function ConfigureView({ role, template, onCreated }: { role: AgentType; templat
         <div className="configure-actions">
           {/* aria-disabled rather than disabled: it stays focusable, and the
               reason below is tied to it, so nobody meets a silent grey button. */}
-          <button className="btn btn-solid" aria-disabled={!valid || saving || undefined}
+          <button className="btn btn-solid cfg-create" aria-disabled={!valid || saving || undefined}
             aria-describedby={blockReason ? reasonId : undefined}
             data-tooltip={blockReason ?? undefined}
             onClick={submit}>
@@ -434,6 +513,6 @@ function ConfigureView({ role, template, onCreated }: { role: AgentType; templat
         </div>
         {blockReason && <p className="create-hint" id={reasonId}>{blockReason}</p>}
       </div>
-    </>
+    </div>
   );
 }

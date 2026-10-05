@@ -81,3 +81,9 @@ export const IconEyeOff = make("eyeOff");
 export const IconMoreV = make("moreV");
 export const IconArchive = make("archive");
 export const IconList = make("list");
+
+// --- Building the team ---
+export const IconLock = make("lock");
+export const IconNodes = make("nodes");
+export const IconGear = make("gear");
+export const IconUsers = make("users");

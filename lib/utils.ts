@@ -10,6 +10,25 @@ export function dateStr(d: string) {
 }
 
 /**
+ * How long ago, the way a list of recent work says it: "2h ago", "Yesterday",
+ * "3d ago", "2w ago" — and the plain date once it is older than a month.
+ */
+export function agoStr(d: string, now = Date.now()) {
+  const t = new Date(d).getTime();
+  if (Number.isNaN(t)) return "";
+  const min = Math.max(0, Math.round((now - t) / 60_000));
+  if (min < 1) return "Just now";
+  if (min < 60) return `${min}m ago`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `${h}h ago`;
+  const days = Math.round(h / 24);
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days}d ago`;
+  if (days < 30) return `${Math.round(days / 7)}w ago`;
+  return dateStr(d);
+}
+
+/**
  * Keyboard activation for an element that acts as a button without being
  * one (`role="button"` rows): Enter and Space do what a click does. Keys
  * pressed on a real control inside the row (its ⋯ menu) are left alone.

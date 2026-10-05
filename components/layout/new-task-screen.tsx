@@ -16,6 +16,7 @@ import { AgentPickerPanel } from "@/components/layout/agent-picker-panel";
 import { ProjectChatPanel } from "@/components/layout/project-chat-panel";
 import { DeliverableView, type DeliverableDoc } from "@/components/layout/deliverable-view";
 import { AgentMascot } from "@/components/layout/agent-mascot";
+import { TeamRail, TeamReady, TeamHeading, TeamStep } from "@/components/layout/team-setup";
 import { IconSwap, IconAlert, IconX } from "@/components/layout/agxp-icons";
 
 /** Where the Coach is right now: beside the Consultant, or folded into the pill.
@@ -25,6 +26,11 @@ type CoachMode = "split" | "min";
 const OTHER: Record<AgentType, AgentType> = { coach: "consultant", consultant: "coach" };
 const ROLES: AgentType[] = ["consultant", "coach"];
 const ROLE_NAME: Record<AgentType, string> = { consultant: "Consultant", coach: "Coach" };
+/** One line under "Build your AI team" — what this seat is for. */
+const SEAT_LINE: Record<AgentType, string> = {
+  consultant: "Start with a Consultant. They work out what has to change.",
+  coach: "Now add a Coach. They take care of the people side.",
+};
 /** The same breakpoint the stylesheet stacks the panels at. */
 const STACKED_QUERY = "(max-width:1000px)";
 
@@ -419,6 +425,11 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
     </div>
   );
 
+  const setupConsultant = agents.find(a => a.id === project?.consultant_agent_id) ?? null;
+  const setupCoach = agents.find(a => a.id === project?.coach_agent_id) ?? null;
+  /** The seat the picker is filling: the Consultant first, then the Coach. */
+  const setupRole: AgentType = setupConsultant ? "coach" : "consultant";
+
   const pctNow = leftPercent(leadShare);
   const pctEdges = [leftPercent(MIN_SHARE), leftPercent(MAX_SHARE)];
   const tabId = (role: AgentType) => `${uid}-tab-${role}`;
@@ -447,7 +458,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
         {/* Only shown once the layout stacks (CSS) — both panels stay mounted,
             so switching never loses a conversation or a half-typed message.
             Roving tabindex: Tab lands on the selected tab, arrows move. */}
-        <div className="pane-switch" role="tablist" aria-label="Choose panel" onKeyDown={onTabKey}>
+        {started && <div className="pane-switch" role="tablist" aria-label="Choose panel" onKeyDown={onTabKey}>
           {ROLES.map(role => {
             const id = role === "coach" ? project?.coach_agent_id : project?.consultant_agent_id;
             const name = agents.find(a => a.id === id)?.name;
@@ -463,7 +474,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
               </button>
             );
           })}
-        </div>
+        </div>}
 
         {changeError && (
           <div className="inline-error" role="alert">
@@ -474,10 +485,36 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
           </div>
         )}
 
-        {/* Consultant leads (left, wide) — Coach supports (right). Each panel
-            sits in a slot that owns the split, so the Coach can fold away
-            without ever leaving the tree and remounting. The skip link lands
-            here, past the header and the switcher. */}
+        {/* Before Start: one big picker on the left that fills the seats in
+            order — Consultant, then Coach — and a thin glass rail on the
+            right where the seats fill up (Ana, 2026-10-05). Nothing here is a
+            live chat yet, so trading the split for this costs no state. */}
+        {!started ? (
+          <main id="main-content" tabIndex={-1} className="workspace setup">
+            <h1 className="visually-hidden">{project?.name && project.name !== "New Project" ? project.name : "New task"}</h1>
+            <div className="slot setup-slot">
+              {setupConsultant && setupCoach ? (
+                <TeamReady consultant={setupConsultant} coach={setupCoach} projectCounts={projectCounts} />
+              ) : (
+                <AgentPickerPanel key={setupRole} role={setupRole} project={project} agents={agents}
+                  ensureProject={ensureProject}
+                  projectCounts={projectCounts}
+                  onAssigned={handleAssigned}
+                  onAgentCreated={a => setAgents(prev => [...prev, a])}
+                  intro={<>
+                    <TeamStep role={setupRole} />
+                    <TeamHeading />
+                    <p className="team-sub">{SEAT_LINE[setupRole]}</p>
+                  </>} />
+              )}
+            </div>
+            <TeamRail agents={{ consultant: setupConsultant, coach: setupCoach }} onChange={changeAgent} />
+          </main>
+        ) : (
+        /* Consultant leads (left, wide) — Coach supports (right). Each panel
+           sits in a slot that owns the split, so the Coach can fold away
+           without ever leaving the tree and remounting. The skip link lands
+           here, past the header and the switcher. */
         <main ref={wsRef} id="main-content" tabIndex={-1}
           className={`workspace${dragging ? " resizing" : ""}`}
           data-active={pane} data-coach={coachMode}
@@ -535,6 +572,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
               was changed mid-project): then the pill floats in the corner. */}
           {foldedCoach && coachMode === "min" && !consultantChatting && coachPill(false)}
         </main>
+        )}
 
       </div>
 
