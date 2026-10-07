@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { AgentMascot } from "@/components/layout/agent-mascot";
@@ -10,14 +9,6 @@ import { listProjects, type Project } from "@/lib/projects";
 import { loadProjectStats, type ProjectStats } from "@/lib/project-stats";
 import { listAgents, type Agent, type AgentType } from "@/lib/agents";
 import { dateStr } from "@/lib/utils";
-
-/*
- * The 3D agents, kept off the first paint entirely: ssr:false because WebGL
- * has no meaning on a server, and dynamic() so three.js is a chunk that
- * arrives after the page is already usable. Until it does — or if it never
- * does — the flat robots below it are what you see.
- */
-const AgentsScene = dynamic(() => import("@/components/three/agents-scene"), { ssr: false });
 
 /**
  * What you see when you come back.
@@ -83,22 +74,10 @@ function DuoRing({ by }: { by: Record<AgentType, number | null> }) {
 
 export function HomeScreen({ onNew }: { onNew: () => void }) {
   const router = useRouter();
-  /** Held back one frame past mount so the flat hero paints first. */
-  const [ready, setReady] = useState(false);
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [all, setAll] = useState<Project[]>([]);
   const [stats, setStats] = useState<Record<string, ProjectStats>>({});
   const [agents, setAgents] = useState<Agent[]>([]);
-
-  useEffect(() => {
-    // requestIdleCallback where it exists: the scene should start loading
-    // when the browser has nothing better to do, not while the page is still
-    // settling. The timeout is the floor for Safari, which has neither.
-    const idle = (window as Window & { requestIdleCallback?: (cb: () => void) => number })
-      .requestIdleCallback;
-    const id = idle ? idle(() => setReady(true)) : window.setTimeout(() => setReady(true), 400);
-    return () => { if (!idle) window.clearTimeout(id as number); };
-  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -149,17 +128,16 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
         </h1>
         <p className="home-lede">One plans the work. The other plans the people.</p>
 
+        {/*
+          The app's own mascots, the same component the chat and the picker
+          draw. Vector, so they are sharp at any size; they blink and follow
+          the cursor like everywhere else. The flat PNGs they replaced were
+          168px email fallbacks and went soft the moment they were enlarged.
+        */}
         <div className="hh-bots" aria-hidden="true">
-          {/* The 3D pair, over the flat one. Both are present: the canvas
-              fades in on top when it is ready, and nothing is removed, so a
-              machine without WebGL keeps the characters it already had. */}
-          {ready && <AgentsScene />}
-
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="hh-bot consultant" src="/brand/consultant.png" alt="" width={150} height={156} />
+          <AgentMascot role="consultant" size={132} state="idle" level={4} />
           <span className="hh-spark" />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="hh-bot coach" src="/brand/coach.png" alt="" width={150} height={156} />
+          <AgentMascot role="coach" size={132} state="idle" level={4} />
         </div>
 
         <button className="home-start" onClick={onNew}>
