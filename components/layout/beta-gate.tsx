@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase";
 import { IconArrow } from "@/components/layout/agxp-icons";
+import { useExit } from "@/lib/use-exit";
 import { captureBetaKeyFromUrl, clearPendingBetaKey, usePendingBetaKey } from "@/lib/beta-key-handoff";
 
 /**
@@ -22,6 +23,9 @@ export function BetaGate({ onAdmitted }: { onAdmitted: () => void }) {
   const code = typed ?? invited ?? "";
   const fromInvite = typed === null && !!invited;
   const [busy, setBusy] = useState(false);
+  // The one moment a tester only ever sees once: the gate lets go before the
+  // workspace takes its place, instead of being cut away.
+  const [leaving, exitThen] = useExit(200, 3000);
   const [error, setError] = useState<string | null>(null);
 
   // Captured here too, not only on /login: a tester who is already signed in
@@ -46,7 +50,7 @@ export function BetaGate({ onAdmitted }: { onAdmitted: () => void }) {
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "That didn't work. Try again.");
       clearPendingBetaKey();
-      onAdmitted();
+      exitThen(onAdmitted);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -55,7 +59,7 @@ export function BetaGate({ onAdmitted }: { onAdmitted: () => void }) {
   }
 
   return (
-    <div className="beta-gate">
+    <div className={`beta-gate${leaving ? " is-closing" : ""}`}>
       <div className="bg-card">
         <span className="bg-eyebrow">Closed beta</span>
         <h1>You need a key to come in</h1>

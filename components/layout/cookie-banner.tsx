@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useExit } from "@/lib/use-exit";
 
 const ACK_KEY = "agxp_cookie_ack";
 
@@ -17,6 +18,8 @@ const ACK_KEY = "agxp_cookie_ack";
  */
 export function CookieBanner() {
   const [show, setShow] = useState(false);
+  // It arrived from the bottom edge; it leaves the same way, a touch quicker.
+  const [closing, exitThen] = useExit(180);
 
   useEffect(() => {
     // Storage can throw in a locked-down browser; a missing banner is better
@@ -30,7 +33,7 @@ export function CookieBanner() {
 
   function accept() {
     try { localStorage.setItem(ACK_KEY, "1"); } catch { /* not fatal */ }
-    setShow(false);
+    exitThen(() => setShow(false));
   }
 
   if (!show) return null;
@@ -38,7 +41,7 @@ export function CookieBanner() {
   return (
     // lang="de" so a screen reader switches voice for it; the label names the
     // region, since a status role on its own is announced without a name.
-    <div className="cookie-note" role="status" aria-label="Cookie-Hinweis" lang="de">
+    <div className={`cookie-note${closing ? " is-closing" : ""}`} role="status" aria-label="Cookie-Hinweis" lang="de">
       <p>
         Wir verwenden nur technisch notwendige Cookies bzw. lokale Speicherung (Login &amp;
         Einstellungen), kein Tracking. Mehr dazu in der{" "}

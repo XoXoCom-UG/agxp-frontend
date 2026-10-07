@@ -9,6 +9,7 @@ import { SPLIT_PRESETS, useChatSplit, useSplitLocked, broadcastSplit, broadcastS
 import { BACKGROUND_OPTIONS, GLASS_OPTIONS, useAppearance, setAppearance } from "@/lib/appearance";
 import { IconX, IconCheck, IconMonitor, IconSun, IconMoon } from "@/components/layout/agxp-icons";
 import { useDialogFocus } from "@/lib/use-dialog-focus";
+import { useExit } from "@/lib/use-exit";
 import { useEntitlement } from "@/lib/entitlement";
 import { PLANS, projectsLabel, type Plan } from "@/lib/plans";
 import { DevPlanTools } from "@/components/layout/dev-plan-tools";
@@ -56,8 +57,10 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   // The parent passes a fresh arrow every render. Held in a ref, the Escape
   // listener is attached once instead of being torn down and re-added — the
   // old version also re-focused the name field on every parent render.
-  const onCloseRef = useRef(onClose);
-  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+  const [closing, exitThen] = useExit();
+  const close = () => exitThen(onClose);
+  const onCloseRef = useRef(close);
+  useEffect(() => { onCloseRef.current = close; });
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === "Escape") onCloseRef.current(); }
     document.addEventListener("keydown", onKey);
@@ -104,11 +107,12 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const dirty = name.trim() !== profileName.trim();
 
   return createPortal(
-    <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className={`modal-overlay${closing ? " is-closing" : ""}`}
+      onClick={e => { if (e.target === e.currentTarget) close(); }}>
       <div ref={sheetRef} className="settings-sheet" role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <header className="ss-head">
           <h2 id={titleId}>Settings</h2>
-          <button className="ss-close" onClick={onClose} aria-label="Close settings"><IconX size={14} /></button>
+          <button className="ss-close" onClick={close} aria-label="Close settings"><IconX size={14} /></button>
         </header>
 
         <div className="ss-tabs" role="tablist" aria-label="Settings sections" onKeyDown={onTabKey}>

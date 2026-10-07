@@ -20,6 +20,10 @@ export interface AgentDocument {
   projectName: string;
   title: string;
   createdAt: string;
+  /** The document itself, markers already stripped. */
+  content: string;
+  /** How many times it was written in this project; this is the newest. */
+  version: number;
 }
 
 /** How far back to look. One document per project survives the filter below,
@@ -59,6 +63,7 @@ export async function loadAgentDocuments(agentId: string, role: AgentType): Prom
   // aktuellste reicht." The query is already ordered newest first, so the
   // first one seen for a project IS the current one.
   const seen = new Set<string>();
+  const versions = new Map<string, number>();
   const out: AgentDocument[] = [];
   for (const m of msgs ?? []) {
     const content = m.content as string;
@@ -67,16 +72,19 @@ export async function loadAgentDocuments(agentId: string, role: AgentType): Prom
     // the replies where the model forgot to write one.
     if (!p.doc && !looksLikeDocument(p.text)) continue;
     const project = m.project_id as string;
+    versions.set(project, (versions.get(project) ?? 0) + 1);
     if (seen.has(project)) continue;
     seen.add(project);
     out.push({
       id: m.id as string,
-      projectId: m.project_id as string,
-      projectName: names.get(m.project_id as string) ?? "Project",
-      title: p.doc || names.get(m.project_id as string) || "Transformation Concept",
+      projectId: project,
+      projectName: names.get(project) ?? "Project",
+      title: p.doc || names.get(project) || "Transformation Concept",
       createdAt: m.created_at as string,
+      content: p.text,
+      version: 1,
     });
-    if (out.length >= MAX_DOCS) break;
   }
-  return out;
+  for (const d of out) d.version = versions.get(d.projectId) ?? 1;
+  return out.slice(0, MAX_DOCS);
 }

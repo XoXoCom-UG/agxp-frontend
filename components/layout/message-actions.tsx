@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { IconCopy, IconCheck, IconShare, IconRefresh, IconMail, IconX } from "@/components/layout/agxp-icons";
 import { useDialogFocus } from "@/lib/use-dialog-focus";
+import { useExit } from "@/lib/use-exit";
 
 /** Clipboard with a fallback for the cases the async API refuses (an
  *  unfocused document, an insecure origin during local testing). */
@@ -85,17 +86,19 @@ function ShareDialog({ text, agentName, onClose }: { text: string; agentName: st
   const [copied, setCopied] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useDialogFocus(ref);
+  const [closing, exitThen] = useExit();
+  const close = () => exitThen(onClose);
   const canNativeShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
   const title = `${agentName} · AgentiX`;
 
   useEffect(() => {
-    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") exitThen(onClose); }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, exitThen]);
 
   async function nativeShare() {
-    try { await navigator.share({ title, text }); onClose(); } catch { /* dismissed */ }
+    try { await navigator.share({ title, text }); close(); } catch { /* dismissed */ }
   }
 
   async function copy() {
@@ -107,11 +110,12 @@ function ShareDialog({ text, agentName, onClose }: { text: string; agentName: st
   const mailto = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(mailBody)}`;
 
   return createPortal(
-    <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className={`modal-overlay${closing ? " is-closing" : ""}`}
+      onClick={e => { if (e.target === e.currentTarget) close(); }}>
       <div ref={ref} className="modal share-modal" role="dialog" aria-modal="true" aria-label="Share this answer">
         <div className="share-head">
           <h2>Share this answer</h2>
-          <button className="share-close" onClick={onClose} aria-label="Close"><IconX size={14} /></button>
+          <button className="share-close" onClick={close} aria-label="Close"><IconX size={14} /></button>
         </div>
         <div className="share-preview">{text}</div>
         <div className="share-options">
@@ -124,7 +128,7 @@ function ShareDialog({ text, agentName, onClose }: { text: string; agentName: st
             {copied ? <IconCheck size={15} className="icon-swap" /> : <IconCopy size={15} />}
             <span>{copied ? "Copied" : "Copy text"}</span>
           </button>
-          <a className="share-opt" href={mailto} onClick={onClose}>
+          <a className="share-opt" href={mailto} onClick={close}>
             <IconMail size={15} /><span>Send by email</span>
           </a>
         </div>

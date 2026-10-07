@@ -11,11 +11,12 @@ import { templateFor } from "@/lib/agent-types";
 import { DELIVERABLES } from "@/lib/deliverables";
 import { AgentNav } from "@/components/layout/agent-nav";
 import { ConfirmDialog } from "@/components/layout/confirm-dialog";
-import { IconFolder, IconArrow, IconMore, IconSearch, IconPlus, IconAlert, IconRefresh, IconChevronDown } from "@/components/layout/agxp-icons";
+import { IconFolder, IconArrow, IconMore, IconSearch, IconPlus, IconAlert, IconRefresh, IconChevronDown, IconCheck } from "@/components/layout/agxp-icons";
 import { AgentMascot } from "@/components/layout/agent-mascot";
 import { SkeletonRows } from "@/components/layout/skeleton";
 import { EmptyState } from "@/components/layout/empty-state";
 import { agoStr, menuKeyDown, focusFirstMenuItem } from "@/lib/utils";
+import { usePresence, phaseClass } from "@/lib/use-presence";
 
 function statusClass(s: Project["status"]) { return s.toLowerCase().replace(/\s+/g, "-"); }
 /** A project that was never renamed from its first message still has the
@@ -33,6 +34,26 @@ const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
 ];
 const SORT_LABEL: Record<SortKey, string> = { updated: "Last updated", name: "Name", messages: "Most messages" };
 
+/** A titled block in the filter card that folds shut on its heading. Closed
+ *  content is `inert`, so it leaves the tab order as well as the screen. */
+function FilterSection({ title, children }: { title: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(true);
+  const bodyId = useId();
+  return (
+    <section className={`ph-sec${open ? "" : " is-closed"}`}>
+      <h2 className="ph-eyebrow">
+        <button type="button" className="ph-sec-btn" aria-expanded={open} aria-controls={bodyId} onClick={() => setOpen(o => !o)}>
+          {title}
+          <IconChevronDown size={12} />
+        </button>
+      </h2>
+      <div className="ph-sec-body" id={bodyId}>
+        <div className="ph-sec-in" inert={open ? undefined : true}>{children}</div>
+      </div>
+    </section>
+  );
+}
+
 /** One group of filters in the side card: pick one, pick it again to clear. */
 function FilterGroup<K extends string>({ title, items, value, onChange }: {
   title: string;
@@ -42,8 +63,7 @@ function FilterGroup<K extends string>({ title, items, value, onChange }: {
 }) {
   if (items.length === 0) return null;
   return (
-    <>
-      <h2 className="ph-eyebrow">{title}</h2>
+    <FilterSection title={title}>
       <div className="ph-fl">
         {items.map(it => {
           const on = value === it.key;
@@ -56,7 +76,7 @@ function FilterGroup<K extends string>({ title, items, value, onChange }: {
           );
         })}
       </div>
-    </>
+    </FilterSection>
   );
 }
 
@@ -71,6 +91,12 @@ export default function ProjectHistoryPage() {
   const [attempt, setAttempt] = useState(0);
   const [search, setSearch] = useState("");
   const [menuFor, setMenuFor] = useState<string | null>(null);
+  // The menu stays mounted for its exit, by which time menuFor is already
+  // null — so remember which row it belonged to (adjusted during render,
+  // React's pattern for state that follows another value).
+  const [lastMenuFor, setLastMenuFor] = useState<string | null>(null);
+  if (menuFor && menuFor !== lastMenuFor) setLastMenuFor(menuFor);
+  const menuPhase = usePresence(menuFor !== null);
   const [confirmArchive, setConfirmArchive] = useState<Project | null>(null);
   const [archiving, setArchiving] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -87,9 +113,14 @@ export default function ProjectHistoryPage() {
   const [docFilter, setDocFilter] = useState<AgentType | "none" | null>(null);
   const [industryFilter, setIndustryFilter] = useState<string | null>(null);
   const [sort, setSort] = useState<SortKey>("updated");
+  const [sortOpen, setSortOpen] = useState(false);
+  const sortPhase = usePresence(sortOpen);
+  const sortBtnRef = useRef<HTMLButtonElement>(null);
+  const sortMenuRef = useRef<HTMLDivElement>(null);
 
   const uid = useId();
   const searchId = `${uid}-search`;
+  const sortMenuId = `${uid}-sort`;
   const menuRef = useRef<HTMLDivElement>(null);
   const renameRef = useRef<HTMLInputElement>(null);
   const moreRefs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -116,6 +147,11 @@ export default function ProjectHistoryPage() {
   }, [token, attempt]);
 
   useEffect(() => { if (menuFor) focusFirstMenuItem(menuRef.current); }, [menuFor]);
+  // Opens on the current choice, so the arrow keys start from where you are.
+  useEffect(() => {
+    if (!sortOpen) return;
+    (sortMenuRef.current?.querySelector<HTMLElement>('[aria-checked="true"]') ?? sortMenuRef.current?.querySelector<HTMLElement>('[role^="menuitem"]'))?.focus();
+  }, [sortOpen]);
   useEffect(() => {
     if (!renamingId) return;
     renameRef.current?.focus();
@@ -131,6 +167,11 @@ export default function ProjectHistoryPage() {
   /** Back to the row's ⋯ button, once the menu or the input it replaced is gone. */
   function focusMore(id: string) {
     setTimeout(() => moreRefs.current[id]?.focus(), 0);
+  }
+
+  function closeSort(restoreFocus: boolean) {
+    setSortOpen(false);
+    if (restoreFocus) setTimeout(() => sortBtnRef.current?.focus(), 0);
   }
 
   function closeMenu(restoreFocus: boolean) {
@@ -273,7 +314,7 @@ export default function ProjectHistoryPage() {
         {/* Overview and filters on the left, the list on the right (Ana,
             2026-10-05). Colour is kept for what it means: progress, and the
             filter you are on. */}
-        <div className="ph" onClick={() => setMenuFor(null)}>
+        <div className="ph" onClick={() => { setMenuFor(null); setSortOpen(false); }}>
           <aside className="ph-side" aria-label="Overview and filters">
             <section className="ph-card ph-overview">
               <h2 className="ph-eyebrow">Project overview</h2>
@@ -289,7 +330,7 @@ export default function ProjectHistoryPage() {
             </section>
 
             <nav className="ph-card ph-filters" aria-label="Filter projects">
-              <h2 className="ph-eyebrow">Filter by status</h2>
+              <FilterSection title="Filter by status">
               <div className="ph-fl">
                 {STATUS_FILTERS.filter(f => f.key === "all" || counts[f.key] > 0 || f.key === statusFilter).map(f => (
                   <button key={f.key} type="button" className="ph-f" aria-pressed={statusFilter === f.key}
@@ -300,6 +341,7 @@ export default function ProjectHistoryPage() {
                   </button>
                 ))}
               </div>
+              </FilterSection>
               <FilterGroup title="Agents" value={agentFilter} onChange={setAgentFilter}
                 items={[...agentCounts.entries()].sort((x, y) => y[1] - x[1]).map(([type, n]) => ({ key: type, label: type, n }))} />
               <FilterGroup title="Industry" value={industryFilter} onChange={setIndustryFilter}
@@ -313,21 +355,34 @@ export default function ProjectHistoryPage() {
             <header className="ph-head">
               <div className="ph-title">
                 <h1>Project History</h1>
-                <p>{counts.all} {counts.all === 1 ? "project" : "projects"} · {activeCount} active</p>
               </div>
               <div className="ph-tools">
                 <div className="search-box"><IconSearch size={13} />
                   <label className="visually-hidden" htmlFor={searchId}>Search projects</label>
                   <input id={searchId} type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search projects…" />
                 </div>
-                <label className="ph-sort">
-                  <span className="visually-hidden">Sort by</span>
-                  <span aria-hidden="true">Sort: {SORT_LABEL[sort]}</span>
-                  <select value={sort} onChange={e => setSort(e.target.value as SortKey)}>
-                    {(Object.keys(SORT_LABEL) as SortKey[]).map(k => <option key={k} value={k}>{SORT_LABEL[k]}</option>)}
-                  </select>
-                  <IconChevronDown size={13} />
-                </label>
+                <div className="ph-sort-wrap">
+                  <button ref={sortBtnRef} type="button" className="ph-sort" aria-haspopup="menu" aria-expanded={sortOpen}
+                    aria-controls={sortOpen ? sortMenuId : undefined}
+                    onClick={e => { e.stopPropagation(); setMenuFor(null); setSortOpen(o => !o); }}>
+                    <span className="ph-sort-k">Sort by</span>
+                    <span className="ph-sort-v">{SORT_LABEL[sort]}</span>
+                    <IconChevronDown size={13} />
+                  </button>
+                  {sortPhase !== "closed" && (
+                    <div ref={sortMenuRef} id={sortMenuId} className={`popover ph-sort-menu t-dropdown${phaseClass(sortPhase)}`}
+                      data-origin="top-right" role="menu" aria-label="Sort projects by"
+                      onClick={e => e.stopPropagation()} onKeyDown={e => menuKeyDown(closeSort)(e)}>
+                      {(Object.keys(SORT_LABEL) as SortKey[]).map(k => (
+                        <button key={k} type="button" role="menuitemradio" aria-checked={sort === k} tabIndex={-1} className="mi"
+                          onClick={() => { setSort(k); closeSort(true); }}>
+                          <span className="mi-l">{SORT_LABEL[k]}</span>
+                          {sort === k && <IconCheck size={13} />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </header>
 
@@ -421,8 +476,9 @@ export default function ProjectHistoryPage() {
                         <IconMore />
                       </button>
                     )}
-                    {menuOpen && (
-                      <div ref={menuRef} id={menuId} className="popover row-menu" role="menu" aria-label={`Actions for ${name}`}
+                    {menuPhase !== "closed" && (menuFor ?? lastMenuFor) === p.id && (
+                      <div ref={menuRef} id={menuId} className={`popover row-menu t-dropdown${phaseClass(menuPhase)}`}
+                        data-origin="top-right" role="menu" aria-label={`Actions for ${name}`}
                         onClick={e => e.stopPropagation()} onKeyDown={e => menuKeyDown(closeMenu)(e)}>
                         <button type="button" role="menuitem" tabIndex={-1} className="mi" onClick={() => startRename(p)}>
                           <IconFolder size={13} />Rename project

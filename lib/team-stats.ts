@@ -86,6 +86,8 @@ export async function loadTeamStats(): Promise<TeamStats> {
   // Messages arrive newest first: the last user message seen per project is
   // the first one written.
   const firstAsk = new Map<string, string>();
+  // Project:column keys that already count a finished document.
+  const countedDoc = new Set<string>();
   // Per project, across both conversations: the newest [[INDUSTRY:]] the
   // agents named, and everything else that can give the industry away.
   const namedIndustry = new Map<string, string>();
@@ -146,7 +148,10 @@ export async function loadTeamStats(): Promise<TeamStats> {
     const p = parsed!;
     const isDoc = !!p.doc || looksLikeDocument(p.text);
     if (isDoc) {
-      u.docs += 1;
+      // Only the latest counts, and it is the one the list shows: every
+      // regeneration is a full rebuild, not another document (Patryk,
+      // 2026-10-02). So one per project, however many versions it went through.
+      if (!countedDoc.has(key)) { countedDoc.add(key); u.docs += 1; }
       card.doc ??= p.doc || card.name;
     }
   }

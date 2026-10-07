@@ -5197,6 +5197,19 @@ html.light .agx-docs-btn{ background:rgba(255,255,255,0.7); }
   .agx-info, .agx-info > *{ transition:none; }
   .agx-cards-grid.is-sliding{ animation:none; }
 }
+/* The list of documents is short: a small card in the middle of the role
+   rather than the whole of it. It fades and scales in instead of growing
+   out of the card, since its box is no longer the role's. */
+.agx-info.is-compact{
+  inset:auto; top:50%; left:50%; translate:-50% -50%;
+  width:min(500px, calc(100% - var(--sp-6) * 2)); max-height:min(72%, 480px);
+  clip-path:none; transition:opacity 200ms var(--ease-out), scale 200ms var(--ease-out);
+}
+.agx-info.is-compact > *{ transition:none; opacity:1; }
+@starting-style{ .agx-info.is-compact{ clip-path:none; opacity:0; scale:.96; } }
+.agx-info.is-compact[data-phase="closing"]{ clip-path:none; opacity:0; scale:.96; transition-duration:140ms; }
+.agx-info.is-compact .agx-info-body{ flex:0 1 auto; }
+@media (prefers-reduced-motion:reduce){ .agx-info.is-compact{ transition:none; } }
 .agx-info-head{
   flex:none; display:flex; align-items:center; gap:var(--sp-3);
   padding:var(--sp-4) var(--sp-4) var(--sp-3) var(--sp-5);
@@ -5239,6 +5252,9 @@ html.light .agx-docs-btn{ background:rgba(255,255,255,0.7); }
   display:flex; align-items:center; gap:var(--sp-2); padding:9px 0;
   text-decoration:none; color:var(--muted-foreground);
 }
+/* A button where it opens a document: the row, without the button. */
+button.agx-info-row{ width:100%; border:0; background:none; font:inherit; text-align:left; cursor:pointer; }
+.agx-info-row:focus-visible{ outline:none; box-shadow:0 0 0 2px color-mix(in srgb, var(--ring) 45%, transparent); border-radius:var(--radius-sm); }
 .agx-info-row svg{ flex:none; }
 .agx-info-t{
   flex:1; min-width:0; font-size:var(--text-sm); font-weight:500; color:var(--foreground);
@@ -7074,7 +7090,28 @@ html.light .cfg .field input, html.light .cfg .field textarea{ background:#FFFFF
 .ph .sd.completed{ background:var(--success); }
 .ph .sd.all{ background:color-mix(in srgb, var(--foreground) 55%, transparent); }
 
-/* Filters */
+/* Filters. Each block folds shut on its heading; the height animates through
+   grid rows, so there is no measuring. */
+.ph-sec + .ph-sec{ margin-top:var(--sp-4); }
+.ph-sec .ph-eyebrow{ margin-bottom:0; }
+.ph-sec-btn{
+  width:100%; display:flex; align-items:center; justify-content:space-between; gap:var(--sp-2);
+  margin:0 calc(var(--sp-2) * -1); width:calc(100% + var(--sp-2) * 2);
+  padding:var(--sp-2); border:0; border-radius:var(--radius-sm); background:none; cursor:pointer;
+  font:inherit; letter-spacing:inherit; text-transform:inherit; color:inherit;
+  transition:color 150ms var(--ease-out), background-color 150ms var(--ease-out);
+}
+.ph-sec-btn svg{ transition:transform 200ms var(--ease-out); }
+.ph-sec.is-closed .ph-sec-btn svg{ transform:rotate(-90deg); }
+@media (hover:hover) and (pointer:fine){ .ph-sec-btn:hover{ color:var(--foreground); } }
+.ph-sec-btn:focus-visible{ outline:none; box-shadow:0 0 0 2px color-mix(in srgb, var(--ring) 45%, transparent); }
+.ph-sec-body{ display:grid; grid-template-rows:1fr; transition:grid-template-rows 220ms var(--ease-out); }
+.ph-sec.is-closed .ph-sec-body{ grid-template-rows:0fr; }
+.ph-sec-in{ min-height:0; overflow:hidden; padding-top:var(--sp-2); transition:opacity 180ms var(--ease-out); }
+.ph-sec.is-closed .ph-sec-in{ opacity:0; padding-top:0; }
+@media (prefers-reduced-motion:reduce){
+  .ph-sec-body, .ph-sec-in, .ph-sec-btn svg, .ph-sort svg{ transition:none; }
+}
 .ph-fl{ display:flex; flex-direction:column; gap:2px; margin-bottom:var(--sp-5); }
 .ph-fl:last-child{ margin-bottom:0; }
 .ph-f{
@@ -7108,21 +7145,32 @@ html.light .cfg .field input, html.light .cfg .field textarea{ background:#FFFFF
   margin:0; font-family:var(--font-display); font-size:clamp(24px, 2.2vw, 32px); font-weight:700;
   letter-spacing:-0.03em; line-height:1.1; color:var(--foreground);
 }
-.ph-title p{ margin:6px 0 0; font-size:var(--text-sm); color:var(--muted-foreground); }
 .ph-tools{ display:flex; align-items:center; gap:var(--sp-2); flex-wrap:wrap; }
 .ph-tools .search-box{
   width:clamp(200px, 22vw, 320px); height:38px; padding:0 12px;
   border-color:transparent; background:rgba(255,255,255,0.045); box-shadow:none;
 }
 .ph-tools .search-box:focus-within{ border-color:var(--border-strong); }
+/* The box already shows focus with its border; the input's own blue ring inside it is the doubled one. */
+.ph-tools .search-box input:focus-visible{ outline:none; box-shadow:none; }
+.ph-sort-wrap{ position:relative; }
 .ph-sort{
-  position:relative; display:inline-flex; align-items:center; gap:8px; height:38px; padding:0 12px;
+  display:inline-flex; align-items:center; gap:8px; height:38px; padding:0 12px; border:0;
   border-radius:var(--radius-sm); background:rgba(255,255,255,0.045); cursor:pointer;
   font-size:var(--text-xs); color:var(--secondary-foreground); white-space:nowrap;
+  transition:background-color 150ms var(--ease-out), color 150ms var(--ease-out);
 }
-/* The native select sits invisibly over the label, so the menu is the system's own. */
-.ph-sort select{ position:absolute; inset:0; width:100%; opacity:0; cursor:pointer; }
-.ph-sort:focus-within{ box-shadow:0 0 0 3px color-mix(in srgb, var(--ring) 20%, transparent); }
+.ph-sort-k{ color:var(--muted-foreground); }
+.ph-sort-v{ color:var(--foreground); font-weight:500; }
+.ph-sort svg{ color:var(--muted-foreground); transition:transform 180ms var(--ease-out); }
+.ph-sort[aria-expanded="true"] svg{ transform:rotate(180deg); }
+@media (hover:hover) and (pointer:fine){ .ph-sort:hover{ background:rgba(255,255,255,0.075); } }
+.ph-sort:focus-visible{ outline:none; box-shadow:0 0 0 2px color-mix(in srgb, var(--ring) 40%, transparent); }
+.popover.ph-sort-menu{ top:calc(100% + 6px); right:0; min-width:100%; width:max-content; padding:6px; }
+.ph-sort-menu .mi{ min-height:34px; justify-content:space-between; font-size:var(--text-xs); }
+.ph-sort-menu .mi-l{ flex:1; }
+.ph-sort-menu .mi[aria-checked="true"]{ color:var(--foreground); }
+.ph-sort-menu .mi[aria-checked="true"] svg{ stroke:var(--acc-hi); }
 
 .ph-list{ display:flex; flex-direction:column; gap:var(--sp-2); }
 .ph-row{
@@ -7216,3 +7264,50 @@ html[data-glass="solid"] .ph-card{ backdrop-filter:none; background:var(--popove
   .ph-open{ transition:none; }
 }
 
+
+/* --- Exit pass, 2026-10-07 ------------------------------------------------
+   Things that arrived with a transition and then vanished without one.
+   Exits are quicker than entrances (modalIn is 200ms, modalOut 140ms) and
+   move less: they are on their way out, not being introduced. The .is-closing
+   classes come from lib/use-exit.ts, which delays the parent's own unmount by
+   the same duration; pointer-events:none so a second click cannot land on
+   something that is already leaving. */
+@keyframes fadeOut{ to{ opacity:0; } }
+@keyframes modalOut{ to{ opacity:0; transform:translateY(4px) scale(.98); } }
+@keyframes docOut{ to{ opacity:0; transform:translateY(8px) scale(.99); } }
+@keyframes cookieOut{ to{ opacity:0; transform:translateY(14px); } }
+@keyframes gateCardOut{ to{ opacity:0; transform:scale(.98); } }
+@keyframes chipIn{ from{ opacity:0; transform:scale(.96); } }
+
+.modal-overlay.is-closing{ animation:fadeOut 140ms var(--ease-out) forwards; pointer-events:none; }
+.modal-overlay.is-closing > :is(.modal, .settings-sheet){ animation:modalOut 140ms var(--ease-out) forwards; }
+.doc-overlay.is-closing{ animation:fadeOut 140ms var(--ease-out) forwards; pointer-events:none; }
+.doc-modal.is-closing{ animation:docOut 140ms var(--ease-out) forwards; pointer-events:none; }
+/* Arrived from the bottom edge, leaves by it. */
+.cookie-note.is-closing{ animation:cookieOut 180ms var(--ease-out) forwards; pointer-events:none; }
+/* Rare, once per tester: the gate lets go (200ms) and the workspace's own
+   rise plays in once it is gone. */
+.beta-gate.is-closing{ animation:fadeOut 200ms var(--ease-out) forwards; pointer-events:none; }
+.beta-gate.is-closing .bg-card{ animation:gateCardOut 200ms var(--ease-out) forwards; }
+
+/* The two ⋮ menus that still used the one-shot popIn and then vanished: they
+   ride .t-dropdown now, like the avatar and header menus, which is what gives
+   them an exit. */
+.agx-menu-pop.t-dropdown{ animation:none; }
+
+/* Messages that appear in place and push what is under them. Opacity and a
+   few px of transform only — the shove itself is not animated. */
+.load-error, .ss-error, .bg-error, .pb-file-error{ --rise:4px; animation:rise 180ms var(--ease-out) backwards; }
+.pb-files .pb-chip{ animation:chipIn 160ms var(--ease-out) backwards; }
+
+/* Reduced motion: the same moments, as a plain fade. */
+@media (prefers-reduced-motion: reduce){
+  .modal-overlay.is-closing, .modal-overlay.is-closing > :is(.modal, .settings-sheet),
+  .doc-overlay.is-closing, .doc-modal.is-closing, .cookie-note.is-closing,
+  .beta-gate.is-closing, .beta-gate.is-closing .bg-card{
+    animation:fadeOut 100ms ease forwards !important;
+  }
+  .load-error, .ss-error, .bg-error, .pb-file-error, .pb-files .pb-chip{
+    animation:fadeIn 120ms ease backwards !important;
+  }
+}

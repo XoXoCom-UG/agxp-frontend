@@ -10,6 +10,8 @@ import { loadAgentDocuments, type AgentDocument } from "@/lib/agent-documents";
 import { methodLabel } from "@/lib/method-labels";
 import { dateStr } from "@/lib/utils";
 import { AgentMascot } from "@/components/layout/agent-mascot";
+import { DeliverableView, type DeliverableDoc } from "@/components/layout/deliverable-view";
+import { usePresence, phaseClass } from "@/lib/use-presence";
 import { IconPlus, IconArrow, IconBack, IconMoreV, IconX, IconDoc, IconArchive, IconRestore } from "@/components/layout/agxp-icons";
 
 /**
@@ -68,6 +70,7 @@ function CardMenu({ name, archived, onOpen, onToggleArchive }: {
   name: string; archived: boolean; onOpen: () => void; onToggleArchive: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const phase = usePresence(open);
   const wrap = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -83,8 +86,8 @@ function CardMenu({ name, archived, onOpen, onToggleArchive }: {
         onClick={() => setOpen(o => !o)}>
         <IconMoreV size={15} />
       </button>
-      {open && (
-        <div className="agx-menu-pop" role="menu">
+      {phase !== "closed" && (
+        <div className={`agx-menu-pop t-dropdown${phaseClass(phase)}`} data-origin="top-right" role="menu">
           <button role="menuitem" onClick={() => { setOpen(false); onOpen(); }}><IconArrow size={12} />Open</button>
           <button role="menuitem" onClick={() => { setOpen(false); onToggleArchive(); }}>
             {archived ? <><IconRestore size={12} />Restore</> : <><IconArchive size={12} />Archive</>}
@@ -186,13 +189,13 @@ type OverlayMotion = {
   inset: string;
 };
 
-function overlayProps(m: OverlayMotion, onClosed: () => void) {
+function overlayProps(m: OverlayMotion, onClosed: () => void, compact = false) {
   return {
-    className: "agx-info",
+    className: compact ? "agx-info is-compact" : "agx-info",
     "data-phase": m.phase,
     style: { "--agx-from": `inset(${m.inset} round var(--radius-md))` } as React.CSSProperties,
     onTransitionEnd: (e: React.TransitionEvent) => {
-      if (m.phase === "closing" && e.target === e.currentTarget && e.propertyName === "clip-path") onClosed();
+      if (m.phase === "closing" && e.target === e.currentTarget && e.propertyName === (compact ? "opacity" : "clip-path")) onClosed();
     },
     inert: m.phase === "closing" ? true : undefined,
   };
@@ -241,23 +244,40 @@ function useAgentDocs(agent: Agent): { docs: AgentDocument[] | null; failed: boo
 }
 
 /** Escape closes, and focus moves to the close button when the card opens. */
-function useOverlayKeys(onClose: () => void) {
+function useOverlayKeys(onClose: () => void, paused = false) {
   const closeRef = useRef<HTMLButtonElement>(null);
   // Read through a ref: the parent's handler is a new function every render,
   // and this effect must run once — it is also what moves focus in.
   const onCloseRef = useRef(onClose);
-  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+  const pausedRef = useRef(paused);
+  useEffect(() => { onCloseRef.current = onClose; pausedRef.current = paused; }, [onClose, paused]);
   useEffect(() => {
     closeRef.current?.focus();
-    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") onCloseRef.current(); };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape" && !pausedRef.current) onCloseRef.current(); };
     document.addEventListener("keydown", esc);
     return () => document.removeEventListener("keydown", esc);
   }, []);
   return closeRef;
 }
 
-/** The list of documents, each one leading to the project it was written in. */
-function DocList({ role, docs, failed }: { role: AgentType; docs: AgentDocument[] | null; failed: boolean }) {
+/**
+ * A document opened from a list, read in the same viewer the chat uses. The
+ * overlay's Escape is paused while it is up, so Esc closes only the document.
+ */
+function useDocViewer(agent: Agent, projects: number) {
+  const [doc, setDoc] = useState<DeliverableDoc | null>(null);
+  const open = (d: AgentDocument) => setDoc({
+    title: d.title, role: agent.type, agentId: agent.id, agentName: agent.name, agentProjects: projects,
+    projectName: d.projectName, content: d.content, createdAt: d.createdAt, version: d.version,
+  });
+  const view = doc && <DeliverableView doc={doc} onClose={() => setDoc(null)} />;
+  return { open, view, isOpen: !!doc };
+}
+
+/** The list of documents; each opens in the viewer. */
+function DocList({ role, docs, failed, onOpen }: {
+  role: AgentType; docs: AgentDocument[] | null; failed: boolean; onOpen: (d: AgentDocument) => void;
+}) {
   if (failed) return <p className="agx-info-none">These couldn&apos;t be loaded. Close and reopen to try again.</p>;
   if (docs === null) return <p className="agx-info-none">Loading…</p>;
   if (docs.length === 0) return <p className="agx-info-none">No {docsLabel(role).toLowerCase()} finished yet.</p>;
@@ -265,12 +285,12 @@ function DocList({ role, docs, failed }: { role: AgentType; docs: AgentDocument[
     <ul>
       {docs.map(d => (
         <li key={d.id}>
-          <Link className="agx-info-row" href={`/dashboard/project/${d.projectId}`}>
+          <button type="button" className="agx-info-row" onClick={() => onOpen(d)}>
             <IconDoc size={13} />
             <span className="agx-info-t">{d.title}</span>
             <span className="agx-info-p">{d.projectName}</span>
             <span className="agx-info-d">{dateStr(d.createdAt)}</span>
-          </Link>
+          </button>
         </li>
       ))}
     </ul>
@@ -282,11 +302,12 @@ function AgentDocs({ agent, usage, motion, onClose, onClosed }: {
   agent: Agent; usage: AgentUsage | undefined; motion: OverlayMotion; onClose: () => void; onClosed: () => void;
 }) {
   const { docs, failed } = useAgentDocs(agent);
-  const closeRef = useOverlayKeys(onClose);
+  const viewer = useDocViewer(agent, projectTotal(agent, usage));
+  const closeRef = useOverlayKeys(onClose, viewer.isOpen);
   const titleId = useId();
   const bodyRef = useScrollEdges<HTMLDivElement>();
   return (
-    <div {...overlayProps(motion, onClosed)} role="dialog" aria-modal="false" aria-labelledby={titleId}>
+    <div {...overlayProps(motion, onClosed, true)} role="dialog" aria-modal="false" aria-labelledby={titleId}>
       <header className="agx-info-head">
         <AgentMascot role={agent.type} size={40} level={mascotLevel(projectTotal(agent, usage))} />
         <div className="agx-info-id">
@@ -298,8 +319,9 @@ function AgentDocs({ agent, usage, motion, onClose, onClosed }: {
         </button>
       </header>
       <div className="agx-info-body" ref={bodyRef}>
-        <DocList role={agent.type} docs={docs} failed={failed} />
+        <DocList role={agent.type} docs={docs} failed={failed} onOpen={viewer.open} />
       </div>
+      {viewer.view}
     </div>
   );
 }
@@ -314,9 +336,10 @@ function AgentInfo({ agent, usage, motion, onClose, onClosed, onToggleArchive }:
   onClose: () => void; onClosed: () => void; onToggleArchive: () => void;
 }) {
   const { docs, failed } = useAgentDocs(agent);
-  const closeRef = useOverlayKeys(onClose);
-  const bodyRef = useScrollEdges<HTMLDivElement>();
   const projects = projectTotal(agent, usage);
+  const viewer = useDocViewer(agent, projects);
+  const closeRef = useOverlayKeys(onClose, viewer.isOpen);
+  const bodyRef = useScrollEdges<HTMLDivElement>();
   const level = levelFor(projects);
   const titleId = useId();
 
@@ -369,7 +392,7 @@ function AgentInfo({ agent, usage, motion, onClose, onClosed, onToggleArchive }:
 
         <section className="agx-info-block">
           <h4>{docsLabel(agent.type)}</h4>
-          <DocList role={agent.type} docs={docs} failed={failed} />
+          <DocList role={agent.type} docs={docs} failed={failed} onOpen={viewer.open} />
         </section>
 
         {(list.length > 0 || catalog.length > 0) && (
@@ -405,6 +428,7 @@ function AgentInfo({ agent, usage, motion, onClose, onClosed, onToggleArchive }:
           {agent.archived_at ? <><IconRestore size={12} />Restore agent</> : <><IconArchive size={12} />Archive agent</>}
         </button>
       </footer>
+      {viewer.view}
     </div>
   );
 }

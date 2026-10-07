@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import type { AgentType } from "@/lib/agents";
 import { md, handleCodeCopyClick } from "@/lib/markdown";
 import { useDialogFocus } from "@/lib/use-dialog-focus";
+import { useExit } from "@/lib/use-exit";
 import { AgentMascot } from "@/components/layout/agent-mascot";
 import { IconX, IconCopy, IconCheck, IconDownload, IconPrint, IconList } from "@/components/layout/agxp-icons";
 
@@ -100,6 +101,8 @@ export function DeliverableView({ doc, onClose }: { doc: DeliverableDoc; onClose
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   useDialogFocus(modalRef);
+  const [closing, exitThen] = useExit();
+  const close = () => exitThen(onClose);
 
   const toc = useMemo(() => outline(doc.content), [doc.content]);
   const html = useMemo(() => chapterise(md(doc.content)), [doc.content]);
@@ -108,12 +111,12 @@ export function DeliverableView({ doc, onClose }: { doc: DeliverableDoc; onClose
 
   // Esc closes; the page behind must not scroll while the document is open.
   useEffect(() => {
-    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") exitThen(onClose); }
     window.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
-  }, [onClose]);
+  }, [onClose, exitThen]);
 
   /**
    * The document's own headings, in order.
@@ -211,9 +214,9 @@ export function DeliverableView({ doc, onClose }: { doc: DeliverableDoc; onClose
 
   return createPortal(
     <div className="doc-portal">
-      <div className="doc-overlay" onClick={onClose} />
-      <div ref={modalRef} className={`doc-modal${tocOpen ? "" : " toc-closed"}`} role="dialog" aria-modal="true" aria-label={doc.title}>
-        <button className="doc-close" onClick={onClose} data-tooltip="Close (Esc)" aria-label="Close"><IconX size={15} /></button>
+      <div className={`doc-overlay${closing ? " is-closing" : ""}`} onClick={close} />
+      <div ref={modalRef} className={`doc-modal${tocOpen ? "" : " toc-closed"}${closing ? " is-closing" : ""}`} role="dialog" aria-modal="true" aria-label={doc.title}>
+        <button className="doc-close" onClick={close} data-tooltip="Close (Esc)" aria-label="Close"><IconX size={15} /></button>
         <button className="doc-toc-toggle" onClick={() => setTocOpen(v => !v)} aria-expanded={tocOpen}
           data-tooltip={tocOpen ? "Hide contents" : "Show contents"} aria-label="Toggle contents">
           <IconList size={15} />

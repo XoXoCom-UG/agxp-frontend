@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useDialogFocus } from "@/lib/use-dialog-focus";
+import { useExit } from "@/lib/use-exit";
 
 export interface ConfirmDialogProps {
   title: string;
@@ -20,23 +21,29 @@ export function ConfirmDialog({ title, body, confirmLabel, onConfirm, onCancel }
   const bodyId = useId();
   // Focus lands on Cancel — the safe choice — and Escape backs out.
   useDialogFocus(ref);
-  // onCancel is usually an inline arrow; a ref keeps the listener attached
-  // once instead of re-adding it on every parent render.
-  const cancelRef = useRef(onCancel);
-  useEffect(() => { cancelRef.current = onCancel; }, [onCancel]);
+  // Backing out plays the exit first. Confirming does not: the parent owns
+  // what happens next (History keeps this open while the archive runs), so
+  // the action goes out at once and the parent decides when the dialog leaves.
+  const [closing, exitThen] = useExit();
+  const cancel = () => exitThen(onCancel);
+  // `cancel` is a fresh closure every render; a ref keeps the listener
+  // attached once instead of re-adding it on every parent render.
+  const cancelRef = useRef(cancel);
+  useEffect(() => { cancelRef.current = cancel; });
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === "Escape") cancelRef.current(); }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
   return createPortal(
-    <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onCancel(); }}>
+    <div className={`modal-overlay${closing ? " is-closing" : ""}`}
+      onClick={e => { if (e.target === e.currentTarget) cancel(); }}>
       <div ref={ref} className="modal modal-sm" role="alertdialog" aria-modal="true"
         aria-labelledby={titleId} aria-describedby={bodyId}>
         <h2 id={titleId}>{title}</h2>
         <div className="sub" id={bodyId}>{body}</div>
         <div className="modal-actions">
-          <button className="btn btn-ghost" onClick={onCancel}>Cancel</button>
+          <button className="btn btn-ghost" onClick={cancel}>Cancel</button>
           <button className="btn btn-plum" onClick={onConfirm}>{confirmLabel || "Confirm"}</button>
         </div>
       </div>
