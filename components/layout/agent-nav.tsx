@@ -184,7 +184,7 @@ export function AgentNav({ startEnabled, startHint, started, projectName, onStar
             The project row appears the moment the user actually picks an
             agent or sends a message (see NewTaskScreen.ensureProject), so
             abandoned starts don't leave empty projects behind. */}
-        <Link className="brand nb-brand" href="/dashboard" aria-label="AgentiX Projects, new task">
+        <Link className="brand nb-brand" href="/dashboard" aria-label="AgentiX Projects, home">
           <BrandLogo size={26} />
         </Link>
 
@@ -223,7 +223,10 @@ export function AgentNav({ startEnabled, startHint, started, projectName, onStar
           </span>
         ) : null}
 
-        <Link href="/dashboard" className={`nb-item nb-lead${tab === "newtask" && !started ? " active" : ""}`}
+        {/* ?new=1 so this always starts a task. Without it the button now
+            lands on Home for anyone who has projects, which is the opposite
+            of what it says. */}
+        <Link href="/dashboard?new=1" className={`nb-item nb-lead${tab === "newtask" && !started ? " active" : ""}`}
           aria-current={tab === "newtask" ? "page" : undefined}>
           <IconPlus size={15} />New Task
         </Link>
