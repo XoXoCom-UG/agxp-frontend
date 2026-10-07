@@ -61,7 +61,11 @@ export default function DashboardPage() {
   return (
     <div className="app">
       <AgentNav />
-      <main className="view-root view-enter" id="main-content" tabIndex={-1}>
+      {/* home-root: .app is fixed to the viewport and clips, so a Home
+          taller than the screen lost its bottom rather than scrolling — the
+          counters were cut in half. Only this screen scrolls; the workspace
+          still manages its own panes. */}
+      <main className="view-root view-enter home-root" id="main-content" tabIndex={-1}>
         <HomeScreen onNew={() => setDismissed(true)} />
       </main>
     </div>

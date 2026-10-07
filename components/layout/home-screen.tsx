@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { AgentMascot } from "@/components/layout/agent-mascot";
@@ -74,6 +74,32 @@ function DuoRing({ by }: { by: Record<AgentType, number | null> }) {
 
 export function HomeScreen({ onNew }: { onNew: () => void }) {
   const router = useRouter();
+  /*
+   * The two agents notice the button. Hovering or focusing "Start a new
+   * chat" makes them look down at it and give one small bounce — the mascot
+   * already owns both behaviours (lookAt, mood="pleased"), so this is the
+   * app's own character reacting, not a new animation bolted beside it.
+   *
+   * `pleased` is a one-off the caller has to clear, or it would never fire
+   * a second time.
+   */
+  const startRef = useRef<HTMLButtonElement>(null);
+  /**
+   * Where to look. A coordinate LookTarget is a point on the SCREEN, not a
+   * direction — passing a small vector sent them staring at the top-left
+   * corner. So this is the button's real centre, measured when it is
+   * noticed, and both heads turn to it on their own.
+   */
+  const [at, setAt] = useState<{ x: number; y: number } | null>(null);
+  const [cheer, setCheer] = useState(false);
+
+  function notice(on: boolean) {
+    if (!on) { setAt(null); return; }
+    const b = startRef.current?.getBoundingClientRect();
+    setAt(b ? { x: b.left + b.width / 2, y: b.top + b.height / 2 } : null);
+    setCheer(true);
+    window.setTimeout(() => setCheer(false), 300);
+  }
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [all, setAll] = useState<Project[]>([]);
   const [stats, setStats] = useState<Record<string, ProjectStats>>({});
@@ -134,13 +160,26 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
           the cursor like everywhere else. The flat PNGs they replaced were
           168px email fallbacks and went soft the moment they were enlarged.
         */}
+        {/* Each mascot sits in its own slot so the slow float lives on the
+            wrapper: the mascot's own breathing animation stays untouched
+            underneath, and the two would otherwise cancel each other out. */}
         <div className="hh-bots" aria-hidden="true">
-          <AgentMascot role="consultant" size={152} state="idle" level={4} />
+          <span className="hh-slot">
+            <AgentMascot role="consultant" size={152} state="idle" level={4}
+              mood={cheer ? "pleased" : null}
+              lookAt={at} />
+          </span>
           <span className="hh-spark" />
-          <AgentMascot role="coach" size={152} state="idle" level={4} />
+          <span className="hh-slot">
+            <AgentMascot role="coach" size={152} state="idle" level={4}
+              mood={cheer ? "pleased" : null}
+              lookAt={at} />
+          </span>
         </div>
 
-        <button className="home-start" onClick={onNew}>
+        <button ref={startRef} className="home-start" onClick={onNew}
+          onPointerEnter={() => notice(true)} onPointerLeave={() => notice(false)}
+          onFocus={() => notice(true)} onBlur={() => notice(false)}>
           Start a new chat <IconArrow size={16} />
         </button>
       </div>

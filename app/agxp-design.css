@@ -7394,8 +7394,30 @@ html.light .hh-art{ mix-blend-mode:multiply; opacity:.34; }
  */
 .hh-bots{
   display:flex; align-items:center; justify-content:space-between;
-  width:100%; margin:var(--sp-6) 0;
+  /* Capped so they flank the title rather than hug the window frame: at the
+     full width of a 1900px screen they read as two separate things instead
+     of a pair. */
+  width:100%; max-width:1280px; margin:var(--sp-6) auto;
   gap:var(--sp-3);
+}
+.hh-slot{ display:inline-flex; }
+
+/* Duolingo-ish: a slow float with the two out of phase, so the pair looks
+   alive rather than placed. On the slot, never on the mascot — the mascot
+   is already breathing, and a second animation on the same element replaces
+   the first instead of adding to it. */
+@media (prefers-reduced-motion:no-preference){
+  .hh-slot{ animation:hhFloat 5.2s ease-in-out infinite; }
+  .hh-slot:last-of-type{ animation-duration:6.1s; animation-delay:-2.4s; }
+}
+@keyframes hhFloat{
+  0%, 100%{ transform:translateY(0) rotate(0deg); }
+  50%{ transform:translateY(-9px) rotate(-1.1deg); }
+}
+/* Leaning in when the button is noticed. */
+.home-hero:has(.home-start:hover) .hh-slot,
+.home-hero:has(.home-start:focus-visible) .hh-slot{
+  animation-play-state:paused;
 }
 /*
  * The row can never be wider than its container, but the two mascots can:
@@ -7542,6 +7564,9 @@ html.light .hh-art{ mix-blend-mode:multiply; opacity:.34; }
 .home-actions{
   display:flex; align-items:center; justify-content:space-between; gap:var(--sp-5);
   flex-wrap:wrap; margin-top:var(--sp-7); padding-top:var(--sp-5);
+  /* Breathing room under the last row: against the bottom of a scroll area
+     the counters read as cut off even when they are whole. */
+  padding-bottom:var(--sp-7);
   border-top:1px solid var(--border);
 }
 .home-new{
@@ -7591,3 +7616,9 @@ html.light .hh-art{ mix-blend-mode:multiply; opacity:.34; }
   from{ opacity:0; transform:translateY(10px); }
   to{ opacity:1; transform:none; }
 }
+
+
+/* Home is the one screen taller than the window, so it is the one that
+   scrolls. .app is fixed and clips, which is right for the two-panel
+   workspace and wrong here — the counters at the bottom were cut off. */
+.home-root{ overflow-y:auto; overflow-x:clip; }
