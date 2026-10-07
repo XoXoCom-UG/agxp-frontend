@@ -15,6 +15,9 @@ import type { AgentType } from "@/lib/agents";
 export interface ProjectStats {
   /** 0-100, or null before any agent has reported progress. */
   progress: number | null;
+  /** The same figure per agent, which the average above hides: a project at
+   *  "50%" can be one conversation finished and one not started. */
+  progressBy: Record<AgentType, number | null>;
   /** What the user wrote, across both conversations. */
   messages: number;
   /** Finished documents, counted the way agent-documents.ts finds them. */
@@ -44,7 +47,11 @@ export async function loadProjectStats(projectIds: string[]): Promise<Record<str
   const latest = new Map<string, number>(); // `${project}:${column}` -> progress
   for (const m of data ?? []) {
     const id = m.project_id as string;
-    const s = out[id] ??= { progress: null, messages: 0, docs: 0, docsBy: { consultant: false, coach: false }, industry: null };
+    const s = out[id] ??= {
+      progress: null,
+      progressBy: { consultant: null, coach: null },
+      messages: 0, docs: 0, docsBy: { consultant: false, coach: false }, industry: null,
+    };
     if (m.role === "user") { s.messages += 1; continue; }
     const content = m.content as string;
     const parsed = parseMarkers(content);
@@ -59,10 +66,15 @@ export async function loadProjectStats(projectIds: string[]): Promise<Record<str
 
   const sums = new Map<string, { total: number; n: number }>();
   for (const [key, value] of latest) {
-    const id = key.slice(0, key.indexOf(":"));
+    const cut = key.indexOf(":");
+    const id = key.slice(0, cut);
+    const column = key.slice(cut + 1) as AgentType;
     const acc = sums.get(id) ?? { total: 0, n: 0 };
     acc.total += value; acc.n += 1;
     sums.set(id, acc);
+    // Kept alongside the average, not instead of it: the rail and the filters
+    // want one number, Home wants to show which half is behind.
+    if (out[id]) out[id].progressBy[column] = value;
   }
   for (const [id, { total, n }] of sums) out[id].progress = Math.round(total / n);
   return out;

@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AgentMascot } from "@/components/layout/agent-mascot";
-import { IconArrow, IconClock, IconDoc, IconPlus } from "@/components/layout/agxp-icons";
+import { IconArrow, IconCheck, IconDoc, IconPlus } from "@/components/layout/agxp-icons";
 import { listProjects, type Project } from "@/lib/projects";
 import { loadProjectStats, type ProjectStats } from "@/lib/project-stats";
-import { listAgents, type Agent } from "@/lib/agents";
+import { listAgents, type Agent, type AgentType } from "@/lib/agents";
 import { dateStr } from "@/lib/utils";
 
 /**
@@ -20,35 +19,77 @@ import { dateStr } from "@/lib/utils";
  * lives in localStorage — on another machine, or after clearing site data,
  * there is nothing.
  *
- * So this screen answers "what was I doing?" before "what do I start?", and
- * it is deliberately NOT a menu. Patryk, 2026-09-30, on a dropdown in the
- * bar: "lieber kein Dropdown, weil das verwirrt." The same objection applies
- * to a hub of links, so there is one obvious thing to continue, a short row
- * of recent work, and one button to start something new.
+ * One moment, quiet edges. The moment is the project you were in, not a
+ * flourish: a launch animation is wonderful once and a toll booth by the
+ * fortieth sign-in, and this app has been pushed the other way before
+ * (Patryk, 2026-09-02: the start screen is the work itself).
  *
- * Nobody with an empty account ever sees it — NewTaskScreen is still the
- * first screen there, unchanged. A new user pays nothing for this.
+ * The edges are NOT a second navigation bar. History, Agents and Settings
+ * are already up there; repeating them would add clicks and no information.
+ * What the bar cannot show is state, so that is what the edges carry —
+ * how many projects, how many agents you have trained, how many documents
+ * came out — each one also the way in.
+ *
+ * Nobody with an empty account sees any of it: NewTaskScreen is still the
+ * first screen there, unchanged.
  */
 
 const RECENT = 4;
+const ROLES: AgentType[] = ["consultant", "coach"];
+
+/**
+ * The project's progress as one ring in two halves — the Consultant on the
+ * left, the Coach on the right. The average alone hides the case that
+ * matters: "50%" can be one conversation finished and the other not started.
+ *
+ * Radius 22, so a half circle is π·22 ≈ 69.1 long; each half is drawn from
+ * the top and dashed to its own share.
+ */
+const HALF = Math.PI * 22;
+
+function DuoRing({ by }: { by: Record<AgentType, number | null> }) {
+  const any = ROLES.some(r => by[r] !== null);
+  if (!any) return null;
+  return (
+    <svg className="hl-ring" viewBox="0 0 52 52" aria-hidden="true" focusable="false">
+      {ROLES.map(role => {
+        const pct = Math.max(0, Math.min(100, by[role] ?? 0));
+        // Left half sweeps anticlockwise from the top, right half clockwise,
+        // so both fill away from 12 o'clock and meet at the bottom.
+        const d = role === "consultant"
+          ? "M26,4 A22,22 0 0,0 26,48"
+          : "M26,4 A22,22 0 0,1 26,48";
+        return (
+          <g key={role}>
+            <path className="hr-track" d={d} />
+            <path className={`hr-fill ${role}`} d={d}
+              style={{ strokeDasharray: HALF, strokeDashoffset: HALF * (1 - pct / 100) }} />
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
 
 export function HomeScreen({ onNew }: { onNew: () => void }) {
   const router = useRouter();
   const [projects, setProjects] = useState<Project[] | null>(null);
+  const [all, setAll] = useState<Project[]>([]);
   const [stats, setStats] = useState<Record<string, ProjectStats>>({});
   const [agents, setAgents] = useState<Agent[]>([]);
 
   useEffect(() => {
     let alive = true;
     listProjects()
-      .then(async all => {
+      .then(list => {
         if (!alive) return;
-        const live = all.filter(p => p.status !== "Archived").slice(0, RECENT + 1);
-        setProjects(live);
-        // Agents and numbers are decoration around the list: a failure in
-        // either must not cost you the way back into your work.
+        const live = list.filter(p => p.status !== "Archived");
+        setAll(live);
+        setProjects(live.slice(0, RECENT + 1));
+        // Agents and numbers are context around the way back into your work:
+        // a failure in either must not cost you the way back.
         listAgents().then(a => { if (alive) setAgents(a); }).catch(() => {});
-        loadProjectStats(live.map(p => p.id))
+        loadProjectStats(live.slice(0, RECENT + 1).map(p => p.id))
           .then(s => { if (alive) setStats(s); })
           .catch(() => {});
       })
@@ -61,8 +102,13 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
   if (!projects || projects.length === 0) return null;
 
   const [latest, ...rest] = projects;
+  const st = stats[latest.id];
   const nameOf = (id: string | null) => (id ? agents.find(a => a.id === id)?.name : undefined);
   const open = (id: string) => router.push(`/dashboard/project/${id}`);
+
+  const trained = agents.filter(a => !a.archived_at && a.last_projects.length > 0).length;
+  const documents = Object.values(stats).reduce((n, s) => n + s.docs, 0);
+  const done = all.filter(p => p.status === "Completed").length;
 
   return (
     <section className="home" aria-labelledby="home-title">
@@ -70,48 +116,79 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
       <h1 id="home-title" className="home-title">Pick up where you left off.</h1>
 
       <button className="home-last" onClick={() => open(latest.id)}>
-        <span className="hl-faces" aria-hidden="true">
-          <AgentMascot role="consultant" size={44} level={2} agentId={latest.consultant_agent_id ?? undefined} />
-          <AgentMascot role="coach" size={44} level={2} agentId={latest.coach_agent_id ?? undefined} />
+        <span className="hl-gauge" aria-hidden="true">
+          {st && <DuoRing by={st.progressBy} />}
+          <span className="hl-faces">
+            <AgentMascot role="consultant" size={34} level={2} agentId={latest.consultant_agent_id ?? undefined} />
+            <AgentMascot role="coach" size={34} level={2} agentId={latest.coach_agent_id ?? undefined} />
+          </span>
         </span>
+
         <span className="hl-body">
           <b>{latest.name}</b>
-          <span className="hl-meta">
-            {[nameOf(latest.consultant_agent_id), nameOf(latest.coach_agent_id)].filter(Boolean).join(" + ")
-              || "No agents yet"}
-            <i>·</i><IconClock size={11} />{dateStr(latest.last_activity_at)}
-            {stats[latest.id]?.docs ? <><i>·</i><IconDoc size={11} />{stats[latest.id].docs}</> : null}
+          <span className="hl-pair">
+            {[nameOf(latest.consultant_agent_id), nameOf(latest.coach_agent_id)]
+              .filter(Boolean).join("  +  ") || "No agents yet"}
           </span>
-          {stats[latest.id]?.progress !== null && stats[latest.id] !== undefined && (
-            <span className="hl-bar" aria-hidden="true">
-              <i style={{ width: `${stats[latest.id].progress}%` }} />
-            </span>
-          )}
+          {/* What the project is FOR: the two documents, and which exist. */}
+          <span className="hl-docs">
+            {([["consultant", "Transformation Concept"], ["coach", "Change Plan"]] as const).map(([role, title]) => {
+              const has = st?.docsBy[role];
+              return (
+                <span key={role} className={`hl-doc ${role}${has ? " on" : ""}`}>
+                  {has ? <IconCheck size={11} /> : <IconDoc size={11} />}
+                  {title}
+                </span>
+              );
+            })}
+          </span>
         </span>
-        <span className="hl-go"><IconArrow size={15} /></span>
+
+        <span className="hl-go"><span>{dateStr(latest.last_activity_at)}</span><IconArrow size={15} /></span>
       </button>
 
       {rest.length > 0 && (
-        <>
-          <p className="home-sub">Also open</p>
-          <ul className="home-recent">
-            {rest.slice(0, RECENT).map(p => (
-              <li key={p.id}>
-                <button onClick={() => open(p.id)}>
-                  <b>{p.name}</b>
-                  <span>{dateStr(p.last_activity_at)}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </>
+        <ul className="home-recent" aria-label="Also open">
+          {rest.slice(0, RECENT).map(p => (
+            <li key={p.id}>
+              <button onClick={() => open(p.id)}>
+                <b>{p.name}</b>
+                <span>{dateStr(p.last_activity_at)}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
 
       <div className="home-actions">
         <button className="home-new" onClick={onNew}>
           <IconPlus size={15} /> Start a new task
         </button>
-        <Link href="/dashboard/history" className="home-all">All projects</Link>
+
+        {/* State, not a second menu. History, Agents and Settings are in the
+            bar already; these say how much there is and go to the same place. */}
+        <ul className="home-state">
+          <li>
+            <button onClick={() => router.push("/dashboard/history")}>
+              <b>{all.length}</b>
+              <span>{done > 0 ? `projects · ${done} done` : all.length === 1 ? "project" : "projects"}</span>
+            </button>
+          </li>
+          <li>
+            <button onClick={() => router.push("/dashboard/agents")}>
+              <b>{trained}</b>
+              <span>{trained === 1 ? "agent trained" : "agents trained"}</span>
+            </button>
+          </li>
+          {documents > 0 && (
+            <li>
+              <button onClick={() => router.push("/dashboard/history")}>
+                <b>{documents}</b>
+                <span>{documents === 1 ? "document" : "documents"}</span>
+              </button>
+            </li>
+          )}
+        </ul>
       </div>
     </section>
   );
