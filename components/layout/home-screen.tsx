@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { BrandLogo } from "@/components/layout/brand-logo";
 import { AgentMascot } from "@/components/layout/agent-mascot";
-import { IconArrow, IconCheck, IconDoc, IconPlus } from "@/components/layout/agxp-icons";
+import { IconArrow, IconCheck, IconDoc } from "@/components/layout/agxp-icons";
 import { listProjects, type Project } from "@/lib/projects";
 import { loadProjectStats, type ProjectStats } from "@/lib/project-stats";
 import { listAgents, type Agent, type AgentType } from "@/lib/agents";
@@ -112,8 +113,35 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
 
   return (
     <section className="home" aria-labelledby="home-title">
-      <p className="home-eyebrow">Welcome back</p>
-      <h1 id="home-title" className="home-title">Pick up where you left off.</h1>
+      {/*
+       * The hero. The art is real: /brand/core.jpg is the project core with
+       * the two agents on their orbit, and the two robots are the same ones
+       * the invitation email carries. They are 168px native, so they are
+       * never drawn larger than that — scaled up they go soft, and a blurred
+       * mascot is worse than a smaller sharp one.
+       */}
+      <div className="home-hero">
+        <span className="hh-art" aria-hidden="true" />
+        <BrandLogo size={34} />
+        <h1 id="home-title" className="home-title">
+          Two agents.<br /><span>One project.</span>
+        </h1>
+        <p className="home-lede">One plans the work. The other plans the people.</p>
+
+        <div className="hh-bots" aria-hidden="true">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="hh-bot consultant" src="/brand/consultant.png" alt="" width={150} height={156} />
+          <span className="hh-spark" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="hh-bot coach" src="/brand/coach.png" alt="" width={150} height={156} />
+        </div>
+
+        <button className="home-start" onClick={onNew}>
+          Start a new chat <IconArrow size={16} />
+        </button>
+      </div>
+
+      <p className="home-eyebrow">Or pick up where you left off</p>
 
       <button className="home-last" onClick={() => open(latest.id)}>
         <span className="hl-gauge" aria-hidden="true">
@@ -161,10 +189,6 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
       )}
 
       <div className="home-actions">
-        <button className="home-new" onClick={onNew}>
-          <IconPlus size={15} /> Start a new task
-        </button>
-
         {/* State, not a second menu. History, Agents and Settings are in the
             bar already; these say how much there is and go to the same place. */}
         <ul className="home-state">
