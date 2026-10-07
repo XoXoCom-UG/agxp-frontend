@@ -7314,14 +7314,26 @@ html[data-glass="solid"] .ph-card{ backdrop-filter:none; background:var(--popove
 
 
 /* --- Home: the hero, then one moment, then quiet edges ----------------- */
-.home{ max-width:900px; margin:0 auto; padding:var(--sp-6) var(--sp-5) var(--sp-6); }
+/* width:100% as well as the cap: the hero's negative margins make this a
+   shrink-to-fit box otherwise, and the column under it collapsed to about a
+   third of its width. */
+.home{ width:100%; max-width:900px; margin:0 auto; padding:var(--sp-6) var(--sp-5) var(--sp-6); }
 
 /* The hero. Centred, generous, and the only place on this screen that
    raises its voice. */
+/*
+ * Full-bleed, out of .home's 900px column. The pair is supposed to sit at
+ * the far edges of the SCREEN, and inside the column "the edges" were 900px
+ * apart — which is why asking for them further apart kept bringing them
+ * closer. The padding keeps them off the true edge, so the few pixels .app
+ * clips for a scrollbar can never cut into a mascot.
+ */
 .home-hero{
   position:relative; isolation:isolate;
+  width:100vw; margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw);
   display:flex; flex-direction:column; align-items:center; text-align:center;
-  padding:var(--sp-7) var(--sp-5) var(--sp-6); margin-bottom:var(--sp-7);
+  padding:var(--sp-7) clamp(20px, 5vw, 110px) var(--sp-6);
+  margin-bottom:var(--sp-7);
 }
 /*
  * The core art, blended rather than placed. It is a JPEG on a near-black
@@ -7331,7 +7343,9 @@ html[data-glass="solid"] .ph-card{ backdrop-filter:none; background:var(--popove
  */
 .hh-art{
   position:absolute; left:50%; top:50%; z-index:0;
-  width:min(1980px, 250%); aspect-ratio:1200 / 520;
+  /* Sized to the window, not to the hero: "half the screen" is a fact about
+     the viewport, and the mask leaves roughly the middle half of this lit. */
+  width:132vw; aspect-ratio:1200 / 520;
   transform:translate(-50%, -50%);
   /*
    * Two background layers blended INSIDE the element: the accent on top, the
@@ -7365,6 +7379,8 @@ html.light .hh-art{ mix-blend-mode:multiply; opacity:.34; }
   margin:var(--sp-4) 0 0; font-size:var(--text-base); line-height:1.6;
   color:var(--secondary-foreground); max-width:42ch;
 }
+/* The hero spans the window now; its words must not. */
+.home-hero .home-title{ max-width:18ch; }
 
 /* The two robots, at 150 against a 168px original: never scaled up, because
    a soft mascot reads as a mistake. */
@@ -7378,7 +7394,7 @@ html.light .hh-art{ mix-blend-mode:multiply; opacity:.34; }
  */
 .hh-bots{
   display:flex; align-items:center; justify-content:space-between;
-  width:min(760px, 100%); margin:var(--sp-6) auto;
+  width:100%; margin:var(--sp-6) 0;
   gap:var(--sp-3);
 }
 /*
