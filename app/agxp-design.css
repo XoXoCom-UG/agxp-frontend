@@ -7330,16 +7330,35 @@ html[data-glass="solid"] .ph-card{ backdrop-filter:none; background:var(--popove
  * mask fades the edges so it has no border at all.
  */
 .hh-art{
-  position:absolute; left:50%; top:4%; z-index:-1;
-  width:min(1100px, 132%); aspect-ratio:1200 / 520; transform:translateX(-50%);
-  background:url("/brand/core.jpg") center / cover no-repeat;
-  mix-blend-mode:screen; opacity:.85; pointer-events:none;
-  mask-image:radial-gradient(62% 58% at 50% 46%, #000 38%, transparent 76%);
-  -webkit-mask-image:radial-gradient(62% 58% at 50% 46%, #000 38%, transparent 76%);
+  position:absolute; left:50%; top:50%; z-index:0;
+  width:min(1500px, 190%); aspect-ratio:1200 / 520;
+  transform:translate(-50%, -50%);
+  /*
+   * Two background layers blended INSIDE the element: the accent on top, the
+   * art underneath, `color` taking hue and saturation from the first and
+   * luminance from the second. So the planet is painted in whatever colour
+   * Settings is on, and nothing outside this element is touched — a
+   * mix-blend-mode on a child would have tinted the whole stacking context.
+   */
+  background:
+    radial-gradient(60% 70% at 50% 50%, var(--acc) 0%, var(--acc-2) 58%, var(--primary) 100%),
+    url("/brand/core.jpg") center / cover no-repeat;
+  background-blend-mode:color;
+  /* screen on top of that drops the art's near-black ground against the page,
+     so there is no rectangle — only the light. */
+  mix-blend-mode:screen; opacity:.62; pointer-events:none;
+  mask-image:radial-gradient(60% 56% at 50% 50%, #000 34%, transparent 78%);
+  -webkit-mask-image:radial-gradient(60% 56% at 50% 50%, #000 34%, transparent 78%);
 }
 /* On a light theme the same trick runs the other way: `multiply` keeps the
    dark lines and drops the white that screen would have kept. */
-html.light .hh-art{ mix-blend-mode:multiply; opacity:.5; }
+html.light .hh-art{ mix-blend-mode:multiply; opacity:.34; }
+
+/* Everything the hero draws sits over the planet. z-index on the children
+   rather than a negative one on the art: negative would have put it behind
+   the hero's own background too, and then the mask would clip against the
+   page instead of the section. */
+.home-hero > *:not(.hh-art){ position:relative; z-index:1; }
 
 .home-hero .brand-logo{ margin-bottom:var(--sp-6); }
 .home-lede{
@@ -7351,7 +7370,7 @@ html.light .hh-art{ mix-blend-mode:multiply; opacity:.5; }
    a soft mascot reads as a mistake. */
 .hh-bots{
   display:flex; align-items:center; justify-content:center;
-  gap:clamp(18px, 6vw, 72px); margin:var(--sp-6) 0 var(--sp-6);
+  gap:clamp(40px, 14vw, 190px); margin:var(--sp-6) 0 var(--sp-6);
 }
 /* .mascot, not svg: AgentMascot renders a <span> wrapper, so a child
    selector on the element misses it entirely and the shadow never applied. */

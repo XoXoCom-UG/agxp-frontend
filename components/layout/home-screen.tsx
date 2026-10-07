@@ -135,9 +135,9 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
           168px email fallbacks and went soft the moment they were enlarged.
         */}
         <div className="hh-bots" aria-hidden="true">
-          <AgentMascot role="consultant" size={132} state="idle" level={4} />
+          <AgentMascot role="consultant" size={152} state="idle" level={4} />
           <span className="hh-spark" />
-          <AgentMascot role="coach" size={132} state="idle" level={4} />
+          <AgentMascot role="coach" size={152} state="idle" level={4} />
         </div>
 
         <button className="home-start" onClick={onNew}>
