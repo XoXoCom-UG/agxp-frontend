@@ -7,13 +7,14 @@ import { useAuth } from "@/lib/auth-context";
 import { ACCENTS, readAccent, applyAccent, type Accent } from "@/lib/accent";
 import { SPLIT_PRESETS, useChatSplit, useSplitLocked, broadcastSplit, broadcastSplitLocked, presetFor } from "@/lib/chat-split";
 import { BACKGROUND_OPTIONS, GLASS_OPTIONS, useAppearance, setAppearance } from "@/lib/appearance";
-import { IconX, IconCheck, IconMonitor, IconSun, IconMoon } from "@/components/layout/agxp-icons";
+import { IconX, IconCheck, IconMonitor, IconSun, IconMoon, IconSpark } from "@/components/layout/agxp-icons";
 import { useDialogFocus } from "@/lib/use-dialog-focus";
 import { useExit } from "@/lib/use-exit";
 import { useEntitlement } from "@/lib/entitlement";
 import { PLANS, projectsLabel, type Plan } from "@/lib/plans";
 import { DevPlanTools } from "@/components/layout/dev-plan-tools";
 import { DevMemory } from "@/components/layout/dev-memory";
+import { replayTour } from "@/components/layout/tour-host";
 
 type Tab = "profile" | "plan" | "appearance";
 const TABS: { id: Tab; label: string }[] = [
@@ -158,6 +159,23 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
                 <button className="btn btn-hero" disabled={!dirty || saving} onClick={save}>
                   {saving ? "Saving…" : saved ? <><IconCheck size={13} />Saved</> : "Save changes"}
                 </button>
+              </div>
+
+              {/* The tour, as often as you like. It is here rather than under
+                  Appearance because this is where people look for help, and
+                  the sheet closes first — the tour covers the whole screen,
+                  so leaving Settings open behind it would strand this dialog
+                  underneath with its focus trap still running. */}
+              <div className="ss-field ss-tour">
+                <span className="ss-label">Guided tour</span>
+                <div className="ss-tour-row">
+                  <p className="ss-hint">
+                    The one-minute introduction to the two agents, the documents and the colours.
+                  </p>
+                  <button className="btn btn-ghost" onClick={() => exitThen(() => { onClose(); replayTour(); })}>
+                    <IconSpark size={13} />Play it again
+                  </button>
+                </div>
               </div>
             </>
           ) : (
