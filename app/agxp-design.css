@@ -7403,11 +7403,19 @@ html.light .hh-glow{ opacity:.6; }
  */
 .hh-stage{
   position:relative; z-index:1;
-  width:100%; max-width:1180px;
-  display:grid; grid-template-columns:auto minmax(0, 1fr) auto;
+  width:100%; max-width:1360px;
+  /* card | mascot | words | mascot | card. Placed explicitly, because the
+     words come first in the DOM so the heading is read first. */
+  display:grid; grid-template-columns:auto auto minmax(0, 1fr) auto auto;
   align-items:center; justify-items:center;
-  gap:clamp(4px, 2vw, 40px);
+  gap:clamp(4px, 1.6vw, 34px);
 }
+.hh-role.consultant{ grid-column:1; }
+.hh-slot.consultant{ grid-column:2; }
+.hh-words{ grid-column:3; }
+.hh-slot.coach{ grid-column:4; }
+.hh-role.coach{ grid-column:5; }
+.hh-stage > *{ grid-row:1; }
 
 /* The orbit the two of them are on: the same drawing as the mark in the bar,
    two paths crossing around one core. Behind everything, stretched to the
@@ -7420,17 +7428,60 @@ html.light .hh-glow{ opacity:.6; }
 .ho-a{ stroke:color-mix(in srgb, var(--acc) 52%, transparent); }
 .ho-b{ stroke:color-mix(in srgb, var(--acc-2) 46%, transparent); }
 .ho-c{ stroke:color-mix(in srgb, var(--acc) 20%, transparent); }
+/* The light travelling the path. Inside the group that spins, so it goes
+   round the orbit on the group's animation — one timeline, nothing to keep
+   in step with anything. */
+.ho-dot{ fill:var(--acc); }
+.ho-dot.b{ fill:var(--acc-2); }
 @media (prefers-reduced-motion:no-preference){
   /* Slow enough to notice only if you look — the same rule the drifting
-     background follows. transform-box/origin so the rotation is about the
-     ellipse's own centre and not the SVG's corner. */
-  .ho-a, .ho-b{
-    transform-box:fill-box; transform-origin:center;
+     background follows. view-box, not fill-box: the group has to turn about
+     the ORBIT's centre, and fill-box would turn each one about the middle
+     of its own bounding box. */
+  .ho-ga, .ho-gb{
+    transform-box:view-box; transform-origin:500px 210px;
     animation:hhOrbit 64s linear infinite;
   }
-  .ho-b{ animation-duration:84s; animation-direction:reverse; }
+  .ho-gb{ animation-duration:84s; animation-direction:reverse; }
 }
 @keyframes hhOrbit{ to{ rotate:360deg; } }
+
+/* --- What each agent is for, at either end ------------------------------- */
+.hh-role{
+  display:flex; align-items:flex-start; gap:var(--sp-3);
+  width:clamp(190px, 17vw, 236px);
+  padding:var(--sp-4);
+  border:1px solid var(--border); border-radius:18px;
+  background:color-mix(in srgb, var(--card) 82%, transparent);
+  backdrop-filter:blur(var(--blur-surface));
+  text-align:left;
+}
+.hh-role.coach{ border-color:color-mix(in srgb, var(--acc-2) 26%, var(--border)); }
+.hh-role-ic{
+  display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;
+  width:34px; height:34px; border-radius:11px;
+  border:1px solid color-mix(in srgb, var(--acc) 34%, transparent);
+  background:color-mix(in srgb, var(--acc) 12%, transparent);
+  color:var(--acc-hi);
+}
+.hh-role.coach .hh-role-ic{
+  border-color:color-mix(in srgb, var(--acc-2) 38%, transparent);
+  background:color-mix(in srgb, var(--acc-2) 12%, transparent);
+  color:var(--acc-2);
+}
+.hh-role b{
+  display:block; font-size:var(--text-sm); font-weight:600; color:var(--foreground);
+}
+.hh-role p{
+  margin:3px 0 0; font-size:var(--text-2xs); line-height:1.5; color:var(--muted-foreground);
+  display:flex; flex-direction:column;
+}
+
+.hh-kicker{
+  font-family:var(--font-mono); font-size:var(--text-3xs);
+  letter-spacing:0.34em; text-transform:uppercase; color:var(--muted-foreground);
+  margin-bottom:clamp(6px, 1.2vh, 14px);
+}
 
 .hh-slot{ display:inline-flex; }
 
@@ -7472,13 +7523,28 @@ html.light .hh-glow{ opacity:.6; }
  * They stay — they are the screen's one piece of character — just smaller
  * and under the words.
  */
+/* Five columns need about 1200px before the title is down to a few
+   characters a line. Below that the cards go and the pair stays: the pair is
+   the picture, the cards are the caption. */
+@media (max-width:1200px){
+  .hh-role{ display:none; }
+  .hh-stage{ grid-template-columns:auto minmax(0, 1fr) auto; }
+  .hh-slot.consultant{ grid-column:1; }
+  .hh-words{ grid-column:2; }
+  .hh-slot.coach{ grid-column:3; }
+}
 @media (max-width:860px){
   .hh-stage{ grid-template-columns:1fr; gap:clamp(8px, 2vh, 20px); }
-  .hh-words{ order:-1; }
+  .hh-stage > *{ grid-row:auto; }
+  .hh-words{ grid-column:1; grid-row:1; }
   .hh-stage .mascot{ width:104px !important; height:104px !important; }
-  .hh-slot{ grid-row:2; }
-  .hh-slot:first-of-type{ justify-self:end; margin-right:clamp(6px, 4vw, 40px); }
-  .hh-slot:last-of-type{ grid-row:2; justify-self:start; margin-left:clamp(6px, 4vw, 40px); }
+  /* Both share one cell under the words and are pushed to opposite sides.
+     By ROLE, not by position: the markup was reordered once so the heading
+     would be read first, and placement keyed to :first-of-type silently
+     swapped the two of them on a phone. */
+  .hh-slot{ grid-column:1; grid-row:2; }
+  .hh-slot.consultant{ justify-self:end; margin-right:clamp(6px, 4vw, 40px); }
+  .hh-slot.coach{ justify-self:start; margin-left:clamp(6px, 4vw, 40px); }
   .home-hero .home-title{ max-width:none; }
   .hh-orbit{ inset:-6% -2%; height:112%; }
 }

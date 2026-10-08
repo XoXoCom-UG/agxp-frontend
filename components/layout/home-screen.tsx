@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AgentMascot } from "@/components/layout/agent-mascot";
-import { IconArrow, IconCheck, IconDoc } from "@/components/layout/agxp-icons";
+import { IconArrow, IconCheck, IconChart, IconDoc, IconUsers } from "@/components/layout/agxp-icons";
 import { listProjects, type Project } from "@/lib/projects";
 import { loadProjectStats, type ProjectStats } from "@/lib/project-stats";
 import { listAgents, type Agent, type AgentType } from "@/lib/agents";
@@ -35,6 +35,12 @@ import { dateStr } from "@/lib/utils";
  */
 
 const RECENT = 4;
+
+/** What each agent is for, in three words each — the verbs, not the title. */
+const ROLE_CARDS = [
+  { role: "consultant" as const, who: "Your Consultant", Ic: IconChart, lines: ["Research.", "Structure.", "Execute."] },
+  { role: "coach" as const, who: "Your Coach", Ic: IconUsers, lines: ["Reflect.", "Improve.", "Move forward."] },
+];
 const ROLES: AgentType[] = ["consultant", "coach"];
 
 /**
@@ -139,15 +145,16 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
   return (
     <section className="home" aria-labelledby="home-title">
       {/*
-       * The hero: one orbit, the two agents on it, and the words at its
-       * centre. That is the product's own picture — two agents, one project
-       * — and it is the same drawing as the mark in the bar.
+       * The hero: one orbit, the two agents on it, the words at its centre,
+       * and what each of them is for at either end. That is the product's
+       * own picture — two agents, one project — and the same drawing as the
+       * mark in the bar.
        *
-       * It replaces a photographic wash (/brand/core.jpg blended to the
-       * accent). The photo brought its own wireframe lines, which went muddy
-       * the moment the accent was anything warm, and it forced the pair out
-       * to the screen edges with half a screen of nothing between them.
-       * Drawn, every line is one we chose and it is the accent at any value.
+       * Everything here is drawn. It replaced a photographic wash
+       * (/brand/core.jpg blended to the accent), which brought its own
+       * wireframe lines, went muddy on any warm accent, and — being sized to
+       * the window — pushed the pair out to the screen edges with half a
+       * screen of nothing between them.
        */}
       <div className="home-hero">
         <span className="hh-glow" aria-hidden="true" />
@@ -155,24 +162,30 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
         <div className="hh-stage">
           {/* preserveAspectRatio="none": the orbit is scenery and should
               stretch to whatever band the hero has, not keep a ratio and
-              leave gaps beside the mascots. */}
+              leave gaps beside the mascots. Each path carries its own
+              travelling light, inside the group that spins, so the dot goes
+              round the orbit without a second animation to keep in step. */}
           <svg className="hh-orbit" viewBox="0 0 1000 420" preserveAspectRatio="none"
             aria-hidden="true" focusable="false">
-            <ellipse className="ho-a" cx="500" cy="210" rx="464" ry="150" transform="rotate(-9 500 210)" />
-            <ellipse className="ho-b" cx="500" cy="210" rx="464" ry="150" transform="rotate(9 500 210)" />
+            <g className="ho-ga">
+              <ellipse className="ho-a" cx="500" cy="210" rx="464" ry="150" transform="rotate(-9 500 210)" />
+              <circle className="ho-dot a" cx="36" cy="210" r="6" transform="rotate(-9 500 210)" />
+            </g>
+            <g className="ho-gb">
+              <ellipse className="ho-b" cx="500" cy="210" rx="464" ry="150" transform="rotate(9 500 210)" />
+              <circle className="ho-dot b" cx="964" cy="210" r="6" transform="rotate(9 500 210)" />
+            </g>
             <ellipse className="ho-c" cx="500" cy="210" rx="300" ry="196" />
           </svg>
 
-          {/* Left, centre, right on one band. The mascots are grid columns,
-              so the distance between them is the room the words do not take
-              — it cannot run them off a narrow screen, and there is no
-              viewport-relative gap to get wrong. */}
-          <span className="hh-slot">
-            <AgentMascot role="consultant" size={150} state="idle" level={4}
-              mood={cheer ? "pleased" : null} lookAt={at} />
-          </span>
-
+          {/*
+            The words come first in the DOM so the heading is the first thing
+            read, and the five columns are placed by grid rather than by
+            source order — otherwise a screen reader meets "Your Consultant"
+            before it is told what the screen is.
+          */}
           <div className="hh-words">
+            <span className="hh-kicker">AgentiX Projects</span>
             <h1 id="home-title" className="home-title">
               Two agents.<br /><span>One project.</span>
             </h1>
@@ -184,7 +197,30 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
             </button>
           </div>
 
-          <span className="hh-slot">
+          {/* What each one is actually for. The Home screen never said, and
+              "Consultant" and "Coach" are job titles, not a description of
+              the two documents you get. They drop out below 1200px, where
+              five columns would leave the title about six characters. */}
+          {ROLE_CARDS.map(r => (
+            <article key={r.role} className={`hh-role ${r.role}`}>
+              <span className="hh-role-ic" aria-hidden="true"><r.Ic size={16} /></span>
+              <div>
+                <b>{r.who}</b>
+                {/* One verb a line, as in the mockup — and it is also what
+                    makes the two cards the same height, where "Reflect.
+                    Improve. Move forward." wrapped to one line more than
+                    "Research. Structure. Execute." and left the pair
+                    visibly uneven. */}
+                <p>{r.lines.map(l => <span key={l}>{l}</span>)}</p>
+              </div>
+            </article>
+          ))}
+
+          <span className="hh-slot consultant">
+            <AgentMascot role="consultant" size={150} state="idle" level={4}
+              mood={cheer ? "pleased" : null} lookAt={at} />
+          </span>
+          <span className="hh-slot coach">
             <AgentMascot role="coach" size={150} state="idle" level={4}
               mood={cheer ? "pleased" : null} lookAt={at} />
           </span>
