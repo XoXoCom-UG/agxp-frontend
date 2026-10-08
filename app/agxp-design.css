@@ -7325,11 +7325,25 @@ html[data-glass="solid"] .ph-card{ backdrop-filter:none; background:var(--popove
  * The vertical rhythm is in vh rather than fixed steps: on a short laptop
  * the hero gives up its own padding first, before anything has to be cut.
  */
+/*
+ * The column is on the SECTIONS, not on the page, and the hero is simply as
+ * wide as the page.
+ *
+ * It used to be the other way round: a 900px column, and the hero broke out
+ * of it with `width:100vw` and negative margins. That works until the page
+ * scrolls — 100vw counts the scrollbar and the container does not, so the
+ * hero ended up a few pixels wider than the room and the whole screen could
+ * be swiped sideways. No vw, no breakout, no bug to tune.
+ */
 .home{
-  width:100%; max-width:900px; margin:0 auto;
-  padding:clamp(8px, 1.6vh, 22px) var(--sp-5) clamp(12px, 2vh, 26px);
+  width:100%; margin:0 auto;
+  padding:clamp(8px, 1.6vh, 22px) 0 clamp(12px, 2vh, 26px);
   min-height:100%;
   display:flex; flex-direction:column;
+}
+.home > *:not(.home-hero){
+  width:100%; max-width:900px; margin-inline:auto;
+  padding-inline:var(--sp-5);
 }
 
 /* The hero. Centred, generous, and the only place on this screen that
@@ -7341,87 +7355,83 @@ html[data-glass="solid"] .ph-card{ backdrop-filter:none; background:var(--popove
  * closer. The padding keeps them off the true edge, so the few pixels .app
  * clips for a scrollbar can never cut into a mascot.
  */
+/*
+ * The hero: one band, holding the orbit, the pair and the words.
+ *
+ * It replaced a full-bleed photographic wash (/brand/core.jpg, blended to
+ * the accent). Three things were wrong with the photo and none of them were
+ * fixable by tuning it: it carried its own wireframe lines, which read as
+ * noise and went muddy on any warm accent; it was sized to the window, so
+ * the pair had to go to the screen edges and left half a screen of nothing
+ * between them; and it set the hero's height, which is why this screen kept
+ * running past the fold. Drawn instead: every line is one we chose, it is
+ * the accent at any value, and the height is the content's.
+ */
 .home-hero{
-  position:relative; isolation:isolate;
-  width:100vw; margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw);
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  text-align:center;
-  padding:clamp(10px, 2.4vh, 40px) clamp(20px, 5vw, 110px);
-  margin-bottom:clamp(14px, 2.6vh, 40px);
-  /* The art is deliberately wider than the screen, so the crop belongs here.
-     Left to the scroll container it became overflow-x:hidden — which still
-     lets a trackpad swipe sideways into 230px of nothing. clip cannot be
-     scrolled at all. */
+  position:relative; isolation:isolate; width:100%;
+  display:flex; align-items:center; justify-content:center;
+  padding:clamp(10px, 2vh, 34px) clamp(16px, 3vw, 56px);
+  margin-bottom:clamp(14px, 2.4vh, 36px);
+  /* The glow is deliberately wider than the window, so the crop lives here. */
   overflow:clip;
-  /* Takes the room the bottom section leaves, and gives it back first when
-     the window is short. */
-  flex:1 1 auto; min-height:0;
+  /* Takes the room the bottom section leaves — but min-content, not 0: with
+     0 the hero shrank below its own content and, because it clips rather
+     than scrolls, a short window cut the title in half instead of letting
+     the page scroll. */
+  flex:1 1 auto; min-height:min-content;
 }
-/*
- * The core art, blended rather than placed. It is a JPEG on a near-black
- * ground, so `screen` drops its background to nothing and keeps only the
- * light — a plain <img> would sit there as a visible dark rectangle. The
- * mask fades the edges so it has no border at all.
- */
-.hh-art{
-  position:absolute; left:50%; top:50%; z-index:0;
-  /* Sized to the window, not to the hero: "half the screen" is a fact about
-     the viewport, and the mask leaves roughly the middle half of this lit. */
-  width:132vw; aspect-ratio:1200 / 520;
-  transform:translate(-50%, -50%);
-  /*
-   * Two background layers blended INSIDE the element: the accent on top, the
-   * art underneath, `color` taking hue and saturation from the first and
-   * luminance from the second. So the planet is painted in whatever colour
-   * Settings is on, and nothing outside this element is touched — a
-   * mix-blend-mode on a child would have tinted the whole stacking context.
-   */
+
+/* The light in the room. A drawn gradient rather than a picture, so it tints
+   cleanly to whatever Settings is on and has no edges to hide. */
+.hh-glow{
+  position:absolute; left:50%; top:50%; translate:-50% -50%;
+  width:128%; aspect-ratio:1.9; pointer-events:none; z-index:0;
   background:
-    radial-gradient(60% 70% at 50% 50%, var(--acc) 0%, var(--acc-2) 58%, var(--primary) 100%),
-    url("/brand/core.jpg") center / cover no-repeat;
-  background-blend-mode:color;
-  /* screen on top of that drops the art's near-black ground against the page,
-     so there is no rectangle — only the light. */
-  mix-blend-mode:screen; opacity:.62; pointer-events:none;
-  mask-image:radial-gradient(60% 56% at 50% 50%, #000 34%, transparent 78%);
-  -webkit-mask-image:radial-gradient(60% 56% at 50% 50%, #000 34%, transparent 78%);
+    radial-gradient(44% 56% at 50% 50%, color-mix(in srgb, var(--acc) 34%, transparent), transparent 70%),
+    radial-gradient(70% 76% at 50% 52%, color-mix(in srgb, var(--acc-2) 16%, transparent), transparent 72%);
+  filter:blur(6px);
 }
-/* On a light theme the same trick runs the other way: `multiply` keeps the
-   dark lines and drops the white that screen would have kept. */
-html.light .hh-art{ mix-blend-mode:multiply; opacity:.34; }
+html.light .hh-glow{ opacity:.6; }
 
-/* Everything the hero draws sits over the planet. z-index on the children
-   rather than a negative one on the art: negative would have put it behind
-   the hero's own background too, and then the mask would clip against the
-   page instead of the section. */
-.home-hero > *:not(.hh-art){ position:relative; z-index:1; }
-
-.home-hero .brand-logo{ margin-bottom:clamp(8px, 1.8vh, 26px); }
-.home-lede{
-  margin:clamp(6px, 1.2vh, 16px) 0 0; font-size:var(--text-base); line-height:1.6;
-  color:var(--secondary-foreground); max-width:42ch;
-}
-/* The hero spans the window now; its words must not. */
-.home-hero .home-title{ max-width:18ch; }
-
-/* The two robots, at 150 against a 168px original: never scaled up, because
-   a soft mascot reads as a mistake. */
 /*
- * The pair sits at the two ends of a bounded row, not either side of a fixed
- * gap. A viewport-relative gap ran the right mascot off the edge of a phone
- * — and .app clips its overflow, so it vanished silently rather than showing
- * a scrollbar. space-between inside a max-width that can never exceed the
- * space available means the distance works itself out and cannot overflow,
- * with no media query to get wrong.
+ * Mascot, words, mascot — on one band.
+ *
+ * The pair are grid columns, so the gap between them is simply the room the
+ * words do not take. That is what fixes "they are at the edges with nothing
+ * in between": there is now something in between, and the distance can no
+ * longer run a mascot off a narrow screen the way a vw-based gap did.
  */
-.hh-bots{
-  display:flex; align-items:center; justify-content:space-between;
-  /* Capped so they flank the title rather than hug the window frame: at the
-     full width of a 1900px screen they read as two separate things instead
-     of a pair. */
-  width:100%; max-width:1280px; margin:clamp(10px, 2.4vh, 32px) auto;
-  gap:var(--sp-3);
+.hh-stage{
+  position:relative; z-index:1;
+  width:100%; max-width:1180px;
+  display:grid; grid-template-columns:auto minmax(0, 1fr) auto;
+  align-items:center; justify-items:center;
+  gap:clamp(4px, 2vw, 40px);
 }
+
+/* The orbit the two of them are on: the same drawing as the mark in the bar,
+   two paths crossing around one core. Behind everything, stretched to the
+   band rather than keeping a ratio — it is scenery, not a diagram. */
+.hh-orbit{
+  position:absolute; inset:-18% -2%; width:104%; height:136%;
+  z-index:-1; pointer-events:none; overflow:visible;
+}
+.hh-orbit ellipse{ fill:none; stroke-width:1.1; vector-effect:non-scaling-stroke; }
+.ho-a{ stroke:color-mix(in srgb, var(--acc) 52%, transparent); }
+.ho-b{ stroke:color-mix(in srgb, var(--acc-2) 46%, transparent); }
+.ho-c{ stroke:color-mix(in srgb, var(--acc) 20%, transparent); }
+@media (prefers-reduced-motion:no-preference){
+  /* Slow enough to notice only if you look — the same rule the drifting
+     background follows. transform-box/origin so the rotation is about the
+     ellipse's own centre and not the SVG's corner. */
+  .ho-a, .ho-b{
+    transform-box:fill-box; transform-origin:center;
+    animation:hhOrbit 64s linear infinite;
+  }
+  .ho-b{ animation-duration:84s; animation-direction:reverse; }
+}
+@keyframes hhOrbit{ to{ rotate:360deg; } }
+
 .hh-slot{ display:inline-flex; }
 
 /* Duolingo-ish: a slow float with the two out of phase, so the pair looks
@@ -7441,25 +7451,45 @@ html.light .hh-art{ mix-blend-mode:multiply; opacity:.34; }
 .home-hero:has(.home-start:focus-visible) .hh-slot{
   animation-play-state:paused;
 }
-/*
- * The row can never be wider than its container, but the two mascots can:
- * at 159px each they need about 340, which a 320px phone does not have.
- * AgentMascot sets its size inline, so this is the one place an !important
- * is the honest tool rather than a shortcut.
- */
 /* .mascot, not svg: AgentMascot renders a <span> wrapper, so a child
-   selector on the element misses it entirely and the shadow never applied.
-   Held just under full strength so the planet reads through them and the
-   two sit IN the scene rather than on top of it. */
-.hh-bots .mascot{
-  opacity:.82;
-  filter:drop-shadow(0 16px 30px rgba(0,0,0,0.45));
+   selector on the element misses it entirely. */
+.hh-stage .mascot{ filter:drop-shadow(0 18px 34px rgba(0,0,0,0.5)); }
+
+.hh-words{
+  display:flex; flex-direction:column; align-items:center; text-align:center;
+  min-width:0;
 }
-.hh-spark{
-  width:9px; height:9px; border-radius:50%; flex-shrink:0;
-  background:var(--acc-2);
-  box-shadow:0 0 20px 3px color-mix(in srgb, var(--acc-2) 70%, transparent);
+.home-hero .home-title{ max-width:14ch; }
+.home-lede{
+  margin:clamp(6px, 1.2vh, 14px) 0 0; font-size:var(--text-base); line-height:1.6;
+  color:var(--secondary-foreground); max-width:40ch;
 }
+.hh-words .home-start{ margin-top:clamp(14px, 2.6vh, 28px); }
+
+/*
+ * Narrow: the pair steps down beside the words instead of flanking them,
+ * because three columns inside 700px gives the title about six characters.
+ * They stay — they are the screen's one piece of character — just smaller
+ * and under the words.
+ */
+@media (max-width:860px){
+  .hh-stage{ grid-template-columns:1fr; gap:clamp(8px, 2vh, 20px); }
+  .hh-words{ order:-1; }
+  .hh-stage .mascot{ width:104px !important; height:104px !important; }
+  .hh-slot{ grid-row:2; }
+  .hh-slot:first-of-type{ justify-self:end; margin-right:clamp(6px, 4vw, 40px); }
+  .hh-slot:last-of-type{ grid-row:2; justify-self:start; margin-left:clamp(6px, 4vw, 40px); }
+  .home-hero .home-title{ max-width:none; }
+  .hh-orbit{ inset:-6% -2%; height:112%; }
+}
+@media (max-height:760px){
+  .hh-stage .mascot{ width:112px !important; height:112px !important; }
+  .home-lede{ display:none; }
+}
+@media (max-width:430px){
+  .hh-stage .mascot{ width:84px !important; height:84px !important; }
+}
+
 
 .home-start{
   display:inline-flex; align-items:center; gap:10px;
@@ -7476,13 +7506,17 @@ html.light .hh-art{ mix-blend-mode:multiply; opacity:.34; }
 .home-start:active{ transform:scale(0.985); }
 
 @media (prefers-reduced-motion:no-preference){
-  .home-hero .brand-logo, .home-hero .home-title, .home-lede, .hh-bots, .home-start{
+  .home-hero .home-title, .home-lede, .hh-slot, .home-start{
     animation:homeRise 560ms var(--ease-out) backwards;
   }
   .home-hero .home-title{ animation-delay:70ms; }
   .home-lede{ animation-delay:130ms; }
-  .hh-bots{ animation-delay:190ms; }
   .home-start{ animation-delay:260ms; }
+  /* The slots own the endless float, so they cannot also carry the entry —
+     the second animation would replace the first. The rise is on the mascot
+     inside, and the float stays on the slot. */
+  .hh-slot{ animation:none; }
+  .hh-stage .mascot{ animation:homeRise 560ms var(--ease-out) 190ms backwards; }
 }
 .home-eyebrow{
   margin:0 0 var(--sp-4); font-family:var(--font-mono); font-size:var(--text-3xs);
@@ -7640,21 +7674,6 @@ html.light .hh-art{ mix-blend-mode:multiply; opacity:.34; }
 .home-sectionbar .home-state{ gap:var(--sp-4); }
 .home-sectionbar .home-state b{ font-size:var(--text-base); }
 
-/* The mascots shrink with the window, because at 152 they alone are a fifth
-   of a laptop screen. AgentMascot writes its size inline, so the override
-   has to win. */
-@media (max-height:900px){
-  .hh-bots .mascot{ width:120px !important; height:120px !important; }
-}
-@media (max-height:760px){
-  .hh-bots .mascot{ width:96px !important; height:96px !important; }
-  .home-lede{ display:none; }
-}
-/* The row can never be wider than its container, but the two mascots can:
-   at 152px each they need about 340, which a 320px phone does not have. */
-@media (max-width:430px){
-  .hh-bots .mascot{ width:104px !important; height:104px !important; }
-}
 
 /* Scrolling stays as the last resort, not the plan: below this the content
    physically cannot fit, and clipping it is what started all this. */

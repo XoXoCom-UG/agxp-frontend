@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BrandLogo } from "@/components/layout/brand-logo";
 import { AgentMascot } from "@/components/layout/agent-mascot";
 import { IconArrow, IconCheck, IconDoc } from "@/components/layout/agxp-icons";
 import { listProjects, type Project } from "@/lib/projects";
@@ -140,48 +139,56 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
   return (
     <section className="home" aria-labelledby="home-title">
       {/*
-       * The hero. The art is real: /brand/core.jpg is the project core with
-       * the two agents on their orbit, and the two robots are the same ones
-       * the invitation email carries. They are 168px native, so they are
-       * never drawn larger than that — scaled up they go soft, and a blurred
-       * mascot is worse than a smaller sharp one.
+       * The hero: one orbit, the two agents on it, and the words at its
+       * centre. That is the product's own picture — two agents, one project
+       * — and it is the same drawing as the mark in the bar.
+       *
+       * It replaces a photographic wash (/brand/core.jpg blended to the
+       * accent). The photo brought its own wireframe lines, which went muddy
+       * the moment the accent was anything warm, and it forced the pair out
+       * to the screen edges with half a screen of nothing between them.
+       * Drawn, every line is one we chose and it is the accent at any value.
        */}
       <div className="home-hero">
-        <span className="hh-art" aria-hidden="true" />
-        <BrandLogo size={34} />
-        <h1 id="home-title" className="home-title">
-          Two agents.<br /><span>One project.</span>
-        </h1>
-        <p className="home-lede">One plans the work. The other plans the people.</p>
+        <span className="hh-glow" aria-hidden="true" />
 
-        {/*
-          The app's own mascots, the same component the chat and the picker
-          draw. Vector, so they are sharp at any size; they blink and follow
-          the cursor like everywhere else. The flat PNGs they replaced were
-          168px email fallbacks and went soft the moment they were enlarged.
-        */}
-        {/* Each mascot sits in its own slot so the slow float lives on the
-            wrapper: the mascot's own breathing animation stays untouched
-            underneath, and the two would otherwise cancel each other out. */}
-        <div className="hh-bots" aria-hidden="true">
+        <div className="hh-stage">
+          {/* preserveAspectRatio="none": the orbit is scenery and should
+              stretch to whatever band the hero has, not keep a ratio and
+              leave gaps beside the mascots. */}
+          <svg className="hh-orbit" viewBox="0 0 1000 420" preserveAspectRatio="none"
+            aria-hidden="true" focusable="false">
+            <ellipse className="ho-a" cx="500" cy="210" rx="464" ry="150" transform="rotate(-9 500 210)" />
+            <ellipse className="ho-b" cx="500" cy="210" rx="464" ry="150" transform="rotate(9 500 210)" />
+            <ellipse className="ho-c" cx="500" cy="210" rx="300" ry="196" />
+          </svg>
+
+          {/* Left, centre, right on one band. The mascots are grid columns,
+              so the distance between them is the room the words do not take
+              — it cannot run them off a narrow screen, and there is no
+              viewport-relative gap to get wrong. */}
           <span className="hh-slot">
-            <AgentMascot role="consultant" size={152} state="idle" level={4}
-              mood={cheer ? "pleased" : null}
-              lookAt={at} />
+            <AgentMascot role="consultant" size={150} state="idle" level={4}
+              mood={cheer ? "pleased" : null} lookAt={at} />
           </span>
-          <span className="hh-spark" />
+
+          <div className="hh-words">
+            <h1 id="home-title" className="home-title">
+              Two agents.<br /><span>One project.</span>
+            </h1>
+            <p className="home-lede">One plans the work. The other plans the people.</p>
+            <button ref={startRef} className="home-start" onClick={onNew}
+              onPointerEnter={() => notice(true)} onPointerLeave={() => notice(false)}
+              onFocus={() => notice(true)} onBlur={() => notice(false)}>
+              Start a new chat <IconArrow size={16} />
+            </button>
+          </div>
+
           <span className="hh-slot">
-            <AgentMascot role="coach" size={152} state="idle" level={4}
-              mood={cheer ? "pleased" : null}
-              lookAt={at} />
+            <AgentMascot role="coach" size={150} state="idle" level={4}
+              mood={cheer ? "pleased" : null} lookAt={at} />
           </span>
         </div>
-
-        <button ref={startRef} className="home-start" onClick={onNew}
-          onPointerEnter={() => notice(true)} onPointerLeave={() => notice(false)}
-          onFocus={() => notice(true)} onBlur={() => notice(false)}>
-          Start a new chat <IconArrow size={16} />
-        </button>
       </div>
 
       {/*
