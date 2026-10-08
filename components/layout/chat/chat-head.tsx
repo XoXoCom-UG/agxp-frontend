@@ -135,7 +135,7 @@ export function ChatHead({
 
       {headExtra}
 
-      <button className={`doc-pill${ready ? " ready" : ""}${currentDoc ? " done" : ""}`}
+      <button data-tour="rail" className={`doc-pill${ready ? " ready" : ""}${currentDoc ? " done" : ""}`}
         style={{ ["--fill" as string]: (currentDoc ? 100 : pct) / 100 }}
         aria-expanded={pop === "doc"} data-tooltip={deliverable.title}
         aria-label={`${deliverable.title}, ${currentDoc ? "ready" : `${pct}% ready`}`}

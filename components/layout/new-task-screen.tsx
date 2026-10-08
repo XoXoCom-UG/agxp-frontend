@@ -522,7 +522,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
           {/* The screen has no visible title — Patryk wanted it clean — but a
               screen reader still needs to know where it is. */}
           <h1 className="visually-hidden">{project?.name && project.name !== "New Project" ? project.name : "New task"}</h1>
-          <div className="slot" data-role="consultant" style={{ flexGrow: share("consultant") }} {...slotProps("consultant")}>
+          <div className="slot" data-role="consultant" data-tour="panel-consultant" style={{ flexGrow: share("consultant") }} {...slotProps("consultant")}>
             {panelFor("consultant")}
           </div>
 
@@ -564,7 +564,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
           {/* Folded away it is `display:none`, which already takes it out of
               the tab order and the accessibility tree — but it stays mounted,
               so a reply still streaming into it survives the fold. */}
-          <div className={`slot coach-slot ${coachMode}${unfolding ? " unfolding" : ""}`} data-role="coach" style={{ flexGrow: share("coach") }} {...slotProps("coach")}>
+          <div className={`slot coach-slot ${coachMode}${unfolding ? " unfolding" : ""}`} data-role="coach" data-tour="panel-coach" style={{ flexGrow: share("coach") }} {...slotProps("coach")}>
             {panelFor("coach")}
           </div>
 

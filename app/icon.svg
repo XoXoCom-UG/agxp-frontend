@@ -1,16 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40" fill="none">
-  <!-- The AgentiX mark (components/layout/brand-logo.tsx). The tile is part of
-       the mark itself here, so the star keeps its contrast on a light tab bar. -->
+  <!-- The AgentiX mark (components/layout/brand-logo.tsx): two strokes, one
+       per agent, crossing into the X the name ends on. The tile is part of
+       the mark here, so it keeps its contrast on a light tab bar. -->
   <defs>
     <linearGradient id="tile" x1="4" y1="2" x2="36" y2="38" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#242A38"/><stop offset="1" stop-color="#0B0D14"/>
     </linearGradient>
-    <linearGradient id="star" x1="9" y1="9" x2="31" y2="31" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#8FC2FF"/><stop offset="0.5" stop-color="#FFFFFF"/><stop offset="1" stop-color="#4F8FFF"/>
+    <linearGradient id="a" x1="12" y1="12" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8FC2FF"/><stop offset="1" stop-color="#2E7BC4"/>
+    </linearGradient>
+    <linearGradient id="b" x1="28" y1="12" x2="12" y2="28" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#C3AEFF"/><stop offset="1" stop-color="#6D5BD0"/>
     </linearGradient>
   </defs>
   <rect width="40" height="40" rx="10" fill="url(#tile)"/>
-  <!-- No glow: it is mud at 16px. -->
-  <path d="M20 5.5C20 20 20 20 34.5 20 20 20 20 20 20 34.5 20 20 20 20 5.5 20 20 20 20 20 20 5.5Z" fill="url(#star)" transform="rotate(45 20 20)"/>
-  <circle cx="20" cy="20" r="2.1" fill="#FFFFFF"/>
+  <!-- No glow: it is mud at 16px. The strokes are 5.6 wide for the same
+       reason — the old four-point star collapsed into a blob down there. -->
+  <path d="M12.4 12.4 L27.6 27.6" stroke="url(#a)" stroke-width="5.6" stroke-linecap="round"/>
+  <path d="M27.6 12.4 L12.4 27.6" stroke="url(#b)" stroke-width="5.6" stroke-linecap="round"/>
+  <circle cx="20" cy="20" r="3.1" fill="#0B0D14"/>
+  <circle cx="20" cy="20" r="2.2" fill="#FFFFFF"/>
 </svg>

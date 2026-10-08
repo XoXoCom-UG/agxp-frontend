@@ -29,7 +29,7 @@ export function PlanBadge() {
   const window = plan.period === "week" ? "this week" : "this month";
 
   return (
-    <span className={`plan-badge ${tone}`}
+    <span className={`plan-badge ${tone}`} data-tour="plan"
       data-tooltip={left === 0
         ? `No projects left ${window} on ${plan.label}. The allowance resets at the start of the next ${plan.period}.`
         : `${left} of ${projectsLabel(plan)} projects left ${window} on the ${plan.label} plan`}>

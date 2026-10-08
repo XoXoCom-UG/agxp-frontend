@@ -32,7 +32,7 @@ import type { AgentType } from "@/lib/agents";
  * see it again. A stored number lower than this counts as unseen; equal or
  * higher counts as seen, so a version rollback does not re-nag everybody.
  */
-export const TOUR_VERSION = 1;
+export const TOUR_VERSION = 2;
 
 /** The metadata key on the account, and the mirror key in this browser. */
 export const TOUR_META_KEY = "agxp_tour";
@@ -100,7 +100,7 @@ export function clearLocalTour(): void {
  * happen rather than something you are told about. `paint` is the only one
  * wired to the real app: it changes the actual colours while you look at it.
  */
-export type Scene = "hello" | "pair" | "ask" | "build" | "memory" | "paint" | "go";
+export type Scene = "hello" | "name" | "pair" | "ask" | "build" | "memory" | "paint" | "go";
 
 export interface TourStep {
   id: Scene;
@@ -120,6 +120,12 @@ export const TOUR_STEPS: TourStep[] = [
     tag: "Hello",
     title: "You are not alone in here.",
     line: "Two agents work your transformation with you — this takes about a minute, and you can leave at any point.",
+  },
+  {
+    id: "name",
+    tag: "You",
+    title: "What should they call you?",
+    line: "Both agents address you by name. You can leave it blank and change it later in Settings — nothing depends on it.",
   },
   {
     id: "pair",
@@ -159,7 +165,7 @@ export const TOUR_STEPS: TourStep[] = [
     id: "go",
     tag: "Ready",
     title: "That is the whole thing.",
-    line: "Start a project whenever you like. This tour lives in Settings → Profile if you ever want it again.",
+    line: "Next, a quick walk around the actual screen — then the room is yours. Both live in Settings → Profile whenever you want them again.",
   },
 ];
 

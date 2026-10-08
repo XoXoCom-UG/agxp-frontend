@@ -11,6 +11,7 @@ import {
 } from "@/components/layout/agxp-icons";
 import { ACCENTS, readAccent, applyAccent, type Accent } from "@/lib/accent";
 import { GLASS_OPTIONS, useAppearance, setAppearance } from "@/lib/appearance";
+import { useAuth } from "@/lib/auth-context";
 import { useDialogFocus } from "@/lib/use-dialog-focus";
 import { useExit } from "@/lib/use-exit";
 import {
@@ -35,7 +36,13 @@ import {
  * The content is lib/tour.ts; this file only draws it.
  */
 
-export function Tour({ onDone }: { onDone: () => void }) {
+/**
+ * `onDone(completed)` — true only when the last step was pressed through.
+ * Escape and Skip report false, and the caller uses that to decide whether
+ * the walk-through that follows should run at all: someone who dismisses a
+ * tutorial is telling us they do not want the second one either.
+ */
+export function Tour({ onDone }: { onDone: (completed: boolean) => void }) {
   const [i, setI] = useState(0);
   const [dir, setDir] = useState<1 | -1>(1);
   const stage = useRef<HTMLDivElement>(null);
@@ -52,13 +59,16 @@ export function Tour({ onDone }: { onDone: () => void }) {
   // press rather than quietly dismissing it.
   useDialogFocus(stage, nextBtn);
 
-  const finish = useCallback(() => exitThen(onDone), [exitThen, onDone]);
+  const finish = useCallback(
+    (completed: boolean) => exitThen(() => onDone(completed)),
+    [exitThen, onDone],
+  );
 
   const go = useCallback((d: 1 | -1) => {
     setI(prev => {
       const n = prev + d;
       if (n < 0) return prev;
-      if (n >= TOUR_STEPS.length) { finish(); return prev; }
+      if (n >= TOUR_STEPS.length) { finish(true); return prev; }
       setDir(d);
       return n;
     });
@@ -69,7 +79,7 @@ export function Tour({ onDone }: { onDone: () => void }) {
   // who closes a tutorial is telling us they do not want it again.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") { e.preventDefault(); finish(); return; }
+      if (e.key === "Escape") { e.preventDefault(); finish(false); return; }
       if (e.key === "ArrowRight") { e.preventDefault(); go(1); }
       else if (e.key === "ArrowLeft") { e.preventDefault(); go(-1); }
     }
@@ -101,7 +111,7 @@ export function Tour({ onDone }: { onDone: () => void }) {
       <div className="tour-stage" ref={stage}>
         <header className="tour-top">
           <BrandLogo size={26} />
-          <button className="tour-skip" onClick={finish}>
+          <button className="tour-skip" onClick={() => finish(last)}>
             {last ? "Close" : "Skip the tour"} <IconX size={13} />
           </button>
         </header>
@@ -195,6 +205,7 @@ function Guides({ scene, speaker }: { scene: Scene; speaker?: "consultant" | "co
 
 function SceneFor({ scene }: { scene: Scene }) {
   switch (scene) {
+    case "name": return <NameScene />;
     case "pair": return <PairScene />;
     case "ask": return <AskScene />;
     case "build": return <BuildScene />;
@@ -212,6 +223,65 @@ function HelloScene() {
         <i /><i /><i />
       </span>
       <p className="ts-hello-k">A transformation, worked by two.</p>
+    </div>
+  );
+}
+
+/**
+ * Your name, written to the account from inside the tour.
+ *
+ * The step exists because the agents address you by it and an empty one
+ * reads as a product that does not know who signed in — but it is genuinely
+ * optional, and saying so is what keeps it from feeling like a form standing
+ * between you and the app.
+ *
+ * It uses the split the auth context already has: setProfileName paints it
+ * everywhere immediately, saveProfileName is the half that persists. Saving
+ * happens on blur, which is what pressing Next does anyway.
+ */
+function NameScene() {
+  const { user, profileName, setProfileName, saveProfileName } = useAuth();
+  const [state, setState] = useState<"idle" | "saving" | "saved" | "failed">("idle");
+
+  async function save() {
+    const clean = profileName.trim();
+    setState("saving");
+    try {
+      await saveProfileName(clean);
+      setState("saved");
+    } catch {
+      // Not worth stopping a tutorial over, and not worth hiding either:
+      // Settings is the place that can actually retry.
+      setState("failed");
+    }
+  }
+
+  return (
+    <div className="ts-name">
+      <label className="ts-set">
+        <span className="ts-set-l">Your name</span>
+        <input className="ts-input" type="text" value={profileName} maxLength={60}
+          placeholder="How your agents address you" autoComplete="name"
+          onChange={e => { setProfileName(e.target.value); setState("idle"); }}
+          onBlur={save}
+          onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } }} />
+      </label>
+
+      <p className="ts-hello-line">
+        <AgentMascot role="consultant" size={32} level={3} />
+        <span>
+          {profileName.trim()
+            ? <>Good to meet you, <b>{profileName.trim()}</b>.</>
+            : <>Right — we will just say <b>you</b>.</>}
+        </span>
+      </p>
+
+      <p className="ts-note">
+        {state === "saving" ? "Saving…"
+          : state === "saved" ? "Saved to your account."
+          : state === "failed" ? "Could not save that just now — Settings → Profile will take it."
+          : `Signed in as ${user?.email ?? "this account"}. The email is not changeable here.`}
+      </p>
     </div>
   );
 }

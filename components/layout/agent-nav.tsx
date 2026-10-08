@@ -226,9 +226,12 @@ export function AgentNav({ startEnabled, startHint, started, projectName, onStar
         {/* ?new=1 so this always starts a task. Without it the button now
             lands on Home for anyone who has projects, which is the opposite
             of what it says. */}
-        <Link href="/dashboard?new=1" className={`nb-item nb-lead${tab === "newtask" && !started ? " active" : ""}`}
+        <Link href="/dashboard?new=1" data-tour="new-task"
+          className={`nb-item nb-lead${tab === "newtask" && !started ? " active" : ""}`}
           aria-current={tab === "newtask" ? "page" : undefined}>
-          <IconPlus size={15} />New Task
+          {/* The label is wrapped so the bar can drop it on a narrow phone
+              without losing the accessible name — see the 380px rule. */}
+          <IconPlus size={15} /><span className="nb-label">New Task</span>
         </Link>
       </div>
 
@@ -239,7 +242,8 @@ export function AgentNav({ startEnabled, startHint, started, projectName, onStar
           {TABS.map((t, i) => (
             <Fragment key={t.id}>
               {i > 0 && <span className="nb-rule" aria-hidden="true" />}
-              <Link href={t.href} className={`nb-item${tab === t.id ? " active" : ""}`}
+              <Link href={t.href} data-tour={t.id}
+                className={`nb-item${tab === t.id ? " active" : ""}`}
                 aria-current={tab === t.id ? "page" : undefined}>
                 <t.icon size={15} />{t.label}
               </Link>
@@ -265,7 +269,7 @@ export function AgentNav({ startEnabled, startHint, started, projectName, onStar
           {/* Its own positioned wrapper — the popover anchors to the avatar's own
               edge, not the whole header's, now that the avatar isn't the last
               child of .util any more (Start sits to its right). */}
-          <div className="avatar-wrap" ref={wrapRef}>
+          <div className="avatar-wrap" ref={wrapRef} data-tour="account">
             <button ref={triggerRef} className="avatar" aria-label="Account menu" aria-haspopup="menu"
               aria-expanded={menuOpen} aria-controls={menuOpen ? menuId : undefined}
               onKeyDown={onTriggerKey}

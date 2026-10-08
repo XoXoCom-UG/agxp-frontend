@@ -113,7 +113,7 @@ export function ChatComposer({ role, sending, canSend, projectId, inputRef, onSe
   }
 
   return (
-    <div className={`chat-input pb${wide ? " is-wide" : ""}`}>
+    <div className={`chat-input pb${wide ? " is-wide" : ""}`} data-tour="composer">
       <span ref={measureRef} className="pb-measure" aria-hidden="true">{input}</span>
 
       {(files.length > 0 || uploading > 0 || fileError) && (
