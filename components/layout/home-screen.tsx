@@ -3,10 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AgentMascot } from "@/components/layout/agent-mascot";
-import { IconArrow, IconCheck, IconChart, IconDoc, IconUsers } from "@/components/layout/agxp-icons";
+import { IconArchive, IconArrow, IconCheck, IconChart, IconClock, IconDoc, IconPlus, IconUsers } from "@/components/layout/agxp-icons";
 import { listProjects, type Project } from "@/lib/projects";
 import { loadProjectStats, type ProjectStats } from "@/lib/project-stats";
-import { listAgents, type Agent, type AgentType } from "@/lib/agents";
+import { listAgents, type Agent } from "@/lib/agents";
 import { dateStr } from "@/lib/utils";
 
 /**
@@ -34,48 +34,26 @@ import { dateStr } from "@/lib/utils";
  * first screen there, unchanged.
  */
 
-const RECENT = 4;
+/**
+ * The three ways to look at the list. Real statuses, not decoration: the
+ * whole account is loaded here anyway, so filtering is free and the counts
+ * are the truth.
+ */
+type Tab = "recent" | "completed" | "archived";
+const TABS: { id: Tab; label: string; Ic: typeof IconClock }[] = [
+  { id: "recent", label: "Recent", Ic: IconClock },
+  { id: "completed", label: "Completed", Ic: IconCheck },
+  { id: "archived", label: "Archived", Ic: IconArchive },
+];
+/** How many cards the box shows. Four is one row on a wide screen and two
+ *  on a laptop; past that it stops being "where was I" and becomes History. */
+const SHOWN = 4;
 
 /** What each agent is for, in three words each — the verbs, not the title. */
 const ROLE_CARDS = [
   { role: "consultant" as const, who: "Your Consultant", Ic: IconChart, lines: ["Research.", "Structure.", "Execute."] },
   { role: "coach" as const, who: "Your Coach", Ic: IconUsers, lines: ["Reflect.", "Improve.", "Move forward."] },
 ];
-const ROLES: AgentType[] = ["consultant", "coach"];
-
-/**
- * The project's progress as one ring in two halves — the Consultant on the
- * left, the Coach on the right. The average alone hides the case that
- * matters: "50%" can be one conversation finished and the other not started.
- *
- * Radius 22, so a half circle is π·22 ≈ 69.1 long; each half is drawn from
- * the top and dashed to its own share.
- */
-const HALF = Math.PI * 22;
-
-function DuoRing({ by }: { by: Record<AgentType, number | null> }) {
-  const any = ROLES.some(r => by[r] !== null);
-  if (!any) return null;
-  return (
-    <svg className="hl-ring" viewBox="0 0 52 52" aria-hidden="true" focusable="false">
-      {ROLES.map(role => {
-        const pct = Math.max(0, Math.min(100, by[role] ?? 0));
-        // Left half sweeps anticlockwise from the top, right half clockwise,
-        // so both fill away from 12 o'clock and meet at the bottom.
-        const d = role === "consultant"
-          ? "M26,4 A22,22 0 0,0 26,48"
-          : "M26,4 A22,22 0 0,1 26,48";
-        return (
-          <g key={role}>
-            <path className="hr-track" d={d} />
-            <path className={`hr-fill ${role}`} d={d}
-              style={{ strokeDasharray: HALF, strokeDashoffset: HALF * (1 - pct / 100) }} />
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
 
 export function HomeScreen({ onNew }: { onNew: () => void }) {
   const router = useRouter();
@@ -105,42 +83,48 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
     setCheer(true);
     window.setTimeout(() => setCheer(false), 300);
   }
-  const [projects, setProjects] = useState<Project[] | null>(null);
-  const [all, setAll] = useState<Project[]>([]);
+  /** Every project, archived included — the box filters, it does not fetch. */
+  const [all, setAll] = useState<Project[] | null>(null);
   const [stats, setStats] = useState<Record<string, ProjectStats>>({});
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [tab, setTab] = useState<Tab>("recent");
 
   useEffect(() => {
     let alive = true;
     listProjects()
       .then(list => {
         if (!alive) return;
-        const live = list.filter(p => p.status !== "Archived");
-        setAll(live);
-        setProjects(live.slice(0, RECENT + 1));
+        setAll(list);
         // Agents and numbers are context around the way back into your work:
         // a failure in either must not cost you the way back.
         listAgents().then(a => { if (alive) setAgents(a); }).catch(() => {});
-        loadProjectStats(live.slice(0, RECENT + 1).map(p => p.id))
+        // Only what a tab can actually put on screen: stats are a query per
+        // project, and nobody sees the ninth card.
+        loadProjectStats(list.slice(0, SHOWN * 3).map(p => p.id))
           .then(s => { if (alive) setStats(s); })
           .catch(() => {});
       })
-      .catch(() => { if (alive) setProjects([]); });
+      .catch(() => { if (alive) setAll([]); });
     return () => { alive = false; };
   }, []);
 
   // Still loading, or nothing to come back to: the caller decides what to
   // show instead, so this renders nothing rather than a flash of empty state.
-  if (!projects || projects.length === 0) return null;
+  if (!all || all.length === 0) return null;
 
-  const [latest, ...rest] = projects;
-  const st = stats[latest.id];
-  const nameOf = (id: string | null) => (id ? agents.find(a => a.id === id)?.name : undefined);
+  const live = all.filter(p => p.status !== "Archived");
+  if (live.length === 0) return null;
+
   const open = (id: string) => router.push(`/dashboard/project/${id}`);
+  const byTab = (t: Tab) =>
+    t === "archived" ? all.filter(p => p.status === "Archived")
+      : t === "completed" ? live.filter(p => p.status === "Completed")
+      : live;
+  const counts = { recent: live.length, completed: byTab("completed").length, archived: byTab("archived").length };
+  const shown = byTab(tab).slice(0, SHOWN);
 
   const trained = agents.filter(a => !a.archived_at && a.last_projects.length > 0).length;
   const documents = Object.values(stats).reduce((n, s) => n + s.docs, 0);
-  const done = all.filter(p => p.status === "Completed").length;
 
   return (
     <section className="home" aria-labelledby="home-title">
@@ -158,6 +142,13 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
        */}
       <div className="home-hero">
         <span className="hh-glow" aria-hidden="true" />
+        {/* The planet. /brand/core.jpg is the product's own art — the core
+            with the two agents on their orbit — and this is the shape it was
+            drawn as. It was washed across the whole window before, 132vw
+            wide at low opacity, which is what turned it into red mud on a
+            warm accent; contained to a circle behind the title it reads as
+            the thing it is. */}
+        <span className="hh-planet" aria-hidden="true" />
 
         <div className="hh-stage">
           {/* preserveAspectRatio="none": the orbit is scenery and should
@@ -228,84 +219,92 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
       </div>
 
       {/*
-        On the section's own line, not trailing the page. At the bottom they
-        sat below a tall hero and the cards, so they landed on the fold and
-        you saw two orphaned digits with their labels cut — technically fine
-        once the page scrolled, and it still read as broken. Here they are
-        context for the list underneath and visible without scrolling.
+        The box: what you have, and the way back into it.
+        
+        It is one panel rather than a loose eyebrow and a list, because this
+        half of the screen answers a different question from the hero — not
+        "what is this" but "what am I in the middle of" — and a boxed panel
+        is what says so without a heading shouting it.
+        
+        The tabs are real statuses, not decoration: everything the account
+        has is loaded here already, so filtering costs nothing and the counts
+        beside them are the truth rather than a guess.
       */}
-      <div className="home-sectionbar">
-        <p className="home-eyebrow">Or pick up where you left off</p>
-      {/* State, not a second menu. History, Agents and Settings are in the
-          bar already; these say how much there is and go to the same place. */}
-      <ul className="home-state">
-        <li>
-          <button onClick={() => router.push("/dashboard/history")}>
-            <b>{all.length}</b>
-            <span>{done > 0 ? `projects · ${done} done` : all.length === 1 ? "project" : "projects"}</span>
-          </button>
-        </li>
-        <li>
-          <button onClick={() => router.push("/dashboard/agents")}>
-            <b>{trained}</b>
-            <span>{trained === 1 ? "agent trained" : "agents trained"}</span>
-          </button>
-        </li>
-        {documents > 0 && (
-          <li>
-            <button onClick={() => router.push("/dashboard/history")}>
-              <b>{documents}</b>
-              <span>{documents === 1 ? "document" : "documents"}</span>
-            </button>
-          </li>
-        )}
-      </ul>
-      </div>
+      <section className="home-panel" aria-labelledby="home-panel-title">
+        <header className="hp-head">
+          <h2 id="home-panel-title">Your Projects</h2>
 
-      <button className="home-last" onClick={() => open(latest.id)}>
-        <span className="hl-gauge" aria-hidden="true">
-          {st && <DuoRing by={st.progressBy} />}
-          <span className="hl-faces">
-            <AgentMascot role="consultant" size={34} level={2} agentId={latest.consultant_agent_id ?? undefined} />
-            <AgentMascot role="coach" size={34} level={2} agentId={latest.coach_agent_id ?? undefined} />
-          </span>
-        </span>
-
-        <span className="hl-body">
-          <b>{latest.name}</b>
-          <span className="hl-pair">
-            {[nameOf(latest.consultant_agent_id), nameOf(latest.coach_agent_id)]
-              .filter(Boolean).join("  +  ") || "No agents yet"}
-          </span>
-          {/* What the project is FOR: the two documents, and which exist. */}
-          <span className="hl-docs">
-            {([["consultant", "Transformation Concept"], ["coach", "Change Plan"]] as const).map(([role, title]) => {
-              const has = st?.docsBy[role];
-              return (
-                <span key={role} className={`hl-doc ${role}${has ? " on" : ""}`}>
-                  {has ? <IconCheck size={11} /> : <IconDoc size={11} />}
-                  {title}
-                </span>
-              );
-            })}
-          </span>
-        </span>
-
-        <span className="hl-go"><span>{dateStr(latest.last_activity_at)}</span><IconArrow size={15} /></span>
-      </button>
-
-      {rest.length > 0 && (
-        <ul className="home-recent" aria-label="Also open">
-          {rest.slice(0, RECENT).map(p => (
-            <li key={p.id}>
-              <button onClick={() => open(p.id)}>
-                <b>{p.name}</b>
-                <span>{dateStr(p.last_activity_at)}</span>
+          <ul className="home-state">
+            <li>
+              <button onClick={() => router.push("/dashboard/history")}>
+                <b>{live.length}</b><span>{live.length === 1 ? "project" : "projects"}</span>
               </button>
             </li>
-          ))}
-        </ul>
-      )}
+            <li>
+              <button onClick={() => router.push("/dashboard/agents")}>
+                <b>{trained}</b><span>{trained === 1 ? "agent" : "agents"} trained</span>
+              </button>
+            </li>
+            <li>
+              <button onClick={() => router.push("/dashboard/history")}>
+                <b>{documents}</b><span>{documents === 1 ? "document" : "documents"}</span>
+              </button>
+            </li>
+          </ul>
+
+          <button className="hp-new" onClick={onNew}><IconPlus size={14} />New Project</button>
+        </header>
+
+        <div className="hp-tabs" role="tablist" aria-label="Which projects">
+          {TABS.map(t => {
+            const on = tab === t.id;
+            return (
+              <button key={t.id} role="tab" aria-selected={on} className={on ? "on" : ""}
+                onClick={() => setTab(t.id)}>
+                <t.Ic size={13} />{t.label}
+                <em>{counts[t.id]}</em>
+              </button>
+            );
+          })}
+        </div>
+
+        {shown.length === 0 ? (
+          <p className="hp-empty">Nothing {tab === "recent" ? "open" : tab} yet.</p>
+        ) : (
+          <ul className="hp-grid">
+            {shown.map((p, i) => {
+              const s = stats[p.id];
+              return (
+                <li key={p.id}>
+                  {/* The first card is the one you were last in, and it is
+                      marked rather than made bigger — a different size would
+                      break the row the moment there are three of them. */}
+                  <button className={`hp-card${i === 0 && tab === "recent" ? " is-last" : ""}`}
+                    onClick={() => open(p.id)}>
+                    <span className="hp-ic" aria-hidden="true">
+                      <span className="hp-faces">
+                        <AgentMascot role="consultant" size={22} level={2} agentId={p.consultant_agent_id ?? undefined} />
+                        <AgentMascot role="coach" size={22} level={2} agentId={p.coach_agent_id ?? undefined} />
+                      </span>
+                    </span>
+                    <b>{p.name}</b>
+                    <span className="hp-date">{dateStr(p.last_activity_at)}</span>
+                    <span className="hp-tags">
+                      {([["consultant", "Concept"], ["coach", "Plan"]] as const).map(([role, short]) => (
+                        <span key={role} className={`hp-tag ${role}${s?.docsBy[role] ? " on" : ""}`}>
+                          {s?.docsBy[role] ? <IconCheck size={10} /> : <IconDoc size={10} />}{short}
+                        </span>
+                      ))}
+                      {p.status === "Completed" && <span className="hp-tag done"><IconCheck size={10} />Done</span>}
+                    </span>
+                    <span className="hp-go" aria-hidden="true"><IconArrow size={14} /></span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
 
     </section>
   );
