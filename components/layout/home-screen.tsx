@@ -184,7 +184,40 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
         </button>
       </div>
 
-      <p className="home-eyebrow">Or pick up where you left off</p>
+      {/*
+        On the section's own line, not trailing the page. At the bottom they
+        sat below a tall hero and the cards, so they landed on the fold and
+        you saw two orphaned digits with their labels cut — technically fine
+        once the page scrolled, and it still read as broken. Here they are
+        context for the list underneath and visible without scrolling.
+      */}
+      <div className="home-sectionbar">
+        <p className="home-eyebrow">Or pick up where you left off</p>
+      {/* State, not a second menu. History, Agents and Settings are in the
+          bar already; these say how much there is and go to the same place. */}
+      <ul className="home-state">
+        <li>
+          <button onClick={() => router.push("/dashboard/history")}>
+            <b>{all.length}</b>
+            <span>{done > 0 ? `projects · ${done} done` : all.length === 1 ? "project" : "projects"}</span>
+          </button>
+        </li>
+        <li>
+          <button onClick={() => router.push("/dashboard/agents")}>
+            <b>{trained}</b>
+            <span>{trained === 1 ? "agent trained" : "agents trained"}</span>
+          </button>
+        </li>
+        {documents > 0 && (
+          <li>
+            <button onClick={() => router.push("/dashboard/history")}>
+              <b>{documents}</b>
+              <span>{documents === 1 ? "document" : "documents"}</span>
+            </button>
+          </li>
+        )}
+      </ul>
+      </div>
 
       <button className="home-last" onClick={() => open(latest.id)}>
         <span className="hl-gauge" aria-hidden="true">
@@ -231,32 +264,6 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
         </ul>
       )}
 
-      <div className="home-actions">
-        {/* State, not a second menu. History, Agents and Settings are in the
-            bar already; these say how much there is and go to the same place. */}
-        <ul className="home-state">
-          <li>
-            <button onClick={() => router.push("/dashboard/history")}>
-              <b>{all.length}</b>
-              <span>{done > 0 ? `projects · ${done} done` : all.length === 1 ? "project" : "projects"}</span>
-            </button>
-          </li>
-          <li>
-            <button onClick={() => router.push("/dashboard/agents")}>
-              <b>{trained}</b>
-              <span>{trained === 1 ? "agent trained" : "agents trained"}</span>
-            </button>
-          </li>
-          {documents > 0 && (
-            <li>
-              <button onClick={() => router.push("/dashboard/history")}>
-                <b>{documents}</b>
-                <span>{documents === 1 ? "document" : "documents"}</span>
-              </button>
-            </li>
-          )}
-        </ul>
-      </div>
     </section>
   );
 }

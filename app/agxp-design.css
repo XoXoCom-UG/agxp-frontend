@@ -7317,7 +7317,20 @@ html[data-glass="solid"] .ph-card{ backdrop-filter:none; background:var(--popove
 /* width:100% as well as the cap: the hero's negative margins make this a
    shrink-to-fit box otherwise, and the column under it collapsed to about a
    third of its width. */
-.home{ width:100%; max-width:900px; margin:0 auto; padding:var(--sp-6) var(--sp-5) var(--sp-6); }
+/*
+ * One screen, no scrolling. The column fills the height it is given and the
+ * hero takes whatever the bottom section does not, so everything lands
+ * inside the window instead of running past the fold.
+ *
+ * The vertical rhythm is in vh rather than fixed steps: on a short laptop
+ * the hero gives up its own padding first, before anything has to be cut.
+ */
+.home{
+  width:100%; max-width:900px; margin:0 auto;
+  padding:clamp(8px, 1.6vh, 22px) var(--sp-5) clamp(12px, 2vh, 26px);
+  min-height:100%;
+  display:flex; flex-direction:column;
+}
 
 /* The hero. Centred, generous, and the only place on this screen that
    raises its voice. */
@@ -7331,9 +7344,18 @@ html[data-glass="solid"] .ph-card{ backdrop-filter:none; background:var(--popove
 .home-hero{
   position:relative; isolation:isolate;
   width:100vw; margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw);
-  display:flex; flex-direction:column; align-items:center; text-align:center;
-  padding:var(--sp-7) clamp(20px, 5vw, 110px) var(--sp-6);
-  margin-bottom:var(--sp-7);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  text-align:center;
+  padding:clamp(10px, 2.4vh, 40px) clamp(20px, 5vw, 110px);
+  margin-bottom:clamp(14px, 2.6vh, 40px);
+  /* The art is deliberately wider than the screen, so the crop belongs here.
+     Left to the scroll container it became overflow-x:hidden — which still
+     lets a trackpad swipe sideways into 230px of nothing. clip cannot be
+     scrolled at all. */
+  overflow:clip;
+  /* Takes the room the bottom section leaves, and gives it back first when
+     the window is short. */
+  flex:1 1 auto; min-height:0;
 }
 /*
  * The core art, blended rather than placed. It is a JPEG on a near-black
@@ -7374,9 +7396,9 @@ html.light .hh-art{ mix-blend-mode:multiply; opacity:.34; }
    page instead of the section. */
 .home-hero > *:not(.hh-art){ position:relative; z-index:1; }
 
-.home-hero .brand-logo{ margin-bottom:var(--sp-6); }
+.home-hero .brand-logo{ margin-bottom:clamp(8px, 1.8vh, 26px); }
 .home-lede{
-  margin:var(--sp-4) 0 0; font-size:var(--text-base); line-height:1.6;
+  margin:clamp(6px, 1.2vh, 16px) 0 0; font-size:var(--text-base); line-height:1.6;
   color:var(--secondary-foreground); max-width:42ch;
 }
 /* The hero spans the window now; its words must not. */
@@ -7397,7 +7419,7 @@ html.light .hh-art{ mix-blend-mode:multiply; opacity:.34; }
   /* Capped so they flank the title rather than hug the window frame: at the
      full width of a 1900px screen they read as two separate things instead
      of a pair. */
-  width:100%; max-width:1280px; margin:var(--sp-6) auto;
+  width:100%; max-width:1280px; margin:clamp(10px, 2.4vh, 32px) auto;
   gap:var(--sp-3);
 }
 .hh-slot{ display:inline-flex; }
@@ -7425,14 +7447,11 @@ html.light .hh-art{ mix-blend-mode:multiply; opacity:.34; }
  * AgentMascot sets its size inline, so this is the one place an !important
  * is the honest tool rather than a shortcut.
  */
-@media (max-width:430px){
-  .hh-bots > .mascot{ width:112px !important; height:112px !important; }
-}
 /* .mascot, not svg: AgentMascot renders a <span> wrapper, so a child
    selector on the element misses it entirely and the shadow never applied.
    Held just under full strength so the planet reads through them and the
    two sit IN the scene rather than on top of it. */
-.hh-bots > .mascot{
+.hh-bots .mascot{
   opacity:.82;
   filter:drop-shadow(0 16px 30px rgba(0,0,0,0.45));
 }
@@ -7471,7 +7490,7 @@ html.light .hh-art{ mix-blend-mode:multiply; opacity:.34; }
 }
 .home-title{
   margin:0; font-family:var(--font-display);
-  font-size:clamp(34px, 5vw, 58px); line-height:1.08; font-weight:600;
+  font-size:clamp(28px, 3vw + 1.6vh, 54px); line-height:1.08; font-weight:600;
   letter-spacing:-0.035em; color:var(--foreground);
 }
 /* inline-block plus the padding: background-clip crops to the line box, and
@@ -7560,15 +7579,6 @@ html.light .hh-art{ mix-blend-mode:multiply; opacity:.34; }
 }
 .home-recent span{ font-size:var(--text-3xs); color:var(--muted-foreground); }
 
-/* The edges: state, and the way in. Not a copy of the bar. */
-.home-actions{
-  display:flex; align-items:center; justify-content:space-between; gap:var(--sp-5);
-  flex-wrap:wrap; margin-top:var(--sp-7); padding-top:var(--sp-5);
-  /* Breathing room under the last row: against the bottom of a scroll area
-     the counters read as cut off even when they are whole. */
-  padding-bottom:var(--sp-7);
-  border-top:1px solid var(--border);
-}
 .home-new{
   display:inline-flex; align-items:center; gap:8px; flex-shrink:0;
   height:44px; padding:0 22px; border-radius:var(--radius-pill);
@@ -7598,19 +7608,19 @@ html.light .hh-art{ mix-blend-mode:multiply; opacity:.34; }
 @media (max-width:560px){
   .home-last{ flex-wrap:wrap; }
   .hl-go{ flex-direction:row; align-items:center; width:100%; justify-content:space-between; }
-  .home-actions{ justify-content:flex-start; }
+  .home-sectionbar{ gap:var(--sp-3); }
 }
 
 /* Settled, not performed: a short rise, and nothing at all for anyone who
    asked the system to stop moving things. */
 @media (prefers-reduced-motion:no-preference){
-  .home-eyebrow, .home-title, .home-last, .home-recent, .home-actions{
+  .home-sectionbar, .home-title, .home-last, .home-recent{
     animation:homeRise 500ms var(--ease-out) backwards;
   }
   .home-title{ animation-delay:50ms; }
   .home-last{ animation-delay:110ms; }
   .home-recent{ animation-delay:170ms; }
-  .home-actions{ animation-delay:220ms; }
+  .home-sectionbar{ animation-delay:170ms; }
 }
 @keyframes homeRise{
   from{ opacity:0; transform:translateY(10px); }
@@ -7618,7 +7628,34 @@ html.light .hh-art{ mix-blend-mode:multiply; opacity:.34; }
 }
 
 
-/* Home is the one screen taller than the window, so it is the one that
-   scrolls. .app is fixed and clips, which is right for the two-panel
-   workspace and wrong here — the counters at the bottom were cut off. */
+
+
+/* The counters moved onto the section's own line so they are never the thing
+   sitting on the fold. */
+.home-sectionbar{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:var(--sp-5); flex-wrap:wrap;
+}
+.home-sectionbar .home-eyebrow{ margin:0; }
+.home-sectionbar .home-state{ gap:var(--sp-4); }
+.home-sectionbar .home-state b{ font-size:var(--text-base); }
+
+/* The mascots shrink with the window, because at 152 they alone are a fifth
+   of a laptop screen. AgentMascot writes its size inline, so the override
+   has to win. */
+@media (max-height:900px){
+  .hh-bots .mascot{ width:120px !important; height:120px !important; }
+}
+@media (max-height:760px){
+  .hh-bots .mascot{ width:96px !important; height:96px !important; }
+  .home-lede{ display:none; }
+}
+/* The row can never be wider than its container, but the two mascots can:
+   at 152px each they need about 340, which a 320px phone does not have. */
+@media (max-width:430px){
+  .hh-bots .mascot{ width:104px !important; height:104px !important; }
+}
+
+/* Scrolling stays as the last resort, not the plan: below this the content
+   physically cannot fit, and clipping it is what started all this. */
 .home-root{ overflow-y:auto; overflow-x:clip; }
