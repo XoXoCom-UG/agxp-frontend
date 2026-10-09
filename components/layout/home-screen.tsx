@@ -141,13 +141,9 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
        * screen of nothing between them.
        */}
       <div className="home-hero">
-        <span className="hh-glow" aria-hidden="true" />
-        {/* The planet. /brand/core.jpg is the product's own art — the core
-            with the two agents on their orbit — and this is the shape it was
-            drawn as. It was washed across the whole window before, 132vw
-            wide at low opacity, which is what turned it into red mud on a
-            warm accent; contained to a circle behind the title it reads as
-            the thing it is. */}
+        {/* One backdrop element, drawn. See .hh-planet — the blurred ellipse
+            and the blended photograph that used to be here are what put two
+            hard bands across the hero. */}
         <span className="hh-planet" aria-hidden="true" />
 
         <div className="hh-stage">

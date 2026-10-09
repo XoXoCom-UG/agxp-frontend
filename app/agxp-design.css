@@ -7387,41 +7387,53 @@ html[data-glass="solid"] .ph-card{ backdrop-filter:none; background:var(--popove
   flex:1 1 auto; min-height:min-content;
 }
 
-/* The light in the room. A drawn gradient rather than a picture, so it tints
-   cleanly to whatever Settings is on and has no edges to hide. */
-.hh-glow{
-  position:absolute; left:50%; top:50%; translate:-50% -50%;
-  width:128%; aspect-ratio:1.9; pointer-events:none; z-index:0;
-  background:
-    radial-gradient(44% 56% at 50% 50%, color-mix(in srgb, var(--acc) 34%, transparent), transparent 70%),
-    radial-gradient(70% 76% at 50% 52%, color-mix(in srgb, var(--acc-2) 16%, transparent), transparent 72%);
-  filter:blur(6px);
-}
-html.light .hh-glow{ opacity:.6; }
-
 /*
- * The planet. Two background layers blended INSIDE the element: the accent
- * on top, the art underneath, `color` taking hue and saturation from the
- * first and luminance from the second — so it is painted in whatever colour
- * Settings is on, and nothing outside this element is touched.
+ * The backdrop: ONE element, drawn, with no blend mode anywhere.
  *
- * `screen` on top of that drops the art's near-black ground against the
- * page, so there is no rectangle, only the lit wireframe. Contained to a
- * circle behind the title: washed across the window at 132vw it was the
- * red mud that made this screen unreadable.
+ * What was here before was three stacked translucent layers — a blurred
+ * ellipse, and a planet that mixed /brand/core.jpg with the accent through
+ * `background-blend-mode:color` and then sat on the page through
+ * `mix-blend-mode:screen`. Two things went wrong with that and both were
+ * invisible until you looked at a real screen:
+ *
+ *   - the JPEG is 1200x520 and the element is a square, so at `165%` the
+ *     image did not reach the top and bottom of its own box. Where there was
+ *     no image to blend with, the accent gradient came through raw — the two
+ *     hard horizontal bands across the hero.
+ *   - a blend mode composites against whatever happens to be underneath, so
+ *     the result changed with the theme, the accent and the glass setting.
+ *     Nothing about it could be reasoned about from the rule itself.
+ *
+ * So: a sphere made of gradients, nothing to blend, nothing to clip wrong,
+ * and the same drawing on every accent.
  */
 .hh-planet{
   position:absolute; left:50%; top:50%; translate:-50% -50%;
-  width:min(520px, 34vw); aspect-ratio:1; z-index:0; pointer-events:none;
+  /*
+   * Sized off the hero's HEIGHT, not its width, and never taller than it.
+   * The hero clips, so a sphere bigger than the band was cut flat top and
+   * bottom and became a bright bar with rounded ends behind the title —
+   * which is exactly what a 520px circle did in a 450px hero. Fitting
+   * inside means the gradient reaches transparent before any edge, so
+   * there is nothing left to clip.
+   */
+  height:min(94%, 560px); width:auto; aspect-ratio:1; border-radius:50%;
+  z-index:0; pointer-events:none;
   background:
-    radial-gradient(circle at 50% 50%, var(--acc) 0%, var(--acc-2) 56%, var(--primary) 100%),
-    url("/brand/core.jpg") center / 165% no-repeat;
-  background-blend-mode:color;
-  mix-blend-mode:screen; opacity:.5;
-  mask-image:radial-gradient(circle at 50% 50%, #000 54%, transparent 78%);
-  -webkit-mask-image:radial-gradient(circle at 50% 50%, #000 54%, transparent 78%);
+    /* the lit side, off-centre, so it reads as a sphere and not a disc */
+    radial-gradient(circle at 36% 30%,
+      color-mix(in srgb, var(--acc) 46%, transparent) 0%,
+      color-mix(in srgb, var(--acc) 20%, transparent) 32%,
+      color-mix(in srgb, var(--primary) 22%, transparent) 60%,
+      transparent 86%);
 }
-html.light .hh-planet{ mix-blend-mode:multiply; opacity:.26; }
+/* The rim. Inset to where the body has already faded out, so it is the
+   sphere's edge and not a ring around empty space. */
+.hh-planet::after{
+  content:""; position:absolute; inset:9%; border-radius:50%;
+  border:1px solid color-mix(in srgb, var(--acc) 14%, transparent);
+}
+html.light .hh-planet{ opacity:.5; }
 
 /*
  * Mascot, words, mascot — on one band.
@@ -7456,14 +7468,16 @@ html.light .hh-planet{ mix-blend-mode:multiply; opacity:.26; }
   position:absolute; inset:-10% 9%; width:82%; height:120%;
   z-index:-1; pointer-events:none; overflow:visible;
 }
-.hh-orbit ellipse{ fill:none; stroke-width:1.1; vector-effect:non-scaling-stroke; }
-.ho-a{ stroke:color-mix(in srgb, var(--acc) 52%, transparent); }
-.ho-b{ stroke:color-mix(in srgb, var(--acc-2) 46%, transparent); }
-.ho-c{ stroke:color-mix(in srgb, var(--acc) 20%, transparent); }
+.hh-orbit ellipse{ fill:none; stroke-width:1; vector-effect:non-scaling-stroke; }
+/* Held well down. At half strength the three of them crossed the mascots
+   and both cards and the screen read as tangled wire, not as an orbit. */
+.ho-a{ stroke:color-mix(in srgb, var(--acc) 24%, transparent); }
+.ho-b{ stroke:color-mix(in srgb, var(--acc-2) 20%, transparent); }
+.ho-c{ display:none; }
 /* The light travelling the path. Inside the group that spins, so it goes
    round the orbit on the group's animation — one timeline, nothing to keep
    in step with anything. */
-.ho-dot{ fill:var(--acc); }
+.ho-dot{ fill:var(--acc); opacity:.7; }
 .ho-dot.b{ fill:var(--acc-2); }
 @media (prefers-reduced-motion:no-preference){
   /* Slow enough to notice only if you look — the same rule the drifting
