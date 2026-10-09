@@ -1,28 +1,26 @@
-"use client";
-
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/auth-context";
+import type { Metadata } from "next";
+import { Landing } from "@/components/layout/landing";
 
 /**
- * "/" only decides where to go. Without an auth cookie proxy.ts has already
- * sent the visitor to /login, so this only runs for cookie holders — and the
- * cookie alone can't be trusted (see proxy.ts), so the real session decides.
+ * "/" is the public landing page.
+ *
+ * It used to be a redirect — proxy.ts sent anonymous visitors to /login and
+ * this page only decided where cookie holders went. That left
+ * agentics-projects.com, which is linked from the company site, showing a
+ * sign-in box and nothing else (2026-10-09 call).
+ *
+ * A server component so it can carry its own metadata; the session check
+ * that forwards a signed-in visitor to the workspace lives in <Landing>,
+ * which is the client half.
  */
-export default function Root() {
-  const { session, loading } = useAuth();
-  const router = useRouter();
+export const metadata: Metadata = {
+  title: "AgentiX Projects",
+  description:
+    "Two AI agents work one transformation with you: a Consultant who writes the "
+    + "Transformation Concept, and a Coach who writes the Change Plan.",
+  alternates: { canonical: "/" },
+};
 
-  useEffect(() => {
-    if (!loading) {
-      router.replace(session ? "/dashboard" : "/login");
-    }
-  }, [session, loading, router]);
-
-  return (
-    <main className="root-wait">
-      <span className="spinner spinner-lg" aria-hidden="true" />
-      <span className="visually-hidden" role="status">Loading…</span>
-    </main>
-  );
+export default function Page() {
+  return <Landing />;
 }

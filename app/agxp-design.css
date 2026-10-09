@@ -7410,15 +7410,30 @@ html[data-glass="solid"] .ph-card{ backdrop-filter:none; background:var(--popove
   /* A fraction of the band, not nearly all of it. At 94% it was fine while
      the box took half the screen; with the hero alone it became a bright
      disc with the title sitting on top of it. */
-  height:min(62%, 520px); width:auto; aspect-ratio:1; border-radius:50%;
+  height:min(62%, 520px); width:auto; aspect-ratio:1;
   z-index:0; pointer-events:none;
+  /*
+   * Two layers, and NO border-radius.
+   *
+   * It used to be one gradient centred at 36%/30% for the lit side, on a
+   * element rounded to a circle. An off-centre radial sizes itself to the
+   * farthest corner, so on the opposite side it was still opaque when it
+   * reached the element's edge — and the rounding cut it there. That hard
+   * arc is what made the planet read as a flat disc rather than a sphere.
+   *
+   * So: the body is centred and `closest-side`, which reaches nothing by
+   * the edge and needs no clipping, and the highlight is a separate, small
+   * off-centre layer that is long gone before any boundary.
+   */
   background:
-    /* the lit side, off-centre, so it reads as a sphere and not a disc */
-    radial-gradient(circle at 36% 30%,
-      color-mix(in srgb, var(--acc) 34%, transparent) 0%,
-      color-mix(in srgb, var(--acc) 16%, transparent) 32%,
-      color-mix(in srgb, var(--primary) 22%, transparent) 60%,
-      transparent 86%);
+    radial-gradient(circle closest-side at 38% 32%,
+      color-mix(in srgb, var(--acc) 26%, transparent) 0%,
+      transparent 62%),
+    radial-gradient(circle closest-side at 50% 50%,
+      color-mix(in srgb, var(--acc) 15%, transparent) 0%,
+      color-mix(in srgb, var(--primary) 16%, transparent) 46%,
+      color-mix(in srgb, var(--primary) 6%, transparent) 72%,
+      transparent 100%);
 }
 html.light .hh-planet{ opacity:.55; }
 
@@ -7538,7 +7553,7 @@ html.light .hh-planet{ opacity:.55; }
   margin:clamp(6px, 1.2vh, 14px) 0 0; font-size:var(--text-base); line-height:1.6;
   color:var(--secondary-foreground); max-width:40ch;
 }
-.hh-words .home-start{ margin-top:clamp(14px, 2.6vh, 28px); }
+
 
 /*
  * Narrow: the pair steps down beside the words instead of flanking them,
@@ -8220,3 +8235,116 @@ html.light .walk-hole{ box-shadow:0 0 0 9999px rgba(12,18,32,0.5),
    `inset:0` on a fixed element measures past the browser chrome, which put
    the Next button under the URL bar. */
 .tour{ height:100dvh; }
+
+
+/* ===========================================================================
+   THE PUBLIC LANDING PAGE at "/"
+   Shares its hero with the Home screen (.home-hero and everything under it),
+   so the promise made here and the first screen after signing in are the
+   same picture. Only the frame around it belongs to this file.
+   =========================================================================== */
+.lp{
+  min-height:100vh; min-height:100dvh;
+  display:flex; flex-direction:column;
+  background:var(--background); color:var(--foreground);
+}
+
+.lp-bar{
+  flex-shrink:0; display:flex; align-items:center; justify-content:space-between;
+  gap:var(--sp-4); padding:var(--sp-5) clamp(16px, 4vw, 40px);
+}
+.lp-signin{
+  display:inline-flex; align-items:center; gap:7px; flex-shrink:0;
+  height:36px; padding:0 16px; border-radius:var(--radius-pill);
+  border:1px solid var(--border); background:var(--card);
+  color:var(--secondary-foreground); font-size:var(--text-xs); font-weight:500;
+  text-decoration:none;
+  transition:color 160ms var(--ease-out), border-color 160ms var(--ease-out);
+}
+@media (hover:hover) and (pointer:fine){
+  .lp-signin:hover{ color:var(--foreground); border-color:var(--border-strong); }
+}
+
+.lp-main{
+  flex:1 1 auto; min-height:0;
+  display:flex; flex-direction:column; align-items:center;
+  padding:0 clamp(16px, 4vw, 40px);
+}
+/* The hero stops stretching here. On the Home screen it is the only thing on
+   the page and takes the slack; here there is a page under it. */
+.lp-main .home-hero{ flex:0 0 auto; padding-block:clamp(16px, 4vh, 54px); }
+.lp-main .hh-planet{ height:min(420px, 46vh); }
+
+/* The two deliverables, named exactly as lib/deliverables.ts names them. */
+.lp-pair{
+  width:100%; max-width:860px;
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));
+  gap:var(--sp-4); margin-top:clamp(8px, 2vh, 24px);
+}
+.lp-pair article{
+  padding:var(--sp-5); border-radius:20px;
+  border:1px solid var(--border); background:var(--card);
+}
+.lp-ic{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:38px; height:38px; border-radius:12px; margin-bottom:var(--sp-4);
+  border:1px solid color-mix(in srgb, var(--acc) 34%, transparent);
+  background:color-mix(in srgb, var(--acc) 12%, transparent);
+  color:var(--acc-hi);
+}
+.lp-ic.coach{
+  border-color:color-mix(in srgb, var(--acc-2) 38%, transparent);
+  background:color-mix(in srgb, var(--acc-2) 12%, transparent);
+  color:var(--acc-2);
+}
+.lp-pair h2{
+  margin:0; font-family:var(--font-display); font-size:var(--text-lg);
+  font-weight:600; letter-spacing:-0.02em; color:var(--foreground);
+}
+.lp-pair p{
+  margin:9px 0 0; font-size:var(--text-xs); line-height:1.65;
+  color:var(--secondary-foreground);
+}
+
+/* The AI notice. On the page, not in the terms: the documents these agents
+   write get taken into real meetings. */
+.lp-ai{
+  display:flex; align-items:flex-start; gap:9px;
+  width:100%; max-width:860px; margin:var(--sp-5) 0 0;
+  padding:12px var(--sp-4); border-radius:14px;
+  border:1px solid color-mix(in srgb, var(--warn) 32%, var(--border));
+  background:color-mix(in srgb, var(--warn) 7%, transparent);
+  font-size:var(--text-2xs); line-height:1.6; color:var(--secondary-foreground);
+}
+.lp-ai svg{ flex-shrink:0; margin-top:1px; color:var(--warn); }
+
+.lp-beta{
+  margin:var(--sp-4) 0 clamp(20px, 4vh, 48px);
+  font-size:var(--text-2xs); color:var(--muted-foreground); text-align:center;
+}
+
+.lp-foot{
+  flex-shrink:0; display:flex; align-items:center; justify-content:space-between;
+  gap:var(--sp-4); flex-wrap:wrap;
+  padding:var(--sp-5) clamp(16px, 4vw, 40px);
+  border-top:1px solid var(--border);
+  font-size:var(--text-3xs); color:var(--muted-foreground);
+}
+.lp-foot nav{ display:flex; gap:var(--sp-4); flex-wrap:wrap; }
+.lp-foot a{ color:var(--muted-foreground); text-decoration:none; }
+@media (hover:hover) and (pointer:fine){
+  .lp-foot a:hover{ color:var(--foreground); text-decoration:underline; }
+}
+
+/* The hero's call to action is a Link here and a button on Home; the wrapper
+   keeps the pair looking at whichever it is. */
+.hh-cta{ display:inline-flex; margin-top:clamp(14px, 2.6vh, 28px); }
+.hh-cta > a.home-start{ text-decoration:none; }
+
+/* The AI notice under the composer. Deliberately the quietest text on the
+   screen: it must be present on every message without competing with the
+   conversation. */
+.pb-ai{
+  margin:7px 0 0; text-align:center;
+  font-size:var(--text-3xs); line-height:1.4; color:var(--muted-foreground);
+}

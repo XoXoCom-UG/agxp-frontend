@@ -23,11 +23,11 @@ export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const authed = hasSupabaseSession(req);
 
-  // Not logged in → block app pages. "/" is in the list too: it only decides
-  // where to send you, and without a cookie the answer is always /login — so
-  // the server gives it straight away instead of the page flashing a spinner
-  // while the client works out the same thing.
-  if (!authed && (pathname === "/" || PROTECTED_PREFIXES.some(p => pathname.startsWith(p)))) {
+  // Not logged in → block app pages. "/" is NOT one of them any more: it is
+  // the public landing page now, and sending anonymous visitors to /login
+  // was what left agentics-projects.com — linked from the company site —
+  // showing a sign-in box and no explanation of what the product is.
+  if (!authed && PROTECTED_PREFIXES.some(p => pathname.startsWith(p))) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
@@ -49,7 +49,7 @@ export function proxy(req: NextRequest) {
   //
   // The same reason keeps "/" with a cookie on the client: sending it to
   // /dashboard from here would trust the cookie just as blindly, and an expired
-  // one would loop the same way. app/page.tsx checks the real session instead.
+  // one would loop the same way. The landing page checks the real session.
   return NextResponse.next();
 }
 

@@ -172,6 +172,15 @@ export function ChatComposer({ role, sending, canSend, projectId, inputRef, onSe
           </button>
         )}
       </div>
+
+      {/*
+        The AI notice, where the output is read rather than buried in the
+        terms — these agents write documents people take into real meetings.
+        One quiet line under the box, not a banner: a warning that has to be
+        dismissed is a warning nobody reads twice, and this one has to still
+        be true on the hundredth message.
+      */}
+      <p className="pb-ai">AI can make mistakes. Check anything you rely on.</p>
     </div>
   );
 }
