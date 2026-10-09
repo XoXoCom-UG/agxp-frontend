@@ -1,116 +1,25 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRef, useState } from "react";
 import { AgentMascot } from "@/components/layout/agent-mascot";
-import {
-  IconArchive, IconArrow, IconCheck, IconChart, IconClock, IconDoc, IconMoreV,
-  IconPlus, IconRestore, IconSearch, IconSpark, IconUsers, IconX,
-} from "@/components/layout/agxp-icons";
-import { archiveProject, listProjects, restoreProject, type Project } from "@/lib/projects";
-import { readStarred, toggleStarred } from "@/lib/starred";
-import { loadProjectStats, type ProjectStats } from "@/lib/project-stats";
-import { listAgents, type Agent } from "@/lib/agents";
-import { dateStr } from "@/lib/utils";
+import { IconArrow } from "@/components/layout/agxp-icons";
 
 /**
  * What you see when you come back.
  *
- * The workspace used to be the first thing after signing in, which is right
- * for a new account and wrong for a returning one: someone with twelve
- * projects in flight landed on "Build your AI team" with no sign that any of
- * them existed. The bar's Current Project button covers part of that, but it
- * lives in localStorage — on another machine, or after clearing site data,
- * there is nothing.
+ * One screen, one thing to do. It used to carry a box of your projects as
+ * well — removed on request (2026-10-09), so this no longer shows anything
+ * about the work you have in flight. That is a deliberate trade and worth
+ * knowing: the way back to a project is now the bar alone, which has Project
+ * History and a button straight to the one you were last in.
  *
- * One moment, quiet edges. The moment is the project you were in, not a
- * flourish: a launch animation is wonderful once and a toll booth by the
- * fortieth sign-in, and this app has been pushed the other way before
- * (Patryk, 2026-09-02: the start screen is the work itself).
- *
- * The edges are NOT a second navigation bar. History, Agents and Settings
- * are already up there; repeating them would add clicks and no information.
- * What the bar cannot show is state, so that is what the edges carry —
- * how many projects, how many agents you have trained, how many documents
- * came out — each one also the way in.
- *
- * Nobody with an empty account sees any of it: NewTaskScreen is still the
- * first screen there, unchanged.
+ * Whether this screen appears at all is still decided by the page, not here
+ * (app/dashboard/page.tsx): an empty account goes straight to the workspace,
+ * because a splash with a Start button is no use to someone who has not
+ * started anything. That is also why this component loads nothing — it has
+ * nothing left to load.
  */
-
-/**
- * The three ways to look at the list. Real statuses, not decoration: the
- * whole account is loaded here anyway, so filtering is free and the counts
- * are the truth.
- */
-type Tab = "recent" | "starred" | "completed" | "archived";
-const TABS: { id: Tab; label: string; Ic: typeof IconClock }[] = [
-  { id: "recent", label: "Recent", Ic: IconClock },
-  { id: "starred", label: "Starred", Ic: IconSpark },
-  { id: "completed", label: "Completed", Ic: IconCheck },
-  { id: "archived", label: "Archived", Ic: IconArchive },
-];
-/** How many cards the box shows. Four is one row on a wide screen and two
- *  on a laptop; past that it stops being "where was I" and becomes History. */
-const SHOWN = 4;
-
-/** What each agent is for, in three words each — the verbs, not the title. */
-const ROLE_CARDS = [
-  { role: "consultant" as const, who: "Your Consultant", Ic: IconChart, lines: ["Research.", "Structure.", "Execute."] },
-  { role: "coach" as const, who: "Your Coach", Ic: IconUsers, lines: ["Reflect.", "Improve.", "Move forward."] },
-];
-
-/**
- * The ··· on a card: star it, or put it away.
- *
- * Its own component because it owns an open/closed state and a click-away
- * listener, and a card that re-renders on every search keystroke should not
- * be carrying either. The markup matches the Agent Dashboard's menu so the
- * two look like the same control, which they are.
- */
-function CardMenu({ starred, archived, name, onStar, onArchive }: {
-  starred: boolean; archived: boolean; name: string;
-  onStar: () => void; onArchive: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const wrap = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function away(e: MouseEvent) {
-      if (!wrap.current?.contains(e.target as Node)) setOpen(false);
-    }
-    function esc(e: KeyboardEvent) { if (e.key === "Escape") setOpen(false); }
-    document.addEventListener("mousedown", away);
-    document.addEventListener("keydown", esc);
-    return () => {
-      document.removeEventListener("mousedown", away);
-      document.removeEventListener("keydown", esc);
-    };
-  }, [open]);
-
-  return (
-    <div className="hp-menu" ref={wrap}>
-      <button className="hp-menu-btn" aria-label={`More for ${name}`} aria-haspopup="menu"
-        aria-expanded={open} onClick={() => setOpen(o => !o)}>
-        <IconMoreV size={15} />
-      </button>
-      {open && (
-        <div className="hp-menu-pop t-dropdown" data-origin="top-right" role="menu">
-          <button role="menuitem" onClick={() => { setOpen(false); onStar(); }}>
-            <IconSpark size={12} />{starred ? "Unstar" : "Star"}
-          </button>
-          <button role="menuitem" onClick={() => { setOpen(false); onArchive(); }}>
-            {archived ? <><IconRestore size={12} />Restore</> : <><IconArchive size={12} />Archive</>}
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function HomeScreen({ onNew }: { onNew: () => void }) {
-  const router = useRouter();
   /*
    * The two agents notice the button. Hovering or focusing "Start a new
    * chat" makes them look down at it and give one small bounce — the mascot
@@ -137,96 +46,9 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
     setCheer(true);
     window.setTimeout(() => setCheer(false), 300);
   }
-  /** Every project, archived included — the box filters, it does not fetch. */
-  const [all, setAll] = useState<Project[] | null>(null);
-  const [stats, setStats] = useState<Record<string, ProjectStats>>({});
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [tab, setTab] = useState<Tab>("recent");
-  const [q, setQ] = useState("");
-  const [starred, setStarred] = useState<Set<string>>(() => readStarred());
-  /**
-   * Statuses changed from a card, held here until the next load.
-   *
-   * Archiving writes to the database and then the card has to leave the
-   * Recent tab immediately — refetching the whole list for one row would
-   * blank the box for a moment and lose the tab you were on.
-   */
-  const [moved, setMoved] = useState<Record<string, Project["status"]>>({});
-
-  useEffect(() => {
-    let alive = true;
-    listProjects()
-      .then(list => {
-        if (!alive) return;
-        setAll(list);
-        // Agents and numbers are context around the way back into your work:
-        // a failure in either must not cost you the way back.
-        listAgents().then(a => { if (alive) setAgents(a); }).catch(() => {});
-        // Only what a tab can actually put on screen: stats are a query per
-        // project, and nobody sees the ninth card.
-        loadProjectStats(list.slice(0, SHOWN * 3).map(p => p.id))
-          .then(s => { if (alive) setStats(s); })
-          .catch(() => {});
-      })
-      .catch(() => { if (alive) setAll([]); });
-    return () => { alive = false; };
-  }, []);
-
-  // Still loading, or nothing to come back to: the caller decides what to
-  // show instead, so this renders nothing rather than a flash of empty state.
-  if (!all || all.length === 0) return null;
-
-  const withMoves = all.map(p => (moved[p.id] ? { ...p, status: moved[p.id] } : p));
-  const live = withMoves.filter(p => p.status !== "Archived");
-  if (withMoves.length === 0) return null;
-
-  const open = (id: string) => router.push(`/dashboard/project/${id}`);
-  const byTab = (t: Tab) =>
-    t === "archived" ? withMoves.filter(p => p.status === "Archived")
-      : t === "starred" ? live.filter(p => starred.has(p.id))
-      : t === "completed" ? live.filter(p => p.status === "Completed")
-      : live;
-  const counts: Record<Tab, number> = {
-    recent: live.length,
-    starred: byTab("starred").length,
-    completed: byTab("completed").length,
-    archived: byTab("archived").length,
-  };
-  // Search runs over the whole tab, not over the four on screen — otherwise
-  // it would only ever find what you can already see.
-  const needle = q.trim().toLowerCase();
-  const matching = needle ? byTab(tab).filter(p => p.name.toLowerCase().includes(needle)) : byTab(tab);
-  const shown = matching.slice(0, SHOWN);
-
-  async function move(p: Project, to: "Archived" | "In Progress") {
-    setMoved(m => ({ ...m, [p.id]: to }));
-    try {
-      if (to === "Archived") await archiveProject(p.id);
-      else await restoreProject(p.id);
-    } catch {
-      // Put it back where it was: a card that silently stays moved is a lie
-      // about what the database holds.
-      setMoved(m => ({ ...m, [p.id]: p.status }));
-    }
-  }
-
-  const trained = agents.filter(a => !a.archived_at && a.last_projects.length > 0).length;
-  const documents = Object.values(stats).reduce((n, s) => n + s.docs, 0);
 
   return (
     <section className="home" aria-labelledby="home-title">
-      {/*
-       * The hero: one orbit, the two agents on it, the words at its centre,
-       * and what each of them is for at either end. That is the product's
-       * own picture — two agents, one project — and the same drawing as the
-       * mark in the bar.
-       *
-       * Everything here is drawn. It replaced a photographic wash
-       * (/brand/core.jpg blended to the accent), which brought its own
-       * wireframe lines, went muddy on any warm accent, and — being sized to
-       * the window — pushed the pair out to the screen edges with half a
-       * screen of nothing between them.
-       */}
       <div className="home-hero">
         {/*
           The planet, and the net over it. Drawn, not photographed: the JPEG
@@ -246,8 +68,8 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
 
         {/*
           One path per agent, each ending in a light. Not two full ellipses
-          any more: at full size they crossed the mascots and both role cards
-          and the screen read as tangled wire rather than as an orbit.
+          any more: at full size they crossed the mascots and the screen read
+          as tangled wire rather than as an orbit.
         */}
         <svg className="hh-orbit" viewBox="0 0 1000 420" preserveAspectRatio="none"
           aria-hidden="true" focusable="false">
@@ -257,13 +79,10 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
           <circle className="ho-dot b" cx="698" cy="364" r="7" />
         </svg>
 
+        {/* Agent, words, agent. The pair are grid columns, so the gap between
+            them is simply the room the words do not take — it cannot run a
+            mascot off a narrow screen the way a viewport-relative gap did. */}
         <div className="hh-stage">
-          {/*
-            The words come first in the DOM so the heading is the first thing
-            read, and the five columns are placed by grid rather than by
-            source order — otherwise a screen reader meets "Your Consultant"
-            before it is told what the screen is.
-          */}
           <div className="hh-words">
             <span className="hh-kicker">AgentiX Projects</span>
             <h1 id="home-title" className="home-title">
@@ -277,25 +96,6 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
             </button>
           </div>
 
-          {/* What each one is actually for. The Home screen never said, and
-              "Consultant" and "Coach" are job titles, not a description of
-              the two documents you get. They drop out below 1200px, where
-              five columns would leave the title about six characters. */}
-          {ROLE_CARDS.map(r => (
-            <article key={r.role} className={`hh-role ${r.role}`}>
-              <span className="hh-role-ic" aria-hidden="true"><r.Ic size={16} /></span>
-              <div>
-                <b>{r.who}</b>
-                {/* One verb a line, as in the mockup — and it is also what
-                    makes the two cards the same height, where "Reflect.
-                    Improve. Move forward." wrapped to one line more than
-                    "Research. Structure. Execute." and left the pair
-                    visibly uneven. */}
-                <p>{r.lines.map(l => <span key={l}>{l}</span>)}</p>
-              </div>
-            </article>
-          ))}
-
           <span className="hh-slot consultant">
             <AgentMascot role="consultant" size={150} state="idle" level={4}
               mood={cheer ? "pleased" : null} lookAt={at} />
@@ -306,131 +106,6 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
           </span>
         </div>
       </div>
-
-      {/*
-        The box: what you have, and the way back into it.
-        
-        It is one panel rather than a loose eyebrow and a list, because this
-        half of the screen answers a different question from the hero — not
-        "what is this" but "what am I in the middle of" — and a boxed panel
-        is what says so without a heading shouting it.
-        
-        The tabs are real statuses, not decoration: everything the account
-        has is loaded here already, so filtering costs nothing and the counts
-        beside them are the truth rather than a guess.
-      */}
-      <section className="home-panel" aria-labelledby="home-panel-title">
-        <header className="hp-head">
-          <h2 id="home-panel-title">Your Projects</h2>
-
-          <ul className="home-state">
-            <li>
-              <button onClick={() => router.push("/dashboard/history")}>
-                <b>{live.length}</b><span>{live.length === 1 ? "project" : "projects"}</span>
-              </button>
-            </li>
-            <li>
-              <button onClick={() => router.push("/dashboard/agents")}>
-                <b>{trained}</b><span>{trained === 1 ? "agent" : "agents"} trained</span>
-              </button>
-            </li>
-            <li>
-              <button onClick={() => router.push("/dashboard/history")}>
-                <b>{documents}</b><span>{documents === 1 ? "document" : "documents"}</span>
-              </button>
-            </li>
-          </ul>
-
-          {/* Real search, over the whole tab rather than over the four cards
-              on screen — otherwise it could only ever find what you can
-              already see. */}
-          <div className="hp-search">
-            <IconSearch size={14} aria-hidden="true" />
-            <input type="search" value={q} onChange={e => setQ(e.target.value)}
-              placeholder="Search projects…" aria-label="Search your projects" />
-            {q && (
-              <button className="hp-clear" aria-label="Clear search" onClick={() => setQ("")}>
-                <IconX size={12} />
-              </button>
-            )}
-          </div>
-
-          <button className="hp-new" onClick={onNew}><IconPlus size={14} />New Project</button>
-        </header>
-
-        <div className="hp-tabs" role="tablist" aria-label="Which projects">
-          {TABS.map(t => {
-            const on = tab === t.id;
-            return (
-              <button key={t.id} role="tab" aria-selected={on} className={on ? "on" : ""}
-                onClick={() => setTab(t.id)}>
-                <t.Ic size={13} />{t.label}
-                <em>{counts[t.id]}</em>
-              </button>
-            );
-          })}
-        </div>
-
-        {shown.length === 0 ? (
-          <p className="hp-empty">
-            {needle ? <>Nothing here matches “{q.trim()}”.</>
-              : tab === "starred" ? <>Nothing starred yet — the ··· menu on a card puts it here.</>
-              : <>Nothing {tab === "recent" ? "open" : tab} yet.</>}
-          </p>
-        ) : (
-          <ul className="hp-grid">
-            {shown.map((p, i) => {
-              const s = stats[p.id];
-              return (
-                /*
-                 * A div, not a button, with the card's own buttons inside.
-                 * The menu and the arrow are controls in their own right and
-                 * nesting a button in a button is invalid HTML — the browser
-                 * un-nests it and the inner one stops working.
-                 */
-                <li key={p.id}>
-                  <div className={`hp-card${i === 0 && tab === "recent" && !needle ? " is-last" : ""}${starred.has(p.id) ? " is-star" : ""}`}>
-                    <span className="hp-ic" aria-hidden="true">
-                      <span className="hp-faces">
-                        <AgentMascot role="consultant" size={22} level={2} agentId={p.consultant_agent_id ?? undefined} />
-                        <AgentMascot role="coach" size={22} level={2} agentId={p.coach_agent_id ?? undefined} />
-                      </span>
-                    </span>
-
-                    {/* The whole card opens the project: the title is the
-                        link, stretched over the card by ::after, so the hit
-                        target is the card without wrapping the controls. */}
-                    <b><button className="hp-open" onClick={() => open(p.id)}>{p.name}</button></b>
-                    <span className="hp-date">{dateStr(p.last_activity_at)}</span>
-
-                    <span className="hp-tags">
-                      {([["consultant", "Concept"], ["coach", "Plan"]] as const).map(([role, short]) => (
-                        <span key={role} className={`hp-tag ${role}${s?.docsBy[role] ? " on" : ""}`}>
-                          {s?.docsBy[role] ? <IconCheck size={10} /> : <IconDoc size={10} />}{short}
-                        </span>
-                      ))}
-                      {p.status === "Completed" && <span className="hp-tag done"><IconCheck size={10} />Done</span>}
-                      {starred.has(p.id) && <span className="hp-tag star"><IconSpark size={10} />Starred</span>}
-                    </span>
-
-                    <CardMenu
-                      starred={starred.has(p.id)}
-                      archived={p.status === "Archived"}
-                      name={p.name}
-                      onStar={() => setStarred(toggleStarred(p.id))}
-                      onArchive={() => move(p, p.status === "Archived" ? "In Progress" : "Archived")}
-                    />
-                    <button className="hp-go" aria-label={`Open ${p.name}`} onClick={() => open(p.id)}>
-                      <IconArrow size={14} />
-                    </button>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-
     </section>
   );
 }

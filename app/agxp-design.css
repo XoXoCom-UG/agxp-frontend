@@ -7341,16 +7341,6 @@ html[data-glass="solid"] .ph-card{ backdrop-filter:none; background:var(--popove
   min-height:100%;
   display:flex; flex-direction:column;
 }
-.home > *:not(.home-hero){
-  width:100%; max-width:900px; margin-inline:auto;
-  padding-inline:var(--sp-5);
-}
-/* The box gets the hero band's cap instead, so it lines up with the two
-   role cards above it and four project cards fit on one row rather than
-   three plus an orphan. Written as a child rule because the one above is a
-   class plus a :not() and would otherwise win. */
-.home > .home-panel{ max-width:min(1680px, 100% - 48px); }
-@media (max-width:620px){ .home > .home-panel{ max-width:calc(100% - 20px); } }
 
 /* The hero. Centred, generous, and the only place on this screen that
    raises its voice. */
@@ -7417,13 +7407,16 @@ html[data-glass="solid"] .ph-card{ backdrop-filter:none; background:var(--popove
    * inside means the gradient reaches transparent before any edge, so
    * there is nothing left to clip.
    */
-  height:min(94%, 560px); width:auto; aspect-ratio:1; border-radius:50%;
+  /* A fraction of the band, not nearly all of it. At 94% it was fine while
+     the box took half the screen; with the hero alone it became a bright
+     disc with the title sitting on top of it. */
+  height:min(62%, 520px); width:auto; aspect-ratio:1; border-radius:50%;
   z-index:0; pointer-events:none;
   background:
     /* the lit side, off-centre, so it reads as a sphere and not a disc */
     radial-gradient(circle at 36% 30%,
-      color-mix(in srgb, var(--acc) 46%, transparent) 0%,
-      color-mix(in srgb, var(--acc) 20%, transparent) 32%,
+      color-mix(in srgb, var(--acc) 34%, transparent) 0%,
+      color-mix(in srgb, var(--acc) 16%, transparent) 32%,
       color-mix(in srgb, var(--primary) 22%, transparent) 60%,
       transparent 86%);
 }
@@ -7455,20 +7448,19 @@ html.light .hh-planet{ opacity:.55; }
  */
 .hh-stage{
   position:relative; z-index:1;
-  /* Near enough the full window: in the mockup the two role cards sit at
-     the edges, and a cap well inside the viewport is what kept them in. */
-  width:100%; max-width:1760px;
-  /* card | mascot | words | mascot | card. Placed explicitly, because the
-     words come first in the DOM so the heading is read first. */
-  display:grid; grid-template-columns:auto auto minmax(0, 1fr) auto auto;
+  /* Three columns now, not five: the band was widened to 1760 so the two
+     role cards could reach the edges, and with them gone that width went
+     straight into the gap — the pair ended up at 107 and 1646 on a 1753
+     screen, flung apart with nothing between them. */
+  width:100%; max-width:1240px;
+  /* agent | words | agent. */
+  display:grid; grid-template-columns:auto minmax(0, 1fr) auto;
   align-items:center; justify-items:center;
   gap:clamp(4px, 1.6vw, 34px);
 }
-.hh-role.consultant{ grid-column:1; }
-.hh-slot.consultant{ grid-column:2; }
-.hh-words{ grid-column:3; }
-.hh-slot.coach{ grid-column:4; }
-.hh-role.coach{ grid-column:5; }
+.hh-slot.consultant{ grid-column:1; }
+.hh-words{ grid-column:2; }
+.hh-slot.coach{ grid-column:3; }
 .hh-stage > *{ grid-row:1; }
 
 /* The orbit the two of them are on: the same drawing as the mark in the bar,
@@ -7490,37 +7482,6 @@ html.light .hh-planet{ opacity:.55; }
    with it. */
 .ho-dot{ fill:var(--acc); stroke:none; }
 .ho-dot.b{ fill:var(--acc-2); }
-
-/* --- What each agent is for, at either end ------------------------------- */
-.hh-role{
-  display:flex; align-items:flex-start; gap:var(--sp-3);
-  width:clamp(190px, 17vw, 236px);
-  padding:var(--sp-4);
-  border:1px solid var(--border); border-radius:18px;
-  background:color-mix(in srgb, var(--card) 82%, transparent);
-  backdrop-filter:blur(var(--blur-surface));
-  text-align:left;
-}
-.hh-role.coach{ border-color:color-mix(in srgb, var(--acc-2) 26%, var(--border)); }
-.hh-role-ic{
-  display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;
-  width:34px; height:34px; border-radius:11px;
-  border:1px solid color-mix(in srgb, var(--acc) 34%, transparent);
-  background:color-mix(in srgb, var(--acc) 12%, transparent);
-  color:var(--acc-hi);
-}
-.hh-role.coach .hh-role-ic{
-  border-color:color-mix(in srgb, var(--acc-2) 38%, transparent);
-  background:color-mix(in srgb, var(--acc-2) 12%, transparent);
-  color:var(--acc-2);
-}
-.hh-role b{
-  display:block; font-size:var(--text-sm); font-weight:600; color:var(--foreground);
-}
-.hh-role p{
-  margin:3px 0 0; font-size:var(--text-2xs); line-height:1.5; color:var(--muted-foreground);
-  display:flex; flex-direction:column;
-}
 
 .hh-kicker{
   font-family:var(--font-mono); font-size:var(--text-3xs);
@@ -7585,16 +7546,6 @@ html.light .hh-planet{ opacity:.55; }
  * They stay — they are the screen's one piece of character — just smaller
  * and under the words.
  */
-/* Five columns need about 1200px before the title is down to a few
-   characters a line. Below that the cards go and the pair stays: the pair is
-   the picture, the cards are the caption. */
-@media (max-width:1200px){
-  .hh-role{ display:none; }
-  .hh-stage{ grid-template-columns:auto minmax(0, 1fr) auto; }
-  .hh-slot.consultant{ grid-column:1; }
-  .hh-words{ grid-column:2; }
-  .hh-slot.coach{ grid-column:3; }
-}
 @media (max-width:860px){
   .hh-stage{ grid-template-columns:1fr; gap:clamp(8px, 2vh, 20px); }
   .hh-stage > *{ grid-row:auto; }
@@ -7646,29 +7597,10 @@ html.light .hh-planet{ opacity:.55; }
   .hh-slot{ animation:none; }
   .hh-stage .mascot{ animation:homeRise 560ms var(--ease-out) 190ms backwards; }
 }
-.home-state{
-  margin:0; padding:0; list-style:none; display:flex; gap:var(--sp-5); flex-wrap:wrap;
-}
-.home-state button{
-  display:flex; flex-direction:column; gap:1px; text-align:left;
-  color:var(--muted-foreground);
-}
-.home-state b{
-  font-family:var(--font-display); font-size:var(--text-lg); font-weight:600;
-  letter-spacing:-0.02em; color:var(--foreground); line-height:1.1;
-}
-.home-state span{ font-size:var(--text-3xs); }
-@media (hover:hover) and (pointer:fine){
-  .home-state button:hover b{ color:var(--acc); }
-  .home-state button:hover span{ color:var(--secondary-foreground); }
-}
-
 /* Settled, not performed: a short rise, and nothing at all for anyone who
    asked the system to stop moving things. */
 @media (prefers-reduced-motion:no-preference){
-  .home-title, .home-panel{ animation:homeRise 500ms var(--ease-out) backwards; }
-  .home-title{ animation-delay:50ms; }
-  .home-panel{ animation-delay:170ms; }
+  .home-title{ animation:homeRise 500ms var(--ease-out) 50ms backwards; }
 }
 @keyframes homeRise{
   from{ opacity:0; transform:translateY(10px); }
@@ -8288,232 +8220,3 @@ html.light .walk-hole{ box-shadow:0 0 0 9999px rgba(12,18,32,0.5),
    `inset:0` on a fixed element measures past the browser chrome, which put
    the Next button under the URL bar. */
 .tour{ height:100dvh; }
-
-
-/* ===========================================================================
-   THE BOX — what you have, and the way back into it.
-   One panel rather than a loose eyebrow and a list: this half of the screen
-   answers a different question from the hero ("what am I in the middle of",
-   not "what is this"), and a boxed panel says so without a heading shouting.
-   =========================================================================== */
-.home-panel{
-  flex-shrink:0;
-
-  display:flex; flex-direction:column; gap:var(--sp-4);
-  padding:var(--sp-5) var(--sp-5) var(--sp-5);
-  border:1px solid var(--border); border-radius:24px;
-  background:color-mix(in srgb, var(--card) 72%, transparent);
-  backdrop-filter:blur(var(--blur-surface)) saturate(1.4);
-}
-
-.hp-head{ display:flex; align-items:center; gap:var(--sp-5); flex-wrap:wrap; }
-.hp-head h2{
-  margin:0; font-family:var(--font-display); font-size:var(--text-xl);
-  font-weight:600; letter-spacing:-0.025em; color:var(--foreground);
-}
-/* The counters sit between the title and the button, so the number you have
-   left is read on the way to pressing New Project, not after it. */
-.hp-head .home-state{ margin-left:auto; gap:var(--sp-5); }
-.hp-head .home-state b{ font-size:var(--text-base); }
-.hp-new{
-  display:inline-flex; align-items:center; gap:7px; flex-shrink:0;
-  height:38px; padding:0 18px; border-radius:var(--radius-pill);
-  background:var(--primary-grad); color:var(--primary-foreground);
-  font-size:var(--text-xs); font-weight:600; border:1px solid transparent;
-}
-@media (hover:hover) and (pointer:fine){ .hp-new:hover{ filter:brightness(1.08); } }
-.hp-new:active{ transform:scale(0.985); }
-
-.hp-tabs{ display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
-.hp-tabs button{
-  display:inline-flex; align-items:center; gap:7px;
-  height:32px; padding:0 13px; border-radius:var(--radius-pill);
-  border:1px solid transparent; background:transparent;
-  color:var(--muted-foreground); font-size:var(--text-xs); font-weight:500;
-  transition:color 160ms var(--ease-out), background-color 160ms var(--ease-out);
-}
-.hp-tabs button em{
-  font-style:normal; font-size:var(--text-3xs); font-variant-numeric:tabular-nums;
-  opacity:.7;
-}
-.hp-tabs button.on{
-  color:var(--foreground);
-  background:color-mix(in srgb, var(--acc) 16%, transparent);
-  border-color:color-mix(in srgb, var(--acc) 38%, transparent);
-}
-@media (hover:hover) and (pointer:fine){
-  .hp-tabs button:not(.on):hover{ color:var(--foreground); background:var(--surface-elevated); }
-}
-
-.hp-empty{ margin:0; padding:var(--sp-5) 0; font-size:var(--text-xs); color:var(--muted-foreground); }
-
-.hp-grid{
-  margin:0; padding:0; list-style:none;
-  display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));
-  gap:var(--sp-3);
-}
-.hp-card{
-  width:100%; height:100%; position:relative; text-align:left;
-  display:grid; grid-template-columns:auto 1fr; gap:4px var(--sp-3);
-  padding:var(--sp-4);
-  border:1px solid var(--border); border-radius:16px;
-  background:var(--surface-elevated);
-  transition:border-color 170ms var(--ease-out), transform 170ms var(--ease-out);
-}
-/* The one you were last in is marked, not enlarged: a bigger card would
-   break the row the moment there are three of them. */
-.hp-card.is-last{ border-color:color-mix(in srgb, var(--acc) 52%, transparent); }
-@media (hover:hover) and (pointer:fine){
-  .hp-card:hover{ border-color:var(--border-strong); transform:translateY(-2px); }
-  .hp-card.is-last:hover{ border-color:color-mix(in srgb, var(--acc) 72%, transparent); }
-}
-.hp-ic{
-  grid-row:1 / 3; display:inline-flex; align-items:center; justify-content:center;
-  width:40px; height:40px; border-radius:12px; flex-shrink:0;
-  border:1px solid var(--border); background:var(--card);
-}
-.hp-faces{ display:inline-flex; }
-.hp-faces > *:last-child{ margin-left:-8px; }
-.hp-card > b{
-  grid-column:2; align-self:end;
-  font-size:var(--text-xs); font-weight:600; color:var(--foreground);
-  overflow:hidden; min-width:0;
-  /* Room for the ··· in the corner, so a long name never runs under it. */
-  padding-right:26px;
-}
-.hp-date{ grid-column:2; align-self:start; font-size:var(--text-3xs); color:var(--muted-foreground); }
-.hp-tags{
-  grid-column:1 / 3; display:flex; flex-wrap:wrap; gap:5px; margin-top:10px;
-}
-.hp-tag{
-  display:inline-flex; align-items:center; gap:4px;
-  padding:4px 8px; border-radius:var(--radius-pill);
-  border:1px dashed var(--border); font-size:9px; color:var(--muted-foreground);
-}
-.hp-tag svg{ flex-shrink:0; }
-.hp-tag.on{ border-style:solid; color:var(--foreground); }
-.hp-tag.on.consultant{ border-color:color-mix(in srgb, var(--acc) 55%, transparent); }
-.hp-tag.on.consultant svg{ color:var(--acc); }
-.hp-tag.on.coach{ border-color:color-mix(in srgb, var(--acc-2) 55%, transparent); }
-.hp-tag.on.coach svg{ color:var(--acc-2); }
-.hp-tag.done{ border-style:solid; border-color:color-mix(in srgb, var(--success) 55%, transparent); color:var(--foreground); }
-.hp-tag.done svg{ color:var(--success); }
-/* The arrow's own rule is further down, with the rest of the second pass:
-   it moved from a bare glyph in the top corner to a round button in the
-   bottom one, where the ··· menu now lives in the corner it had. */
-
-@media (max-width:620px){
-  .hp-head{ gap:var(--sp-3); }
-  .hp-head .home-state{ margin-left:0; order:3; width:100%; gap:var(--sp-4); }
-  .hp-new{ margin-left:auto; }
-}
-
-
-/* --- The box, second pass: search, the card menu, the round arrow -------- */
-.hp-search{
-  display:flex; align-items:center; gap:8px; min-width:0; flex:0 1 320px;
-  height:38px; padding:0 12px; border-radius:var(--radius-pill);
-  border:1px solid var(--input); background:var(--card);
-  color:var(--muted-foreground);
-  transition:border-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
-}
-.hp-search:focus-within{
-  border-color:color-mix(in srgb, var(--acc) 58%, transparent);
-  box-shadow:0 0 0 3px color-mix(in srgb, var(--acc) 14%, transparent);
-}
-.hp-search svg{ flex-shrink:0; }
-.hp-search input{
-  flex:1; min-width:0; border:none; outline:none; background:transparent;
-  font-family:inherit; font-size:var(--text-xs); color:var(--foreground);
-}
-.hp-search input::placeholder{ color:var(--muted-foreground); }
-/* Safari draws its own clear button on type=search and it ignores the
-   theme; ours is beside it and matches the rest of the app. */
-.hp-search input::-webkit-search-cancel-button{ -webkit-appearance:none; appearance:none; }
-.hp-clear{
-  display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;
-  width:20px; height:20px; border-radius:50%; border:none;
-  background:var(--surface-elevated); color:var(--muted-foreground);
-}
-@media (hover:hover) and (pointer:fine){ .hp-clear:hover{ color:var(--foreground); } }
-
-/* The counters give up the auto margin now that search sits between them
-   and the button. */
-.hp-head .home-state{ margin-left:auto; }
-.hp-head .hp-search{ margin-left:var(--sp-2); }
-
-/*
- * The card is a div with its own controls inside, so the title carries the
- * link and stretches over the whole card. A button wrapping the card would
- * have swallowed the menu and the arrow — a button inside a button is
- * invalid, and the browser un-nests it.
- */
-.hp-open{
-  border:none; background:none; padding:0; text-align:left; color:inherit;
-  font:inherit; min-width:0;
-  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block;
-}
-.hp-open::after{ content:""; position:absolute; inset:0; border-radius:inherit; }
-.hp-open:focus-visible{ outline:none; }
-.hp-card:has(.hp-open:focus-visible){
-  outline:2px solid var(--ring); outline-offset:2px;
-}
-/* Above the stretched link, or they cannot be pressed. */
-.hp-menu, .hp-go{ position:relative; z-index:1; }
-
-.hp-card.is-star{ border-color:color-mix(in srgb, var(--acc-2) 46%, transparent); }
-
-/* The ··· — the same control as the Agent Dashboard's, because it is. */
-.hp-menu{ position:absolute; top:10px; right:10px; }
-.hp-menu-btn{
-  width:26px; height:26px; display:flex; align-items:center; justify-content:center;
-  border:none; background:none; border-radius:var(--radius-xs);
-  color:var(--muted-foreground); opacity:0;
-  transition:opacity 160ms var(--ease-out), color 160ms var(--ease-out), background-color 160ms var(--ease-out);
-}
-/* Visible on hover, on focus, and always on a touch screen — where there is
-   no hover and an invisible control is simply a missing one. */
-.hp-card:hover .hp-menu-btn, .hp-menu-btn:focus-visible, .hp-menu[data-open] .hp-menu-btn{ opacity:1; }
-@media (hover:none){ .hp-menu-btn{ opacity:1; } }
-@media (hover:hover) and (pointer:fine){
-  .hp-menu-btn:hover{ background:var(--tint-3); color:var(--foreground); }
-}
-.hp-menu-pop{
-  position:absolute; top:28px; right:0; min-width:132px; padding:4px;
-  border-radius:var(--radius-sm); z-index:3;
-  background:var(--popover); border:1px solid var(--border-strong);
-  box-shadow:var(--shadow-float); transform-origin:top right;
-  animation:popIn 160ms var(--ease-out);
-}
-.hp-menu-pop button{
-  width:100%; display:flex; align-items:center; gap:8px; padding:7px 10px;
-  border:none; background:none; border-radius:var(--radius-xs); text-align:left;
-  font-size:var(--text-xs); color:var(--secondary-foreground);
-}
-.hp-menu-pop button:hover{ background:var(--tint-2); color:var(--foreground); }
-
-/* The arrow, round and in the corner, as in the mockup. */
-.hp-go{
-  position:absolute; right:var(--sp-4); bottom:var(--sp-4);
-  width:30px; height:30px; border-radius:50%;
-  display:inline-flex; align-items:center; justify-content:center;
-  border:1px solid var(--border); background:var(--card);
-  color:var(--muted-foreground);
-  transition:color 170ms var(--ease-out), border-color 170ms var(--ease-out), transform 170ms var(--ease-out);
-}
-.hp-card.is-last .hp-go{ border-color:color-mix(in srgb, var(--acc) 50%, transparent); color:var(--acc-hi); }
-@media (hover:hover) and (pointer:fine){
-  .hp-card:hover .hp-go{ color:var(--foreground); border-color:var(--border-strong); transform:translateX(2px); }
-}
-
-/* Room for the arrow under the chips, so a third chip never lands on it. */
-.hp-tags{ padding-right:38px; }
-.hp-tag.star{
-  border-style:solid; border-color:color-mix(in srgb, var(--acc-2) 55%, transparent);
-  color:var(--foreground);
-}
-.hp-tag.star svg{ color:var(--acc-2); }
-
-@media (max-width:860px){
-  .hp-head .hp-search{ order:4; flex:1 1 100%; margin-left:0; }
-}
