@@ -100,3 +100,34 @@ test("a half-written FILE marker never flashes while the text streams", () => {
     assert.ok(!shown.includes("[["), `leaked at ${i}: ${JSON.stringify(shown)}`);
   }
 });
+
+test("[[TITLE:]] gives the project a name and a one-line description", () => {
+  const p = parseMarkers("Gut, dann fangen wir an. [[TITLE: Disposition automatisieren | Tourenplanung von 12 auf 3 Minuten]]");
+  assert.deepEqual(p.title, {
+    name: "Disposition automatisieren",
+    description: "Tourenplanung von 12 auf 3 Minuten",
+  });
+  // The marker itself never reaches the screen.
+  assert.equal(p.text.includes("TITLE"), false);
+  assert.equal(p.text.trim(), "Gut, dann fangen wir an.");
+});
+
+test("a title without a description is still a title", () => {
+  // Dropping the whole marker over a missing sentence would leave the
+  // project called "New Project" forever.
+  const p = parseMarkers("[[TITLE: Claims triage]]");
+  assert.deepEqual(p.title, { name: "Claims triage", description: "" });
+});
+
+test("a description containing a pipe keeps it", () => {
+  const p = parseMarkers("[[TITLE: Rollout | Pilot | dann alle Regionen]]");
+  assert.equal(p.title?.name, "Rollout");
+  assert.equal(p.title?.description, "Pilot | dann alle Regionen");
+});
+
+test("an empty or missing title marker is no title, never an empty name", () => {
+  assert.equal(parseMarkers("Keine Marker hier.").title, null);
+  // A model that emits the marker with nothing in it must not blank the name.
+  assert.equal(parseMarkers("[[TITLE: ]]").title, null);
+  assert.equal(parseMarkers("[[TITLE: | nur Beschreibung]]").title, null);
+});

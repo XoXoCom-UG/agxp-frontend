@@ -451,6 +451,11 @@ export default function ProjectHistoryPage() {
                       ) : (
                         <span className="ph-name">{name}</span>
                       )}
+                      {/* The agent's one-line description, under the name it
+                          also gave (Patryk, 2026-10-09). Only when there is
+                          one: older projects have none, and an empty line
+                          would push every row taller for nothing. */}
+                      {p.description && <span className="ph-desc">{p.description}</span>}
                       <span className="ph-team">{teamLabel(p)}</span>
                     </span>
                     <span className="ph-facts">

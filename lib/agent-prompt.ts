@@ -110,6 +110,27 @@ const INDUSTRY_INSTRUCTION =
   `Healthcare, Software & IT, Manufacturing, Public sector. Nicht raten: nur wenn der Nutzer es ` +
   `gesagt hat oder es eindeutig ist. Danach nur wiederholen, wenn sich die Branche ändert.`;
 
+/**
+ * The project's name, from the agent rather than from the first thing the
+ * user typed.
+ *
+ * It used to be the first 55 characters of the opening message, which gave
+ * lists of "Wir haben ein Problem mit der Dispo und ich wollte fra…".
+ * Patryk, 2026-10-09: the AI should find a good title, and a description of
+ * at most one line under it.
+ *
+ * A marker, like the industry above — no second API call, and the whole
+ * thing rides on a reply the user is waiting for anyway.
+ */
+const TITLE_INSTRUCTION =
+  `\n\nPROJEKTNAME: Hänge an deine ERSTE Antwort in diesem Projekt einmalig einen Marker an ` +
+  `(eigene Zeile, wird herausgefiltert): [[TITLE: Name | Beschreibung]]. Der Name benennt das ` +
+  `Vorhaben des Nutzers in 2 bis 5 Wörtern, in der Sprache des Nutzers, ohne Anführungszeichen ` +
+  `und ohne Satzzeichen am Ende — z.B. "Disposition automatisieren", nicht "Projekt" und nicht ` +
+  `der Wortlaut der Frage. Die Beschreibung ist EIN Satz, höchstens 90 Zeichen, und sagt worum ` +
+  `es geht, nicht was du tun wirst. Wenn nach der ersten Nachricht noch nicht klar ist, worum ` +
+  `es geht, lass den Marker weg und hänge ihn an die erste Antwort an, in der es klar ist.`;
+
 export function memoryPrompt(memory: string[]): string {
   if (!memory.length) return "";
   return (
@@ -220,6 +241,7 @@ export function systemPrompt(type: AgentType, name: string, memory: string[], ex
     agendaPrompt(DELIVERABLES[type], stations ?? null) +
     LEARNING_INSTRUCTION +
     INDUSTRY_INSTRUCTION +
+    TITLE_INSTRUCTION +
     memoryPrompt(memory) +
     experiencePrompt(experience) +
     todayPrompt()

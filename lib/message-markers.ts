@@ -21,6 +21,12 @@ export interface FileRef {
   mime: string;
 }
 
+export interface ProjectTitle {
+  name: string;
+  /** Empty when the agent gave a name and no description. */
+  description: string;
+}
+
 export interface ParsedMessage {
   text: string;
   choices: string[];
@@ -33,6 +39,8 @@ export interface ParsedMessage {
   memories: MemoryNote[];
   /** The project's industry, once the agent knows it ([[INDUSTRY: Banking]]). */
   industry: string | null;
+  /** The name the agent gave the project ([[TITLE: Name | one line]]). */
+  title: ProjectTitle | null;
   /** Files attached to this message ([[FILE: path | name | mime]]). */
   files: FileRef[];
 }
@@ -87,6 +95,21 @@ export function parseMarkers(raw: string): ParsedMessage {
     text = text.replace(industryMatch[0], "");
   }
 
+  /*
+   * [[TITLE: Name | one line]]. The pipe is optional — a model that gives a
+   * name and no description is giving us the useful half, and dropping the
+   * whole marker over a missing sentence would leave the project called
+   * "New Project" forever.
+   */
+  let title: ProjectTitle | null = null;
+  const titleMatch = text.match(/\[\[TITLE:\s*([^\]]*)\]\]/i);
+  if (titleMatch) {
+    const [rawName, ...rest] = titleMatch[1].split("|");
+    const name = rawName.trim();
+    if (name) title = { name, description: rest.join("|").trim() };
+    text = text.replace(titleMatch[0], "");
+  }
+
   // Unlike the others, MEMORY can appear more than once in one answer.
   const memories: MemoryNote[] = [];
   const raws = text.match(/\[\[MEMORY:\s*[^\]]*\]\]/gi) ?? [];
@@ -113,7 +136,7 @@ export function parseMarkers(raw: string): ParsedMessage {
   }
 
   text = text.replace(/\n{3,}/g, "\n\n").trim();
-  return { text, choices, progress, topic, doc, memories, industry, files };
+  return { text, choices, progress, topic, doc, memories, industry, title, files };
 }
 
 /** Escapes a string for use inside a RegExp. */

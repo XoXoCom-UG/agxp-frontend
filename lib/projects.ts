@@ -153,6 +153,22 @@ export async function renameProject(projectId: string, name: string): Promise<vo
   if (error) throw error;
 }
 
+/**
+ * The name and one-line description the agent gave the project
+ * ([[TITLE: Name | description]], parsed in lib/message-markers.ts).
+ *
+ * Patryk, 2026-10-09: the AI should find a good title, not the first 55
+ * characters of whatever the user happened to type first.
+ */
+export async function setProjectTitle(projectId: string, name: string, description: string): Promise<void> {
+  const supabase = createClient();
+  const patch: { name: string; description?: string } = { name: name.slice(0, 80) };
+  // An empty description must not wipe one that is already there.
+  if (description) patch.description = description.slice(0, 160);
+  const { error } = await supabase.from("agxp_projects").update(patch).eq("id", projectId);
+  if (error) throw error;
+}
+
 export async function archiveProject(projectId: string): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.from("agxp_projects").update({ status: "Archived" }).eq("id", projectId);
