@@ -154,8 +154,23 @@ export async function renameProject(projectId: string, name: string): Promise<vo
 }
 
 export async function archiveProject(projectId: string): Promise<void> {
+  await setProjectStatus(projectId, "Archived");
+}
+
+/**
+ * Brings an archived project back.
+ *
+ * "In Progress" rather than the "Not Started" a new project gets: a project
+ * that was archived had already been worked on, and sending it back to Not
+ * Started would lose that on every list that sorts or filters by status.
+ */
+export async function restoreProject(projectId: string): Promise<void> {
+  await setProjectStatus(projectId, "In Progress");
+}
+
+export async function setProjectStatus(projectId: string, status: ProjectStatus): Promise<void> {
   const supabase = createClient();
-  const { error } = await supabase.from("agxp_projects").update({ status: "Archived" }).eq("id", projectId);
+  const { error } = await supabase.from("agxp_projects").update({ status }).eq("id", projectId);
   if (error) throw error;
 }
 

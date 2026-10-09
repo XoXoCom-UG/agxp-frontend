@@ -3,8 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AgentMascot } from "@/components/layout/agent-mascot";
-import { IconArchive, IconArrow, IconCheck, IconChart, IconClock, IconDoc, IconPlus, IconUsers } from "@/components/layout/agxp-icons";
-import { listProjects, type Project } from "@/lib/projects";
+import {
+  IconArchive, IconArrow, IconCheck, IconChart, IconClock, IconDoc, IconMoreV,
+  IconPlus, IconRestore, IconSearch, IconSpark, IconUsers, IconX,
+} from "@/components/layout/agxp-icons";
+import { archiveProject, listProjects, restoreProject, type Project } from "@/lib/projects";
+import { readStarred, toggleStarred } from "@/lib/starred";
 import { loadProjectStats, type ProjectStats } from "@/lib/project-stats";
 import { listAgents, type Agent } from "@/lib/agents";
 import { dateStr } from "@/lib/utils";
@@ -39,9 +43,10 @@ import { dateStr } from "@/lib/utils";
  * whole account is loaded here anyway, so filtering is free and the counts
  * are the truth.
  */
-type Tab = "recent" | "completed" | "archived";
+type Tab = "recent" | "starred" | "completed" | "archived";
 const TABS: { id: Tab; label: string; Ic: typeof IconClock }[] = [
   { id: "recent", label: "Recent", Ic: IconClock },
+  { id: "starred", label: "Starred", Ic: IconSpark },
   { id: "completed", label: "Completed", Ic: IconCheck },
   { id: "archived", label: "Archived", Ic: IconArchive },
 ];
@@ -54,6 +59,55 @@ const ROLE_CARDS = [
   { role: "consultant" as const, who: "Your Consultant", Ic: IconChart, lines: ["Research.", "Structure.", "Execute."] },
   { role: "coach" as const, who: "Your Coach", Ic: IconUsers, lines: ["Reflect.", "Improve.", "Move forward."] },
 ];
+
+/**
+ * The ··· on a card: star it, or put it away.
+ *
+ * Its own component because it owns an open/closed state and a click-away
+ * listener, and a card that re-renders on every search keystroke should not
+ * be carrying either. The markup matches the Agent Dashboard's menu so the
+ * two look like the same control, which they are.
+ */
+function CardMenu({ starred, archived, name, onStar, onArchive }: {
+  starred: boolean; archived: boolean; name: string;
+  onStar: () => void; onArchive: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrap = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function away(e: MouseEvent) {
+      if (!wrap.current?.contains(e.target as Node)) setOpen(false);
+    }
+    function esc(e: KeyboardEvent) { if (e.key === "Escape") setOpen(false); }
+    document.addEventListener("mousedown", away);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", away);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+
+  return (
+    <div className="hp-menu" ref={wrap}>
+      <button className="hp-menu-btn" aria-label={`More for ${name}`} aria-haspopup="menu"
+        aria-expanded={open} onClick={() => setOpen(o => !o)}>
+        <IconMoreV size={15} />
+      </button>
+      {open && (
+        <div className="hp-menu-pop t-dropdown" data-origin="top-right" role="menu">
+          <button role="menuitem" onClick={() => { setOpen(false); onStar(); }}>
+            <IconSpark size={12} />{starred ? "Unstar" : "Star"}
+          </button>
+          <button role="menuitem" onClick={() => { setOpen(false); onArchive(); }}>
+            {archived ? <><IconRestore size={12} />Restore</> : <><IconArchive size={12} />Archive</>}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function HomeScreen({ onNew }: { onNew: () => void }) {
   const router = useRouter();
@@ -88,6 +142,16 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
   const [stats, setStats] = useState<Record<string, ProjectStats>>({});
   const [agents, setAgents] = useState<Agent[]>([]);
   const [tab, setTab] = useState<Tab>("recent");
+  const [q, setQ] = useState("");
+  const [starred, setStarred] = useState<Set<string>>(() => readStarred());
+  /**
+   * Statuses changed from a card, held here until the next load.
+   *
+   * Archiving writes to the database and then the card has to leave the
+   * Recent tab immediately — refetching the whole list for one row would
+   * blank the box for a moment and lose the tab you were on.
+   */
+  const [moved, setMoved] = useState<Record<string, Project["status"]>>({});
 
   useEffect(() => {
     let alive = true;
@@ -112,16 +176,39 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
   // show instead, so this renders nothing rather than a flash of empty state.
   if (!all || all.length === 0) return null;
 
-  const live = all.filter(p => p.status !== "Archived");
-  if (live.length === 0) return null;
+  const withMoves = all.map(p => (moved[p.id] ? { ...p, status: moved[p.id] } : p));
+  const live = withMoves.filter(p => p.status !== "Archived");
+  if (withMoves.length === 0) return null;
 
   const open = (id: string) => router.push(`/dashboard/project/${id}`);
   const byTab = (t: Tab) =>
-    t === "archived" ? all.filter(p => p.status === "Archived")
+    t === "archived" ? withMoves.filter(p => p.status === "Archived")
+      : t === "starred" ? live.filter(p => starred.has(p.id))
       : t === "completed" ? live.filter(p => p.status === "Completed")
       : live;
-  const counts = { recent: live.length, completed: byTab("completed").length, archived: byTab("archived").length };
-  const shown = byTab(tab).slice(0, SHOWN);
+  const counts: Record<Tab, number> = {
+    recent: live.length,
+    starred: byTab("starred").length,
+    completed: byTab("completed").length,
+    archived: byTab("archived").length,
+  };
+  // Search runs over the whole tab, not over the four on screen — otherwise
+  // it would only ever find what you can already see.
+  const needle = q.trim().toLowerCase();
+  const matching = needle ? byTab(tab).filter(p => p.name.toLowerCase().includes(needle)) : byTab(tab);
+  const shown = matching.slice(0, SHOWN);
+
+  async function move(p: Project, to: "Archived" | "In Progress") {
+    setMoved(m => ({ ...m, [p.id]: to }));
+    try {
+      if (to === "Archived") await archiveProject(p.id);
+      else await restoreProject(p.id);
+    } catch {
+      // Put it back where it was: a card that silently stays moved is a lie
+      // about what the database holds.
+      setMoved(m => ({ ...m, [p.id]: p.status }));
+    }
+  }
 
   const trained = agents.filter(a => !a.archived_at && a.last_projects.length > 0).length;
   const documents = Object.values(stats).reduce((n, s) => n + s.docs, 0);
@@ -141,30 +228,36 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
        * screen of nothing between them.
        */}
       <div className="home-hero">
-        {/* One backdrop element, drawn. See .hh-planet — the blurred ellipse
-            and the blended photograph that used to be here are what put two
-            hard bands across the hero. */}
-        <span className="hh-planet" aria-hidden="true" />
+        {/*
+          The planet, and the net over it. Drawn, not photographed: the JPEG
+          that used to be here was blended with the accent through two blend
+          modes, which is what put the hard bands across the hero and what
+          made the result change with the theme and the glass setting. The
+          net lives inside the sphere's own element, so it scales with it and
+          the two can never drift apart.
+        */}
+        <span className="hh-planet" aria-hidden="true">
+          <svg className="hh-net" viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false">
+            <polygon className="hn-ring" points="12,26 34,8 68,7 90,28 93,62 72,90 34,92 9,64" />
+            <path className="hn-web" d="M12,26 L93,62 M34,8 L72,90 M68,7 L9,64 M90,28 L34,92 M12,26 L72,90 M90,28 L9,64" />
+            <circle className="hn-core" cx="50" cy="50" r="27" />
+          </svg>
+        </span>
+
+        {/*
+          One path per agent, each ending in a light. Not two full ellipses
+          any more: at full size they crossed the mascots and both role cards
+          and the screen read as tangled wire rather than as an orbit.
+        */}
+        <svg className="hh-orbit" viewBox="0 0 1000 420" preserveAspectRatio="none"
+          aria-hidden="true" focusable="false">
+          <path className="ho-a" d="M470 24 C 215 60, 80 215, 302 364" />
+          <circle className="ho-dot a" cx="302" cy="364" r="7" />
+          <path className="ho-b" d="M530 24 C 785 60, 920 215, 698 364" />
+          <circle className="ho-dot b" cx="698" cy="364" r="7" />
+        </svg>
 
         <div className="hh-stage">
-          {/* preserveAspectRatio="none": the orbit is scenery and should
-              stretch to whatever band the hero has, not keep a ratio and
-              leave gaps beside the mascots. Each path carries its own
-              travelling light, inside the group that spins, so the dot goes
-              round the orbit without a second animation to keep in step. */}
-          <svg className="hh-orbit" viewBox="0 0 1000 420" preserveAspectRatio="none"
-            aria-hidden="true" focusable="false">
-            <g className="ho-ga">
-              <ellipse className="ho-a" cx="500" cy="210" rx="464" ry="150" transform="rotate(-9 500 210)" />
-              <circle className="ho-dot a" cx="36" cy="210" r="6" transform="rotate(-9 500 210)" />
-            </g>
-            <g className="ho-gb">
-              <ellipse className="ho-b" cx="500" cy="210" rx="464" ry="150" transform="rotate(9 500 210)" />
-              <circle className="ho-dot b" cx="964" cy="210" r="6" transform="rotate(9 500 210)" />
-            </g>
-            <ellipse className="ho-c" cx="500" cy="210" rx="300" ry="196" />
-          </svg>
-
           {/*
             The words come first in the DOM so the heading is the first thing
             read, and the five columns are placed by grid rather than by
@@ -248,6 +341,20 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
             </li>
           </ul>
 
+          {/* Real search, over the whole tab rather than over the four cards
+              on screen — otherwise it could only ever find what you can
+              already see. */}
+          <div className="hp-search">
+            <IconSearch size={14} aria-hidden="true" />
+            <input type="search" value={q} onChange={e => setQ(e.target.value)}
+              placeholder="Search projects…" aria-label="Search your projects" />
+            {q && (
+              <button className="hp-clear" aria-label="Clear search" onClick={() => setQ("")}>
+                <IconX size={12} />
+              </button>
+            )}
+          </div>
+
           <button className="hp-new" onClick={onNew}><IconPlus size={14} />New Project</button>
         </header>
 
@@ -265,26 +372,37 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
         </div>
 
         {shown.length === 0 ? (
-          <p className="hp-empty">Nothing {tab === "recent" ? "open" : tab} yet.</p>
+          <p className="hp-empty">
+            {needle ? <>Nothing here matches “{q.trim()}”.</>
+              : tab === "starred" ? <>Nothing starred yet — the ··· menu on a card puts it here.</>
+              : <>Nothing {tab === "recent" ? "open" : tab} yet.</>}
+          </p>
         ) : (
           <ul className="hp-grid">
             {shown.map((p, i) => {
               const s = stats[p.id];
               return (
+                /*
+                 * A div, not a button, with the card's own buttons inside.
+                 * The menu and the arrow are controls in their own right and
+                 * nesting a button in a button is invalid HTML — the browser
+                 * un-nests it and the inner one stops working.
+                 */
                 <li key={p.id}>
-                  {/* The first card is the one you were last in, and it is
-                      marked rather than made bigger — a different size would
-                      break the row the moment there are three of them. */}
-                  <button className={`hp-card${i === 0 && tab === "recent" ? " is-last" : ""}`}
-                    onClick={() => open(p.id)}>
+                  <div className={`hp-card${i === 0 && tab === "recent" && !needle ? " is-last" : ""}${starred.has(p.id) ? " is-star" : ""}`}>
                     <span className="hp-ic" aria-hidden="true">
                       <span className="hp-faces">
                         <AgentMascot role="consultant" size={22} level={2} agentId={p.consultant_agent_id ?? undefined} />
                         <AgentMascot role="coach" size={22} level={2} agentId={p.coach_agent_id ?? undefined} />
                       </span>
                     </span>
-                    <b>{p.name}</b>
+
+                    {/* The whole card opens the project: the title is the
+                        link, stretched over the card by ::after, so the hit
+                        target is the card without wrapping the controls. */}
+                    <b><button className="hp-open" onClick={() => open(p.id)}>{p.name}</button></b>
                     <span className="hp-date">{dateStr(p.last_activity_at)}</span>
+
                     <span className="hp-tags">
                       {([["consultant", "Concept"], ["coach", "Plan"]] as const).map(([role, short]) => (
                         <span key={role} className={`hp-tag ${role}${s?.docsBy[role] ? " on" : ""}`}>
@@ -292,9 +410,20 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
                         </span>
                       ))}
                       {p.status === "Completed" && <span className="hp-tag done"><IconCheck size={10} />Done</span>}
+                      {starred.has(p.id) && <span className="hp-tag star"><IconSpark size={10} />Starred</span>}
                     </span>
-                    <span className="hp-go" aria-hidden="true"><IconArrow size={14} /></span>
-                  </button>
+
+                    <CardMenu
+                      starred={starred.has(p.id)}
+                      archived={p.status === "Archived"}
+                      name={p.name}
+                      onStar={() => setStarred(toggleStarred(p.id))}
+                      onArchive={() => move(p, p.status === "Archived" ? "In Progress" : "Archived")}
+                    />
+                    <button className="hp-go" aria-label={`Open ${p.name}`} onClick={() => open(p.id)}>
+                      <IconArrow size={14} />
+                    </button>
+                  </div>
                 </li>
               );
             })}

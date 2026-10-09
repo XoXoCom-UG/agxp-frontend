@@ -7376,7 +7376,7 @@ html[data-glass="solid"] .ph-card{ backdrop-filter:none; background:var(--popove
 .home-hero{
   position:relative; isolation:isolate; width:100%;
   display:flex; align-items:center; justify-content:center;
-  padding:clamp(10px, 2vh, 34px) clamp(16px, 3vw, 56px);
+  padding:clamp(10px, 2vh, 34px) clamp(14px, 1.6vw, 30px);
   margin-bottom:clamp(14px, 2.4vh, 36px);
   /* The glow is deliberately wider than the window, so the crop lives here. */
   overflow:clip;
@@ -7427,13 +7427,23 @@ html[data-glass="solid"] .ph-card{ backdrop-filter:none; background:var(--popove
       color-mix(in srgb, var(--primary) 22%, transparent) 60%,
       transparent 86%);
 }
-/* The rim. Inset to where the body has already faded out, so it is the
-   sphere's edge and not a ring around empty space. */
-.hh-planet::after{
-  content:""; position:absolute; inset:9%; border-radius:50%;
-  border:1px solid color-mix(in srgb, var(--acc) 14%, transparent);
+html.light .hh-planet{ opacity:.55; }
+
+/*
+ * The net. Bigger than the sphere on purpose — it is the structure the
+ * planet sits inside, so it reaches past it — and it lives in the planet's
+ * own element so the two scale together and can never drift apart.
+ */
+.hh-net{
+  position:absolute; inset:-62%; width:224%; height:224%;
+  overflow:visible; pointer-events:none;
 }
-html.light .hh-planet{ opacity:.5; }
+.hh-net polygon, .hh-net path, .hh-net circle{
+  fill:none; stroke-width:1; vector-effect:non-scaling-stroke;
+}
+.hn-ring{ stroke:color-mix(in srgb, var(--acc) 26%, transparent); }
+.hn-web{ stroke:color-mix(in srgb, var(--acc) 15%, transparent); }
+.hn-core{ stroke:color-mix(in srgb, var(--acc-2) 22%, transparent); }
 
 /*
  * Mascot, words, mascot — on one band.
@@ -7445,7 +7455,9 @@ html.light .hh-planet{ opacity:.5; }
  */
 .hh-stage{
   position:relative; z-index:1;
-  width:100%; max-width:1680px;
+  /* Near enough the full window: in the mockup the two role cards sit at
+     the edges, and a cap well inside the viewport is what kept them in. */
+  width:100%; max-width:1760px;
   /* card | mascot | words | mascot | card. Placed explicitly, because the
      words come first in the DOM so the heading is read first. */
   display:grid; grid-template-columns:auto auto minmax(0, 1fr) auto auto;
@@ -7462,35 +7474,22 @@ html.light .hh-planet{ opacity:.5; }
 /* The orbit the two of them are on: the same drawing as the mark in the bar,
    two paths crossing around one core. Behind everything, stretched to the
    band rather than keeping a ratio — it is scenery, not a diagram. */
+/* The two paths. Inside the role cards, behind everything. */
 .hh-orbit{
-  /* Kept inside the two cards. At 104% × 136% the loops swept out over them
-     and the screen read as spaghetti rather than as an orbit. */
-  position:absolute; inset:-10% 9%; width:82%; height:120%;
-  z-index:-1; pointer-events:none; overflow:visible;
+  position:absolute; inset:4% 10%; width:80%; height:92%;
+  z-index:0; pointer-events:none; overflow:visible;
 }
-.hh-orbit ellipse{ fill:none; stroke-width:1; vector-effect:non-scaling-stroke; }
-/* Held well down. At half strength the three of them crossed the mascots
-   and both cards and the screen read as tangled wire, not as an orbit. */
-.ho-a{ stroke:color-mix(in srgb, var(--acc) 24%, transparent); }
-.ho-b{ stroke:color-mix(in srgb, var(--acc-2) 20%, transparent); }
-.ho-c{ display:none; }
+.hh-orbit path{ fill:none; stroke-width:1.2; vector-effect:non-scaling-stroke; }
+.ho-a{ stroke:color-mix(in srgb, var(--acc) 46%, transparent); }
+.ho-b{ stroke:color-mix(in srgb, var(--acc-2) 42%, transparent); }
 /* The light travelling the path. Inside the group that spins, so it goes
    round the orbit on the group's animation — one timeline, nothing to keep
    in step with anything. */
-.ho-dot{ fill:var(--acc); opacity:.7; }
+/* The light at the end of each path. Still, like the mockup: the loops used
+   to turn, and a moving thing beside the only button on the screen competes
+   with it. */
+.ho-dot{ fill:var(--acc); stroke:none; }
 .ho-dot.b{ fill:var(--acc-2); }
-@media (prefers-reduced-motion:no-preference){
-  /* Slow enough to notice only if you look — the same rule the drifting
-     background follows. view-box, not fill-box: the group has to turn about
-     the ORBIT's centre, and fill-box would turn each one about the middle
-     of its own bounding box. */
-  .ho-ga, .ho-gb{
-    transform-box:view-box; transform-origin:500px 210px;
-    animation:hhOrbit 64s linear infinite;
-  }
-  .ho-gb{ animation-duration:84s; animation-direction:reverse; }
-}
-@keyframes hhOrbit{ to{ rotate:360deg; } }
 
 /* --- What each agent is for, at either end ------------------------------- */
 .hh-role{
@@ -7555,6 +7554,23 @@ html.light .hh-planet{ opacity:.5; }
 .hh-words{
   display:flex; flex-direction:column; align-items:center; text-align:center;
   min-width:0;
+}
+/*
+ * The title. Its base rule went out with the old bottom section by mistake
+ * and the heading was running on the browser's default h1 — restored here,
+ * with the second line in the accent as in the mockup.
+ */
+.home-title{
+  margin:0; font-family:var(--font-display);
+  font-size:clamp(30px, 2.3vw + 1.9vh, 58px); line-height:1.06;
+  font-weight:600; letter-spacing:-0.035em; color:var(--foreground);
+}
+.home-title span{
+  background:linear-gradient(96deg, var(--acc-hi) 0%, var(--acc) 48%, var(--acc-2) 100%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  /* The descender on "p" and "j" is clipped by background-clip on some
+     engines without a hair of padding under the line. */
+  display:inline-block; padding-bottom:0.08em;
 }
 .home-hero .home-title{ max-width:14ch; }
 .home-lede{
@@ -8361,9 +8377,9 @@ html.light .walk-hole{ box-shadow:0 0 0 9999px rgba(12,18,32,0.5),
 .hp-card > b{
   grid-column:2; align-self:end;
   font-size:var(--text-xs); font-weight:600; color:var(--foreground);
-  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0;
-  /* Room for the arrow in the corner, so a long name never runs under it. */
-  padding-right:22px;
+  overflow:hidden; min-width:0;
+  /* Room for the ··· in the corner, so a long name never runs under it. */
+  padding-right:26px;
 }
 .hp-date{ grid-column:2; align-self:start; font-size:var(--text-3xs); color:var(--muted-foreground); }
 .hp-tags{
@@ -8382,17 +8398,122 @@ html.light .walk-hole{ box-shadow:0 0 0 9999px rgba(12,18,32,0.5),
 .hp-tag.on.coach svg{ color:var(--acc-2); }
 .hp-tag.done{ border-style:solid; border-color:color-mix(in srgb, var(--success) 55%, transparent); color:var(--foreground); }
 .hp-tag.done svg{ color:var(--success); }
-.hp-go{
-  position:absolute; top:var(--sp-4); right:var(--sp-4);
-  color:var(--muted-foreground);
-  transition:color 170ms var(--ease-out), transform 170ms var(--ease-out);
-}
-@media (hover:hover) and (pointer:fine){
-  .hp-card:hover .hp-go{ color:var(--foreground); transform:translateX(2px); }
-}
+/* The arrow's own rule is further down, with the rest of the second pass:
+   it moved from a bare glyph in the top corner to a round button in the
+   bottom one, where the ··· menu now lives in the corner it had. */
 
 @media (max-width:620px){
   .hp-head{ gap:var(--sp-3); }
   .hp-head .home-state{ margin-left:0; order:3; width:100%; gap:var(--sp-4); }
   .hp-new{ margin-left:auto; }
+}
+
+
+/* --- The box, second pass: search, the card menu, the round arrow -------- */
+.hp-search{
+  display:flex; align-items:center; gap:8px; min-width:0; flex:0 1 320px;
+  height:38px; padding:0 12px; border-radius:var(--radius-pill);
+  border:1px solid var(--input); background:var(--card);
+  color:var(--muted-foreground);
+  transition:border-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
+}
+.hp-search:focus-within{
+  border-color:color-mix(in srgb, var(--acc) 58%, transparent);
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--acc) 14%, transparent);
+}
+.hp-search svg{ flex-shrink:0; }
+.hp-search input{
+  flex:1; min-width:0; border:none; outline:none; background:transparent;
+  font-family:inherit; font-size:var(--text-xs); color:var(--foreground);
+}
+.hp-search input::placeholder{ color:var(--muted-foreground); }
+/* Safari draws its own clear button on type=search and it ignores the
+   theme; ours is beside it and matches the rest of the app. */
+.hp-search input::-webkit-search-cancel-button{ -webkit-appearance:none; appearance:none; }
+.hp-clear{
+  display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;
+  width:20px; height:20px; border-radius:50%; border:none;
+  background:var(--surface-elevated); color:var(--muted-foreground);
+}
+@media (hover:hover) and (pointer:fine){ .hp-clear:hover{ color:var(--foreground); } }
+
+/* The counters give up the auto margin now that search sits between them
+   and the button. */
+.hp-head .home-state{ margin-left:auto; }
+.hp-head .hp-search{ margin-left:var(--sp-2); }
+
+/*
+ * The card is a div with its own controls inside, so the title carries the
+ * link and stretches over the whole card. A button wrapping the card would
+ * have swallowed the menu and the arrow — a button inside a button is
+ * invalid, and the browser un-nests it.
+ */
+.hp-open{
+  border:none; background:none; padding:0; text-align:left; color:inherit;
+  font:inherit; min-width:0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block;
+}
+.hp-open::after{ content:""; position:absolute; inset:0; border-radius:inherit; }
+.hp-open:focus-visible{ outline:none; }
+.hp-card:has(.hp-open:focus-visible){
+  outline:2px solid var(--ring); outline-offset:2px;
+}
+/* Above the stretched link, or they cannot be pressed. */
+.hp-menu, .hp-go{ position:relative; z-index:1; }
+
+.hp-card.is-star{ border-color:color-mix(in srgb, var(--acc-2) 46%, transparent); }
+
+/* The ··· — the same control as the Agent Dashboard's, because it is. */
+.hp-menu{ position:absolute; top:10px; right:10px; }
+.hp-menu-btn{
+  width:26px; height:26px; display:flex; align-items:center; justify-content:center;
+  border:none; background:none; border-radius:var(--radius-xs);
+  color:var(--muted-foreground); opacity:0;
+  transition:opacity 160ms var(--ease-out), color 160ms var(--ease-out), background-color 160ms var(--ease-out);
+}
+/* Visible on hover, on focus, and always on a touch screen — where there is
+   no hover and an invisible control is simply a missing one. */
+.hp-card:hover .hp-menu-btn, .hp-menu-btn:focus-visible, .hp-menu[data-open] .hp-menu-btn{ opacity:1; }
+@media (hover:none){ .hp-menu-btn{ opacity:1; } }
+@media (hover:hover) and (pointer:fine){
+  .hp-menu-btn:hover{ background:var(--tint-3); color:var(--foreground); }
+}
+.hp-menu-pop{
+  position:absolute; top:28px; right:0; min-width:132px; padding:4px;
+  border-radius:var(--radius-sm); z-index:3;
+  background:var(--popover); border:1px solid var(--border-strong);
+  box-shadow:var(--shadow-float); transform-origin:top right;
+  animation:popIn 160ms var(--ease-out);
+}
+.hp-menu-pop button{
+  width:100%; display:flex; align-items:center; gap:8px; padding:7px 10px;
+  border:none; background:none; border-radius:var(--radius-xs); text-align:left;
+  font-size:var(--text-xs); color:var(--secondary-foreground);
+}
+.hp-menu-pop button:hover{ background:var(--tint-2); color:var(--foreground); }
+
+/* The arrow, round and in the corner, as in the mockup. */
+.hp-go{
+  position:absolute; right:var(--sp-4); bottom:var(--sp-4);
+  width:30px; height:30px; border-radius:50%;
+  display:inline-flex; align-items:center; justify-content:center;
+  border:1px solid var(--border); background:var(--card);
+  color:var(--muted-foreground);
+  transition:color 170ms var(--ease-out), border-color 170ms var(--ease-out), transform 170ms var(--ease-out);
+}
+.hp-card.is-last .hp-go{ border-color:color-mix(in srgb, var(--acc) 50%, transparent); color:var(--acc-hi); }
+@media (hover:hover) and (pointer:fine){
+  .hp-card:hover .hp-go{ color:var(--foreground); border-color:var(--border-strong); transform:translateX(2px); }
+}
+
+/* Room for the arrow under the chips, so a third chip never lands on it. */
+.hp-tags{ padding-right:38px; }
+.hp-tag.star{
+  border-style:solid; border-color:color-mix(in srgb, var(--acc-2) 55%, transparent);
+  color:var(--foreground);
+}
+.hp-tag.star svg{ color:var(--acc-2); }
+
+@media (max-width:860px){
+  .hp-head .hp-search{ order:4; flex:1 1 100%; margin-left:0; }
 }
