@@ -3603,8 +3603,7 @@ html.light .head-pop .artf-icon{ background:rgba(0,0,0,0.05); }
 .toc-item.on .tick{ background:var(--foreground); }
 html.light .toc-item.on{ background:rgba(0,0,0,0.04); }
 @media (max-width:900px){ .doc-toc .toc-nav{ display:none; } }
-.doc-body h2::before{ background:rgba(255,255,255,0.35); }
-html.light .doc-body h2::before{ background:rgba(0,0,0,0.3); }
+.doc-body h2::before{ background:var(--doc-accent-grad-v); }
 .doc-body h3{ color:var(--secondary-foreground); }
 .doc-body li::marker{ color:var(--muted-foreground); }
 .doc-body thead{ background:var(--tint-2); }
@@ -5865,7 +5864,10 @@ html.light .auth::before{ background:radial-gradient(38vw 38vw at 18% -10%, colo
 .v-lex-grp h4{
   margin:0 0 9px; font-family:var(--font-mono); font-size:var(--text-3xs);
   letter-spacing:0.16em; text-transform:uppercase; color:var(--primary-soft);
+  display:inline-block;
+  background:var(--doc-accent-grad, none); -webkit-background-clip:text; background-clip:text;
 }
+@supports (background-clip:text){ .v-lex-grp h4{ color:transparent; } }
 /* What the theme itself means, one line under its name. */
 .v-lex-about{ margin:-2px 0 var(--sp-2); font-size:var(--text-xs); line-height:1.55; color:var(--muted-foreground); }
 .v-lex-grp dl{ margin:0; display:flex; flex-direction:column; gap:1px; }
@@ -5956,7 +5958,7 @@ html.light .auth::before{ background:radial-gradient(38vw 38vw at 18% -10%, colo
 }
 .v-level .dots{ display:inline-flex; gap:4px; }
 .v-level .dots i{ width:9px; height:9px; border-radius:50%; background:color-mix(in srgb, var(--foreground) 14%, transparent); }
-.v-level .dots i.on{ background:var(--primary-soft); }
+.v-level .dots i.on{ background:var(--doc-accent-grad, var(--primary-soft)); }
 .v-level .badge{ font-size:var(--text-sm); font-weight:600; color:var(--foreground); }
 .v-level .why{ font-size:var(--text-xs); color:var(--secondary-foreground); }
 
@@ -5968,8 +5970,10 @@ html.light .auth::before{ background:radial-gradient(38vw 38vw at 18% -10%, colo
 }
 .v-sum-row .k{
   font-family:var(--font-mono); font-size:var(--text-3xs); letter-spacing:0.16em;
-  text-transform:uppercase; color:var(--primary-soft); padding-top:3px;
+  text-transform:uppercase; color:var(--primary-soft); padding-top:3px; align-self:start; justify-self:start;
+  background:var(--doc-accent-grad, none); -webkit-background-clip:text; background-clip:text;
 }
+@supports (background-clip:text){ .v-sum-row .k{ color:transparent; } }
 .v-sum-row p{ margin:0; font-size:var(--text-sm); line-height:1.65; color:var(--foreground); }
 @container panel (max-width:560px){
   .v-sum-row{ grid-template-columns:1fr; gap:var(--sp-2); }
@@ -6164,7 +6168,15 @@ html.light .auth::before{ background:radial-gradient(38vw 38vw at 18% -10%, colo
    ============================================================================= */
 
 /* --- Chapters ------------------------------------------------------------- */
-.doc-body{ counter-reset:chapter; }
+.doc-body{
+  counter-reset:chapter;
+  /* The app's accent gradient, blue into violet — the one the page titles use.
+     The document's small accents (chapter numbers, the lead statement's rule,
+     the lexicon's topic labels, the summary's labels) all draw from it. */
+  --doc-accent-grad:linear-gradient(90deg, var(--acc-hi), var(--acc-2-hi));
+  --doc-accent-grad-v:linear-gradient(180deg, var(--acc), var(--acc-2));
+}
+html.light .doc-body{ --doc-accent-grad:linear-gradient(90deg, var(--acc-ink), var(--acc-2-ink)); }
 
 .doc-ch{ border:none; margin:0; }
 .doc-ch > summary{
@@ -6188,8 +6200,15 @@ html.light .auth::before{ background:radial-gradient(38vw 38vw at 18% -10%, colo
 .doc-ch > summary .md-h2::before{
   content:counter(chapter, decimal-leading-zero);
   position:absolute; left:0; top:calc(var(--sp-5) + 7px);
-  font-family:var(--font-mono); font-size:var(--text-xs); font-weight:500;
-  letter-spacing:0.08em; color:var(--primary-soft);
+  /* Every h2 in the document carries a 3px stripe on this same pseudo-element
+     (the rule above). Without resetting it, the number sat beside a grey bar
+     as tall as the heading. */
+  bottom:auto; width:auto; height:auto; border-radius:0; background:none;
+  font-family:var(--font-mono); font-size:var(--text-xs); font-weight:600;
+  letter-spacing:0.08em; line-height:1.4;
+  /* The number wears the gradient the titles of the app wear. */
+  background:var(--doc-accent-grad);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
 }
 .doc-ch:first-of-type > summary .md-h2::before{ top:7px; }
 /* The ::before the base stylesheet puts on every h2 would collide with it. */
@@ -6218,7 +6237,8 @@ html.light .auth::before{ background:radial-gradient(38vw 38vw at 18% -10%, colo
 .doc-body p:has(> strong:only-child){
   margin:var(--sp-5) 0;
   padding:2px 0 2px var(--sp-5);
-  border-left:2px solid color-mix(in srgb, var(--primary-soft) 55%, transparent);
+  border-left:2px solid transparent;
+  border-image:var(--doc-accent-grad-v) 1;
 }
 .doc-body p:has(> strong:only-child) > strong{
   display:block;

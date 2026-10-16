@@ -64,7 +64,7 @@ test("the management summary is the structured three-row block", () => {
 });
 
 test("the interview has as many stations as the document has questions to answer", () => {
-  assert.equal(CONSULTANT_DELIVERABLES.strategy.stations.length, 7);
+  assert.equal(CONSULTANT_DELIVERABLES.strategy.stations.length, 12);
   assert.equal(CONSULTANT_DELIVERABLES.architect.stations.length, 8);
   assert.equal(CONSULTANT_DELIVERABLES.change.stations.length, 8);
   for (const [id, d] of consultants) {
@@ -129,4 +129,48 @@ test("the agenda names the document and the stations of that type", () => {
   assert.match(p, /\[\[DOC: Architecture Blueprint\]\]/);
   assert.match(p, /8 Stationen/);
   assert.match(p, /agxp-summary/);
+});
+
+test("the Transformation Concept keeps everything it had, with the sheet's methods added", () => {
+  const titles = CONSULTANT_DELIVERABLES.strategy.sections.map(s => s.title);
+  // what was there before the method sheet
+  for (const old of ["Lexikon", "Management Summary", "Auf einen Blick", "Prozess: heute und morgen",
+    "SMART-Ziele", "SWOT", "Tools und Technologien", "Maßnahmen", "Erfolgsmessung", "Risiken", "Nächste Schritte"]) {
+    assert.ok(titles.includes(old), `still has ${old}`);
+  }
+  // what the sheet added, or sharpened
+  for (const added of ["Wissensstand", "Gap-Analyse und Aktionsplan", "Markt- und Chancenlücken", "Build / Buy / Partner"]) {
+    assert.ok(titles.includes(added), `has ${added}`);
+  }
+  assert.equal(new Set(titles).size, titles.length);
+  // and the interview still asks what those older sections need
+  const stations = CONSULTANT_DELIVERABLES.strategy.stations.map(s => s.label);
+  for (const label of ["Current process", "People & systems", "Pain points", "Constraints", "Success metrics", "Risks & dependencies"]) {
+    assert.ok(stations.includes(label), `still asks ${label}`);
+  }
+});
+
+test("every consultant document closes with measures and next steps", () => {
+  for (const [id, d] of consultants) {
+    const titles = d.sections.map(s => s.title);
+    assert.ok(titles.includes("Maßnahmen"), `${id} has Maßnahmen`);
+    assert.equal(titles[titles.length - 1], "Nächste Schritte", id);
+    assert.ok(titles.indexOf("Maßnahmen") < titles.indexOf("Nächste Schritte"), id);
+    assert.equal(new Set(titles).size, titles.length, `${id}: section titles are unique`);
+  }
+});
+
+test("the measures are built from the document's own methods, not a second list", () => {
+  const measures = (id: string) => CONSULTANT_DELIVERABLES[id].sections.find(s => s.title === "Maßnahmen")!.must;
+  assert.match(measures("architect"), /ADR/);
+  assert.match(measures("architect"), /Risiko-Register/);
+  assert.match(measures("change"), /ADKAR/);
+  assert.match(measures("change"), /Schulungs- und Kommunikationsplan/);
+  for (const id of ["strategy", "architect", "change"]) assert.match(measures(id), /erfinde keine zweite/);
+});
+
+test("the interview asks the timeline the measures need", () => {
+  assert.ok(CONSULTANT_DELIVERABLES.architect.stations.some(s => /Zeitrahmen/.test(s.goal)));
+  assert.ok(CONSULTANT_DELIVERABLES.strategy.stations.some(s => /Zeitrahmen/.test(s.goal)));
+  assert.ok(CONSULTANT_DELIVERABLES.change.stations.some(s => /Go-live/.test(s.goal)));
 });

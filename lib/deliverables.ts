@@ -196,6 +196,13 @@ const SEC_SUMMARY: DocSection = {
     "Zahlen, die in den folgenden Sektionen schon als Grafik stehen.",
 };
 
+// The closing section every consultant document has: what happens next, by
+// whom, by when. Three bullets, because a list of ten is a list nobody starts.
+const SEC_NEXT_STEPS: DocSection = {
+  title: "Nächste Schritte",
+  must: "Genau 3 Bullets, jedes mit Verantwortlichem, Termin und dem, was danach entschieden werden kann. Kein Visual.",
+};
+
 const glanceSection = (extraRow: string, knowledgeLabel: string): DocSection => ({
   title: "Auf einen Blick",
   must:
@@ -221,7 +228,16 @@ const promptsFor = (title: string, filledWith: string) => ({
     `paragraphs. Answer in the language we have been speaking.`,
 });
 
-/* --- Strategy Consultant: the Transformation Concept ---------------------- */
+/* --- Strategy Consultant: the Transformation Concept ----------------------
+
+   The concept keeps everything it had before the method sheet (process,
+   tools, measures, success measurement, risks, next steps) and the sheet's
+   methods are worked in: where a section already existed it is sharpened to
+   the sheet's columns (Gap Analysis + Action Plan, SMART Goals, SWOT, Market /
+   Opportunity Gaps), and where it did not, it is new (Knowledge Check, Build /
+   Buy / Partner Matrix). Ana, 2026-10-16: "ce am pus acum trebuie adaugat peste
+   ce nu era sau daca era sa fie imbunatatit".
+   --------------------------------------------------------------------------- */
 
 const STRATEGY: Deliverable = {
   title: "Transformation Concept",
@@ -233,17 +249,23 @@ const STRATEGY: Deliverable = {
       "wie viel Zeit der Nutzer hat (unter 1 Monat / 1-3 Monate / mehr)",
     ),
     { label: "Starting point", goal: "Worum geht es überhaupt? Branche, Unternehmensgröße, Auslöser für das Projekt, wer fragt an und warum jetzt. Daraus entstehen das Kernproblem in einem Satz, die Beschreibung, das benötigte Wissen bzw. die Technologien und die Eckdaten (Personen, Zeit, Budget)." },
-    { label: "Goals & target state", goal: "Gap-Analyse, Schritt 1: Was will der Nutzer erreichen? Frag zuerst nach dem ZIEL — wie soll es danach aussehen, woran würde man es merken. Der Soll-Zustand steht vor dem Ist-Zustand." },
-    { label: "Current state & gaps", goal: "Gap-Analyse, Schritt 2: Frag nur so viel nach, bis du die 2-3 Dimensionen kennst, die dem Nutzer wichtig sind (Ziele, Reifegrad, Fähigkeiten und Skills, Technologien, Menschen, sonstige Ressourcen). Je Dimension: heute, Ziel, Lücke — und danach die Maßnahmen, nach Priorität geordnet." },
+    { label: "Current process", goal: "Der Ist-Prozess Schritt für Schritt: was passiert zuerst, was danach, wo wird gewartet, was ist manuell." },
+    { label: "People & systems", goal: "Wer macht diese Arbeit heute (Rollen, Anzahl Personen), mit welchen Tools/Systemen, wo liegen die Daten und in welchem Format." },
+    { label: "Pain points", goal: "Wo tut es konkret weh: Häufigkeit, Zeitaufwand, Fehlerquote, Kosten, wer beschwert sich zuerst. Immer nach Zahlen oder einem konkreten Beispiel fragen." },
+    { label: "Target state & goals", goal: "Wie soll es nach der Transformation laufen? Was soll automatisch passieren, was bleibt bewusst beim Menschen. Frag dabei zuerst nach dem ZIEL — was will der Nutzer erreichen, woran würde man es merken. Der Soll-Zustand steht vor dem Ist-Zustand der Gap-Analyse." },
+    { label: "Constraints", goal: "Budgetrahmen, Zeitrahmen, IT-Landschaft, Datenschutz/Compliance, interne Ressourcen, bestehende Verträge." },
+    { label: "Gaps & actions", goal: "Gap-Analyse: Frag nur so viel nach, bis du die 2-3 Dimensionen kennst, die dem Nutzer wichtig sind (Ziele, Reifegrad, Fähigkeiten und Skills, Technologien, Menschen, sonstige Ressourcen). Je Dimension: heute, Ziel, Lücke — und danach die Maßnahmen, nach Priorität geordnet. Vieles weißt du schon aus den Stationen davor: fasse es zusammen und frag nur nach, was fehlt." },
     { label: "Market & opportunity", goal: "NUR wenn der Nutzer veröffentlichen oder verkaufen will — sonst sag in einem Satz, dass du diese Station überspringst, und geh weiter. Beschreibe die heutige Marktlage, benenne das POTENZIAL (was der Markt belohnen würde, nicht was sich der Nutzer wünscht), leite daraus Lücke und Maßnahme ab." },
     { label: "Build, buy or partner", goal: "Welche Fähigkeiten braucht das Vorhaben? Liste sie auf und bewerte je Fähigkeit Selbstbauen, Kaufen und Partnerschaft nach Kosten, Zeit und Kontrolle. Dann eine Empfehlung je Fähigkeit: Standardbausteine kauft man, was das Vorhaben besonders macht, baut man selbst." },
-    { label: "SMART goals", goal: "Sammle die Ziele des Nutzers und schreib jedes um, bis es sich mit Ja oder Nein prüfen lässt. Dann Frist und Messung ergänzen: woran, bis wann, wer prüft." },
+    { label: "Success metrics", goal: "Woran würde man in 6 Monaten merken, dass es funktioniert hat? Messbare Kennzahlen, Ausgangswert und Zielwert. Schreib jedes Ziel gemeinsam mit dem Nutzer um, bis es sich mit Ja oder Nein prüfen lässt (SMART), und ergänze Frist und Messung: woran, bis wann, wer prüft." },
+    { label: "Risks & dependencies", goal: "Was könnte das Projekt zum Scheitern bringen, welche Entscheidungen/Freigaben hängen an anderen Personen." },
   ],
   sections: [
     SEC_LEVEL,
     SEC_LEXICON,
     SEC_SUMMARY,
-    glanceSection("Strategische Option (Build / Buy / Partner)", "Benötigtes Wissen"),
+    glanceSection("Strategische Option (Build / Buy / Partner)", "Benötigtes Wissen und Technologien"),
+    { title: "Prozess: heute und morgen", must: "Ein `agxp-flow` Block mit je 4-6 Schritten in as-is und to-be (`*` an jedem automatisierten Schritt), danach 3-5 Bullets zu den Unterschieden." },
     {
       title: "Gap-Analyse und Aktionsplan",
       must:
@@ -257,7 +279,8 @@ const STRATEGY: Deliverable = {
     // Patryk, 2026-10-02 at 01:06:41: a gap analysis compares today against what
     // you WANT, this compares today against what the market would ALLOW. It is
     // conditional because a conversation that never went near the market should
-    // say so rather than invent an opportunity.
+    // say so rather than invent an opportunity. (Was "Marktchancen"; now in the
+    // sheet's columns.)
     {
       title: "Markt- und Chancenlücken",
       must:
@@ -278,6 +301,7 @@ const STRATEGY: Deliverable = {
         "Satz, ob es ein Standardbaustein ist (dann kaufen) oder das, was das Vorhaben besonders macht " +
         "(dann selbst bauen). Danach 2-4 Bullets: was man sich mit der Empfehlung einhandelt und wann sie kippt.",
     },
+    { title: "Tools und Technologien", must: "Eine Tabelle mit 3-5 namentlich benannten Optionen: Tool | Passt weil | Pro | Contra | Aufwand. Danach eine begründete Empfehlung in 3-4 Bullets: welche Option, warum gerade diese gegen die zweitbeste, was man sich damit einhandelt, und unter welcher Bedingung die Empfehlung kippt. Das ist die Wahl des konkreten Tools — ob man etwas baut, kauft oder einen Partner nimmt, steht schon in Build / Buy / Partner; wiederhole es nicht, sondern bau darauf auf." },
     {
       title: "SMART-Ziele",
       must:
@@ -293,6 +317,10 @@ const STRATEGY: Deliverable = {
         "Unternehmen, und jeder Punkt hängt an einer Lücke oder einem Ziel aus den Methoden davor. " +
         "Danach genau 1 Bullet: welche Schwäche zuerst angegangen wird.",
     },
+    { title: "Maßnahmen", must: "Ein `agxp-roadmap` Block mit 3 Phasen und je 2-3 Maßnahmen, nach Priorität geordnet. Nimm dafür die priorisierten Aktionspläne aus der Gap-Analyse und die Empfehlungen aus Build / Buy / Partner auf und ordne sie in Phasen — erfinde keine zweite, davon abweichende Liste. Danach pro Maßnahme ein Bullet mit Verantwortlichem, Aufwand und der Abhängigkeit, die sie blockieren könnte — und ein letztes Bullet dazu, was die erste Phase unbrauchbar machen würde." },
+    { title: "Erfolgsmessung", must: "Ein `agxp-gap` Block mit den Kennzahlen (heute vs. Ziel), danach pro Kennzahl ein Bullet: wie und wann gemessen. Die Kennzahlen sind dieselben wie in den SMART-Zielen, nur als Zahl gegen Zahl gezeichnet." },
+    { title: "Risiken", must: "Ein `agxp-risks` Block mit 3-5 Risiken — die Gegenmaßnahme steht IM Block, in der vierten Spalte. Wiederhole sie danach NICHT als Bullet; jeder Risikoname stünde sonst zweimal auf der Seite. Die Bullets darunter sagen etwas Neues: welches Risiko zuerst adressiert wird und warum, und welche zwei Risiken zusammen eintreten würden." },
+    SEC_NEXT_STEPS,
   ],
   ...promptsFor("Transformation Concept", "numbers and names"),
 };
@@ -314,7 +342,7 @@ const ARCHITECT: Deliverable = {
     { label: "Quality requirements", goal: "Nichtfunktionale Anforderungen: Welche Qualität erwartet der Nutzer bei Geschwindigkeit, Skalierung, Sicherheit und Verfügbarkeit? Mach jede messbar (\"unter 2 s auf 4G\", \"100 Räume parallel\") und gib die Antwort des Designs darauf." },
     { label: "Data & ML pipeline", goal: "Falls ein Modell trainiert oder produktiv betrieben wird: die Stufen Daten holen, aufbereiten, trainieren, ausliefern (Model Serving) und überwachen (inkl. Drift und Neu-Training) — je Stufe Tool, Frequenz und Verantwortlicher. Ohne Modell: der Datenfluss von der Quelle bis zur Auslieferung. Frag ausdrücklich, wer Monitoring und Data Governance übernimmt." },
     { label: "Infrastructure", goal: "Infrastruktur-Plan: Cloud, On-Prem oder Hybrid — für Hosting, Daten und Modell-Betrieb einzeln. Container und Orchestrierung (Docker, Kubernetes) ja oder nein, welche Umgebungen (Entwicklung, Test, Produktion), wer betreibt es, wie wird es abgesichert." },
-    { label: "Costs", goal: "Kostenmodell (TCO): Welche Kostenpositionen gibt es, einmalig und monatlich — Hosting, Dienste und Lizenzen, Training und Betrieb, und die Arbeitszeit der Menschen. Frag nach Annahmen und halte sie fest." },
+    { label: "Costs & timeline", goal: "Kostenmodell (TCO): Welche Kostenpositionen gibt es, einmalig und monatlich — Hosting, Dienste und Lizenzen, Training und Betrieb, und die Arbeitszeit der Menschen. Frag nach Annahmen und halte sie fest. Danach der Zeitrahmen: bis wann soll was laufen, wer baut und betreibt es, welche Freigaben hängen an anderen Personen — daraus entstehen Maßnahmen und nächste Schritte." },
   ],
   sections: [
     SEC_LEVEL,
@@ -382,6 +410,17 @@ const ARCHITECT: Deliverable = {
         "einem Anbieter. Risiken kommen aus den Lücken der Sektionen davor. Wiederhole die Gegenmaßnahme " +
         "danach NICHT als Bullet; die Bullets sagen, welches Risiko zuerst angegangen wird und warum.",
     },
+    {
+      title: "Maßnahmen",
+      must:
+        "Ein `agxp-roadmap` Block mit 3 Phasen — von der Entscheidung bis zum stabilen Betrieb — und je " +
+        "2-3 Maßnahmen, nach Priorität geordnet. Nimm die Entscheidungen aus den ADRs, die Lücken in " +
+        "Pipeline und Infrastruktur und die Gegenmaßnahmen aus dem Risiko-Register auf und ordne sie in " +
+        "Phasen — erfinde keine zweite, davon abweichende Liste. Danach pro Maßnahme ein Bullet mit " +
+        "Verantwortlichem, Aufwand und der Abhängigkeit, die sie blockieren könnte — und ein letztes " +
+        "Bullet dazu, was die erste Phase unbrauchbar machen würde.",
+    },
+    SEC_NEXT_STEPS,
   ],
   ...promptsFor("Architecture Blueprint", "components, tools, numbers and costs"),
 };
@@ -462,6 +501,18 @@ const CHANGE: Deliverable = {
         "System\", nicht \"90 % waren im Workshop\"). `Erreicht?` steht zu Beginn auf `offen`. Danach " +
         "höchstens 3 Bullets: welcher KPI zuerst Alarm schlagen würde.",
     },
+    {
+      title: "Maßnahmen",
+      must:
+        "Ein `agxp-roadmap` Block mit 3 Phasen — vorbereiten, einführen, verankern — und je 2-3 " +
+        "Maßnahmen, nach Priorität geordnet. Nimm die Maßnahmen aus der ADKAR-Einschätzung, die " +
+        "Lernformate aus den Fähigkeitslücken, die Schritte aus dem Schulungs- und Kommunikationsplan " +
+        "und die Klärungen aus der Rollen-Matrix auf und ordne sie in Phasen — erfinde keine zweite, " +
+        "davon abweichende Liste. Danach pro Maßnahme ein Bullet mit Verantwortlichem, Aufwand und der " +
+        "Abhängigkeit, die sie blockieren könnte — und ein letztes Bullet dazu, was die erste Phase " +
+        "unbrauchbar machen würde.",
+    },
+    SEC_NEXT_STEPS,
   ],
   ...promptsFor("Adoption Plan", "groups, numbers and dates"),
 };

@@ -7,6 +7,8 @@ import { askAgent, AgentError } from "@/lib/ask-agent";
 import { parseMarkers, streamIsDocument, type ParsedMessage } from "@/lib/message-markers";
 import { isDeliverableCommand, type Deliverable } from "@/lib/deliverables";
 import { normalizeIndustry } from "@/lib/industry";
+import { suggestTitle } from "@/lib/suggest-title";
+import { NAME_AFTER_USER_MESSAGES } from "@/lib/project-title";
 import { isReviewCommand, isReadAlongCommand, type PeerContext } from "@/lib/peer-context";
 import { ERROR_PREFIX, isErrorLine, isDocReply, cutUnfinishedMarker, parseEntries, deriveConversation } from "@/lib/conversation-state";
 
@@ -124,6 +126,8 @@ export function useAgentConversation(opts: ConversationOptions) {
    *  first message, or the agent's title). Anything else in its place is a
    *  rename by the user, and stays. */
   const autoName = useRef<string | null>(null);
+  /** The app has asked the server for a name; it asks once per conversation. */
+  const titleAsked = useRef(false);
   /** The category already saved, so an agent that repeats the marker writes once. */
   const savedCategory = useRef<string | null>(opts.project.category ?? null);
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -273,7 +277,7 @@ export function useAgentConversation(opts: ConversationOptions) {
        */
       const currentName = optsRef.current.project.name;
       if (
-        parsed.title && !namedByAgent.current && history.length <= 5 &&
+        parsed.title && !namedByAgent.current && history.length <= 9 &&
         (currentName === PLACEHOLDER_PROJECT_NAME || currentName === autoName.current)
       ) {
         const given = parsed.title;
@@ -284,6 +288,49 @@ export function useAgentConversation(opts: ConversationOptions) {
             optsRef.current.onProjectNamed?.(given.name);
           })
           .catch(e => console.warn("[chat] the agent's project name did not save:", e));
+      }
+
+      /*
+       * The name, when the agent did not give one. The marker above depends on
+       * the model remembering it, and for the consultants the interview opens
+       * with three Knowledge Check questions, so the first answer that knows
+       * the project often comes too late for the window. After the second
+       * message the app asks for a name in a request of its own. Only while the
+       * name is still the placeholder or the stopgap taken from the first
+       * message — a rename typed in Project History stays.
+       */
+      const typed = (m: ProjectMessage) =>
+        m.role === "user" && !isDeliverableCommand(m.content) && !isReadAlongCommand(m.content) && !isReviewCommand(m.content);
+      const nameIsOurs = () => {
+        const n = optsRef.current.project.name;
+        return n === PLACEHOLDER_PROJECT_NAME || n === autoName.current;
+      };
+      if (
+        !namedByAgent.current && !titleAsked.current && nameIsOurs() &&
+        history.filter(typed).length >= NAME_AFTER_USER_MESSAGES
+      ) {
+        titleAsked.current = true;
+        const opening = [...history, { role: "assistant" as const, content: reply }]
+          .filter(m => (m.role === "user" ? typed(m as ProjectMessage) : !isErrorLine(m.content)))
+          .map(m => ({ role: m.role, content: parseMarkers(m.content).text }))
+          .filter(m => m.content.trim());
+        suggestTitle(opening).then(title => {
+          // Someone (the agent's marker, or the user in History) may have named
+          // it while the request was out.
+          if (!title || namedByAgent.current || !nameIsOurs()) return;
+          namedByAgent.current = true;
+          setProjectTitle(project.id, title.name, title.description)
+            .then(() => {
+              autoName.current = title.name.slice(0, 80);
+              optsRef.current.onProjectNamed?.(title.name);
+            })
+            .catch(e => console.warn("[chat] the project name did not save:", e));
+          const cat = normalizeIndustry(title.industry);
+          if (cat && cat !== savedCategory.current) {
+            savedCategory.current = cat;
+            setProjectCategory(project.id, cat).catch(() => { savedCategory.current = null; });
+          }
+        });
       }
 
       // The category for Project History. Unlike the name it may be corrected

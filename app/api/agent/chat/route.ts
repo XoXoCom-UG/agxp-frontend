@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { callerId } from "@/lib/caller-id";
 import type { AgentType } from "@/lib/agents";
 import { DELIVERABLES } from "@/lib/deliverables";
 import { systemPrompt, peerPrompt } from "@/lib/agent-prompt";
@@ -10,28 +10,6 @@ import { allowanceFor, blocked, recordUsage, peerReadingAllowed } from "@/lib/en
 import { validateMessages, cleanLabel, cleanMemory, cleanKind, AGENT_NAME_MAX } from "@/lib/chat-input";
 
 const MODEL = "claude-sonnet-5";
-
-/**
- * Who is calling. This route used to be open to the internet — the proxy only
- * guards /dashboard, and nothing here checked a session — so anyone who knew
- * the URL could send prompts and spend our Anthropic budget. The browser sends
- * its Supabase access token, which is verified against Supabase here.
- */
-async function callerId(req: NextRequest): Promise<string | null> {
-  const header = req.headers.get("authorization") ?? "";
-  const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
-  if (!token) return null;
-
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return null;
-
-  const supabase = createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-  const { data, error } = await supabase.auth.getUser(token);
-  return error || !data.user ? null : data.user.id;
-}
 
 /**
  * A seatbelt against a runaway loop, not a wall: serverless instances don't
