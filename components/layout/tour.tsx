@@ -207,6 +207,7 @@ function SceneFor({ scene }: { scene: Scene }) {
   switch (scene) {
     case "name": return <NameScene />;
     case "pair": return <PairScene />;
+    case "switch": return <SwitchScene />;
     case "ask": return <AskScene />;
     case "build": return <BuildScene />;
     case "memory": return <MemoryScene />;
@@ -311,6 +312,49 @@ function PairScene() {
         </article>
       ))}
       <span className="ts-pair-seam" aria-hidden="true" />
+    </div>
+  );
+}
+
+/**
+ * The right-hand side of the workspace, in miniature: the same two tabs the
+ * real screen has, flipping on their own so the point lands without a click.
+ * Methods first, because that is what a new account opens on.
+ */
+function SwitchScene() {
+  const reduced = usePrefersReducedMotion();
+  const [view, setView] = useState<"methods" | "coach">("methods");
+  useEffect(() => {
+    if (reduced) return;
+    const t = setInterval(() => setView(v => (v === "methods" ? "coach" : "methods")), 2600);
+    return () => clearInterval(t);
+  }, [reduced]);
+
+  return (
+    <div className="ts-switch" aria-hidden="true">
+      <div className="ts-sw-left">
+        <span className="ts-sw-who"><AgentMascot role="consultant" size={26} level={3} />Consultant</span>
+        <i className="ts-sw-line w80" /><i className="ts-sw-line w60" /><i className="ts-sw-line w70" />
+      </div>
+      <div className="ts-sw-right">
+        <div className="ts-sw-tabs">
+          <span className={`ts-sw-tab${view === "methods" ? " on" : ""}`}>Methods</span>
+          <span className={`ts-sw-tab${view === "coach" ? " on" : ""}`}>Coach</span>
+        </div>
+        {view === "methods" ? (
+          <ul className="ts-sw-body">
+            <li className="done"><span />Starting point</li>
+            <li className="done"><span />Current process</li>
+            <li className="now"><span />Pain points</li>
+            <li><span />Target state</li>
+          </ul>
+        ) : (
+          <div className="ts-sw-body coach">
+            <AgentMascot role="coach" size={30} level={3} />
+            <i className="ts-sw-line w80" /><i className="ts-sw-line w50" />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

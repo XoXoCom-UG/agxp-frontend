@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { getProject, createBlankProject, clearAgent, type Project } from "@/lib/projects";
+import { getProject, createBlankProject, clearAgent, discardEmptyProjects, discardEmptyProject, type Project } from "@/lib/projects";
 import { listAgents, type Agent, type AgentType } from "@/lib/agents";
 import { projectCountsByAgent } from "@/lib/agent-progress";
-import type { PanelSnapshot, PeerContext } from "@/lib/peer-context";
+import type { PanelSnapshot, PeerContext, RailState } from "@/lib/peer-context";
 import { useChatSplit, useSplitLocked, broadcastSplit, clampShare, MIN_SHARE, MAX_SHARE } from "@/lib/chat-split";
 import { rememberProject } from "@/lib/last-project";
 import { useMediaQuery } from "@/lib/use-media-query";
@@ -14,14 +14,26 @@ import { describeDbError } from "@/lib/db-error";
 import { AgentNav } from "@/components/layout/agent-nav";
 import { AgentPickerPanel } from "@/components/layout/agent-picker-panel";
 import { ProjectChatPanel } from "@/components/layout/project-chat-panel";
+import { MethodsPanel } from "@/components/layout/methods-panel";
+import { RightTabs, type RightView } from "@/components/layout/right-tabs";
+import { deliverableFor } from "@/lib/deliverables";
+import { kindFor } from "@/lib/agent-types";
 import { DeliverableView, type DeliverableDoc } from "@/components/layout/deliverable-view";
 import { AgentMascot } from "@/components/layout/agent-mascot";
 import { TeamRail, TeamReady, TeamHeading, TeamStep } from "@/components/layout/team-setup";
-import { IconSwap, IconAlert, IconX } from "@/components/layout/agxp-icons";
+import { IconSwap, IconAlert, IconX, IconDoc } from "@/components/layout/agxp-icons";
 
 /** Where the Coach is right now: beside the Consultant, or folded into the pill.
  *  Ana, 2026-09-27: the pill docks straight back — no overlay sheet in between. */
 type CoachMode = "split" | "min";
+
+/** Has the document rail changed in a way the Methods panel has to redraw? */
+function sameRail(a: RailState, b: RailState): boolean {
+  return a.title === b.title && a.totalStations === b.totalStations && a.stationIdx === b.stationIdx
+    && a.stationLabel === b.stationLabel && a.version === b.version && a.restored === b.restored
+    && a.versions.length === b.versions.length
+    && a.currentDoc?.content === b.currentDoc?.content && a.currentDoc?.createdAt === b.currentDoc?.createdAt;
+}
 
 const OTHER: Record<AgentType, AgentType> = { coach: "consultant", consultant: "coach" };
 const ROLES: AgentType[] = ["consultant", "coach"];
@@ -86,6 +98,11 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
    *  panels stay where they are — only the widths trade (Ana, 2026-09-27). */
   const [swapped, setSwapped] = useState(false);
   const [coachMode, setCoachMode] = useState<CoachMode>("split");
+  /** What the right-hand side shows. Methods first: a newcomer who meets a
+   *  Consultant AND a Coach is asked to understand two agents before doing
+   *  anything (Patryk, 2026-10-09). The Coach stays mounted behind its tab, so
+   *  a reply still streaming is there when you open it. */
+  const [rightView, setRightView] = useState<RightView>("methods");
   /** The Coach is coming back from the pill: its slot eases in instead of
    *  appearing in one frame. Only then — not on first load. */
   const [unfolding, setUnfolding] = useState(false);
@@ -176,6 +193,28 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
 
   const creating = useRef<Promise<Project> | null>(null);
 
+  /*
+   * No empty projects. Picking an agent creates the row (assignAgent needs
+   * one), so a start that is abandoned before the first message would stay in
+   * the history and count against the plan. Two sweeps, both through
+   * migration 0013's functions, which the database limits to the caller's own
+   * rows and to projects with no message in them:
+   *   - on arrival: older empty ones left by earlier visits, other than this;
+   *   - on leaving: this one, if nothing was ever written to it.
+   * Best effort — a tab that is simply closed gets neither, and the next
+   * visit or the history page does the first.
+   */
+  const projectRef = useRef<Project | null>(null);
+  useEffect(() => { projectRef.current = project; }, [project]);
+  useEffect(() => {
+    if (!token) return;
+    discardEmptyProjects(projectId ?? null).catch(() => {});
+  }, [token, projectId]);
+  useEffect(() => () => {
+    const id = projectRef.current?.id;
+    if (id) discardEmptyProject(id).catch(() => {});
+  }, []);
+
   function showPane(role: AgentType) {
     setPane(role);
     setUnseen(u => (u[role] ? { ...u, [role]: false } : u));
@@ -202,17 +241,36 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
   const leadRole: AgentType = coachMode !== "split" ? "consultant" : swapped ? "coach" : "consultant";
   /** Which conversation the user is actually looking at right now. Stacked,
    *  that is the tab on screen — the split's lead means nothing there. */
-  const viewedRole: AgentType = stacked ? pane : leadRole;
+  const coachOnScreen = rightView === "coach";
+  const viewedRole: AgentType | null = stacked
+    // On the right-hand tab but looking at Methods: neither conversation.
+    ? (pane === "coach" && !coachOnScreen ? null : pane)
+    : (leadRole === "coach" && !coachOnScreen ? "consultant" : leadRole);
   /** Where number-key shortcuts go. Stacked: the visible pane. Side by side:
    *  the panel last touched, unless the Coach is folded away. */
-  const keyboardRole: AgentType = stacked ? pane : coachMode === "split" ? lastPanel : "consultant";
+  const keyboardRole: AgentType | null = stacked
+    ? viewedRole
+    : coachMode === "split" ? (lastPanel === "coach" && !coachOnScreen ? "consultant" : lastPanel) : "consultant";
   /** Before Start, a chosen Consultant hands the room to the empty Coach seat
    *  — that is the screen asking you to finish the pair. */
   const coachLeads = coachMode === "split"
     && (swapped || (!started && !!project?.consultant_agent_id && !project?.coach_agent_id));
 
+  /** The tabs on the right-hand side. Opening the Coach clears its unread mark;
+   *  leaving it hands the number keys back to the Consultant. */
+  function switchRight(view: RightView) {
+    setRightView(view);
+    if (view === "coach") {
+      setUnseen(u => (u.coach ? { ...u, coach: false } : u));
+      setLastPanel("coach");
+    } else if (lastPanel === "coach") {
+      setLastPanel("consultant");
+    }
+  }
+
   /** Hands a panel the room and clears its unread mark. */
   function focusPanel(role: AgentType) {
+    if (role === "coach") setRightView("coach");
     setUnseen(u => (u[role] ? { ...u, [role]: false } : u));
     setLastPanel(role);
     // Stacked, "the room" is the screen itself: switch to that tab. Swapping
@@ -226,7 +284,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
   // The panel calls onActivity from the end of a stream, through the closure
   // it had when the message was sent. Read from a ref so switching tabs while
   // the answer streams still counts against where you are looking now.
-  const viewedRef = useRef<AgentType>(viewedRole);
+  const viewedRef = useRef<AgentType | null>(viewedRole);
   useEffect(() => { viewedRef.current = viewedRole; }, [viewedRole]);
 
   function noteActivity(role: AgentType) {
@@ -241,7 +299,10 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
       const old = prev[role];
         if (old && old.name === s.name && old.transcript === s.transcript
         && old.lastLine === s.lastLine && old.busy === s.busy
-        && old.agentTurns === s.agentTurns && old.docCount === s.docCount) return prev;
+        && old.agentTurns === s.agentTurns && old.docCount === s.docCount
+        && old.pct === s.pct && old.station?.index === s.station?.index
+        && old.station?.total === s.station?.total && old.station?.label === s.station?.label
+        && old.controls === s.controls && sameRail(old.rail, s.rail)) return prev;
       return { ...prev, [role]: s };
     });
   }, []);
@@ -323,6 +384,11 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
     return { role: other, name: s.name, transcript: s.transcript, turns: s.agentTurns, docs: s.docCount };
   }
 
+  /** Methods or Coach, drawn inside whichever panel the right-hand side shows. */
+  const sideTabs = (
+    <RightTabs view={rightView} onChange={switchRight} coachUnseen={unseen.coach && rightView !== "coach"} />
+  );
+
   function panelFor(role: AgentType) {
     const assignedId = role === "coach" ? project?.coach_agent_id : project?.consultant_agent_id;
     const assigned = agents.find(a => a.id === assignedId) ?? null;
@@ -342,7 +408,12 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
             // Stacked, the Coach tab would otherwise point at nothing.
             if (stacked) showPane("consultant");
           } : undefined}
-          headExtra={role === "consultant" && foldedCoach ? coachPill(true) : undefined}
+          headExtra={role === "consultant" && foldedSide ? sidePills() : undefined}
+          topRow={role === "coach" ? sideTabs : undefined}
+          // The document card moves to the Methods panel while that is on
+          // screen. It comes back here once the side is folded away — and
+          // when stacked, where the side is a tab, not a neighbour.
+          hideRail={role === "consultant" && coachMode === "split" && !stacked}
           onActivity={() => noteActivity(role)}
           onOpenDoc={setOpenDoc}
           onChangeAgent={() => changeAgent(role)}
@@ -356,7 +427,8 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
         assignedAgent={assigned}
         onChangeAgent={assigned ? () => changeAgent(role) : undefined}
         onAssigned={handleAssigned}
-        onAgentCreated={a => setAgents(prev => [...prev, a])} />
+        onAgentCreated={a => setAgents(prev => [...prev, a])}
+        topExtra={role === "coach" ? sideTabs : undefined} />
     );
   }
 
@@ -369,35 +441,44 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
   }
 
   const coachAgent = agents.find(a => a.id === project?.coach_agent_id) ?? null;
+  const consultantAgent = agents.find(a => a.id === project?.consultant_agent_id) ?? null;
   const coachSnap = snaps.coach;
   /** The pill only makes sense once there is a Coach with something to say. */
-  const foldedCoach = coachMode !== "split" && !!coachAgent && started;
+  const foldedSide = coachMode !== "split" && started;
   /** Is the Consultant a live chat, with a head the pill can sit in? */
   const consultantChatting = !!project?.consultant_agent_id && started
     && agents.some(a => a.id === project?.consultant_agent_id);
 
-  /** K1: folded away, the Coach is a hand raised in the Consultant's head,
-   *  next to the document button — no gutter of its own above the row, and
-   *  nothing over the conversation or the answer buttons. */
-  function coachPill(inHead: boolean) {
-    const name = coachAgent?.name ?? "The Coach";
+  /** Brings the folded side back, on the view you pick — Methods or the Coach. */
+  function openSide(view: RightView) {
+    setUnfolding(true);
+    setCoachMode("split");
+    switchRight(view);
+  }
+
+  /**
+   * Folded away, the right-hand side is two small glass buttons at the far end
+   * of the Consultant's head, next to the document button (Ana, 2026-10-15):
+   * whichever one was showing, both are one click away. Nothing over the
+   * conversation or the answer buttons.
+   */
+  function sidePills(floating = false) {
+    const name = coachAgent?.name ?? "the Coach";
     return (
-      <button className={`coach-pill${inHead ? " in-head" : ""}${unseen.coach ? " raised" : ""}`}
-        onClick={() => focusPanel("coach")}
-        aria-label={inHead
-          ? `${unseen.coach ? `${name} has something to add. ` : ""}Open ${coachAgent?.name ?? "the Coach"} beside the Consultant`
-          : undefined}>
-        <span className="cp-face">
-          <AgentMascot role="coach" state={coachSnap?.busy ? "thinking" : "idle"} size={30} agentId={coachAgent?.id} />
-          {unseen.coach && <span className="cp-dot" aria-hidden="true" />}
-        </span>
-        <span className="cp-txt">
-          <span className="cp-n">
-            {unseen.coach ? `${name} has something to add` : coachAgent?.name}
-          </span>
-          <span className="cp-l">{coachSnap?.lastLine ?? "Your coach is listening in."}</span>
-        </span>
-      </button>
+      <div className={`side-pills${floating ? " is-floating" : ""}`}>
+        <button className="side-pill" onClick={() => openSide("methods")}
+          aria-label="Open Methods beside the Consultant">
+          <IconDoc size={13} />Methods
+        </button>
+        {coachAgent && (
+          <button className={`side-pill${unseen.coach ? " raised" : ""}`} onClick={() => focusPanel("coach")}
+            aria-label={`${unseen.coach ? `${name} has something to add. ` : ""}Open ${name} beside the Consultant`}>
+            <AgentMascot role="coach" state={coachSnap?.busy ? "thinking" : "idle"} size={20} agentId={coachAgent.id} />
+            Coach
+            {unseen.coach && <span className="cp-dot" aria-hidden="true" />}
+          </button>
+        )}
+      </div>
     );
   }
 
@@ -445,12 +526,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
 
   return (
     <div className="app">
-      <AgentNav
-        startEnabled={!!project?.consultant_agent_id}
-        startHint={!started && !!project?.consultant_agent_id && !!project?.coach_agent_id}
-        started={started}
-        projectName={project?.name}
-        onStart={started ? undefined : () => setStarted(true)} />
+      <AgentNav started={started} projectName={project?.name} />
       {/* No page title and no description: clicking "New Task" should show the
           two agents and nothing else (Patryk, 2026-09-11 — "wenn es so clean
           ist, weiß der User sofort, was als nächstes zu tun ist"). */}
@@ -468,8 +544,8 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
                 ref={el => { tabRefs.current[role] = el; }}
                 className={`ps-tab ${pane === role ? "on" : ""}`} onClick={() => showPane(role)}>
                 <span className={`role-dot ${role}`} aria-hidden="true" />
-                {ROLE_NAME[role]}
-                {name && <span className="who">{name}</span>}
+                {role === "coach" && rightView === "methods" ? "Methods" : ROLE_NAME[role]}
+                {name && !(role === "coach" && rightView === "methods") && <span className="who">{name}</span>}
                 {unseen[role] && <><span className="ps-dot" aria-hidden="true" /><span className="visually-hidden">, new reply</span></>}
               </button>
             );
@@ -494,7 +570,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
             <h1 className="visually-hidden">{project?.name && project.name !== "New Project" ? project.name : "New task"}</h1>
             <div className="slot setup-slot">
               {setupConsultant && setupCoach ? (
-                <TeamReady consultant={setupConsultant} coach={setupCoach} projectCounts={projectCounts} />
+                <TeamReady consultant={setupConsultant} coach={setupCoach} projectCounts={projectCounts} onStart={() => setStarted(true)} />
               ) : (
                 <AgentPickerPanel key={setupRole} role={setupRole} project={project} agents={agents}
                   ensureProject={ensureProject}
@@ -508,7 +584,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
                   </>} />
               )}
             </div>
-            <TeamRail agents={{ consultant: setupConsultant, coach: setupCoach }} onChange={changeAgent} />
+            <TeamRail agents={{ consultant: setupConsultant, coach: setupCoach }} onChange={changeAgent} onStart={() => setStarted(true)} />
           </main>
         ) : (
         /* Consultant leads (left, wide) — Coach supports (right). Each panel
@@ -518,7 +594,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
         <main ref={wsRef} id="main-content" tabIndex={-1}
           className={`workspace${dragging ? " resizing" : ""}`}
           data-active={pane} data-coach={coachMode}
-          data-pill={foldedCoach && coachMode === "min" && !consultantChatting ? "float" : undefined}>
+          data-pill={foldedSide && coachMode === "min" && !consultantChatting ? "float" : undefined}>
           {/* The screen has no visible title — Patryk wanted it clean — but a
               screen reader still needs to know where it is. */}
           <h1 className="visually-hidden">{project?.name && project.name !== "New Project" ? project.name : "New task"}</h1>
@@ -553,8 +629,8 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
               <span className="seam-rail" aria-hidden="true" />
               <button className={`swap-panels${swapped ? " flipped" : ""}`}
                 onPointerDown={e => e.stopPropagation()} onClick={swapSides}
-                data-tooltip={swapped ? "Give the Consultant more room" : "Give the Coach more room"}
-                aria-label={swapped ? "Give the Consultant more room" : "Give the Coach more room"}>
+                data-tooltip={swapped ? "Give the Consultant more room" : `Give the ${rightView === "coach" ? "Coach" : "Methods"} more room`}
+                aria-label={swapped ? "Give the Consultant more room" : `Give the ${rightView === "coach" ? "Coach" : "Methods"} more room`}>
                 <IconSwap size={13} />
               </button>
               <span className="seam-rail" aria-hidden="true" />
@@ -564,13 +640,20 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
           {/* Folded away it is `display:none`, which already takes it out of
               the tab order and the accessibility tree — but it stays mounted,
               so a reply still streaming into it survives the fold. */}
-          <div className={`slot coach-slot ${coachMode}${unfolding ? " unfolding" : ""}`} data-role="coach" data-tour="panel-coach" style={{ flexGrow: share("coach") }} {...slotProps("coach")}>
+          <div className={`slot coach-slot ${coachMode}${unfolding ? " unfolding" : ""}`} data-role="coach"
+            data-view={rightView} style={{ flexGrow: share("coach") }} {...slotProps("coach")}>
+            <MethodsPanel
+              tabs={sideTabs}
+              deliverable={deliverableFor("consultant", consultantAgent ? kindFor(consultantAgent) : null)}
+              snap={snaps.consultant}
+              onOpenDoc={setOpenDoc}
+              onMinimise={() => { setUnfolding(false); setCoachMode("min"); }} />
             {panelFor("coach")}
           </div>
 
           {/* Only when the Consultant has no chat head to hold it (its agent
               was changed mid-project): then the pill floats in the corner. */}
-          {foldedCoach && coachMode === "min" && !consultantChatting && coachPill(false)}
+          {foldedSide && coachMode === "min" && !consultantChatting && sidePills(true)}
         </main>
         )}
 

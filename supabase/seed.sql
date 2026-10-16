@@ -1,3 +1,9 @@
+-- NOTE (2026-10-15, migration 0014): agents are per user now. The five agents
+-- seeded below have created_by = null, so no account can see them any more;
+-- they are only useful as source rows for 0014's per-user copies on an older
+-- database. A fresh account starts with no agents and creates them from the
+-- types in lib/agent-types.ts.
+
 -- AgxP — seed data for local/dev: skills, methods, agents (3 Consultant + 2 Coach)
 -- with their known methods and a couple of fictive past projects each.
 --

@@ -48,11 +48,13 @@ export interface Plan {
   /** Does the Coach speak up unprompted? Every nudge is a paid call the user
    *  did not ask for, so it is a paid-plan feature. */
   nudges: boolean;
-  /** Agents the user may have assigned across all their projects. */
-  agentSlots: number | null;
-  /** May the user create their own agents? "Train Your Agent" is the product's
-   *  whole pitch, which makes it the strongest thing to put at the top. */
-  createAgents: boolean;
+  /** How many agent TYPES per role the user can see and build, counted from
+   *  the top of TYPE_CATALOG (lib/agent-types.ts); null is all of them. */
+  agentTypes: number | null;
+  /** How many agents of one type the user may keep. Every agent is the user's
+   *  own — built from a type, never shared — so this is the whole limit: free
+   *  is one of one kind per role, the paid plans are four of each kind. */
+  agentsPerType: number;
   /** The invisible ceiling. Tokens in + out, per period. */
   tokenCeiling: number;
 }
@@ -68,8 +70,8 @@ export const PLANS: Record<PlanId, Plan> = {
     // there is no reason to pay for it — but it stops after the first time.
     peerReading: "demo",
     nudges: false,
-    agentSlots: 2,
-    createAgents: false,
+    agentTypes: 1,
+    agentsPerType: 1,
     tokenCeiling: 300_000,
   },
   mid: {
@@ -80,8 +82,8 @@ export const PLANS: Record<PlanId, Plan> = {
     stations: null,
     peerReading: "full",
     nudges: true,
-    agentSlots: 8,
-    createAgents: false,
+    agentTypes: null,
+    agentsPerType: 4,
     tokenCeiling: 12_000_000,
   },
   max: {
@@ -93,8 +95,8 @@ export const PLANS: Record<PlanId, Plan> = {
     stations: null,
     peerReading: "full",
     nudges: true,
-    agentSlots: null,
-    createAgents: true,
+    agentTypes: null,
+    agentsPerType: 4,
     tokenCeiling: 60_000_000,
   },
 };
@@ -114,8 +116,35 @@ export const DEFAULT_PLAN: PlanId = "free";
  */
 export const INVITE_ONLY = true;
 
-export function planFor(id: string | null | undefined): Plan {
+/**
+ * Until the plans are properly ready (Ana, 2026-10-15), every account gets the
+ * Max plan, whatever its row says. The rows are not touched, so turning this
+ * off restores each account's real plan.
+ *
+ * This is the app's half. The database enforces its own copy of two limits —
+ * projects (0008) and agents per type (0014) — in agxp_plan_limits, and
+ * migration 0015 raised the Free and Mid rows to Max's numbers to match. Turning
+ * this off means setting those rows back too; 0015 has the statement.
+ *
+ * Note what Max means for cost: the token ceiling is the only limit left, and
+ * it is 60M tokens a period per account.
+ */
+export const EVERYONE_IS_MAX = true;
+
+/** The plan a stored value names, with an unknown or missing one read as free. */
+export function storedPlan(id: string | null | undefined): Plan {
   return PLANS[(id ?? DEFAULT_PLAN) as PlanId] ?? PLANS[DEFAULT_PLAN];
+}
+
+/** The plan an account is on, as the app applies it. */
+export function planFor(id: string | null | undefined): Plan {
+  return EVERYONE_IS_MAX ? PLANS.max : storedPlan(id);
+}
+
+/** What the plan says about agents, in words: "1 type per role, 1 agent each". */
+export function agentsLabel(p: Plan): string {
+  const types = p.agentTypes === null ? "every type" : `${p.agentTypes} type per role`;
+  return `${types}, up to ${p.agentsPerType} ${p.agentsPerType === 1 ? "agent" : "agents"} of each`;
 }
 
 /** "Unlimited" on the page, a real number in the code. */

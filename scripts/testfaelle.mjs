@@ -26,7 +26,7 @@ import path from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
 import { SCENARIOS, PURPOSE } from "./scenarios.mjs";
 import { systemPrompt } from "../lib/agent-prompt.ts";
-import { DELIVERABLES } from "../lib/deliverables.ts";
+import { deliverableFor } from "../lib/deliverables.ts";
 import { parseMarkers, looksLikeDocument } from "../lib/message-markers.ts";
 import { md } from "../lib/markdown.ts";
 
@@ -38,6 +38,8 @@ const argv = process.argv.slice(2);
 const arg = (name) => { const i = argv.indexOf(name); return i < 0 ? null : argv[i + 1]; };
 const only = arg("--only");
 const role = arg("--role") ?? "consultant";
+/** --kind strategy|architect|change picks the consultant type (default: strategy). */
+const kind = arg("--kind");
 /**
  * --dry writes the page from a canned document instead of calling the API.
  * It proves the report and the rendering before a run spends anything, and
@@ -52,7 +54,7 @@ if (!key && !dry) {
   process.exit(1);
 }
 const anthropic = key ? new Anthropic({ apiKey: key }) : null;
-const deliverable = DELIVERABLES[role];
+const deliverable = deliverableFor(role, kind);
 const cases = SCENARIOS.filter(s => !only || s.id === only);
 if (!cases.length) {
   console.error(`No scenario matches --only ${only}. Known: ${SCENARIOS.map(s => s.id).join(", ")}`);
@@ -117,7 +119,7 @@ const DRY_REPLY = (messages) => {
 /** One turn, with the same two-block caching layout the route uses. */
 async function ask(messages) {
   if (dry) return { text: DRY_REPLY(messages), truncated: false };
-  const sys = systemPrompt(role, role === "coach" ? "Lena Vogt" : "Markus Feld", [], { level: "New", projects: 0 }, null);
+  const sys = systemPrompt(role, role === "coach" ? "Lena Vogt" : "Markus Feld", [], { level: "New", projects: 0 }, null, kind);
   const res = await anthropic.messages.create({
     model: MODEL,
     max_tokens: 24_000,

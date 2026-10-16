@@ -5,11 +5,12 @@ import type { Agent, AgentType } from "@/lib/agents";
 import type { Project } from "@/lib/projects";
 import { type MemoryNote } from "@/lib/message-markers";
 import { loadAgentMemory, memoryLines, EMPTY_MEMORY, type AgentMemory } from "@/lib/agent-memory";
-import { DELIVERABLES } from "@/lib/deliverables";
+import { deliverableFor } from "@/lib/deliverables";
+import { kindFor } from "@/lib/agent-types";
 import { levelFor } from "@/lib/agent-progress";
 import { recordReply, syncReplies, useMascotLevel, MAX_MASCOT_LEVEL } from "@/lib/mascot-level";
 import { handleCodeCopyClick } from "@/lib/markdown";
-import { peerTranscript, previewLine, type PeerContext, type PanelSnapshot } from "@/lib/peer-context";
+import { peerTranscript, previewLine, type PeerContext, type PanelSnapshot, type RailControls } from "@/lib/peer-context";
 import { parseEntries, deriveConversation } from "@/lib/conversation-state";
 import { useAgentConversation, type ReplyInfo } from "@/lib/use-agent-conversation";
 import { useMascotChoreography } from "@/lib/use-mascot-choreography";
@@ -41,7 +42,7 @@ function hasFinePointer(): boolean {
   return typeof window !== "undefined" && window.matchMedia?.("(pointer: fine)").matches;
 }
 
-export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer, idle = false, unread = false, keyboardActive = true, headExtra, onProjectNamed, onActivity, onOpenDoc, onChangeAgent, onSnapshot, onFocusPanel, onMinimise }: {
+export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer, idle = false, unread = false, keyboardActive = true, headExtra, hideRail = false, topRow, onProjectNamed, onActivity, onOpenDoc, onChangeAgent, onSnapshot, onFocusPanel, onMinimise }: {
   project: Project; role: AgentType; agent: Agent;
   /** How many of the user's projects this agent has worked on, this one included. */
   projectCount?: number;
@@ -73,8 +74,14 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
   /** Rendered in the head beside the document button — the folded Coach
    *  lives here, so it takes no room of its own. */
   headExtra?: React.ReactNode;
+  /** The document pill is drawn elsewhere (the Methods panel) while that is on screen. */
+  hideRail?: boolean;
+  /** A row above the head: the Methods / Coach tabs, when this is the right-hand side. */
+  topRow?: React.ReactNode;
 }) {
-  const deliverable = DELIVERABLES[role];
+  // The document depends on the agent's TYPE, not only on its role: a Solution
+  // Architect writes an Architecture Blueprint, a Change Manager an Adoption Plan.
+  const deliverable = deliverableFor(role, kindFor(agent));
   /** The mascot's earned look, 1-5: one level per answer (lib/mascot-level.ts). */
   const mascotLevel = useMascotLevel(agent.id);
   const mascot = useMascotChoreography(mascotLevel);
@@ -221,17 +228,6 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
   // screen writing that back down would spin the two panels against each other.
   const snapCb = useRef(onSnapshot);
   useEffect(() => { snapCb.current = onSnapshot; });
-  useEffect(() => {
-    // Error lines are not something the agent said, and commands are not
-    // something the person wrote.
-    const said = entries.filter(e => !e.isError && !e.isCommand);
-    const turns = said.map(e => ({ role: e.m.role, content: e.m.content }));
-    const answers = said.filter(e => e.m.role === "assistant");
-    const last = answers[answers.length - 1];
-    const lastLine = (last && previewLine(last.p.text)) || OPENING[role];
-    snapCb.current?.({ name: agent.name, transcript: peerTranscript(turns, agent.name), lastLine,
-      agentTurns: answers.length, docCount: docs.length, busy: sending });
-  }, [entries, sending, agent.name, role, docs.length]);
 
   const latest = docs.length;
   const restoredVersion = restore && restore.atCount === latest && restore.version < latest ? restore.version : null;
@@ -255,14 +251,64 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
   // the one place that knows which agenda the agent was given.
   const totalStations = station?.total ?? deliverable.stations.length;
 
+  // The document rail, handed to the screen so the Methods panel can draw it.
+  const versions = useMemo(
+    () => docs.map((d, i) => ({ version: i + 1, createdAt: d.m.created_at })), [docs]);
+  const currentDoc = useMemo<DeliverableDoc | null>(() => {
+    const d = docs[currentVersion - 1];
+    return d ? {
+      title: d.p.doc || deliverable.title, role, agentId: agent.id, agentName: agent.name,
+      agentProjects: totalProjects, projectName: project.name, content: d.p.text,
+      createdAt: d.m.created_at, version: currentVersion,
+    } : null;
+  }, [docs, currentVersion, deliverable.title, role, agent.id, agent.name, totalProjects, project.name]);
+  // One object whose identity never changes; what it calls is read at call time.
+  const fns = useRef<RailControls>({
+    generate: () => {}, regenerate: () => {}, openVersion: () => {}, restoreVersion: () => {},
+  });
+  useEffect(() => {
+    fns.current = {
+      generate: () => chat.send(deliverable.generatePrompt),
+      regenerate: () => chat.send(deliverable.regeneratePrompt),
+      openVersion,
+      restoreVersion: v => setRestore({ version: v, atCount: latest }),
+    };
+  });
+  const controls = useMemo<RailControls>(() => ({
+    generate: () => fns.current.generate(),
+    regenerate: () => fns.current.regenerate(),
+    openVersion: v => fns.current.openVersion(v),
+    restoreVersion: v => fns.current.restoreVersion(v),
+  }), []);
+
+  useEffect(() => {
+    // Error lines are not something the agent said, and commands are not
+    // something the person wrote.
+    const said = entries.filter(e => !e.isError && !e.isCommand);
+    const turns = said.map(e => ({ role: e.m.role, content: e.m.content }));
+    const answers = said.filter(e => e.m.role === "assistant");
+    const last = answers[answers.length - 1];
+    const lastLine = (last && previewLine(last.p.text)) || OPENING[role];
+    snapCb.current?.({
+      name: agent.name, transcript: peerTranscript(turns, agent.name), lastLine,
+      agentTurns: answers.length, docCount: docs.length, pct, station,
+      rail: {
+        title: deliverable.title, totalStations, stationIdx, stationLabel, currentDoc,
+        version: currentVersion, restored: restoredVersion !== null, versions,
+      },
+      controls, busy: sending,
+    });
+  }, [entries, sending, agent.name, role, docs.length, pct, station, deliverable.title, totalStations,
+      stationIdx, stationLabel, currentDoc, currentVersion, restoredVersion, versions, controls]);
+
   const busy = sending || !!leavingId;
 
   return (
-    <section ref={panelRef} className={`panel ${role}${idle ? " is-idle" : ""}${unread ? " has-unread" : ""}`}>
+    <section ref={panelRef} className={`panel ${role}${idle ? " is-idle" : ""}${unread ? " has-unread" : ""}${topRow ? " has-top" : ""}`}>
       <ChatHead
         role={role} agent={agent} deliverable={deliverable}
         mascot={{ orb: mascot.orb, mood: mascot.mood, lookAt: mascot.lookAt }}
-        attentive={attentive} stuck={stuck} headExtra={headExtra}
+        attentive={attentive} stuck={stuck} headExtra={headExtra} hideRail={hideRail} topRow={topRow}
         unread={unread} sending={sending} totalProjects={totalProjects}
         memory={memory} learned={learned}
         doc={{

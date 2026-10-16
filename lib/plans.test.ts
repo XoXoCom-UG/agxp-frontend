@@ -1,16 +1,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { PLANS, planFor, periodStart, projectsLabel } from "./plans.ts";
+import { PLANS, planFor, storedPlan, periodStart, projectsLabel, agentsLabel, EVERYONE_IS_MAX } from "./plans.ts";
 
 test("an unknown or missing plan falls back to free, never to a better one", () => {
-  assert.equal(planFor(undefined).id, "free");
-  assert.equal(planFor(null).id, "free");
-  assert.equal(planFor("").id, "free");
+  assert.equal(storedPlan(undefined).id, "free");
+  assert.equal(storedPlan(null).id, "free");
+  assert.equal(storedPlan("").id, "free");
   // The value comes out of a database column. A typo, a renamed plan, or
   // someone's manual edit must not hand out the unlimited tier.
-  assert.equal(planFor("MAX").id, "free");
-  assert.equal(planFor("enterprise").id, "free");
-  assert.equal(planFor("max").id, "max");
+  assert.equal(storedPlan("MAX").id, "free");
+  assert.equal(storedPlan("enterprise").id, "free");
+  assert.equal(storedPlan("max").id, "max");
 });
 
 test("a weekly window starts on Monday, whatever day it is asked", () => {
@@ -65,4 +65,25 @@ test("unlimited is a label, not an absent ceiling", () => {
   assert.ok(PLANS.max.tokenCeiling > 0 && Number.isFinite(PLANS.max.tokenCeiling));
   assert.ok(PLANS.max.tokenCeiling > PLANS.mid.tokenCeiling);
   assert.ok(PLANS.mid.tokenCeiling > PLANS.free.tokenCeiling);
+});
+
+test("agents are limited by type, not by a pool shared across projects", () => {
+  // Free: one type of Consultant, one type of Coach, one agent of each.
+  assert.equal(PLANS.free.agentTypes, 1);
+  assert.equal(PLANS.free.agentsPerType, 1);
+  // Paid: every type, four of each (Patryk, 2026-09-30).
+  for (const p of [PLANS.mid, PLANS.max]) {
+    assert.equal(p.agentTypes, null);
+    assert.equal(p.agentsPerType, 4);
+  }
+});
+
+test("agentsLabel says it in words", () => {
+  assert.equal(agentsLabel(PLANS.free), "1 type per role, up to 1 agent of each");
+  assert.equal(agentsLabel(PLANS.mid), "every type, up to 4 agents of each");
+});
+
+test("while everyone is on Max, planFor says Max whatever the row holds", () => {
+  if (!EVERYONE_IS_MAX) return;
+  for (const v of [undefined, null, "", "free", "mid", "enterprise"]) assert.equal(planFor(v).id, "max");
 });

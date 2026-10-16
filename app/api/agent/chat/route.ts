@@ -7,6 +7,7 @@ import { systemPrompt, peerPrompt } from "@/lib/agent-prompt";
 import { withAttachments } from "@/lib/message-files";
 import type { PeerContext } from "@/lib/peer-context";
 import { allowanceFor, blocked, recordUsage, peerReadingAllowed } from "@/lib/entitlement-server";
+import { validateMessages, cleanLabel, cleanMemory, cleanKind, AGENT_NAME_MAX } from "@/lib/chat-input";
 
 const MODEL = "claude-sonnet-5";
 
@@ -61,6 +62,8 @@ function overLimit(userId: string): boolean {
 
 interface ChatBody {
   agentType: AgentType;
+  /** The agent's type — decides the interview and the document (lib/agent-types.ts). */
+  agentKind?: string;
   agentName: string;
   messages: { role: "user" | "assistant"; content: string }[];
   /** "kind: fact" lines from this agent's earlier projects with this user. */
@@ -69,6 +72,25 @@ interface ChatBody {
   experience?: { level?: string; projects?: number };
   /** What the other agent on this project has been told so far. */
   peer?: PeerContext;
+}
+
+/**
+ * The peer block comes from the browser too. Name and role end up inside the
+ * system prompt, so they are cleaned and the role is checked against the two
+ * that exist; the transcript is capped again inside peerPrompt().
+ */
+function safePeer(peer: unknown): PeerContext | undefined {
+  if (!peer || typeof peer !== "object") return undefined;
+  const p = peer as Partial<PeerContext>;
+  if (p.role !== "consultant" && p.role !== "coach") return undefined;
+  if (typeof p.transcript !== "string") return undefined;
+  return {
+    role: p.role,
+    name: cleanLabel(p.name, AGENT_NAME_MAX) || (p.role === "coach" ? "Coach" : "Consultant"),
+    transcript: p.transcript,
+    turns: Number(p.turns) || 0,
+    docs: Number(p.docs) || 0,
+  };
 }
 
 /**
@@ -97,9 +119,16 @@ export async function POST(req: NextRequest) {
   }
 
   const body = (await req.json().catch(() => null)) as ChatBody | null;
-  if (!body?.messages?.length || !body.agentType || !DELIVERABLES[body.agentType]) {
+  if (!body || typeof body.agentType !== "string" || !DELIVERABLES[body.agentType]) {
     return fail(400, "bad_request", "The request was incomplete. Reload the page and try again.");
   }
+  // Roles, content types and sizes. Checked before the allowance read so a
+  // malformed or oversized request costs a parse, not a database round trip.
+  const checked = validateMessages(body.messages);
+  if (!checked.ok) {
+    return fail(checked.status, checked.status === 413 ? "too_large" : "bad_request", checked.error);
+  }
+  const messages = checked.messages;
 
   // What this account is allowed, and what it has already spent. Read before
   // the model call so a user over the ceiling is told rather than billed.
@@ -110,10 +139,10 @@ export async function POST(req: NextRequest) {
   // The free tier sees the Coach read along exactly once. Hiding the feature
   // completely would mean the free user never meets the one thing they would
   // be paying for; after the demonstration it is off until they upgrade.
-  const coachTurns = body.messages.filter(m => m.role === "assistant").length;
+  const coachTurns = messages.filter(m => m.role === "assistant").length;
   const peer = body.agentType === "coach" && !peerReadingAllowed(allowance.plan, coachTurns)
     ? undefined
-    : body.peer;
+    : safePeer(body.peer);
 
   const anthropic = new Anthropic({ apiKey });
 
@@ -122,10 +151,12 @@ export async function POST(req: NextRequest) {
   // The body is plain text — the client appends every chunk as it lands.
   const sys = systemPrompt(
       body.agentType,
-      body.agentName || "dein Agent",
-      (body.memory ?? []).filter(m => typeof m === "string").slice(0, 20),
+      cleanLabel(body.agentName, AGENT_NAME_MAX) || "dein Agent",
+      cleanMemory(body.memory),
       body.experience,
       allowance.plan.stations,
+      // Only a known id is passed on; the rest falls back to the role's default.
+      cleanKind(body.agentKind),
   );
 
   /*
@@ -164,7 +195,7 @@ export async function POST(req: NextRequest) {
    * the caller's own token so a forged path reaches nothing.
    */
   const bearer = (req.headers.get("authorization") ?? "").slice(7).trim();
-  const msgs: Anthropic.MessageParam[] = await withAttachments(body.messages, bearer);
+  const msgs: Anthropic.MessageParam[] = await withAttachments(messages, bearer);
 
   const last = msgs.length - 1;
   if (!peerBlock && last >= 0) {

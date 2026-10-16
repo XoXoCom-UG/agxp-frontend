@@ -26,3 +26,21 @@ test("rankIndustries orders by frequency", () => {
   assert.deepEqual(rankIndustries(["Retail", "Banking", "Banking"]), ["Banking", "Retail"]);
   assert.deepEqual(rankIndustries([]), []);
 });
+
+import { INDUSTRY_LABELS, normalizeIndustry, industryHue } from "./industry.ts";
+
+test("normalizeIndustry maps wording to the closed set", () => {
+  assert.equal(normalizeIndustry("Banking"), "Banking");
+  assert.equal(normalizeIndustry("  banking "), "Banking");
+  assert.equal(normalizeIndustry("Bank"), "Banking");
+  assert.equal(normalizeIndustry("Software"), "Software & IT");
+  assert.equal(normalizeIndustry("Underwater basket weaving"), null);
+  assert.equal(normalizeIndustry(""), null);
+  assert.equal(normalizeIndustry(null), null);
+});
+
+test("every label has its own hue", () => {
+  const hues = INDUSTRY_LABELS.map(l => industryHue(l));
+  assert.equal(new Set(hues).size, INDUSTRY_LABELS.length);
+  assert.equal(industryHue(null), 220);
+});

@@ -5,7 +5,8 @@ import type { Agent, AgentType, Method } from "@/lib/agents";
 import { listAllMethods, createAgent } from "@/lib/agents";
 import { assignAgent, type Project } from "@/lib/projects";
 import { levelFor, LEVEL_ORDER } from "@/lib/agent-progress";
-import { TYPE_CATALOG, MAX_PER_TYPE, groupByType, type TypeTemplate } from "@/lib/agent-types";
+import { TYPE_CATALOG, typesFor, groupByType, type TypeTemplate } from "@/lib/agent-types";
+import { useEntitlement } from "@/lib/entitlement";
 import { methodLabel } from "@/lib/method-labels";
 import { dateStr } from "@/lib/utils";
 import { describeDbError } from "@/lib/db-error";
@@ -40,7 +41,7 @@ const PICKER_HEAD: Record<AgentType, { create: string; train: string }> = {
   },
 };
 
-export function AgentPickerPanel({ role, project, agents, ensureProject, onAssigned, onAgentCreated, projectCounts = {}, assignedAgent, onChangeAgent, intro }: {
+export function AgentPickerPanel({ role, project, agents, ensureProject, onAssigned, onAgentCreated, projectCounts = {}, assignedAgent, onChangeAgent, intro, topExtra }: {
   role: AgentType;
   /** Null until the project row exists — it's created lazily on the first real action. */
   project: Project | null;
@@ -55,7 +56,13 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   onChangeAgent?: () => void;
   /** Drawn above the two entry cards — the team builder's heading. */
   intro?: ReactNode;
+  /** Drawn at the top of the panel: the Methods/Coach switch, when this is the Coach's seat on the right. */
+  topExtra?: ReactNode;
 }) {
+  // The plan decides which types are offered and how many agents of each the
+  // user may keep. Until it has loaded the free plan is assumed, so the list
+  // never offers more than the account may build.
+  const { plan } = useEntitlement();
   const totalProjects = (a: Agent) => a.last_projects.length + (projectCounts[a.id] ?? 0);
   const [state, setState] = useState<PanelState>("empty");
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -79,18 +86,14 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
     return hay.includes(q);
   });
 
-  // The bands of "train existing": one per type, then whatever matched none.
+  // The bands of "train existing": one per type.
   const filteredIds = new Set(filtered.map(a => a.id));
-  const byType = groupByType(roleAgents, role);
+  const byType = groupByType(roleAgents, role, plan);
   const groups: { key: string; title: string; description: string | null; template: TypeTemplate | null; agents: Agent[] }[] = [
     ...byType.columns.map(c => ({
       key: c.template.sub, title: c.template.type, description: c.template.description, template: c.template,
       agents: c.agents.filter(a => filteredIds.has(a.id)),
     })),
-    ...(byType.ungrouped.length ? [{
-      key: "other", title: "Other", description: null, template: null,
-      agents: byType.ungrouped.filter(a => filteredIds.has(a.id)),
-    }] : []),
   ];
   /** Open by default: the first band that has anyone in it. */
   const firstFull = groups.find(g => g.agents.length > 0)?.key;
@@ -148,6 +151,7 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
 
   return (
     <section className={`panel ${role}`}>
+      {topExtra && <div className="pick-top">{topExtra}</div>}
       {/* No "Your consultant" headline any more (Ana, 2026-10-01): the two
           cards say what the seat is for. What is left of the head is the way
           back, in the steps that have one. */}
@@ -305,12 +309,12 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
           {/* One tile per type (Ana, 2026-10-05): what it is, one line on what
               it does, what it works with, and how many of the four you hold. */}
           <div className="type-grid">
-            {TYPE_CATALOG[role].map(t => {
-              // Four per type is the cap (Patryk, 2026-09-30). Past it the
+            {typesFor(role, plan).map(t => {
+              // The plan's cap per type (Patryk, 2026-09-30: four).  Past it the
               // answer is not a failed insert — it is "delete one first",
               // said before the click.
               const used = roleAgents.filter(a => a.tagline === t.sub).length;
-              const full = used >= MAX_PER_TYPE;
+              const full = used >= plan.agentsPerType;
               const Icon = TYPE_ICON[t.type] ?? IconSpark;
               return (
                 <button key={t.type} className={`type-tile${full ? " is-full" : ""}`}
@@ -324,9 +328,9 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
                   </span>
                   <span className="tt-foot">
                     <IconUsers size={15} />
-                    <span className="tt-count">{full ? "Full, delete one first" : `${used} of ${MAX_PER_TYPE} in use`}</span>
+                    <span className="tt-count">{full ? "Full, archive one first" : `${used} of ${plan.agentsPerType} in use`}</span>
                     <span className="tt-dots" aria-hidden="true">
-                      {Array.from({ length: MAX_PER_TYPE }, (_, i) => <span key={i} className={i < used ? "on" : ""} />)}
+                      {Array.from({ length: plan.agentsPerType }, (_, i) => <span key={i} className={i < used ? "on" : ""} />)}
                     </span>
                   </span>
                 </button>

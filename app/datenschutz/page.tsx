@@ -46,7 +46,7 @@ export default function DatenschutzPage() {
       <LegalSection heading="2. Welche Daten wir verarbeiten">
         <p>• Kontodaten: E-Mail-Adresse und Anzeigename (bei Registrierung oder Login).</p>
         <p>• Nutzungsinhalte: deine Chat-Nachrichten und die daraus erzeugten Dokumente
-          (Transformation Concept, Change Plan) samt Projektnamen. Diese Inhalte enthalten
+          (Transformation Concept, Architecture Blueprint, Adoption Plan, Change Plan) samt Projektnamen. Diese Inhalte enthalten
           typischerweise Angaben über dein Unternehmen, die du selbst eingibst.</p>
         <p>• Angehängte Dateien: PDFs, Bilder und Textdateien, die du selbst an eine
           Nachricht anhängst. Sie werden in einem privaten Speicher abgelegt, der nur deinem

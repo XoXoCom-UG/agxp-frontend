@@ -245,10 +245,14 @@ function stakeholders(body: string): string {
  */
 function lexicon(body: string): string {
   const byTheme = new Map<string, [string, string][]>();
+  // What each theme itself means — a row whose term is `*`: `Thema | * | Erklärung`.
+  // Patryk (2026-10-09): the categories need explaining too, not only the terms.
+  const about = new Map<string, string>();
   for (const r of rows(body)) {
     const [theme, term, meaning] = [r[0] ?? "", r[1] ?? "", r.slice(2).join(" — ")];
     if (!term) continue;
     const key = theme || "Allgemein";
+    if (term === "*") { if (meaning) about.set(key, meaning); continue; }
     if (!byTheme.has(key)) byTheme.set(key, []);
     byTheme.get(key)!.push([term, meaning]);
   }
@@ -257,7 +261,10 @@ function lexicon(body: string): string {
   const groups = [...byTheme.entries()].map(([theme, terms]) => {
     const list = terms.map(([term, meaning]) =>
       `<div class="v-lex-row"><dt>${term}</dt><dd>${meaning || "—"}</dd></div>`).join("");
-    return `<section class="v-lex-grp"><h4>${theme}</h4><dl>${list}</dl></section>`;
+    const lead = about.get(theme);
+    return `<section class="v-lex-grp"><h4>${theme}</h4>` +
+      (lead ? `<p class="v-lex-about">${lead}</p>` : "") +
+      `<dl>${list}</dl></section>`;
   }).join("");
 
   const count = [...byTheme.values()].reduce((n, t) => n + t.length, 0);
@@ -299,22 +306,72 @@ function glance(body: string): string {
  * forcing it into a bar chart was what made the old section feel invented.
  */
 function diff(body: string): string {
-  const out = rows(body).map(r => {
+  const table = rows(body).filter(r => r[0]);
+  // A fifth column is the action plan (Gap Analysis + Action Plan). Without
+  // one, everything past the fourth cell is still read as the gap, as before.
+  const withPlan = table.some(r => (r[4] ?? "") !== "");
+  const out = table.map(r => {
     const [dim, now, want] = [r[0] ?? "", r[1] ?? "", r[2] ?? ""];
-    const lack = r.slice(3).join(" — ");
-    if (!dim) return "";
+    const lack = withPlan ? (r[3] ?? "") : r.slice(3).join(" — ");
+    const steps = withPlan
+      ? (r.slice(4).join(" | ")).split(";").map(s => s.trim().replace(/^\d+[.)]\s*/, "")).filter(Boolean)
+      : [];
     return `<div class="v-diff-row">` +
       `<span class="d">${dim}</span>` +
       `<span class="now">${now || "—"}</span>` +
       `<span class="arrow" aria-hidden="true"></span>` +
       `<span class="want">${want || "—"}</span>` +
       (lack ? `<span class="lack">${lack}</span>` : `<span class="lack muted">—</span>`) +
+      (withPlan
+        ? (steps.length
+          ? `<ol class="plan">${steps.map(s => `<li>${s}</li>`).join("")}</ol>`
+          : `<span class="plan muted">—</span>`)
+        : "") +
       `</div>`;
   }).join("");
   if (!out) return "";
-  return `<div class="v-diff">` +
+  return `<div class="v-diff${withPlan ? " has-plan" : ""}">` +
     `<div class="v-diff-head"><span>Dimension</span><span>Heute</span><span></span>` +
-    `<span>Ziel</span><span>Lücke</span></div>${out}</div>`;
+    `<span>Ziel</span><span>Lücke</span>${withPlan ? "<span>Aktionsplan</span>" : ""}</div>${out}</div>`;
+}
+
+/**
+ * Knowledge Check — `Stufe | Grund`, one row: the level the three questions
+ * put the user at, and why. It sets the depth of the whole document, so it
+ * opens it as a badge and not as a sentence.
+ */
+function level(body: string): string {
+  const r = rows(body)[0];
+  if (!r || !r[0]) return "";
+  const stage = r[0];
+  const why = r.slice(1).join(" — ");
+  const n = /expert|experte/i.test(stage) ? 3 : /fortgeschritten|intermediate/i.test(stage) ? 2 : 1;
+  const dots = [1, 2, 3].map(i => `<i${i <= n ? ' class="on"' : ""}></i>`).join("");
+  return `<div class="v-level l${n}"><span class="dots" aria-hidden="true">${dots}</span>` +
+    `<b class="badge">${stage}</b>` + (why ? `<span class="why">${why}</span>` : "") + `</div>`;
+}
+
+/**
+ * Management Summary — `Was | …`, `Warum | …`, `Mehrwert | …`.
+ *
+ * Patryk, 2026-10-09: a summary says what is done, why, and what it is worth.
+ * Ana, 2026-10-16: better structured — so three labelled rows with a hairline
+ * between them, not one block of prose.
+ */
+function summary(body: string): string {
+  const LABEL: [RegExp, string][] = [
+    [/^(was|what)/i, "Was wir tun"],
+    [/^(warum|why)/i, "Warum"],
+    [/^(mehrwert|value|nutzen|benefit)/i, "Erwarteter Mehrwert"],
+  ];
+  const out = rows(body).map(r => {
+    const key = r[0] ?? "";
+    const text = r.slice(1).join(" | ");
+    if (!key || !text) return "";
+    const label = LABEL.find(([re]) => re.test(key))?.[1] ?? key;
+    return `<div class="v-sum-row"><span class="k">${label}</span><p>${text}</p></div>`;
+  }).join("");
+  return out ? `<div class="v-sum">${out}</div>` : "";
 }
 
 /**
@@ -351,6 +408,8 @@ function swot(body: string): string {
 }
 
 const RENDERERS: Record<string, (body: string) => string> = {
+  "agxp-level": level,
+  "agxp-summary": summary,
   "agxp-kpi": kpi,
   "agxp-gap": gap,
   "agxp-flow": flow,

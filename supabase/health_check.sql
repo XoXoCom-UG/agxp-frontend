@@ -23,7 +23,15 @@ with expected(kind, name, detail, migration) as (values
   ('function', 'redeem_beta_key',       null,              '0009'),
   ('function', 'set_own_plan',          null,              '0010'),
   ('function', 'mint_beta_key',         null,              '0010'),
-  ('function', 'list_beta_keys',        null,              '0010')
+  ('function', 'list_beta_keys',        null,              '0010'),
+  ('column',   'agxp_projects',         'category',        '0013'),
+  ('function', 'discard_empty_projects', null,             '0013'),
+  ('function', 'discard_empty_project',  null,              '0013'),
+  ('column',   'agxp_plan_limits',      'agents_per_type', '0014'),
+  ('function', 'enforce_agent_limit',   null,              '0014'),
+  ('trigger',  'agents_limit',          'agents',          '0014'),
+  ('function', 'enforce_project_agent_owner', null,        '0014'),
+  ('trigger',  'agxp_projects_agent_owner', 'agxp_projects', '0014')
 )
 select
   e.kind,

@@ -42,7 +42,7 @@ export default function AGBPage() {
       <LegalSection heading="2. Leistungsbeschreibung">
         <p>AgentiX Projects ist ein KI-gestützter Beratungsassistent. Auf Grundlage deiner
           Eingaben führen zwei Agenten ein strukturiertes Interview und erstellen daraus zwei
-          Dokumente: ein Transformation Concept und einen Change Plan.</p>
+          Dokumente: je nach gewähltem Consultant ein Transformation Concept, einen Architecture Blueprint oder einen Adoption Plan, und einen Change Plan.</p>
         <p>Die Ergebnisse werden von einem Sprachmodell erzeugt. Sie sind Vorschläge, können
           sachlich falsch sein und ersetzen keine individuelle fachliche, steuerliche oder
           rechtliche Beratung. Die Prüfung der Ergebnisse obliegt dir.</p>
@@ -61,12 +61,12 @@ export default function AGBPage() {
             const stations = p.stations === null
               ? "das vollständige Interview"
               : `${p.stations} Interviewschritte`;
-            const agents = p.agentSlots === null
-              ? "alle Agenten" : `${p.agentSlots} Agenten`;
+            const agents = (p.agentTypes === null
+              ? "alle Agententypen" : `${p.agentTypes} Agententyp je Rolle`) +
+              `, je Typ bis zu ${p.agentsPerType} ${p.agentsPerType === 1 ? "eigener Agent" : "eigene Agenten"}`;
             return (
               <li key={id}>
-                <b>{p.label}</b>: {projects} {period}, {stations}, {agents}
-                {p.createAgents ? ", eigene Agenten" : ""}.
+                <b>{p.label}</b>: {projects} {period}, {stations}, {agents}.
               </li>
             );
           })}

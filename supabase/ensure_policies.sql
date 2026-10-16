@@ -5,11 +5,11 @@
 --   "new row violates row-level security policy for table \"agents\""
 -- which means the INSERT policy from migration 0005 never got applied.
 
--- ── agents: shared catalog, readable by everyone signed in, writable by the
---    user who creates the agent (lib/agents.ts sets created_by = auth.uid()).
+-- ── agents: every agent is its creator's own (migration 0014) — readable and
+--    writable only by the user who created it (lib/agents.ts sets created_by).
 drop policy if exists "agents_select_authenticated" on agents;
 create policy "agents_select_authenticated" on agents
-  for select to authenticated using (true);
+  for select to authenticated using (created_by = auth.uid());
 
 drop policy if exists "agents_insert_authenticated" on agents;
 create policy "agents_insert_authenticated" on agents
@@ -23,14 +23,15 @@ create policy "agents_update_own" on agents
 -- ── agent_methods: link rows for an agent the current user created
 drop policy if exists "agent_methods_select_authenticated" on agent_methods;
 create policy "agent_methods_select_authenticated" on agent_methods
-  for select to authenticated using (true);
+  for select to authenticated
+  using (exists (select 1 from agents a where a.id = agent_id and a.created_by = auth.uid()));
 
 drop policy if exists "agent_methods_insert_authenticated" on agent_methods;
 create policy "agent_methods_insert_authenticated" on agent_methods
   for insert to authenticated
   with check (exists (select 1 from agents a where a.id = agent_id and a.created_by = auth.uid()));
 
--- ── skills / methods / agent_projects: read-only catalog
+-- ── skills / methods: read-only catalog, shared. agent_projects follows its agent.
 drop policy if exists "skills_select_authenticated" on skills;
 create policy "skills_select_authenticated" on skills for select to authenticated using (true);
 
@@ -38,7 +39,8 @@ drop policy if exists "methods_select_authenticated" on methods;
 create policy "methods_select_authenticated" on methods for select to authenticated using (true);
 
 drop policy if exists "agent_projects_select_authenticated" on agent_projects;
-create policy "agent_projects_select_authenticated" on agent_projects for select to authenticated using (true);
+create policy "agent_projects_select_authenticated" on agent_projects for select to authenticated
+  using (exists (select 1 from agents a where a.id = agent_id and a.created_by = auth.uid()));
 
 -- ── agxp_projects: private to the owner
 drop policy if exists "agxp_projects_owner_select" on agxp_projects;

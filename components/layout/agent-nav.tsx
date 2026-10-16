@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/lib/auth-context";
-import { IconSun, IconMoon, IconUser, IconLogout, IconArrow, IconPlus, IconFolder, IconClock, IconChart } from "@/components/layout/agxp-icons";
+import { IconSun, IconMoon, IconUser, IconLogout, IconPlus, IconFolder, IconClock, IconChart } from "@/components/layout/agxp-icons";
 import { PLACEHOLDER_PROJECT_NAME } from "@/lib/projects";
 import { useLastProject } from "@/lib/last-project";
 import { BrandLogo } from "@/components/layout/brand-logo";
@@ -62,17 +62,11 @@ function projectLabel(name: string): string {
   return name === PLACEHOLDER_PROJECT_NAME ? "Untitled task" : name;
 }
 
-export function AgentNav({ startEnabled, startHint, started, projectName, onStart }: {
-  /** Both halves chosen? The Start button lights up. */
-  startEnabled?: boolean;
-  /** Everything is picked and nothing has started — say so, once. */
-  startHint?: boolean;
-  /** The conversation is running: the green pill turns into the switcher. */
+export function AgentNav({ started, projectName }: {
+  /** The conversation is running: the bar names the project. */
   started?: boolean;
   /** The project this bar is sitting on, so the chip can name it. */
   projectName?: string;
-  /** Omitted once the conversation has started — then there is nothing to start. */
-  onStart?: () => void;
 }) {
   const { user, profileName, signOut } = useAuth();
   const pathname = usePathname();
@@ -85,7 +79,6 @@ export function AgentNav({ startEnabled, startHint, started, projectName, onStar
   const [settingsOpen, setSettingsOpen] = useState(false);
   const isApple = useIsApple();
   const menuId = useId();
-  const startWhyId = useId();
 
   // Paint the saved accent and the saved room before anything else renders
   // with the defaults. Reading localStorage during render would differ
@@ -190,23 +183,9 @@ export function AgentNav({ startEnabled, startHint, started, projectName, onStar
 
         <span className="nb-rule" aria-hidden="true" />
 
-        {onStart ? (
-          <div className="start-wrap">
-            {/* aria-disabled, not disabled: it stays focusable, so the reason
-                can be reached and read, not only hovered. Green, where the
-                blue "Current project" chip will stand once it is pressed:
-                one slot, two states, so the bar does not reflow. */}
-            <button className={`btn btn-start${startHint ? " is-ready" : ""}`}
-              aria-disabled={!startEnabled || undefined}
-              aria-describedby={startEnabled ? undefined : startWhyId}
-              onClick={() => { if (startEnabled) onStart(); }}
-              data-tooltip={startEnabled ? undefined : "Pick a Consultant first"}>
-              Start<IconArrow size={12} />
-            </button>
-            {!startEnabled && <span className="visually-hidden" id={startWhyId}>Pick a Consultant first.</span>}
-            {startHint && <span className="start-nudge">Both agents ready — press Start</span>}
-          </div>
-        ) : lastProject && tab !== "newtask" ? (
+        {/* Start is not in the bar any more (Ana, 2026-10-15): it sits under the
+            two agents on the "team is ready" screen, where the decision is. */}
+        {lastProject && tab !== "newtask" ? (
           /* One button, not a dropdown. From History or the Agent Dashboard
              the only way back into a conversation was New Task, which starts
              over; this returns you to the one you were last in. A dropdown

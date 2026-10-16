@@ -77,7 +77,7 @@ function ArtifactHeader({ title, state, pct, subtitle, restored = false }: {
   );
 }
 
-function ArtifactActions({ sending, versions, current, onOpen, onRegenerate, onOpenVersion, onRestoreVersion }: {
+export function ArtifactActions({ sending, versions, current, onOpen, onRegenerate, onOpenVersion, onRestoreVersion }: {
   sending: boolean;
   versions: { version: number; createdAt: string }[];
   current: number;
@@ -169,7 +169,13 @@ function VersionHistory({ versions, current, onOpenVersion, onRestoreVersion }: 
   );
 }
 
-function metaLine(version: number, createdAt: string, restored: boolean): string {
+/** "Version 7 · Updated 5d ago" — the same facts as metaLine, in the Methods panel's plainer words. */
+export function versionLine(version: number, createdAt: string, restored: boolean): string {
+  if (restored) return `Version ${version} · Restored`;
+  return `Version ${version} · ${version > 1 ? "Updated" : "Created"} ${timeAgo(createdAt)}`;
+}
+
+export function metaLine(version: number, createdAt: string, restored: boolean): string {
   const parts = [`v${version}`];
   if (restored) parts.push("Restored");
   else if (version > 1) parts.push(`Updated from v${version - 1}`);

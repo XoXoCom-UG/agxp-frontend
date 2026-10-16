@@ -32,7 +32,7 @@ import type { AgentType } from "@/lib/agents";
  * see it again. A stored number lower than this counts as unseen; equal or
  * higher counts as seen, so a version rollback does not re-nag everybody.
  */
-export const TOUR_VERSION = 2;
+export const TOUR_VERSION = 3;
 
 /** The metadata key on the account, and the mirror key in this browser. */
 export const TOUR_META_KEY = "agxp_tour";
@@ -100,7 +100,7 @@ export function clearLocalTour(): void {
  * happen rather than something you are told about. `paint` is the only one
  * wired to the real app: it changes the actual colours while you look at it.
  */
-export type Scene = "hello" | "name" | "pair" | "ask" | "build" | "memory" | "paint" | "go";
+export type Scene = "hello" | "name" | "pair" | "switch" | "ask" | "build" | "memory" | "paint" | "go";
 
 export interface TourStep {
   id: Scene;
@@ -131,8 +131,15 @@ export const TOUR_STEPS: TourStep[] = [
     id: "pair",
     tag: "The pair",
     title: "One plans the work. One plans the people.",
-    line: "The Consultant writes your Transformation Concept, the Coach writes your Change Plan — side by side, on the same screen.",
+    line: "The Consultant writes your Transformation Concept, the Coach writes your Change Plan — on the same project, each with a conversation of their own.",
     speaker: "consultant",
+  },
+  {
+    id: "switch",
+    tag: "Your view",
+    title: "Watch it build, or talk to the Coach.",
+    line: "Next to the Consultant you see the work take shape. The Coach is one tab away — open it whenever you want the people side.",
+    speaker: "coach",
   },
   {
     id: "ask",

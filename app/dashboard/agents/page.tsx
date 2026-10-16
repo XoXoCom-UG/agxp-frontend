@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { listAgents, setAgentArchived, type Agent, type AgentType } from "@/lib/agents";
-import { MAX_PER_TYPE, TYPE_CATALOG, groupByType } from "@/lib/agent-types";
+import { typesFor, groupByType } from "@/lib/agent-types";
+import { useEntitlement } from "@/lib/entitlement";
 import { loadTeamStats, compactNumber, EMPTY_STATS, type TeamStats } from "@/lib/team-stats";
 import { syncReplies } from "@/lib/mascot-level";
 import { describeDbError } from "@/lib/db-error";
@@ -23,6 +24,7 @@ const ROLES: { id: AgentType; label: string }[] = [
 export default function AgentDashboardPage() {
   const { token, loading: authLoading } = useAuth();
   const router = useRouter();
+  const { plan } = useEntitlement();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [stats, setStats] = useState<TeamStats>(EMPTY_STATS);
   const [loading, setLoading] = useState(true);
@@ -53,11 +55,11 @@ export default function AgentDashboardPage() {
   function retry() { setLoading(true); setLoadError(false); setAttempt(n => n + 1); }
 
   // Every slot of every type, across both roles: how much of the team is hired.
-  const slots = (TYPE_CATALOG.consultant.length + TYPE_CATALOG.coach.length) * MAX_PER_TYPE;
+  const slots = ROLES.reduce((n, r) => n + typesFor(r.id, plan).length * plan.agentsPerType, 0);
   // Archived agents keep their history but hold no slot and are not "on the team".
   const active = agents.filter(a => !a.archived_at);
-  const filled = ROLES.reduce((n, r) => n + groupByType(active, r.id).columns
-    .reduce((m, c) => m + Math.min(MAX_PER_TYPE, c.agents.length), 0), 0);
+  const filled = ROLES.reduce((n, r) => n + groupByType(active, r.id, plan).columns
+    .reduce((m, c) => m + Math.min(plan.agentsPerType, c.agents.length), 0), 0);
 
   // Archive or restore. Undoable both ways, so no "are you sure?" — the
   // agent simply moves to (or back from) its role's Archived tab.
@@ -127,7 +129,7 @@ export default function AgentDashboardPage() {
             // its own (Ana, 2026-10-01): the team stays in view behind it.
             <div className="agx-split">
               {ROLES.map(r => (
-                <RoleSection key={r.id} role={r.id} label={r.label} agents={agents} usage={stats.byAgent}
+                <RoleSection key={r.id} role={r.id} label={r.label} agents={agents} usage={stats.byAgent} plan={plan}
                   onArchive={a => setArchived(a, true)} onRestore={a => setArchived(a, false)}
                   onAdd={() => router.push("/dashboard")} />
               ))}

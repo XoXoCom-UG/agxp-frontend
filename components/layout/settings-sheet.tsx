@@ -11,7 +11,7 @@ import { IconX, IconCheck, IconMonitor, IconSun, IconMoon, IconSpark } from "@/c
 import { useDialogFocus } from "@/lib/use-dialog-focus";
 import { useExit } from "@/lib/use-exit";
 import { useEntitlement } from "@/lib/entitlement";
-import { PLANS, projectsLabel, type Plan } from "@/lib/plans";
+import { PLANS, projectsLabel, agentsLabel, type Plan } from "@/lib/plans";
 import { DevPlanTools } from "@/components/layout/dev-plan-tools";
 import { DevMemory } from "@/components/layout/dev-memory";
 import { replayTour } from "@/components/layout/tour-host";
@@ -338,8 +338,7 @@ function PlanTab() {
                   ? "Coach reads the consultation"
                   : "Coach reads it once, as a preview"}</li>
                 <li>{p.nudges ? "Coach speaks up on its own" : "Coach answers when asked"}</li>
-                <li>{p.agentSlots === null ? "Every agent" : `${p.agentSlots} agents`}
-                  {p.createAgents ? ", and you can build your own" : ""}</li>
+                <li>{agentsLabel(p)[0].toUpperCase() + agentsLabel(p).slice(1)}, all your own</li>
               </ul>
             </div>
           ))}

@@ -6,7 +6,7 @@ import { levelFor } from "@/lib/agent-progress";
 import { methodLabel } from "@/lib/method-labels";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { AgentMascot } from "@/components/layout/agent-mascot";
-import { IconBack, IconCheck, IconLock } from "@/components/layout/agxp-icons";
+import { IconArrow, IconBack, IconCheck, IconLock } from "@/components/layout/agxp-icons";
 
 const ROLES: AgentType[] = ["consultant", "coach"];
 const ROLE_NAME: Record<AgentType, string> = { consultant: "Consultant", coach: "Coach" };
@@ -39,9 +39,12 @@ export function TeamStep({ role }: { role: AgentType }) {
  * whole message. The Consultant is picked first, then the Coach, both in the
  * big panel on the left; the rail only shows where you are.
  */
-export function TeamRail({ agents, onChange }: {
+export function TeamRail({ agents, onChange, onStart }: {
   agents: Record<AgentType, Agent | null>;
   onChange: (role: AgentType) => void;
+  /** Starting with only the Consultant: the Start button lives under the pair
+   *  on the "ready" screen, which needs both, so this is the way in without a Coach. */
+  onStart?: () => void;
 }) {
   const filled = ROLES.filter(r => agents[r]).length;
   const active = ROLES.find(r => !agents[r]) ?? null;
@@ -99,6 +102,11 @@ export function TeamRail({ agents, onChange }: {
           );
         })}
       </ol>
+      {onStart && agents.consultant && !agents.coach && (
+        <button type="button" className="tr-skip" onClick={onStart}>
+          Start with the Consultant only<IconArrow size={12} />
+        </button>
+      )}
     </aside>
   );
 }
@@ -157,12 +165,13 @@ function Loops({ id, vertical, still }: { id: string; vertical: boolean; still: 
 /**
  * Both seats taken (Ana, 2026-10-05): the two of them on one figure eight,
  * blue for the work, violet for the people, crossing at a star. Nothing to
- * press here — Start is in the bar.
+ * press here — Start is under the pair.
  */
-export function TeamReady({ consultant, coach, projectCounts }: {
+export function TeamReady({ consultant, coach, projectCounts, onStart }: {
   consultant: Agent;
   coach: Agent;
   projectCounts: Record<string, number>;
+  onStart: () => void;
 }) {
   // SMIL ignores prefers-reduced-motion, so the orbiting dots are left out.
   const still = useMediaQuery("(prefers-reduced-motion: reduce)");
@@ -207,6 +216,12 @@ export function TeamReady({ consultant, coach, projectCounts }: {
 
           {name("consultant", consultant)}
           {name("coach", coach)}
+          {/* Under the two of them, where the decision is (Ana, 2026-10-15) —
+              it used to sit in the bar, away from what it starts. Inside the
+              stage, so it keeps its place under the names at any size. */}
+          <button type="button" className="tready-start is-ready" onClick={onStart}>
+            Start<IconArrow size={14} />
+          </button>
         </div>
         </div>
       </div>

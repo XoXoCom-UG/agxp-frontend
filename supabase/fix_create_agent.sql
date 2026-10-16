@@ -23,7 +23,7 @@ alter table public.agent_methods enable row level security;
 -- 2. Politicile care lipsesc — INSERT e cea care blocheaza "Create Agent"
 drop policy if exists "agents_select_authenticated" on public.agents;
 create policy "agents_select_authenticated" on public.agents
-  for select to authenticated using (true);
+  for select to authenticated using (created_by = auth.uid());
 
 drop policy if exists "agents_insert_authenticated" on public.agents;
 create policy "agents_insert_authenticated" on public.agents
@@ -31,7 +31,8 @@ create policy "agents_insert_authenticated" on public.agents
 
 drop policy if exists "agent_methods_select_authenticated" on public.agent_methods;
 create policy "agent_methods_select_authenticated" on public.agent_methods
-  for select to authenticated using (true);
+  for select to authenticated
+  using (exists (select 1 from public.agents a where a.id = agent_id and a.created_by = auth.uid()));
 
 drop policy if exists "agent_methods_insert_authenticated" on public.agent_methods;
 create policy "agent_methods_insert_authenticated" on public.agent_methods

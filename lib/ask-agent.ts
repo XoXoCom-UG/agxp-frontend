@@ -1,4 +1,5 @@
 import type { Agent } from "@/lib/agents";
+import { kindFor } from "@/lib/agent-types";
 import { createClient } from "@/lib/supabase";
 import type { PeerContext } from "@/lib/peer-context";
 
@@ -88,7 +89,7 @@ export async function askAgent({ agent, messages, memory = [], experience, peer,
         "Content-Type": "application/json",
         Authorization: `Bearer ${await accessToken()}`,
       },
-      body: JSON.stringify({ agentType: agent.type, agentName: agent.name, messages, memory, experience, peer }),
+      body: JSON.stringify({ agentType: agent.type, agentKind: kindFor(agent), agentName: agent.name, messages, memory, experience, peer }),
       signal,
     });
 

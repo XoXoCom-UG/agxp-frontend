@@ -4,11 +4,11 @@ import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { listProjects, renameProject, archiveProject, PLACEHOLDER_PROJECT_NAME, type Project } from "@/lib/projects";
+import { listProjects, renameProject, archiveProject, discardEmptyProjects, PLACEHOLDER_PROJECT_NAME, type Project } from "@/lib/projects";
+import { normalizeIndustry, industryHue } from "@/lib/industry";
 import { listAgents, type Agent, type AgentType } from "@/lib/agents";
 import { loadProjectStats, type ProjectStats } from "@/lib/project-stats";
-import { templateFor } from "@/lib/agent-types";
-import { DELIVERABLES } from "@/lib/deliverables";
+import { templateFor, TYPE_CATALOG } from "@/lib/agent-types";
 import { AgentNav } from "@/components/layout/agent-nav";
 import { ConfirmDialog } from "@/components/layout/confirm-dialog";
 import { IconFolder, IconArrow, IconMore, IconSearch, IconPlus, IconAlert, IconRefresh, IconChevronDown, IconCheck } from "@/components/layout/agxp-icons";
@@ -24,7 +24,7 @@ function statusClass(s: Project["status"]) { return s.toLowerCase().replace(/\s+
 function displayName(name: string) { return name === PLACEHOLDER_PROJECT_NAME ? "Untitled task" : name; }
 
 type StatusFilter = "all" | Project["status"];
-type SortKey = "updated" | "name" | "messages";
+type SortKey = "updated" | "name" | "messages" | "category";
 const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
   { key: "all", label: "All projects" },
   { key: "In Progress", label: "In progress" },
@@ -32,7 +32,7 @@ const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
   { key: "Completed", label: "Completed" },
   { key: "Archived", label: "Archived" },
 ];
-const SORT_LABEL: Record<SortKey, string> = { updated: "Last updated", name: "Name", messages: "Most messages" };
+const SORT_LABEL: Record<SortKey, string> = { updated: "Last updated", name: "Name", messages: "Most messages", category: "Category" };
 
 /** A titled block in the filter card that folds shut on its heading. Closed
  *  content is `inert`, so it leaves the tab order as well as the screen. */
@@ -106,6 +106,8 @@ export default function ProjectHistoryPage() {
   /** Progress, messages and documents per project — read after the list, so
    *  the list never waits on it, and a failure only leaves the numbers out. */
   const [stats, setStats] = useState<Record<string, ProjectStats>>({});
+  /** Until the stats are in, "no messages" cannot be told from "not read yet". */
+  const [statsLoaded, setStatsLoaded] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   /** An agent type ("AI Strategy Consultant", "Change Manager"…), either role. */
   const [agentFilter, setAgentFilter] = useState<string | null>(null);
@@ -133,11 +135,16 @@ export default function ProjectHistoryPage() {
   useEffect(() => {
     if (!token) return;
     let alive = true;
-    Promise.all([listProjects(), listAgents()])
+    // A start that was abandoned before the first message leaves an empty
+    // project behind; it goes first, so the list below never shows it. A
+    // failure here must not stop the history from loading.
+    discardEmptyProjects().catch(() => 0)
+      .then(() => Promise.all([listProjects(), listAgents()]))
       .then(([p, a]) => {
         if (!alive) return;
         setProjects(p); setAgents(a); setLoadError(false);
-        loadProjectStats(p.map(x => x.id)).then(st => { if (alive) setStats(st); }).catch(() => {});
+        setStatsLoaded(false);
+        loadProjectStats(p.map(x => x.id)).then(st => { if (alive) { setStats(st); setStatsLoaded(true); } }).catch(() => {});
       })
       // An empty list here would claim "Nothing here yet" about projects that
       // exist, so a failed load gets its own state with a way out.
@@ -248,9 +255,21 @@ export default function ProjectHistoryPage() {
     return [p.consultant_agent_id, p.coach_agent_id].flatMap(id => {
       const a = id ? agents.find(x => x.id === id) : null;
       if (!a) return [];
-      return [templateFor(a)?.type ?? (a.created_by === null ? a.name : a.type === "coach" ? "Other coach" : "Other consultant")];
+      // An agent that matches no type is filed under the role's first one, as everywhere else.
+      return [(templateFor(a) ?? TYPE_CATALOG[a.type][0]).type];
     });
   }
+
+  /** The category the agent saved, or — for projects from before it was
+   *  stored — the industry named in the conversation. */
+  const categoryOf = (p: Project): string | null => {
+    const raw = stats[p.id]?.industry;
+    return p.category ?? (raw ? (normalizeIndustry(raw) ?? raw) : null);
+  };
+  /** A project nobody wrote to. The server clears these (migration 0013); this
+   *  only covers the minutes before it does, and never judges before the
+   *  messages have been read. */
+  const isEmpty = (p: Project) => statsLoaded && !stats[p.id] && p.name === PLACEHOLDER_PROJECT_NAME;
 
   const counts: Record<StatusFilter, number> = {
     all: projects.length,
@@ -261,7 +280,7 @@ export default function ProjectHistoryPage() {
   };
   // Every other filter counts within the status you are looking at, so the
   // numbers beside them are what you would actually get by clicking.
-  const inStatus = projects.filter(p => statusFilter === "all" ? p.status !== "Archived" : p.status === statusFilter);
+  const inStatus = projects.filter(p => !isEmpty(p)).filter(p => statusFilter === "all" ? p.status !== "Archived" : p.status === statusFilter);
   const countBy = <T,>(keyOf: (p: Project) => T | T[] | null) => {
     const m = new Map<T, number>();
     for (const p of inStatus) {
@@ -271,12 +290,14 @@ export default function ProjectHistoryPage() {
     return m;
   };
   const agentCounts = countBy(p => [...new Set(agentTypes(p))]);
-  const industryCounts = countBy(p => stats[p.id]?.industry ?? null);
+  const industryCounts = countBy(p => categoryOf(p));
   const hasDoc = (p: Project, k: AgentType | "none") =>
     k === "none" ? !stats[p.id]?.docsBy.consultant && !stats[p.id]?.docsBy.coach : !!stats[p.id]?.docsBy[k];
   const docItems = (["consultant", "coach", "none"] as const).map(k => ({
     key: k,
-    label: k === "none" ? "Not generated yet" : `${DELIVERABLES[k].title} generated`,
+    // The Consultant's document is named by its type (Transformation Concept,
+    // Architecture Blueprint, Adoption Plan), so the filter names the role.
+    label: k === "none" ? "Not generated yet" : k === "consultant" ? "Consultant document generated" : "Change Plan generated",
     n: inStatus.filter(p => hasDoc(p, k)).length,
   })).filter(it => it.n > 0);
   const anyFilter = !!(agentFilter || docFilter || industryFilter);
@@ -288,9 +309,12 @@ export default function ProjectHistoryPage() {
   const filtered = inStatus
     .filter(p => !agentFilter || agentTypes(p).includes(agentFilter))
     .filter(p => !docFilter || hasDoc(p, docFilter))
-    .filter(p => !industryFilter || stats[p.id]?.industry === industryFilter)
-    .filter(p => displayName(p.name).toLowerCase().includes(search.toLowerCase()))
+    .filter(p => !industryFilter || categoryOf(p) === industryFilter)
+    .filter(p => `${displayName(p.name)} ${p.description ?? ""}`.toLowerCase().includes(search.toLowerCase()))
     .sort((x, y) => sort === "name" ? displayName(x.name).localeCompare(displayName(y.name))
+      : sort === "category" ? (categoryOf(x) === null ? 1 : 0) - (categoryOf(y) === null ? 1 : 0)
+        || (categoryOf(x) ?? "").localeCompare(categoryOf(y) ?? "")
+        || new Date(y.last_activity_at).getTime() - new Date(x.last_activity_at).getTime()
       : sort === "messages" ? (stats[y.id]?.messages ?? 0) - (stats[x.id]?.messages ?? 0)
       : new Date(y.last_activity_at).getTime() - new Date(x.last_activity_at).getTime());
   const activeCount = counts["In Progress"] + counts["Not Started"];
@@ -426,6 +450,7 @@ export default function ProjectHistoryPage() {
                 const menuOpen = menuFor === p.id;
                 const menuId = `${uid}-menu-${p.id}`;
                 const st = stats[p.id];
+                const category = categoryOf(p);
                 const members = team(p);
                 const content = (
                   <>
@@ -459,6 +484,9 @@ export default function ProjectHistoryPage() {
                       <span className="ph-team">{teamLabel(p)}</span>
                     </span>
                     <span className="ph-facts">
+                      {category && (
+                        <span className="ph-cat" style={{ "--ind-h": industryHue(category) } as React.CSSProperties}>{category}</span>
+                      )}
                       <span className={`status-pill ${statusClass(p.status)}`}><span className="sd" />{p.status}</span>
                       <span>{st ? `${st.messages} ${st.messages === 1 ? "message" : "messages"}` : ""}{st?.docs ? ` · ${st.docs} ${st.docs === 1 ? "document" : "documents"}` : ""}</span>
                       <span>Updated {agoStr(p.last_activity_at)}</span>

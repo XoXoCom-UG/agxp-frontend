@@ -2,10 +2,11 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Agent, AgentType } from "@/lib/agents";
-import { listMessages, addMessage, deleteMessage, touchProjectActivity, renameFromFirstMessage, setProjectTitle, type Project, type ProjectMessage } from "@/lib/projects";
+import { listMessages, addMessage, deleteMessage, touchProjectActivity, renameFromFirstMessage, setProjectTitle, setProjectCategory, PLACEHOLDER_PROJECT_NAME, type Project, type ProjectMessage } from "@/lib/projects";
 import { askAgent, AgentError } from "@/lib/ask-agent";
 import { parseMarkers, streamIsDocument, type ParsedMessage } from "@/lib/message-markers";
 import { isDeliverableCommand, type Deliverable } from "@/lib/deliverables";
+import { normalizeIndustry } from "@/lib/industry";
 import { isReviewCommand, isReadAlongCommand, type PeerContext } from "@/lib/peer-context";
 import { ERROR_PREFIX, isErrorLine, isDocReply, cutUnfinishedMarker, parseEntries, deriveConversation } from "@/lib/conversation-state";
 
@@ -117,8 +118,14 @@ export function useAgentConversation(opts: ConversationOptions) {
    *  tick cannot both start a request before `sending` has re-rendered. */
   const inFlight = useRef(false);
   const mounted = useRef(false);
-  /** Once per project: the agent names it on its first reply and never again. */
+  /** Once per project: the agent names it, in its first three replies, and never again. */
   const namedByAgent = useRef(false);
+  /** The last name this panel gave the project itself (the stopgap from the
+   *  first message, or the agent's title). Anything else in its place is a
+   *  rename by the user, and stays. */
+  const autoName = useRef<string | null>(null);
+  /** The category already saved, so an agent that repeats the marker writes once. */
+  const savedCategory = useRef<string | null>(opts.project.category ?? null);
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Leaving the panel stops the answer. What had arrived is still saved
@@ -193,7 +200,11 @@ export function useAgentConversation(opts: ConversationOptions) {
         // marker per attachment, and a project whose first message is only a
         // file would otherwise be named after a storage path.
         renameFromFirstMessage(project, parseMarkers(t).text)
-          .then(name => { if (name) optsRef.current.onProjectNamed?.(name); })
+          .then(name => {
+            if (!name) return;
+            autoName.current = name;
+            optsRef.current.onProjectNamed?.(name);
+          })
           .catch(e => console.warn("[chat] naming the project failed:", e));
       }
     } catch (e) {
@@ -253,16 +264,38 @@ export function useAgentConversation(opts: ConversationOptions) {
       /*
        * The name the agent gave the project.
        *
-       * Only on the first exchange, and only once. A rename the user typed
-       * in Project History must not be overwritten by an agent that decides,
-       * fifteen messages in, that it has a better idea.
+       * In the first three replies, and only once: after a greeting the agent
+       * holds the marker back until it knows what the project is. A rename the
+       * user typed in Project History must not be overwritten by an agent that
+       * decides, fifteen messages in, that it has a better idea — so the name
+       * is only replaced while it is still the placeholder or what this panel
+       * put there itself.
        */
-      if (parsed.title && !namedByAgent.current && history.length <= 1) {
+      const currentName = optsRef.current.project.name;
+      if (
+        parsed.title && !namedByAgent.current && history.length <= 5 &&
+        (currentName === PLACEHOLDER_PROJECT_NAME || currentName === autoName.current)
+      ) {
         const given = parsed.title;
         namedByAgent.current = true;
         setProjectTitle(project.id, given.name, given.description)
-          .then(() => optsRef.current.onProjectNamed?.(given.name))
+          .then(() => {
+            autoName.current = given.name.slice(0, 80);
+            optsRef.current.onProjectNamed?.(given.name);
+          })
           .catch(e => console.warn("[chat] the agent's project name did not save:", e));
+      }
+
+      // The category for Project History. Unlike the name it may be corrected
+      // later — the industry often only becomes clear after a few answers.
+      const category = normalizeIndustry(parsed.industry);
+      if (category && category !== savedCategory.current) {
+        savedCategory.current = category;
+        setProjectCategory(project.id, category)
+          .catch(e => {
+            savedCategory.current = null;
+            console.warn("[chat] the project category did not save:", e);
+          });
       }
       // The project list's "last activity" line; nothing on this screen reads it.
       touchProjectActivity(project.id, `${role === "coach" ? "Coach" : "Consultant"} replied`)

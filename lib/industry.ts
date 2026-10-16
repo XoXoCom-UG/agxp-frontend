@@ -57,3 +57,46 @@ export function rankIndustries(labels: string[]): string[] {
   for (const l of labels) count.set(l, (count.get(l) ?? 0) + 1);
   return [...count.entries()].sort((a, b) => b[1] - a[1]).map(([l]) => l);
 }
+
+/* ---------------------------------------------------------------------------
+   THE CLOSED SET
+
+   A project's category (agxp_projects.category) is one of the labels above,
+   so the history can group and colour by it. The agent used to be allowed
+   any 1-3 words, which gave "Bank", "Banking" and "Banken" as three groups.
+   --------------------------------------------------------------------------- */
+
+export const INDUSTRY_LABELS: string[] = INDUSTRIES.map(i => i.label);
+
+/** Things an agent is likely to write instead of the exact label. */
+const ALIASES: Record<string, string> = {
+  bank: "Banking", banks: "Banking", finance: "Banking", fintech: "Banking",
+  insurer: "Insurance", versicherung: "Insurance",
+  logistik: "Logistics", transport: "Logistics",
+  "e commerce": "E-commerce", ecommerce: "E-commerce",
+  health: "Healthcare", pharma: "Healthcare", "health care": "Healthcare",
+  software: "Software & IT", it: "Software & IT", "software and it": "Software & IT", tech: "Software & IT",
+  manufacture: "Manufacturing", industry: "Manufacturing",
+  utilities: "Energy", "public administration": "Public sector", government: "Public sector",
+  telecommunications: "Telecom", telco: "Telecom",
+  "real-estate": "Real estate", hotel: "Hospitality", tourism: "Hospitality", publishing: "Media",
+};
+
+/** The canonical label for what the agent wrote, or null if it is none of them. */
+export function normalizeIndustry(raw: string | null | undefined): string | null {
+  const key = (raw ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+  if (!key) return null;
+  const exact = INDUSTRY_LABELS.find(l => l.toLowerCase() === key);
+  return exact ?? ALIASES[key] ?? null;
+}
+
+/**
+ * One hue per label, for the chip in the project history. A number rather than
+ * a colour so the stylesheet decides saturation and lightness for each theme.
+ */
+export function industryHue(label: string | null | undefined): number {
+  const i = label ? INDUSTRY_LABELS.indexOf(label) : -1;
+  if (i < 0) return 220;
+  // Golden-angle steps keep neighbours in the list visibly apart.
+  return Math.round((i * 137.5) % 360);
+}

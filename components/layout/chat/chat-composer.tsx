@@ -5,6 +5,7 @@ import type { AgentType } from "@/lib/agents";
 import { IconArrowUp, IconAttach, IconStop, IconX, IconDoc } from "@/components/layout/agxp-icons";
 import { ACCEPT_ATTR, uploadProjectFile, removeProjectFile, fileMarker } from "@/lib/project-files";
 import type { FileRef } from "@/lib/message-markers";
+import { MAX_COMPOSER_CHARS } from "@/lib/chat-input";
 
 /** The two 30px buttons beside the text, and the gaps between them. */
 const BUTTON_W = 30;
@@ -113,6 +114,7 @@ export function ChatComposer({ role, sending, canSend, projectId, inputRef, onSe
   }
 
   return (
+    <>
     <div className={`chat-input pb${wide ? " is-wide" : ""}`} data-tour="composer">
       <span ref={measureRef} className="pb-measure" aria-hidden="true">{input}</span>
 
@@ -138,7 +140,7 @@ export function ChatComposer({ role, sending, canSend, projectId, inputRef, onSe
       )}
 
       <div ref={controlsRef} className="pb-grid">
-        <textarea ref={inputRef} className="pb-input" rows={1} value={input}
+        <textarea ref={inputRef} className="pb-input" rows={1} value={input} maxLength={MAX_COMPOSER_CHARS}
           onChange={e => setInput(e.target.value)}
           onFocus={() => onAttentiveChange(true)}
           onBlur={() => onAttentiveChange(false)}
@@ -173,14 +175,17 @@ export function ChatComposer({ role, sending, canSend, projectId, inputRef, onSe
         )}
       </div>
 
-      {/*
-        The AI notice, where the output is read rather than buried in the
-        terms — these agents write documents people take into real meetings.
-        One quiet line under the box, not a banner: a warning that has to be
-        dismissed is a warning nobody reads twice, and this one has to still
-        be true on the hundredth message.
-      */}
-      <p className="pb-ai">AI can make mistakes. Check anything you rely on.</p>
     </div>
+
+    {/*
+      The AI notice, where the output is read rather than buried in the
+      terms — these agents write documents people take into real meetings.
+      One quiet line UNDER the box (Ana, 2026-10-15), not inside it and not a
+      banner: a warning that has to be dismissed is a warning nobody reads
+      twice, and this one has to still be true on the hundredth message.
+      A sibling of the box rather than a child, so it sits outside its frame.
+    */}
+    <p className="pb-ai">AI can make mistakes. Check anything you rely on.</p>
+    </>
   );
 }

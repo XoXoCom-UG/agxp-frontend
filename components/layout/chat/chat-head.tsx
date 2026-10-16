@@ -55,7 +55,7 @@ export interface HeadDocState {
  */
 export function ChatHead({
   role, agent, deliverable, mascot, attentive, stuck, headExtra, unread, sending,
-  totalProjects, memory, learned, doc,
+  totalProjects, memory, learned, doc, hideRail = false, topRow,
   onFocusPanel, onMinimise, onChangeAgent, onOpenVersion, onGenerate, onRegenerate, onRestoreVersion,
 }: {
   role: AgentType;
@@ -72,6 +72,12 @@ export function ChatHead({
   memory: AgentMemory;
   learned: MemoryNote[];
   doc: HeadDocState;
+  /** The document pill and its card live in the Methods panel beside the
+   *  chat while that is on screen (Ana, 2026-10-15); this hides them here. */
+  hideRail?: boolean;
+  /** A row above the agent's own: the Methods / Coach tabs, with the fold-away
+   *  button at its end. Without it the head is one row, as before. */
+  topRow?: React.ReactNode;
   onFocusPanel?: () => void;
   onMinimise?: () => void;
   /** Asks first (the panel owns the dialog). */
@@ -113,7 +119,22 @@ export function ChatHead({
   const ready = pct >= 100;
 
   return (
-    <div className={`chat-head${stuck ? " is-stuck" : ""}`} ref={headRef}>
+    <div className={`chat-head${stuck ? " is-stuck" : ""}${topRow ? " has-top" : ""}`} ref={headRef}>
+      <span className="head-rule" aria-hidden="true" />
+      {topRow && (
+        <div className="head-top">
+          {topRow}
+          {onMinimise && (
+            <button className="head-min" onClick={onMinimise}
+              data-tooltip="Fold away. The Coach keeps listening."
+              aria-label="Fold this panel away">
+              <IconMinimise size={14} />
+            </button>
+          )}
+        </div>
+      )}
+
+      <div className="head-main">
       <button className="who-btn" aria-expanded={pop === "agent"}
         onClick={() => setPop(p => (p === "agent" ? null : "agent"))}>
         <span className="who-face">
@@ -135,14 +156,14 @@ export function ChatHead({
 
       {headExtra}
 
-      <button data-tour="rail" className={`doc-pill${ready ? " ready" : ""}${currentDoc ? " done" : ""}`}
+      {!hideRail && <button data-tour="rail" className={`doc-pill${ready ? " ready" : ""}${currentDoc ? " done" : ""}`}
         style={{ ["--fill" as string]: (currentDoc ? 100 : pct) / 100 }}
         aria-expanded={pop === "doc"} data-tooltip={deliverable.title}
         aria-label={`${deliverable.title}, ${currentDoc ? "ready" : `${pct}% ready`}`}
         onClick={() => setPop(p => (p === "doc" ? null : "doc"))}>
         <IconDoc size={12} />
         <span>{currentDoc ? "ready" : `${pct}%`}</span>
-      </button>
+      </button>}
 
       {/* The waiting panel says so itself. The badge is the control —
           clicking it hands this conversation the room and clears the mark,
@@ -157,13 +178,15 @@ export function ChatHead({
       {/* The Coach is not always needed and takes room. Folding it away
           leaves the pill, which is anchored high on purpose so it never
           covers the composer. */}
-      {onMinimise && (
+      {!topRow && onMinimise && (
         <button className="head-min" onClick={onMinimise}
           data-tooltip="Fold away. The Coach keeps listening."
           aria-label="Fold this panel away">
           <IconMinimise size={14} />
         </button>
       )}
+
+      </div>
 
       {agentPopPhase !== "closed" && (
         <div className={`popover head-pop t-dropdown${phaseClass(agentPopPhase)}`}
@@ -217,7 +240,7 @@ export function ChatHead({
         </div>
       )}
 
-      {docPopPhase !== "closed" && (
+      {!hideRail && docPopPhase !== "closed" && (
         <div
           className={`popover head-pop artf-pop t-dropdown${phaseClass(docPopPhase)}`}
           data-origin="top-right"

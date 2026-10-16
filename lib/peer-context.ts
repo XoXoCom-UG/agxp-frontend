@@ -1,5 +1,7 @@
 import type { AgentType } from "@/lib/agents";
-import { parseMarkers } from "@/lib/message-markers";
+import { parseMarkers, type TopicMarker } from "@/lib/message-markers";
+import { stripMarkerSyntax } from "@/lib/chat-input";
+import type { DeliverableDoc } from "@/components/layout/deliverable-view";
 
 /**
  * What one panel tells the other one about its conversation.
@@ -56,7 +58,9 @@ export function peerTranscript(
   // that are dropped, then flip once at the end.
   for (let i = messages.length - 1; i >= 0 && lines.length < MAX_TURNS; i--) {
     const m = messages[i];
-    const body = shorten(m.role === "assistant" ? parseMarkers(m.content).text : m.content);
+    // User turns lose marker syntax as well: a user can type "[[DOC: …]]",
+    // and this text goes into the OTHER agent's system prompt.
+    const body = shorten(m.role === "assistant" ? parseMarkers(m.content).text : stripMarkerSyntax(m.content));
     if (!body) continue;
     const line = `${m.role === "assistant" ? agentName : "Nutzer"}: ${body}`;
     if (line.length > budget) break;
@@ -74,6 +78,29 @@ export function peerTranscript(
  * once, so it is where one conversation is handed to the other agent, and
  * where the folded-away Coach gets the line it shows on its pill.
  */
+/** The document rail's state — what the Methods panel draws for the Consultant. */
+export interface RailState {
+  title: string;
+  totalStations: number;
+  /** 0-based; -1 before the first answer. */
+  stationIdx: number;
+  stationLabel: string;
+  currentDoc: DeliverableDoc | null;
+  /** The version Open shows: the newest, or the one Restore brought back. */
+  version: number;
+  restored: boolean;
+  versions: { version: number; createdAt: string }[];
+}
+
+/** What the rail can do. One object per panel, with a stable identity: the
+ *  functions inside call whatever the panel currently holds. */
+export interface RailControls {
+  generate: () => void;
+  regenerate: () => void;
+  openVersion: (version: number) => void;
+  restoreVersion: (version: number) => void;
+}
+
 export interface PanelSnapshot {
   name: string;
   transcript: string;
@@ -84,6 +111,12 @@ export interface PanelSnapshot {
   agentTurns: number;
   /** Finished documents produced here. */
   docCount: number;
+  /** How far the interview has got, 0-100, and the station it is at. The
+   *  Methods panel beside the chat draws both. */
+  pct: number;
+  station: TopicMarker | null;
+  rail: RailState;
+  controls: RailControls;
   busy: boolean;
 }
 

@@ -4,7 +4,8 @@ import { Fragment, useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import type { Agent, AgentType } from "@/lib/agents";
 import { levelFor, LEVEL_ORDER } from "@/lib/agent-progress";
-import { MAX_PER_TYPE, groupByType, templateFor } from "@/lib/agent-types";
+import { groupByType, templateFor } from "@/lib/agent-types";
+import type { Plan } from "@/lib/plans";
 import { compactNumber, type AgentUsage } from "@/lib/team-stats";
 import { loadAgentDocuments, type AgentDocument } from "@/lib/agent-documents";
 import { methodLabel } from "@/lib/method-labels";
@@ -444,14 +445,16 @@ function FreeSlot({ onAdd }: { onAdd: () => void }) {
 }
 
 /** One role: its types as tabs, and the selected type's four slots in a row. */
-export function RoleSection({ role, label, agents, usage, onArchive, onRestore, onAdd }: {
+export function RoleSection({ role, label, agents, usage, plan, onArchive, onRestore, onAdd }: {
   role: AgentType; label: string; agents: Agent[]; usage: Record<string, AgentUsage>;
+  /** Which types get a tab, and how many agents each may hold. */
+  plan: Plan;
   onArchive: (a: Agent) => void; onRestore: (a: Agent) => void; onAdd: () => void;
 }) {
   // Archived agents hold no slot: they get a tab of their own, last.
   const active = agents.filter(a => !a.archived_at);
   const archived = agents.filter(a => a.type === role && a.archived_at);
-  const { columns, ungrouped } = groupByType(active, role);
+  const { columns } = groupByType(active, role, plan);
   // Most finished work first, then most projects: the agents you rely on lead
   // each row, the newest and emptiest trail it.
   const ranked = (list: Agent[]) => [...list].sort((a, b) =>
@@ -459,10 +462,7 @@ export function RoleSection({ role, label, agents, usage, onArchive, onRestore, 
     || projectTotal(b, usage[b.id]) - projectTotal(a, usage[a.id])
     || a.name.localeCompare(b.name));
   const tabs = [
-    ...columns.map(c => ({ key: c.template.type, label: c.template.type, title: c.template.sub, agents: ranked(c.agents), cap: MAX_PER_TYPE })),
-    // Agents made before the types were fixed belong to no column; they get
-    // a tab of their own rather than being forced into the first one.
-    ...(ungrouped.length ? [{ key: "other", label: "Other", title: "Made before the types were fixed", agents: ranked(ungrouped), cap: ungrouped.length }] : []),
+    ...columns.map(c => ({ key: c.template.type, label: c.template.type, title: c.template.sub, agents: ranked(c.agents), cap: plan.agentsPerType })),
     ...(archived.length ? [{ key: "archived", label: "Archived", title: "Archived agents — restore one to put it back on the team", agents: ranked(archived), cap: archived.length }] : []),
   ];
   // Open on the first type that has someone in it.
@@ -603,9 +603,9 @@ export function RoleSection({ role, label, agents, usage, onArchive, onRestore, 
                 aria-controls={`${tablistId}-panel`} tabIndex={i === sel ? 0 : -1} title={t.title}
                 className={`nb-item${i === sel ? " active" : ""}`} onClick={() => pick(i)}>
                 {t.label}
-                {/* "3/4" where there is a cap; Other and Archived have none, just a count. */}
+                {/* "3/4" where there is a cap; Archived has none, just a count. */}
                 <span className="agx-tab-n">
-                  {t.key === "other" || t.key === "archived" ? t.agents.length : `${t.agents.length}/${t.cap}`}
+                  {t.key === "archived" ? t.agents.length : `${t.agents.length}/${t.cap}`}
                 </span>
               </button>
             </Fragment>

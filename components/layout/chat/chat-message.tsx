@@ -10,6 +10,12 @@ import { ThinkingOrb } from "@/components/layout/thinking-orb";
 import { MessageActions } from "@/components/layout/message-actions";
 import { IconArrow, IconDoc, IconRefresh } from "@/components/layout/agxp-icons";
 
+/** "10:24" — shown under each message in the Coach's conversation. */
+function clock(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
 function wordCount(text: string): number {
   return text.split(/\s+/).filter(Boolean).length;
 }
@@ -79,18 +85,21 @@ export function ChatMessage({ entry, agentName, docTitle, isNew, isLeaving, isLa
     // legitimately type square brackets, and parsing a plain message would
     // quietly eat them. With an attachment the marker has to come out.
     return (
-      <div className={`msg-user${isNew ? " is-new" : ""}`}>
-        {p.files.length > 0 && (
-          <span className="mu-files">
-            {p.files.map(f => (
-              <span key={f.path} className="mu-chip" title={f.name}>
-                <IconDoc size={11} />{f.name}
-              </span>
-            ))}
-          </span>
-        )}
-        {p.files.length ? p.text : m.content}
-      </div>
+      <>
+        <div className={`msg-user${isNew ? " is-new" : ""}`}>
+          {p.files.length > 0 && (
+            <span className="mu-files">
+              {p.files.map(f => (
+                <span key={f.path} className="mu-chip" title={f.name}>
+                  <IconDoc size={11} />{f.name}
+                </span>
+              ))}
+            </span>
+          )}
+          {p.files.length ? p.text : m.content}
+        </div>
+        {m.column_type === "coach" && <time className="msg-time is-user" dateTime={m.created_at}>{clock(m.created_at)}</time>}
+      </>
     );
   }
 
@@ -145,6 +154,7 @@ export function ChatMessage({ entry, agentName, docTitle, isNew, isLeaving, isLa
           the blue "Read along" label that used to head it is gone with the
           rest of the status words (Ana, 2026-09-28). */}
       <div className="txt" dangerouslySetInnerHTML={{ __html: html }} />
+      {m.column_type === "coach" && <time className="msg-time" dateTime={m.created_at}>{clock(m.created_at)}</time>}
       {actions}
       {choices}
     </div>

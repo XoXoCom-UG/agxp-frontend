@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase";
 import { readEntitlement, QuotaError } from "@/lib/entitlement";
-import { PLANS } from "@/lib/plans";
+import { typesFor } from "@/lib/agent-types";
 
 export type AgentType = "consultant" | "coach";
 
@@ -141,14 +141,22 @@ export async function createAgent(input: {
   tagline?: string;
   methodIds: string[];
 }): Promise<Agent> {
-  // "Train Your Agent" is the product's whole pitch, which is why building
-  // one from scratch sits at the top of the plan table rather than being
-  // given away. The agents catalogue stays shared and readable either way.
+  // Every agent is the user's own, and what a plan allows is a number of
+  // TYPES and a number of agents per type. This is the clear message; the
+  // database trigger from migration 0014 is what actually enforces it.
   const { plan } = await readEntitlement();
-  if (!plan.createAgents) {
+  const types = typesFor(input.type, plan);
+  if (input.tagline && !types.some(t => t.sub === input.tagline)) {
     throw new QuotaError(
-      `Building your own agent is part of the ${PLANS.max.label} plan. ` +
-      `On ${plan.label} you can work with the agents already in the directory.`,
+      `The ${plan.label} plan covers ${plan.agentTypes} type of ${input.type} per role. ` +
+      `A bigger plan opens the other types.`,
+    );
+  }
+  const mine = (await listAgents()).filter(a => a.type === input.type && !a.archived_at && a.tagline === (input.tagline ?? null));
+  if (mine.length >= plan.agentsPerType) {
+    throw new QuotaError(
+      `You already have ${mine.length} of this type, which is what the ${plan.label} plan allows. ` +
+      `Archive one to free the place${plan.id === "free" ? ", or move to a bigger plan" : ""}.`,
     );
   }
 

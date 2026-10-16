@@ -47,9 +47,9 @@ export const TOUR_SPOTS: Spot[] = [
     prefer: "right",
   },
   {
-    anchor: "panel-coach",
-    title: "Your Coach sits on this one",
-    body: "The other half, the other document — the Change Plan. Both stay live; switching between them never loses what you typed.",
+    anchor: "panel-switch",
+    title: "Methods here, the Coach one tab away",
+    body: "While you talk to the Consultant, this side shows what is being built. Open Coach for a second conversation and a second document — both stay live, and switching never loses what you typed.",
     prefer: "left",
   },
   {

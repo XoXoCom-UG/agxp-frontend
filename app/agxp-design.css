@@ -2187,6 +2187,185 @@ html.light .es-shadow{ background:radial-gradient(closest-side, var(--tint-4), t
 
 main.workspace{ position:relative; }
 
+/* Folded away, the right-hand side is two small glass buttons at the far end of
+   the Consultant's head, beside the document button. */
+.side-pills{ display:flex; align-items:center; gap:var(--sp-2); margin-left:auto; flex-shrink:0; animation:coachPillInHead 200ms var(--ease-out) backwards; }
+.side-pills + .doc-pill{ margin-left:0; }
+.side-pills.is-floating{ position:absolute; z-index:7; top:6px; right:var(--sp-6); margin:0; }
+.side-pill{
+  position:relative; display:inline-flex; align-items:center; gap:7px; height:34px; padding:0 14px 0 10px;
+  border-radius:var(--radius-pill); cursor:pointer; font:inherit; font-size:var(--text-xs); font-weight:600;
+  color:var(--secondary-foreground);
+  background:color-mix(in srgb, var(--foreground) 7%, transparent);
+  border:1px solid var(--glass-hairline, var(--input));
+  backdrop-filter:blur(14px) saturate(1.4); -webkit-backdrop-filter:blur(14px) saturate(1.4);
+  transition:color 160ms var(--ease-out), background-color 160ms var(--ease-out), transform 120ms var(--ease-out);
+}
+.side-pill:hover{ color:var(--foreground); background:color-mix(in srgb, var(--foreground) 12%, transparent); }
+.side-pill:active{ transform:scale(.97); }
+.side-pill .mascot{ flex-shrink:0; }
+.side-pill .cp-dot{ position:static; margin-left:2px; }
+.side-pill.raised{ color:var(--foreground); border-color:color-mix(in srgb, var(--primary) 50%, transparent); }
+@container panel (max-width:520px){
+  .side-pill{ padding:0 10px; }
+}
+@media (max-width:1000px){ .side-pills{ display:none; } }
+
+/* --- the right-hand side: Methods or Coach ---
+   One slot, two views. The Coach panel stays mounted behind its tab (a reply
+   still streaming is there when you open it), so the hidden view is
+   display:none rather than removed. */
+.coach-slot{ flex-direction:column; }
+/* Methods or Coach: two words and an underline under the one showing (Ana's
+   mockup, 2026-10-15). It sits inside the card it switches, at the top of both
+   views, on a hairline that runs the width of the card. */
+.rt-tabs{ display:flex; flex-shrink:0; gap:var(--sp-5); }
+.rt-tab{
+  position:relative; height:44px; padding:0 2px; margin-bottom:-1px;
+  border:0; border-bottom:2px solid transparent; border-radius:0; background:transparent;
+  font:inherit; font-size:var(--text-sm); font-weight:600; color:var(--muted-foreground); cursor:pointer;
+  transition:color 160ms var(--ease-out), border-color 160ms var(--ease-out);
+}
+.rt-tab:hover{ color:var(--foreground); }
+.rt-tab[aria-pressed="true"]{ color:var(--foreground); border-bottom-color:var(--primary-soft); }
+.rt-dot{ display:inline-block; width:6px; height:6px; margin-left:7px; border-radius:50%; vertical-align:middle; background:var(--primary); }
+/* In the Coach's head they sit between the name and the document button. */
+.chat-head .rt-tabs{ margin-left:var(--sp-2); gap:var(--sp-4); }
+.chat-head .rt-tab{ height:34px; }
+@container panel (max-width:470px){
+  .chat-head .rt-tabs{ gap:var(--sp-3); }
+}
+/* On the Coach's picker there is no head, so the switch has a row of its own. */
+.pick-top{ flex-shrink:0; padding:0 var(--sp-5); border-bottom:1px solid var(--border); }
+.coach-slot[data-view="methods"] > .panel:not(.methods-panel){ display:none; }
+.coach-slot[data-view="coach"] > .methods-panel{ display:none; }
+
+/* More opaque than the conversation cards (Ana, 2026-10-15): this one holds
+   a document, and the room's stars showing through it are noise. */
+.methods-panel{
+  overflow:hidden; background:var(--card); border:1px solid var(--border);
+  backdrop-filter:none; -webkit-backdrop-filter:none;
+}
+html.light .methods-panel{ border-color:rgba(0,0,0,0.07); }
+/* Nothing in here but the information: no blooms, no glow, no glass. */
+.methods-panel::before, .methods-panel::after{ display:none; }
+/* Both views fill the slot's height and scroll inside it: without min-height:0
+   a panel in this column is as tall as its content, which pushed the Coach's
+   composer off the bottom of the screen. */
+.coach-slot > .panel{ flex:1 1 0; min-height:0; }
+.mp-head{ display:flex; flex-direction:column; padding:0; }
+.mp-head-row{
+  display:flex; align-items:flex-end; justify-content:space-between; gap:var(--sp-3);
+  padding:0 var(--sp-4) 0 var(--sp-6); border-bottom:1px solid var(--border);
+}
+.mp-head-row .mp-tool{ margin-bottom:8px; }
+.mp-head-txt{ min-width:0; padding:var(--sp-5) var(--sp-6) 0; }
+.mp-title{ margin:0; font-size:var(--text-xl); font-weight:700; letter-spacing:-0.02em; color:var(--foreground); }
+.mp-actions{ padding:var(--sp-3) var(--sp-5) var(--sp-4) var(--sp-5); }
+.mp-sub{ margin:var(--sp-2) 0 0; font-size:var(--text-sm); line-height:1.5; color:var(--muted-foreground); }
+.mp-tool{ flex-shrink:0; }
+/* The version's actions, in the header where they belong to the title. The
+   primary one wears the app's own gradient, like every other primary action. */
+/* Progress, at the top and the full width: no card around it. The bar is the one
+   coloured thing, because it is the one thing it has to say. */
+.mp-progress{ margin:0 0 var(--sp-6); }
+.mp-progress-row{ display:flex; align-items:baseline; justify-content:space-between; gap:var(--sp-3); margin-bottom:var(--sp-3); }
+.mp-progress-step{ min-width:0; font-size:var(--text-sm); color:var(--secondary-foreground); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mp-progress-pct{ flex-shrink:0; font-family:var(--font-display); font-size:var(--text-lg); font-weight:600; letter-spacing:-0.02em; color:var(--foreground); }
+.mp-progress .artf-bar{ height:6px; border-radius:3px; background-color:color-mix(in srgb, var(--foreground) 10%, transparent); }
+.mp-progress .artf-bar > span{ border-radius:3px; box-shadow:none; background:var(--primary-soft); }
+.mp-generate{ margin:var(--sp-4) 0 0 auto; }
+/* The version's actions: text buttons, flat, with the one primary action in the
+   app's own gradient. A hairline closes the header off from the document. */
+.methods-panel.is-ready .mp-head{ border-bottom:1px solid var(--border); }
+.mp-actions .artf-actions{ flex-wrap:nowrap; gap:var(--sp-1); }
+.mp-actions .artf-actions-right{ flex-wrap:nowrap; gap:var(--sp-1); }
+.mp-actions .artf-cta{ order:0; width:auto; margin-left:var(--sp-2); }
+.mp-actions .artf-ghost{ order:0; white-space:nowrap; }
+.mp-actions .artf-ghost{
+  height:32px; padding:0 var(--sp-3); border:0; border-radius:8px; background:transparent;
+  font-size:var(--text-xs); color:var(--secondary-foreground);
+}
+@media (hover:hover) and (pointer:fine){
+  .mp-actions .artf-ghost:hover:not(:disabled, [aria-disabled="true"]){
+    background:color-mix(in srgb, var(--foreground) 7%, transparent); color:var(--foreground); border-color:transparent;
+  }
+}
+.methods-panel .artf-cta{
+  display:inline-flex; align-items:center; gap:6px; height:32px; padding:0 var(--sp-4);
+  border:1px solid transparent; border-radius:8px;
+  font-size:var(--text-xs); font-weight:600; color:var(--primary-foreground);
+  background:var(--primary-grad);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.3);
+}
+@media (hover:hover) and (pointer:fine){
+  .methods-panel .artf-cta:hover:not(:disabled, [aria-disabled="true"]){ background:var(--primary-grad); filter:brightness(1.07); }
+}
+.mp-body{ flex:1 1 0; min-height:0; overflow-y:auto; padding:var(--sp-5) var(--sp-6) var(--sp-6); }
+/* The questions: a node per question, a line between neighbours. The one being
+   worked on breathes (the seat you are filling in the team rail does the same);
+   once it is answered its line lights up and the next one starts to breathe. */
+.mp-steps{ list-style:none; margin:0 0 var(--sp-5); padding:0 0 0 var(--sp-1); display:flex; flex-direction:column; }
+.mp-step{
+  position:relative; display:flex; align-items:center; gap:var(--sp-3);
+  min-height:46px; font-size:var(--text-sm); color:var(--muted-foreground);
+}
+.mp-node{
+  position:relative; z-index:1; flex-shrink:0; width:26px; height:26px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  border:1.5px dashed color-mix(in srgb, var(--foreground) 24%, transparent);
+  background:color-mix(in srgb, var(--foreground) 3%, transparent);
+  color:#fff;
+}
+/* The line runs from the bottom edge of this node to the top edge of the next,
+   measured from the row's own height, so it meets both circles however tall
+   the row grows (a label that wraps). 26px is the node, 13px its radius. */
+.mp-step::before, .mp-step::after{
+  content:""; position:absolute; left:12px; top:calc(50% + 13px); height:calc(100% - 26px); width:2px; border-radius:1px;
+}
+.mp-step:last-child::before, .mp-step:last-child::after{ display:none; }
+.mp-step::before{ background:color-mix(in srgb, var(--foreground) 20%, transparent); }
+.mp-step::after{
+  background:linear-gradient(180deg, var(--acc), var(--acc-2));
+  transform:scaleY(0); transform-origin:top; transition:transform 600ms var(--ease-out) 200ms;
+}
+.mp-step.done::after{ transform:scaleY(1); }
+.mp-step.done{ color:var(--secondary-foreground); }
+.mp-step.done .mp-node{
+  border:1.5px solid transparent;
+  background:linear-gradient(140deg, var(--acc), var(--acc-2));
+  box-shadow:0 0 14px -4px color-mix(in srgb, var(--acc-mid) 80%, transparent);
+}
+.mp-step.done .mp-node svg{ stroke-width:3.2; }
+.mp-step.now{ color:var(--foreground); font-weight:600; }
+.mp-step.now .mp-node{
+  border-color:color-mix(in srgb, var(--acc-mid) 75%, transparent);
+  animation:orbWait 2400ms ease-in-out infinite;
+}
+.mp-step.todo{ opacity:.7; }
+@media (prefers-reduced-motion:reduce){
+  .mp-step::after{ transition:none; }
+  .mp-step.now .mp-node{ animation:none; box-shadow:0 0 0 4px color-mix(in srgb, var(--acc-mid) 16%, transparent); }
+}
+
+.mp-rail{ margin-bottom:var(--sp-5); }
+/* The document itself, inline. The same sheet and body classes as the full
+   reading view, so the graphics inside it look the same here. */
+.mp-doc{ margin:0; }
+.mp-doc .doc-sheet{ margin:0; max-width:none; box-shadow:none; padding:var(--sp-2) 0 var(--sp-2); animation:none; }
+/* The panel's header already says "Transformation Concept"; the document's own
+   first heading would say it twice, in a bigger size. */
+.mp-doc .doc-body > h1:first-child, .mp-doc .doc-body > .md-h1:first-child{ display:none; }
+.mp-doc .doc-body{ font-size:var(--text-sm); line-height:1.65; }
+/* The Lexikon without its box: fine dividers instead of a card inside a card,
+   and room between the terms. */
+.mp-doc .v-lex{ margin:var(--sp-6) 0; border:0; border-radius:0; background:none; overflow:visible; }
+.mp-doc .v-lex > summary{ padding:var(--sp-3) 0; border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
+.mp-doc .v-lex[open] > summary{ border-bottom-color:var(--border); }
+.mp-doc .v-lex-body{ padding:var(--sp-4) 0 0; gap:var(--sp-5); }
+.mp-doc .v-lex-row{ padding:var(--sp-4) 0; gap:var(--sp-5); }
+.mp-doc .v-lex-row dt, .mp-doc .v-lex-row dd{ font-size:var(--text-sm); }
+
 /* --- min: gone from the row, still alive --- */
 .coach-slot.min{ display:none; }
 main.workspace[data-coach="min"] .slot[data-role="consultant"],
@@ -5687,6 +5866,8 @@ html.light .auth::before{ background:radial-gradient(38vw 38vw at 18% -10%, colo
   margin:0 0 9px; font-family:var(--font-mono); font-size:var(--text-3xs);
   letter-spacing:0.16em; text-transform:uppercase; color:var(--primary-soft);
 }
+/* What the theme itself means, one line under its name. */
+.v-lex-about{ margin:-2px 0 var(--sp-2); font-size:var(--text-xs); line-height:1.55; color:var(--muted-foreground); }
 .v-lex-grp dl{ margin:0; display:flex; flex-direction:column; gap:1px; }
 .v-lex-row{
   display:grid; grid-template-columns:minmax(110px, 170px) 1fr; gap:var(--sp-4);
@@ -5753,6 +5934,47 @@ html.light .auth::before{ background:radial-gradient(38vw 38vw at 18% -10%, colo
   width:5px; height:5px; border-top:1px solid var(--border-strong);
   border-right:1px solid var(--border-strong); transform:rotate(45deg);
 }
+
+/* Gap analysis with an action plan: a sixth column, the steps as a numbered list. */
+.v-diff.has-plan .v-diff-head, .v-diff.has-plan .v-diff-row{
+  grid-template-columns:minmax(90px,1fr) minmax(0,1.2fr) 18px minmax(0,1.2fr) minmax(0,1fr) minmax(0,1.5fr);
+}
+.v-diff-row .plan{ margin:0; padding:0 0 0 1.2em; color:var(--foreground); }
+.v-diff-row .plan li{ margin:0 0 3px; padding:0; }
+.v-diff-row .plan.muted{ color:var(--muted-foreground); padding:0; }
+@container panel (max-width:680px){
+  .mp-doc .v-diff-head{ display:none; }
+  .mp-doc .v-diff-row, .mp-doc .v-diff.has-plan .v-diff-row{ grid-template-columns:1fr; gap:4px; }
+  .mp-doc .v-diff-row .arrow{ display:none; }
+}
+
+/* --- Knowledge Check: the level, as a badge --------------------------------- */
+.v-level{
+  display:flex; align-items:center; gap:var(--sp-3); flex-wrap:wrap;
+  margin:var(--sp-3) 0 var(--sp-4); padding:var(--sp-3) var(--sp-4);
+  border:1px solid var(--border); border-radius:var(--radius-md);
+}
+.v-level .dots{ display:inline-flex; gap:4px; }
+.v-level .dots i{ width:9px; height:9px; border-radius:50%; background:color-mix(in srgb, var(--foreground) 14%, transparent); }
+.v-level .dots i.on{ background:var(--primary-soft); }
+.v-level .badge{ font-size:var(--text-sm); font-weight:600; color:var(--foreground); }
+.v-level .why{ font-size:var(--text-xs); color:var(--secondary-foreground); }
+
+/* --- Management Summary: what, why, what it is worth ------------------------ */
+.v-sum{ margin:var(--sp-3) 0 var(--sp-5); border-top:1px solid var(--border); }
+.v-sum-row{
+  display:grid; grid-template-columns:minmax(110px, 150px) 1fr; gap:var(--sp-5);
+  padding:var(--sp-4) 0; border-bottom:1px solid var(--border);
+}
+.v-sum-row .k{
+  font-family:var(--font-mono); font-size:var(--text-3xs); letter-spacing:0.16em;
+  text-transform:uppercase; color:var(--primary-soft); padding-top:3px;
+}
+.v-sum-row p{ margin:0; font-size:var(--text-sm); line-height:1.65; color:var(--foreground); }
+@container panel (max-width:560px){
+  .v-sum-row{ grid-template-columns:1fr; gap:var(--sp-2); }
+}
+@media print{ .v-sum-row, .v-level{ break-inside:avoid; } }
 
 /* --- SWOT -----------------------------------------------------------------
    Internal on top, external below: the pairs are meant to be read against
@@ -6612,6 +6834,50 @@ html.light .tr-seat[data-state="active"] .ts-end{ color:var(--acc-ink); }
   display:flex; flex-direction:column; align-items:center; text-align:center;
   padding:clamp(16px, 3vh, 40px) clamp(16px, 3vw, 48px);
 }
+/* Start, under the pair. The hero button's blue (Ana, 2026-10-15: "albastru ăla
+   care era înainte"): re-pointing --go repaints fill, edge and glow, the same
+   way .start-wrap does for the pill that used to be in the bar. */
+.tready-start{
+  --go:var(--primary-soft);
+  --go-ink:var(--primary-foreground);
+  --go-fill:var(--primary-grad);
+  --go-glow:color-mix(in srgb, var(--primary-soft) 70%, transparent);
+  --start-ink:var(--go-ink); --start-fill:var(--go-fill); --start-glow:var(--go-glow);
+  /* In the stage, just under the two names, centred between them (Ana's
+     mockup, 2026-10-15). Sized in the stage's own units like everything else
+     in it, so it keeps its place from a laptop to a wall screen. */
+  position:absolute; left:50%; top:88%; translate:-50% 0; z-index:2;
+  display:inline-flex; align-items:center; gap:8px;
+  height:clamp(44px, 5.6cqw, 72px); padding:0 clamp(28px, 4.8cqw, 68px);
+  border-radius:var(--radius-pill); cursor:pointer;
+  font-family:var(--font-display); font-size:clamp(15px, 2cqw, 28px); font-weight:600; letter-spacing:-0.01em;
+  color:var(--start-ink); background:var(--start-fill);
+  border:1px solid color-mix(in srgb, var(--go) 55%, rgba(255,255,255,0.65));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.75), 0 8px 24px -10px var(--go-glow);
+  transition:transform 120ms var(--ease-out), filter 160ms var(--ease-out);
+  --rise:10px; animation:rise 460ms var(--ease-out) 1900ms backwards;
+}
+.tready-start:active{ transform:scale(0.97); }
+@media (hover:hover) and (pointer:fine){
+  .tready-start:hover{ filter:brightness(1.05); transform:translateY(-1px); }
+}
+.tready-start.is-ready::after{
+  content:""; position:absolute; inset:-1px; border-radius:inherit; pointer-events:none;
+  box-shadow:0 0 0 2px var(--start-glow);
+  animation:ringPulse 2.2s var(--ease-out) infinite;
+}
+@media (prefers-reduced-motion:reduce){
+  .tready-start{ animation:none; }
+  .tready-start.is-ready::after{ animation:none; opacity:.6; }
+}
+/* Starting with the Consultant alone, from the rail. */
+.tr-skip{
+  display:inline-flex; align-items:center; gap:6px; align-self:flex-start;
+  margin-top:var(--sp-4); padding:6px 2px; border:0; background:transparent; cursor:pointer;
+  font:inherit; font-size:var(--text-xs); font-weight:600; color:var(--secondary-foreground);
+}
+.tr-skip:hover{ color:var(--foreground); }
+
 /* The title sits in the stage's top band and is sized in the stage's own
    units, so title and loops always keep the same proportion. */
 .orbit .team-title{
@@ -6808,6 +7074,7 @@ html[data-glass="solid"] .panel.team-ready{ backdrop-filter:none; background:var
   .on-role{ font-size:clamp(10px, 2.6cqw, 14px); }
   .on-name{ font-size:clamp(15px, 5.2cqw, 30px); }
   .on-lvl{ font-size:clamp(11px, 3cqw, 16px); }
+  .tready-start{ top:94%; font-size:clamp(15px, 4.4cqw, 22px); height:clamp(44px, 8cqw, 56px); padding:0 clamp(28px, 9cqw, 52px); }
 }
 
 /* The strip on a phone: the faces and Change, no words between them. */
@@ -7808,6 +8075,32 @@ html.light .tour-art{ mix-blend-mode:multiply; opacity:.15; }
   .ts-pair-seam{ display:none; }
 }
 
+/* Switch: the right-hand tabs of the workspace, in miniature. */
+.ts-switch{ display:grid; grid-template-columns:1fr 1.15fr; gap:var(--sp-3); align-items:stretch; }
+.ts-sw-left, .ts-sw-right{
+  display:flex; flex-direction:column; gap:9px; min-width:0; padding:var(--sp-3);
+  border-radius:var(--radius-md); border:1px solid var(--border); background:var(--card);
+}
+.ts-sw-who{ display:inline-flex; align-items:center; gap:7px; font-size:var(--text-2xs); font-weight:600; color:var(--foreground); }
+.ts-sw-line{ display:block; height:7px; border-radius:4px; background:var(--border); }
+.ts-sw-line.w80{ width:80%; } .ts-sw-line.w70{ width:70%; } .ts-sw-line.w60{ width:60%; } .ts-sw-line.w50{ width:50%; }
+.ts-sw-tabs{ display:flex; gap:2px; align-self:flex-start; padding:2px; border-radius:999px; border:1px solid var(--border); }
+.ts-sw-tab{
+  padding:3px 11px; border-radius:999px; font-size:var(--text-3xs); font-weight:600; color:var(--muted-foreground);
+  transition:color 200ms var(--ease-out), background-color 200ms var(--ease-out);
+}
+.ts-sw-tab.on{ color:var(--foreground); background:color-mix(in srgb, var(--primary) 18%, transparent); }
+.ts-sw-body{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:7px; min-height:92px; animation:fadeIn 260ms var(--ease-out); }
+.ts-sw-body.coach{ gap:9px; }
+.ts-sw-body li{ display:flex; align-items:center; gap:8px; font-size:var(--text-3xs); color:var(--muted-foreground); }
+.ts-sw-body li span{ width:8px; height:8px; border-radius:50%; box-shadow:inset 0 0 0 1.5px var(--border); flex-shrink:0; }
+.ts-sw-body li.done{ color:var(--secondary-foreground); }
+.ts-sw-body li.done span{ background:var(--primary); box-shadow:none; opacity:.55; }
+.ts-sw-body li.now{ color:var(--foreground); font-weight:600; }
+.ts-sw-body li.now span{ background:var(--primary); box-shadow:0 0 0 3px color-mix(in srgb, var(--primary) 28%, transparent); }
+@media (max-width:520px){ .ts-switch{ grid-template-columns:1fr; } }
+@media (prefers-reduced-motion:reduce){ .ts-sw-body{ animation:none; } }
+
 /* Talking: the real choice-chip pattern, as a thing you click. */
 .ts-chat{ display:flex; flex-direction:column; gap:10px; }
 .ts-bubble{
@@ -8344,9 +8637,27 @@ html.light .walk-hole{ box-shadow:0 0 0 9999px rgba(12,18,32,0.5),
 /* The AI notice under the composer. Deliberately the quietest text on the
    screen: it must be present on every message without competing with the
    conversation. */
+.chat-input.pb{ margin-bottom:var(--sp-2); }
 .pb-ai{
-  margin:7px 0 0; text-align:center;
+  flex-shrink:0; margin:0 var(--sp-6) var(--sp-3); text-align:center;
   font-size:var(--text-3xs); line-height:1.4; color:var(--muted-foreground);
+}
+
+/* A project's category in History. The hue comes from industryHue(); lightness
+   is set per theme so the label clears AA on both the dark and the light room. */
+.ph-cat{
+  --ind-h:220;
+  display:inline-flex; align-items:center; flex-shrink:0; white-space:nowrap;
+  padding:2px 9px; border-radius:999px;
+  font-size:var(--text-2xs); font-weight:500; line-height:1.4;
+  color:hsl(var(--ind-h) 80% 76%);
+  background:hsl(var(--ind-h) 60% 50% / 0.16);
+  box-shadow:inset 0 0 0 1px hsl(var(--ind-h) 60% 60% / 0.28);
+}
+html.light .ph-cat{
+  color:hsl(var(--ind-h) 70% 26%);
+  background:hsl(var(--ind-h) 70% 50% / 0.12);
+  box-shadow:inset 0 0 0 1px hsl(var(--ind-h) 55% 40% / 0.30);
 }
 
 /* The agent's one-line description of a project, under its name in History. */
@@ -8354,3 +8665,57 @@ html.light .walk-hole{ box-shadow:0 0 0 9999px rgba(12,18,32,0.5),
   font-size:var(--text-2xs); line-height:1.45; color:var(--secondary-foreground);
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:60ch;
 }
+
+
+/* --- The head, per Ana's mockup (2026-10-15) ------------------------------
+   The name and its role, the Methods / Coach tabs, the document's progress as
+   a figure over a thin bar instead of a filled pill, and a hairline closing the
+   head off from the conversation. */
+.head-rule{
+  position:absolute; left:var(--sp-5); right:var(--sp-5); bottom:0; height:1px; z-index:1;
+  background:var(--border); pointer-events:none;
+}
+.chat-head .who-btn > svg{ display:none; }
+.chat-head .doc-pill{
+  --track:color-mix(in srgb, var(--foreground) 14%, transparent);
+  align-self:center; padding:0 0 8px; gap:6px;
+  border:0; border-radius:0; overflow:visible;
+  background:linear-gradient(var(--track), var(--track)) left bottom / 100% 3px no-repeat;
+  font-size:var(--text-xs);
+}
+.chat-head .doc-pill::before{
+  inset:auto 0 0 0; height:3px; border-radius:2px; background:var(--primary-soft);
+}
+.chat-head .doc-pill.done::before{ background:var(--success); }
+.chat-head .doc-pill.ready::after{ display:none; }
+.chat-head .doc-pill:hover{ border-color:transparent; }
+.chat-head .head-min{ align-self:center; }
+
+
+/* --- The Coach's panel, per Ana's mockup (2026-10-15) ---------------------
+   A top row of its own for the Methods / Coach tabs and the fold-away button,
+   the agent beneath it with the document's progress at the far end, a hairline
+   under each; the agent's words in a soft bubble with the time under it, like
+   the person's own. The Consultant keeps its bare text. */
+.panel.has-top{ --chat-head-h:140px; }
+.chat-head.has-top{ display:grid; grid-template-rows:52px 1fr; align-items:stretch; padding:0 var(--sp-5); }
+.chat-head .head-top{
+  display:flex; align-items:flex-end; justify-content:space-between; gap:var(--sp-3);
+  border-bottom:1px solid var(--border);
+}
+.chat-head .head-top .head-min{ align-self:center; margin-bottom:6px; }
+.chat-head .head-top .rt-tabs{ margin-left:0; gap:var(--sp-5); }
+.chat-head .head-top .rt-tab{ height:44px; }
+.chat-head .head-main{ display:flex; align-items:center; gap:var(--sp-3); min-width:0; }
+.chat-head:not(.has-top) .head-main{ display:contents; }
+@container panel (max-width:470px){
+  .chat-head .head-top .rt-tabs{ gap:var(--sp-4); }
+}
+
+.panel.coach .msg-agent .txt{
+  display:inline-block; padding:var(--sp-3) var(--sp-5);
+  border-radius:18px 18px 18px 6px;
+  background:color-mix(in srgb, var(--foreground) 8%, transparent);
+}
+.msg-time{ display:block; margin-top:6px; padding-left:var(--sp-3); font-size:var(--text-3xs); color:var(--muted-foreground); font-variant-numeric:tabular-nums; }
+.msg-time.is-user{ align-self:flex-end; margin-top:calc(var(--sp-5) * -1 + 6px); padding:0 var(--sp-2) 0 0; }

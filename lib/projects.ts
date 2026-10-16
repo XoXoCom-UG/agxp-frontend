@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase";
 import { readEntitlement, QuotaError } from "@/lib/entitlement";
-import { projectCountsByAgent } from "@/lib/agent-progress";
 import type { AgentType } from "@/lib/agents";
+import { worthNaming } from "@/lib/project-title";
 
 export type ProjectStatus = "Not Started" | "In Progress" | "Completed" | "Archived";
 
@@ -15,6 +15,8 @@ export interface Project {
   owner_id: string;
   name: string;
   description: string | null;
+  /** One of INDUSTRY_LABELS (lib/industry.ts), once the agent knows it. */
+  category: string | null;
   type: string;
   status: ProjectStatus;
   coach_agent_id: string | null;
@@ -52,8 +54,9 @@ export async function createBlankProject(): Promise<Project> {
 /** Backfills the placeholder name from the first message actually sent, once. */
 export async function renameFromFirstMessage(project: Project, text: string): Promise<string | null> {
   if (project.name !== PLACEHOLDER_PROJECT_NAME) return null;
+  // A greeting is no name; the agent titles the project once it is clear.
+  if (!worthNaming(text)) return null;
   const name = text.trim().slice(0, 55);
-  if (!name) return null;
   await renameProject(project.id, name);
   return name;
 }
@@ -111,21 +114,6 @@ export async function assignAgent(projectId: string, column: AgentType, agentId:
   const project = await getProject(projectId);
   if (!project) throw new Error("Projekt nicht gefunden.");
 
-  // Agent slots. "Agents you have" is the set that appears across your
-  // projects, so an agent you have already worked with is always free to
-  // bring back — the limit is on how many different ones you collect, which
-  // is what the plan actually promises.
-  const { plan } = await readEntitlement();
-  if (plan.agentSlots !== null) {
-    const mine = new Set(Object.keys(await projectCountsByAgent()));
-    if (!mine.has(agentId) && mine.size >= plan.agentSlots) {
-      throw new QuotaError(
-        `The ${plan.label} plan covers ${plan.agentSlots} agents, and you are working with ${mine.size}. ` +
-        `Pick one you have used before, or move to a bigger plan.`,
-      );
-    }
-  }
-
   const patch: Record<string, unknown> = {
     activity: addActivity(project.activity, agentActionLabel),
     last_activity_at: new Date().toISOString(),
@@ -167,6 +155,34 @@ export async function setProjectTitle(projectId: string, name: string, descripti
   if (description) patch.description = description.slice(0, 160);
   const { error } = await supabase.from("agxp_projects").update(patch).eq("id", projectId);
   if (error) throw error;
+}
+
+/** The project's category, from the agent's [[INDUSTRY:]] marker. */
+export async function setProjectCategory(projectId: string, category: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("agxp_projects").update({ category }).eq("id", projectId);
+  if (error) throw error;
+}
+
+/**
+ * Removes this user's projects that never got a message, except `keep` — the
+ * one on screen. Picking an agent creates the row (assignAgent needs it), so a
+ * start that is abandoned would otherwise stay in the history and keep counting
+ * against the plan. See migration 0013.
+ */
+export async function discardEmptyProjects(keep?: string | null): Promise<number> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("discard_empty_projects", { keep: keep ?? null });
+  if (error) throw error;
+  return typeof data === "number" ? data : 0;
+}
+
+/** This one project, if it never got a message — called when its screen is left. */
+export async function discardEmptyProject(projectId: string): Promise<boolean> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("discard_empty_project", { target: projectId });
+  if (error) throw error;
+  return data === true;
 }
 
 export async function archiveProject(projectId: string): Promise<void> {
