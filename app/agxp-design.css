@@ -8663,22 +8663,44 @@ html.light .walk-hole{ box-shadow:0 0 0 9999px rgba(12,18,32,0.5),
   font-size:var(--text-3xs); line-height:1.4; color:var(--muted-foreground);
 }
 
-/* A project's category in History. The hue comes from industryHue(); lightness
-   is set per theme so the label clears AA on both the dark and the light room. */
-.ph-cat{
-  --ind-h:220;
-  display:inline-flex; align-items:center; flex-shrink:0; white-space:nowrap;
-  padding:2px 9px; border-radius:999px;
-  font-size:var(--text-2xs); font-weight:500; line-height:1.4;
-  color:hsl(var(--ind-h) 80% 76%);
-  background:hsl(var(--ind-h) 60% 50% / 0.16);
-  box-shadow:inset 0 0 0 1px hsl(var(--ind-h) 60% 60% / 0.28);
+/* A project's industry in History: a quiet line under the agents, no colour of its own. */
+/* The agents and the industry share a line; the agents give way first. */
+.ph-meta{ display:flex; align-items:baseline; gap:8px; min-width:0; }
+.ph-meta .ph-team{ min-width:0; }
+.ph-sep{ flex:none; font-size:var(--text-xs); color:var(--border-strong); }
+.ph-ind{
+  flex:none; max-width:45%;
+  font-size:var(--text-xs); color:var(--muted-foreground);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
-html.light .ph-cat{
-  color:hsl(var(--ind-h) 70% 26%);
-  background:hsl(var(--ind-h) 70% 50% / 0.12);
-  box-shadow:inset 0 0 0 1px hsl(var(--ind-h) 55% 40% / 0.30);
+.ph-ind b{ font-weight:500; color:var(--secondary-foreground); }
+
+/* Sort direction, beside the sort menu. */
+.ph-dir{
+  display:inline-flex; align-items:center; gap:6px; height:38px; padding:0 12px; border:0;
+  border-radius:var(--radius-sm); background:rgba(255,255,255,0.045); cursor:pointer;
+  font-size:var(--text-xs); color:var(--secondary-foreground); white-space:nowrap;
+  transition:background-color 150ms var(--ease-out), color 150ms var(--ease-out);
 }
+.ph-dir-ic{ display:inline-flex; color:var(--muted-foreground); transition:transform 180ms var(--ease-out); }
+.ph-dir-ic[data-down="true"]{ transform:rotate(180deg); }
+@media (hover:hover) and (pointer:fine){ .ph-dir:hover{ background:rgba(255,255,255,0.075); color:var(--foreground); } }
+.ph-dir:focus-visible{ outline:none; box-shadow:0 0 0 2px color-mix(in srgb, var(--ring) 40%, transparent); }
+html.light .ph-dir{ background:#FFFFFF; }
+@media (prefers-reduced-motion:reduce){ .ph-dir-ic{ transition:none; } }
+
+/* The filters in play, above the list. */
+.ph-chips{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+.ph-chips .ph-clear{ margin:0 0 0 var(--sp-2); }
+.ph-chip{
+  display:inline-flex; align-items:center; gap:6px; height:28px; padding:0 10px; border:0; cursor:pointer;
+  border-radius:var(--radius-pill); font-size:var(--text-xs); color:var(--foreground);
+  background:color-mix(in srgb, var(--acc) 16%, transparent);
+  transition:background-color 150ms var(--ease-out);
+}
+.ph-chip svg{ color:var(--muted-foreground); }
+@media (hover:hover) and (pointer:fine){ .ph-chip:hover{ background:color-mix(in srgb, var(--acc) 26%, transparent); } }
+.ph-chip:focus-visible{ outline:none; box-shadow:0 0 0 2px color-mix(in srgb, var(--ring) 45%, transparent); }
 
 /* The agent's one-line description of a project, under its name in History. */
 .ph-desc{

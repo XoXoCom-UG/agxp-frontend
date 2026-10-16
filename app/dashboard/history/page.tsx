@@ -1,17 +1,17 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { Suspense, useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { listProjects, renameProject, archiveProject, discardEmptyProjects, PLACEHOLDER_PROJECT_NAME, type Project } from "@/lib/projects";
-import { normalizeIndustry, industryHue } from "@/lib/industry";
+import { normalizeIndustry } from "@/lib/industry";
 import { listAgents, type Agent, type AgentType } from "@/lib/agents";
 import { loadProjectStats, type ProjectStats } from "@/lib/project-stats";
 import { templateFor, TYPE_CATALOG } from "@/lib/agent-types";
 import { AgentNav } from "@/components/layout/agent-nav";
 import { ConfirmDialog } from "@/components/layout/confirm-dialog";
-import { IconFolder, IconArrow, IconMore, IconSearch, IconPlus, IconAlert, IconRefresh, IconChevronDown, IconCheck } from "@/components/layout/agxp-icons";
+import { IconFolder, IconArrow, IconMore, IconSearch, IconPlus, IconAlert, IconRefresh, IconChevronDown, IconCheck, IconArrowUp, IconX } from "@/components/layout/agxp-icons";
 import { AgentMascot } from "@/components/layout/agent-mascot";
 import { SkeletonRows } from "@/components/layout/skeleton";
 import { EmptyState } from "@/components/layout/empty-state";
@@ -24,7 +24,8 @@ function statusClass(s: Project["status"]) { return s.toLowerCase().replace(/\s+
 function displayName(name: string) { return name === PLACEHOLDER_PROJECT_NAME ? "Untitled task" : name; }
 
 type StatusFilter = "all" | Project["status"];
-type SortKey = "updated" | "name" | "messages" | "category";
+type SortKey = "updated" | "name" | "messages" | "progress" | "category";
+type Period = "7d" | "30d" | "90d";
 const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
   { key: "all", label: "All projects" },
   { key: "In Progress", label: "In progress" },
@@ -32,7 +33,26 @@ const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
   { key: "Completed", label: "Completed" },
   { key: "Archived", label: "Archived" },
 ];
-const SORT_LABEL: Record<SortKey, string> = { updated: "Last updated", name: "Name", messages: "Most messages", category: "Category" };
+const SORT_LABEL: Record<SortKey, string> = { updated: "Last updated", name: "Name", messages: "Messages", progress: "Progress", category: "Category" };
+/** Each key's own order, and what to call it either way round: [natural, reversed]. */
+const SORT_ORDER: Record<SortKey, [string, string]> = {
+  updated: ["Newest first", "Oldest first"],
+  name: ["A to Z", "Z to A"],
+  messages: ["Most first", "Fewest first"],
+  progress: ["Most advanced first", "Least advanced first"],
+  category: ["A to Z", "Z to A"],
+};
+const PERIODS: { key: Period; label: string; days: number }[] = [
+  { key: "7d", label: "Last 7 days", days: 7 },
+  { key: "30d", label: "Last 30 days", days: 30 },
+  { key: "90d", label: "Last 90 days", days: 90 },
+];
+const DAY = 86_400_000;
+
+/** A value from the address bar, or the fallback when it is missing or not one of ours. */
+function oneOf<T extends string>(raw: string | null, allowed: readonly T[], fallback: T): T {
+  return allowed.includes(raw as T) ? (raw as T) : fallback;
+}
 
 /** A titled block in the filter card that folds shut on its heading. Closed
  *  content is `inert`, so it leaves the tab order as well as the screen. */
@@ -80,7 +100,13 @@ function FilterGroup<K extends string>({ title, items, value, onChange }: {
   );
 }
 
+// useSearchParams needs a boundary above it, or the whole route opts out of
+// static rendering.
 export default function ProjectHistoryPage() {
+  return <Suspense fallback={null}><ProjectHistory /></Suspense>;
+}
+
+function ProjectHistory() {
   const { token, loading: authLoading } = useAuth();
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
@@ -89,7 +115,11 @@ export default function ProjectHistoryPage() {
   const [loadError, setLoadError] = useState(false);
   /** Bumped by Retry, which re-runs the load effect. */
   const [attempt, setAttempt] = useState(0);
-  const [search, setSearch] = useState("");
+  // Filters, sort and search live in the address bar (written below), so a
+  // project opened from the list and left again comes back to the same view,
+  // and the view can be sent to someone.
+  const query = useSearchParams();
+  const [search, setSearch] = useState(() => query.get("q") ?? "");
   const [menuFor, setMenuFor] = useState<string | null>(null);
   // The menu stays mounted for its exit, by which time menuFor is already
   // null — so remember which row it belonged to (adjusted during render,
@@ -108,13 +138,24 @@ export default function ProjectHistoryPage() {
   const [stats, setStats] = useState<Record<string, ProjectStats>>({});
   /** Until the stats are in, "no messages" cannot be told from "not read yet". */
   const [statsLoaded, setStatsLoaded] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => oneOf(query.get("status"), STATUS_FILTERS.map(f => f.key), "all"));
   /** An agent type ("AI Strategy Consultant", "Change Manager"…), either role. */
-  const [agentFilter, setAgentFilter] = useState<string | null>(null);
+  const [agentFilter, setAgentFilter] = useState<string | null>(() => query.get("agent"));
   /** Which deliverable a project has produced — or none yet. */
-  const [docFilter, setDocFilter] = useState<AgentType | "none" | null>(null);
-  const [industryFilter, setIndustryFilter] = useState<string | null>(null);
-  const [sort, setSort] = useState<SortKey>("updated");
+  const [docFilter, setDocFilter] = useState<AgentType | "none" | null>(() => {
+    const d = query.get("docs");
+    return d === "consultant" || d === "coach" || d === "none" ? d : null;
+  });
+  const [industryFilter, setIndustryFilter] = useState<string | null>(() => query.get("industry"));
+  const [period, setPeriod] = useState<Period | null>(() => {
+    const v = query.get("period");
+    return PERIODS.some(x => x.key === v) ? (v as Period) : null;
+  });
+  const [sort, setSort] = useState<SortKey>(() => oneOf(query.get("sort"), Object.keys(SORT_LABEL) as SortKey[], "updated"));
+  /** The sort the other way round: oldest, Z to A, fewest. */
+  const [reversed, setReversed] = useState(() => query.get("order") === "reverse");
+  /** "Last 7 days" counts from when the page was opened. */
+  const [now] = useState(() => Date.now());
   const [sortOpen, setSortOpen] = useState(false);
   const sortPhase = usePresence(sortOpen);
   const sortBtnRef = useRef<HTMLButtonElement>(null);
@@ -152,6 +193,22 @@ export default function ProjectHistoryPage() {
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [token, attempt]);
+
+  useEffect(() => {
+    const q = new URLSearchParams();
+    if (search.trim()) q.set("q", search.trim());
+    if (statusFilter !== "all") q.set("status", statusFilter);
+    if (agentFilter) q.set("agent", agentFilter);
+    if (industryFilter) q.set("industry", industryFilter);
+    if (docFilter) q.set("docs", docFilter);
+    if (period) q.set("period", period);
+    if (sort !== "updated") q.set("sort", sort);
+    if (reversed) q.set("order", "reverse");
+    const qs = q.toString();
+    // Replaces the entry rather than adding one, so Back leaves the page
+    // instead of stepping through every filter click.
+    window.history.replaceState(window.history.state, "", qs ? `?${qs}` : window.location.pathname);
+  }, [search, statusFilter, agentFilter, industryFilter, docFilter, period, sort, reversed]);
 
   useEffect(() => { if (menuFor) focusFirstMenuItem(menuRef.current); }, [menuFor]);
   // Opens on the current choice, so the arrow keys start from where you are.
@@ -300,23 +357,51 @@ export default function ProjectHistoryPage() {
     label: k === "none" ? "Not generated yet" : k === "consultant" ? "Consultant document generated" : "Change Plan generated",
     n: inStatus.filter(p => hasDoc(p, k)).length,
   })).filter(it => it.n > 0);
-  const anyFilter = !!(agentFilter || docFilter || industryFilter);
+  const inPeriod = (p: Project, k: Period) => now - new Date(p.last_activity_at).getTime() <= PERIODS.find(x => x.key === k)!.days * DAY;
+  const periodItems = PERIODS.map(x => ({ key: x.key, label: x.label, n: inStatus.filter(p => inPeriod(p, x.key)).length }))
+    .filter(it => it.n > 0 || it.key === period);
+  const anyFilter = !!(agentFilter || docFilter || industryFilter || period);
   function clearFilters() {
-    setAgentFilter(null); setDocFilter(null); setIndustryFilter(null);
+    setAgentFilter(null); setDocFilter(null); setIndustryFilter(null); setPeriod(null);
   }
+  /** What is narrowing the list, as chips above it: the filter cards can be folded shut. */
+  const chips: { key: string; label: string; clear: () => void }[] = [
+    ...(statusFilter !== "all" ? [{ key: "status", label: STATUS_FILTERS.find(f => f.key === statusFilter)!.label, clear: () => setStatusFilter("all") }] : []),
+    ...(period ? [{ key: "period", label: PERIODS.find(x => x.key === period)!.label, clear: () => setPeriod(null) }] : []),
+    ...(agentFilter ? [{ key: "agent", label: agentFilter, clear: () => setAgentFilter(null) }] : []),
+    ...(industryFilter ? [{ key: "industry", label: `Industry: ${industryFilter}`, clear: () => setIndustryFilter(null) }] : []),
+    ...(docFilter ? [{ key: "docs", label: docItems.find(i => i.key === docFilter)?.label ?? "Documents", clear: () => setDocFilter(null) }] : []),
+  ];
 
   // "All" is everything still in play; archived projects are behind their own filter.
+  const needle = search.trim().toLowerCase();
+  const sortValue = (p: Project): number | string | null => {
+    switch (sort) {
+      case "name": return displayName(p.name).toLowerCase();
+      case "messages": return stats[p.id]?.messages ?? 0;
+      case "progress": return stats[p.id]?.progress ?? null;
+      case "category": return categoryOf(p);
+      default: return new Date(p.last_activity_at).getTime();
+    }
+  };
+  /** Each key's natural order: newest, most and most advanced first; names and categories A to Z. */
+  const naturalDir = sort === "name" || sort === "category" ? 1 : -1;
   const filtered = inStatus
     .filter(p => !agentFilter || agentTypes(p).includes(agentFilter))
     .filter(p => !docFilter || hasDoc(p, docFilter))
     .filter(p => !industryFilter || categoryOf(p) === industryFilter)
-    .filter(p => `${displayName(p.name)} ${p.description ?? ""}`.toLowerCase().includes(search.toLowerCase()))
-    .sort((x, y) => sort === "name" ? displayName(x.name).localeCompare(displayName(y.name))
-      : sort === "category" ? (categoryOf(x) === null ? 1 : 0) - (categoryOf(y) === null ? 1 : 0)
-        || (categoryOf(x) ?? "").localeCompare(categoryOf(y) ?? "")
-        || new Date(y.last_activity_at).getTime() - new Date(x.last_activity_at).getTime()
-      : sort === "messages" ? (stats[y.id]?.messages ?? 0) - (stats[x.id]?.messages ?? 0)
-      : new Date(y.last_activity_at).getTime() - new Date(x.last_activity_at).getTime());
+    .filter(p => !period || inPeriod(p, period))
+    .filter(p => !needle || `${displayName(p.name)} ${p.description ?? ""} ${categoryOf(p) ?? ""} ${teamLabel(p)}`.toLowerCase().includes(needle))
+    .sort((x, y) => {
+      const a = sortValue(x), b = sortValue(y);
+      // No value yet (no progress reported, no category) goes last whichever way round.
+      if (a === null || b === null) { if (a !== b) return a === null ? 1 : -1; }
+      else if (a !== b) {
+        const c = typeof a === "string" ? a.localeCompare(b as string) : a - (b as number);
+        return c * naturalDir * (reversed ? -1 : 1);
+      }
+      return new Date(y.last_activity_at).getTime() - new Date(x.last_activity_at).getTime();
+    });
   const activeCount = counts["In Progress"] + counts["Not Started"];
 
   if (authLoading || !token) return (
@@ -366,6 +451,7 @@ export default function ProjectHistoryPage() {
                 ))}
               </div>
               </FilterSection>
+              <FilterGroup title="Last updated" value={period} onChange={setPeriod} items={periodItems} />
               <FilterGroup title="Agents" value={agentFilter} onChange={setAgentFilter}
                 items={[...agentCounts.entries()].sort((x, y) => y[1] - x[1]).map(([type, n]) => ({ key: type, label: type, n }))} />
               <FilterGroup title="Industry" value={industryFilter} onChange={setIndustryFilter}
@@ -399,7 +485,7 @@ export default function ProjectHistoryPage() {
                       onClick={e => e.stopPropagation()} onKeyDown={e => menuKeyDown(closeSort)(e)}>
                       {(Object.keys(SORT_LABEL) as SortKey[]).map(k => (
                         <button key={k} type="button" role="menuitemradio" aria-checked={sort === k} tabIndex={-1} className="mi"
-                          onClick={() => { setSort(k); closeSort(true); }}>
+                          onClick={() => { if (k !== sort) setReversed(false); setSort(k); closeSort(true); }}>
                           <span className="mi-l">{SORT_LABEL[k]}</span>
                           {sort === k && <IconCheck size={13} />}
                         </button>
@@ -407,8 +493,27 @@ export default function ProjectHistoryPage() {
                     </div>
                   )}
                 </div>
+                <button type="button" className="ph-dir" aria-pressed={reversed}
+                  aria-label={`Order: ${SORT_ORDER[sort][reversed ? 1 : 0]}. Click to reverse.`}
+                  onClick={() => setReversed(r => !r)}>
+                  <span className="ph-dir-ic" data-down={naturalDir === -1 ? !reversed : reversed} aria-hidden="true"><IconArrowUp size={13} /></span>
+                  {SORT_ORDER[sort][reversed ? 1 : 0]}
+                </button>
               </div>
             </header>
+
+            {chips.length > 0 && (
+              <div className="ph-chips" role="group" aria-label="Active filters">
+                {chips.map(c => (
+                  <button key={c.key} type="button" className="ph-chip" onClick={c.clear} aria-label={`Remove filter: ${c.label}`}>
+                    {c.label}<IconX size={11} />
+                  </button>
+                ))}
+                {chips.length > 1 && (
+                  <button type="button" className="ph-clear" onClick={() => { setStatusFilter("all"); clearFilters(); }}>Clear all</button>
+                )}
+              </div>
+            )}
 
             {actionError && (
               <div className="load-error" role="alert">
@@ -431,7 +536,7 @@ export default function ProjectHistoryPage() {
             {!loading && !loadError && filtered.length === 0 && (
               search.trim() ? (
                 <EmptyState title="No project by that name"
-                  body="Nothing here matches what you typed. Try a shorter word. The search only looks at project names." />
+                  body="Nothing here matches what you typed. Try a shorter word. The search looks at names, descriptions, categories and agents." />
               ) : projects.length > 0 ? (
                 <EmptyState title="Nothing in this filter"
                   body="No project matches the filters on the left."
@@ -481,12 +586,17 @@ export default function ProjectHistoryPage() {
                           one: older projects have none, and an empty line
                           would push every row taller for nothing. */}
                       {p.description && <span className="ph-desc">{p.description}</span>}
-                      <span className="ph-team">{teamLabel(p)}</span>
+                      <span className="ph-meta">
+                        <span className="ph-team">{teamLabel(p)}</span>
+                        {category && (
+                          <>
+                            <span className="ph-sep" aria-hidden="true">|</span>
+                            <span className="ph-ind">Industry: <b>{category}</b></span>
+                          </>
+                        )}
+                      </span>
                     </span>
                     <span className="ph-facts">
-                      {category && (
-                        <span className="ph-cat" style={{ "--ind-h": industryHue(category) } as React.CSSProperties}>{category}</span>
-                      )}
                       <span className={`status-pill ${statusClass(p.status)}`}><span className="sd" />{p.status}</span>
                       <span>{st ? `${st.messages} ${st.messages === 1 ? "message" : "messages"}` : ""}{st?.docs ? ` · ${st.docs} ${st.docs === 1 ? "document" : "documents"}` : ""}</span>
                       <span>Updated {agoStr(p.last_activity_at)}</span>
