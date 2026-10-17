@@ -73,7 +73,7 @@ export function BetaGate({ onAdmitted }: { onAdmitted: () => void }) {
             <input
               value={code}
               onChange={e => { setTyped(e.target.value.toUpperCase()); setError(null); }}
-              placeholder="AGXP-XXXXXX"
+              placeholder="AGXP-XXXXXXXX"
               autoComplete="off"
               spellCheck={false}
               autoFocus

@@ -5,17 +5,20 @@ import type { AgentType } from "@/lib/agents";
 import { DELIVERABLES } from "@/lib/deliverables";
 import { systemPrompt, peerPrompt } from "@/lib/agent-prompt";
 import { withAttachments } from "@/lib/message-files";
-import type { PeerContext } from "@/lib/peer-context";
-import { allowanceFor, blocked, recordUsage, peerReadingAllowed } from "@/lib/entitlement-server";
+import { peerTranscript, type PeerContext } from "@/lib/peer-context";
+import { allowanceFor, blocked, recordUsage, peerReadingAllowed, takeRateSlot } from "@/lib/entitlement-server";
 import { validateMessages, cleanLabel, cleanMemory, cleanKind, AGENT_NAME_MAX } from "@/lib/chat-input";
+import { loadConversation, peerTurns, saveReply, isProjectId, type StoredTurn } from "@/lib/conversation-server";
+import { cutUnfinishedMarker } from "@/lib/conversation-state";
+import { bearerOf } from "@/lib/server-db";
 
 const MODEL = "claude-sonnet-5";
 
 /**
- * A seatbelt against a runaway loop, not a wall: serverless instances don't
- * share memory, so a determined caller spread over instances gets more than
- * this. It does stop one client hammering one instance, which is the realistic
- * accident.
+ * Two limits with the same numbers. This in-memory one is a cheap first filter
+ * that costs no round trip; serverless instances don't share memory, so on its
+ * own a caller spread over instances got more than this. takeRateSlot() below
+ * counts in the database, which every instance shares, and is the real limit.
  */
 const WINDOW_MS = 60_000;
 const MAX_PER_WINDOW = 20;
@@ -38,37 +41,41 @@ function overLimit(userId: string): boolean {
 // sense" suggestion, because the first, softer wording got ignored/skipped
 // by the model on open-ended questions.
 
+/**
+ * What the browser sends. Note what is NOT here any more: the conversation.
+ * The server reads it from the database (lib/conversation-server.ts), so a
+ * caller can no longer hand the model replies it never gave.
+ */
 interface ChatBody {
+  /** The project, and with agentType the panel, whose conversation to answer. */
+  projectId: string;
   agentType: AgentType;
   /** The agent's type — decides the interview and the document (lib/agent-types.ts). */
   agentKind?: string;
   agentName: string;
-  messages: { role: "user" | "assistant"; content: string }[];
   /** "kind: fact" lines from this agent's earlier projects with this user. */
   memory?: string[];
   /** How many projects the two have done together, which sets the tone. */
   experience?: { level?: string; projects?: number };
-  /** What the other agent on this project has been told so far. */
-  peer?: PeerContext;
+  /** The other agent on this project, when there is one. Only its role and
+   *  name are taken from here; what it was told is read from the database. */
+  peer?: Pick<PeerContext, "role" | "name">;
 }
 
 /**
- * The peer block comes from the browser too. Name and role end up inside the
- * system prompt, so they are cleaned and the role is checked against the two
- * that exist; the transcript is capped again inside peerPrompt().
+ * The other panel's conversation, from the database. The browser only says
+ * whether there is another agent and what it is called; the name is cleaned
+ * because it ends up inside the system prompt.
  */
-function safePeer(peer: unknown): PeerContext | undefined {
+function peerFrom(self: AgentType, peer: unknown, other: StoredTurn[]): PeerContext | undefined {
   if (!peer || typeof peer !== "object") return undefined;
   const p = peer as Partial<PeerContext>;
-  if (p.role !== "consultant" && p.role !== "coach") return undefined;
-  if (typeof p.transcript !== "string") return undefined;
-  return {
-    role: p.role,
-    name: cleanLabel(p.name, AGENT_NAME_MAX) || (p.role === "coach" ? "Coach" : "Consultant"),
-    transcript: p.transcript,
-    turns: Number(p.turns) || 0,
-    docs: Number(p.docs) || 0,
-  };
+  if ((p.role !== "consultant" && p.role !== "coach") || p.role === self) return undefined;
+  const name = cleanLabel(p.name, AGENT_NAME_MAX) || (p.role === "coach" ? "Coach" : "Consultant");
+  const turns = peerTurns(other);
+  const transcript = peerTranscript(turns, name);
+  if (!transcript) return undefined;
+  return { role: p.role, name, transcript, turns: turns.filter(t => t.role === "assistant").length, docs: 0 };
 }
 
 /**
@@ -85,7 +92,7 @@ export async function POST(req: NextRequest) {
   if (!userId) {
     return fail(401, "unauthorized", "Your session has expired. Sign in again.");
   }
-  if (overLimit(userId)) {
+  if (overLimit(userId) || !(await takeRateSlot(userId, "chat", MAX_PER_WINDOW))) {
     return fail(429, "rate_limited", "Too many messages in a short time. Wait a minute, then try again.");
   }
 
@@ -97,12 +104,20 @@ export async function POST(req: NextRequest) {
   }
 
   const body = (await req.json().catch(() => null)) as ChatBody | null;
-  if (!body || typeof body.agentType !== "string" || !DELIVERABLES[body.agentType]) {
+  if (!body || typeof body.agentType !== "string" || !DELIVERABLES[body.agentType] || !isProjectId(body.projectId)) {
     return fail(400, "bad_request", "The request was incomplete. Reload the page and try again.");
   }
-  // Roles, content types and sizes. Checked before the allowance read so a
-  // malformed or oversized request costs a parse, not a database round trip.
-  const checked = validateMessages(body.messages);
+
+  // The conversation as it was actually stored, read under the caller's own
+  // token: someone else's project id reads as empty and is refused.
+  const bearer = bearerOf(req);
+  const loaded = await loadConversation(bearer, body.projectId, body.agentType);
+  if (!loaded.ok) return fail(loaded.status, "bad_request", loaded.error);
+
+  // Roles, content types and sizes — the same caps as before, now applied to
+  // what is in the table. A user can still insert their OWN messages there,
+  // so the caps still matter.
+  const checked = validateMessages(loaded.conversation.own);
   if (!checked.ok) {
     return fail(checked.status, checked.status === 413 ? "too_large" : "bad_request", checked.error);
   }
@@ -120,7 +135,7 @@ export async function POST(req: NextRequest) {
   const coachTurns = messages.filter(m => m.role === "assistant").length;
   const peer = body.agentType === "coach" && !peerReadingAllowed(allowance.plan, coachTurns)
     ? undefined
-    : safePeer(body.peer);
+    : peerFrom(body.agentType, body.peer, loaded.conversation.other);
 
   const anthropic = new Anthropic({ apiKey });
 
@@ -172,7 +187,6 @@ export async function POST(req: NextRequest) {
    * carries a [[FILE:]] path, and lib/message-files.ts reads it back under
    * the caller's own token so a forged path reaches nothing.
    */
-  const bearer = (req.headers.get("authorization") ?? "").slice(7).trim();
   const msgs: Anthropic.MessageParam[] = await withAttachments(messages, bearer);
 
   const last = msgs.length - 1;
@@ -211,56 +225,95 @@ export async function POST(req: NextRequest) {
   });
 
   const encoder = new TextEncoder();
+  /** The id the reply will be stored under, sent before the first word. */
+  const replyId = crypto.randomUUID();
+  const projectId = body.projectId;
+  const column = body.agentType;
+  let cancelled = false;
+
   const out = new ReadableStream<Uint8Array>({
     async start(controller) {
+      // Everything sent to the browser, so the server stores exactly that.
+      let sent = "";
+      const send = (text: string) => {
+        sent += text;
+        try { controller.enqueue(encoder.encode(text)); } catch { /* the reader is gone */ }
+      };
+      /*
+       * Usage as the stream reports it, not only from finalMessage(). When the
+       * user pressed Stop the stream was aborted, finalMessage() rejected, and
+       * close() on the cancelled stream threw before metering ran — so a
+       * stopped answer was recorded as costing nothing, input and all. Stop
+       * just before the end, every time, and the account was never charged.
+       * message_start carries the input side, message_delta the output count.
+       */
+      const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
       try {
         for await (const event of stream) {
-          if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-            controller.enqueue(encoder.encode(event.delta.text));
+          if (event.type === "message_start") {
+            const u = event.message.usage;
+            usage.input = u.input_tokens ?? 0;
+            usage.output = u.output_tokens ?? 0;
+            usage.cacheRead = u.cache_read_input_tokens ?? 0;
+            usage.cacheWrite = u.cache_creation_input_tokens ?? 0;
+          } else if (event.type === "message_delta") {
+            usage.output = Math.max(usage.output, event.usage.output_tokens ?? 0);
+          } else if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+            send(event.delta.text);
           }
         }
       } catch (err) {
         // The response has already started, so there is no status code left to
         // send: the client sees a short (or empty) answer and says so. Log it
-        // here, which is where it can actually be read.
-        console.error("[agent/chat] stream failed:", err);
+        // here, which is where it can actually be read. Stop is not an error.
+        if (!cancelled) console.error("[agent/chat] stream failed:", err);
       } finally {
         // Did it actually finish? A cap can always be hit, and until now
         // hitting it was silent: the reader got a document that stopped in
         // the middle of a table and nothing said why. One line in the stream
         // is worth more than a correct token count.
-        try {
-          const done = await stream.finalMessage();
-          if (done.stop_reason === "max_tokens") {
-            console.warn("[agent/chat] reply hit max_tokens — output truncated");
-            controller.enqueue(encoder.encode(
-              "\n\n_(Die Antwort wurde abgeschnitten, weil sie die Längengrenze erreicht hat. " +
-              "Bitte fordere das Dokument noch einmal an — oder sag mir, welche Sektionen dir reichen.)_",
-            ));
-          }
-        } catch { /* the usage read below logs its own failure */ }
+        if (!cancelled) {
+          try {
+            const done = await stream.finalMessage();
+            const u = done.usage;
+            usage.input = u.input_tokens ?? usage.input;
+            usage.output = u.output_tokens ?? usage.output;
+            usage.cacheRead = u.cache_read_input_tokens ?? usage.cacheRead;
+            usage.cacheWrite = u.cache_creation_input_tokens ?? usage.cacheWrite;
+            if (done.stop_reason === "max_tokens") {
+              console.warn("[agent/chat] reply hit max_tokens — output truncated");
+              send(
+                "\n\n_(Die Antwort wurde abgeschnitten, weil sie die Längengrenze erreicht hat. " +
+                "Bitte fordere das Dokument noch einmal an — oder sag mir, welche Sektionen dir reichen.)_",
+              );
+            }
+          } catch { /* the stream failed; what was seen so far is recorded below */ }
+        }
+        // An aborted stream can end before its last message_delta. A token is
+        // rarely shorter than three characters, so this never counts much low.
+        usage.output = Math.max(usage.output, Math.ceil(sent.length / 3));
 
-        controller.close();
-        // What the request actually cost, from the API rather than an
-        // estimate. Deliberately after close(): the user already has their
-        // answer, so metering must not be able to delay or break it. A lost
-        // count is cheaper than a thrown error on a finished response.
+        // Stored BEFORE the stream closes: when the browser sees the end, the
+        // reply is in the table, so Try again can always find it to delete.
+        // A stopped reply is kept like any other, minus a marker cut in half.
+        const reply = cancelled ? cutUnfinishedMarker(sent) : sent;
+        if (reply.trim()) await saveReply(replyId, projectId, column, reply);
+
+        try { controller.close(); } catch { /* already cancelled */ }
+
+        // What the request cost. Deliberately after close(): the user already
+        // has their answer, so metering must not be able to delay or break it.
+        // A lost count is cheaper than a thrown error on a finished response.
         try {
-          const done = await stream.finalMessage();
-          const u = done.usage;
-          await recordUsage(userId, allowance.periodStart, {
-            input: u.input_tokens ?? 0,
-            output: u.output_tokens ?? 0,
-            cacheRead: u.cache_read_input_tokens ?? 0,
-            cacheWrite: u.cache_creation_input_tokens ?? 0,
-          });
+          await recordUsage(userId, allowance.periodStart, usage);
         } catch (err) {
           console.error("[agent/chat] usage not recorded:", err);
         }
       }
     },
     cancel() {
-      // The user navigated away or sent again — stop paying for the rest.
+      // The user pressed Stop or navigated away — stop paying for the rest.
+      cancelled = true;
       stream.abort();
     },
   });
@@ -268,6 +321,8 @@ export async function POST(req: NextRequest) {
   return new Response(out, {
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
+      // Where the reply will be stored, so the browser can delete it for Try again.
+      "X-Message-Id": replyId,
       "Cache-Control": "no-store",
       // Tells proxies not to buffer, which would defeat the whole point.
       "X-Accel-Buffering": "no",

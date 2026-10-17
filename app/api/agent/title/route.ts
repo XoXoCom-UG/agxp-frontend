@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 import { callerId } from "@/lib/caller-id";
-import { allowanceFor, blocked, recordUsage } from "@/lib/entitlement-server";
+import { allowanceFor, blocked, recordUsage, takeRateSlot } from "@/lib/entitlement-server";
 import { validateMessages, stripMarkerSyntax } from "@/lib/chat-input";
 import { titleSystemPrompt, parseTitleReply } from "@/lib/project-title";
 
@@ -17,7 +17,7 @@ const MODELS = ["claude-haiku-5-5", "claude-sonnet-5"];
 const MAX_TURNS = 8;
 const MAX_CHARS_PER_TURN = 1200;
 
-// A seatbelt, like the chat route's: per instance, enough to stop a loop.
+// Per instance, like the chat route's first filter; takeRateSlot() is the shared limit.
 const hits = new Map<string, number[]>();
 function overLimit(userId: string): boolean {
   const now = Date.now();
@@ -33,7 +33,9 @@ const fail = (status: number, code: string, error: string) =>
 export async function POST(req: NextRequest) {
   const userId = await callerId(req);
   if (!userId) return fail(401, "unauthorized", "Your session has expired. Sign in again.");
-  if (overLimit(userId)) return fail(429, "rate_limited", "Too many requests.");
+  if (overLimit(userId) || !(await takeRateSlot(userId, "title", 10))) {
+    return fail(429, "rate_limited", "Too many requests.");
+  }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return fail(500, "not_configured", "The assistant isn't configured on the server yet.");

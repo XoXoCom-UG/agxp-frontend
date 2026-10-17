@@ -1259,6 +1259,11 @@ html.light .m-antenna{ stroke:color-mix(in srgb, var(--primary) 45%, transparent
   .auth-pw button:hover{ color:var(--foreground); }
 }
 
+/* The Turnstile bot check. Mostly an empty box that ticks itself; it only
+   asks for a click when Cloudflare is unsure. */
+.auth-captcha{ margin:4px 0 12px; min-height:65px; }
+.auth-captcha:empty{ display:none; }
+
 /* Result of an attempt: a strip, not a badge */
 .auth-note{
   display:flex; align-items:flex-start; gap:var(--sp-2); margin:0 0 var(--sp-4);

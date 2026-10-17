@@ -41,8 +41,15 @@ const SPEC: ConfigFinding[] = [
     key: "SUPABASE_SERVICE_ROLE_KEY",
     level: "silent",
     consequence:
-      "Plans and metering are inert: every account reads as free, agxp_usage stays empty, " +
-      "beta keys cannot be redeemed. Nothing errors — it just looks like a working free tier.",
+      "In production every model call is refused (\"can't check its usage limits\"), and the " +
+      "agent's replies can't be saved. Beta keys cannot be redeemed.",
+  },
+  {
+    key: "NEXT_PUBLIC_TURNSTILE_SITE_KEY",
+    level: "optional",
+    consequence:
+      "No bot check on sign-up and sign-in, so scripted accounts are stopped only by the free " +
+      "pool. If CAPTCHA is switched on in Supabase while this is missing, nobody can sign in.",
   },
   {
     key: "RESEND_API_KEY",

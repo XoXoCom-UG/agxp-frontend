@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { takeRateSlot } from "@/lib/entitlement-server";
 
 /**
  * Redeeming a beta key.
@@ -36,7 +37,8 @@ async function callerId(req: NextRequest): Promise<string | null> {
  * A key is a short string someone typed off a message. Guessing is the only
  * attack, and the keyspace is the defence — but a handful of attempts a
  * minute costs an attacker nothing, so this costs them a minute. Per
- * instance, like the chat route's limiter: a seatbelt, not a wall.
+ * instance, like the chat route's first filter; takeRateSlot() is the limit
+ * every instance shares — ten tries in ten minutes.
  */
 const WINDOW_MS = 60_000;
 const MAX_TRIES = 8;
@@ -58,8 +60,8 @@ export async function POST(req: NextRequest) {
   if (!userId) {
     return NextResponse.json({ error: "Your session has expired. Sign in again." }, { status: 401 });
   }
-  if (tooManyTries(userId)) {
-    return NextResponse.json({ error: "Too many attempts. Wait a minute and try again." }, { status: 429 });
+  if (tooManyTries(userId) || !(await takeRateSlot(userId, "redeem", 10, 600))) {
+    return NextResponse.json({ error: "Too many attempts. Wait a few minutes and try again." }, { status: 429 });
   }
 
   const body = (await req.json().catch(() => null)) as { code?: string } | null;

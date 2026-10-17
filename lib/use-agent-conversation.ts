@@ -39,6 +39,7 @@ function userFacingError(e: unknown, stage: "save" | "reply"): string {
   switch (e.code) {
     case "unauthorized": return "Your session has expired. Sign in again, then try again.";
     case "rate_limited": return "Too many messages in a short time. Wait a minute, then try again.";
+    case "limit": return e.message || "This account has reached its limit for now.";
     case "not_configured": return "The assistant isn't configured on the server yet. Try again later.";
     case "bad_request": return "This conversation couldn't be sent. Reload the page and try again.";
     case "network": return "Couldn't reach the assistant. Check your connection and try again.";
@@ -234,9 +235,9 @@ export function useAgentConversation(opts: ConversationOptions) {
     try {
       const { agent, context } = optsRef.current;
       const { memory, experience, peer } = context();
-      const { text, stopped } = await askAgent({
+      const { text, stopped, messageId } = await askAgent({
         agent,
-        messages: history.map(m => ({ role: m.role, content: m.content })),
+        projectId: project.id,
         memory,
         experience,
         peer,
@@ -249,11 +250,11 @@ export function useAgentConversation(opts: ConversationOptions) {
       const reply = stopped ? cutUnfinishedMarker(text) : text;
       if (!reply.trim()) { optsRef.current.onStoppedEmpty?.(); return; }
 
-      const savedId = await addMessage(project.id, role, "assistant", reply);
-      // Unmounted while saving: the reply is kept, there is just nobody to show it to.
+      // The server stored the reply itself, under messageId, before the stream
+      // ended — the browser may no longer write agent replies (migration 0019).
       if (!mounted.current) return;
       const createdAt = new Date().toISOString();
-      const replyId = savedId ?? crypto.randomUUID();
+      const replyId = messageId ?? crypto.randomUUID();
       if (!streamIsDocument(reply)) setStreamedIds(prev => new Set(prev).add(replyId));
       setMessages(prev => [...prev, localMessage(project, role, "assistant", reply, replyId, createdAt)]);
 
@@ -378,13 +379,21 @@ export function useAgentConversation(opts: ConversationOptions) {
     // The answer being replaced fades out first instead of vanishing in one
     // frame — then it is removed and the new one is asked for.
     setLeavingId(target.id);
-    leaveTimer.current = setTimeout(() => {
+    leaveTimer.current = setTimeout(async () => {
       setLeavingId(null);
       setMessages(history);
       setHistoryCount(c => Math.min(c, history.length));
       // An error line was never saved, so there is nothing to delete for it.
+      // Awaited: the server answers what is in the table, and a reply still
+      // there would read as "nothing new to answer".
       if (!isErrorLine(target.content)) {
-        deleteMessage(target.id).catch(e => console.warn("[chat] deleting the replaced answer failed:", e));
+        try {
+          await deleteMessage(target.id);
+        } catch (e) {
+          inFlight.current = false;
+          pushError(userFacingError(e, "reply"));
+          return;
+        }
       }
       respond(history, isGeneratePrompt(prompt.content));
     }, LEAVE_MS);

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { PLANS, planFor, storedPlan, periodStart, projectsLabel, agentsLabel, EVERYONE_IS_MAX } from "./plans.ts";
+import { PLANS, planFor, storedPlan, periodStart, projectsLabel, agentsLabel, EVERYONE_IS_MAX, MONTHLY_BUDGET_USD, FREE_POOL_BUDGET_USD } from "./plans.ts";
 
 test("an unknown or missing plan falls back to free, never to a better one", () => {
   assert.equal(storedPlan(undefined).id, "free");
@@ -45,7 +45,8 @@ test("free is cheap by depth, not only by count", () => {
   // would cost roughly four times three capped ones.
   assert.equal(free.stations, 3);
   assert.equal(free.projects, 3);
-  assert.equal(free.period, "week");
+  // Monthly since the meeting of 2026-10-16 — three a week was too generous.
+  assert.equal(free.period, "month");
 });
 
 test("the free tier shows peer reading once, and never nudges", () => {
@@ -62,9 +63,15 @@ test("unlimited is a label, not an absent ceiling", () => {
   assert.equal(projectsLabel(PLANS.mid), "15");
   // With a quadratic cost curve, one runaway conversation can cost more than
   // a subscription. "Unlimited" always has a real number behind it.
-  assert.ok(PLANS.max.tokenCeiling > 0 && Number.isFinite(PLANS.max.tokenCeiling));
-  assert.ok(PLANS.max.tokenCeiling > PLANS.mid.tokenCeiling);
-  assert.ok(PLANS.mid.tokenCeiling > PLANS.free.tokenCeiling);
+  assert.ok(PLANS.max.costCeilingUsd > 0 && Number.isFinite(PLANS.max.costCeilingUsd));
+  assert.ok(PLANS.max.costCeilingUsd > PLANS.mid.costCeilingUsd);
+  assert.ok(PLANS.mid.costCeilingUsd > PLANS.free.costCeilingUsd);
+});
+
+test("the monthly budget is a real number, and no single account can reach it", () => {
+  // Patryk, 2026-10-16: 3,000–5,000 € a month, watertight.
+  assert.ok(MONTHLY_BUDGET_USD > 0 && MONTHLY_BUDGET_USD <= 3_000);
+  for (const p of Object.values(PLANS)) assert.ok(p.costCeilingUsd < MONTHLY_BUDGET_USD);
 });
 
 test("agents are limited by type, not by a pool shared across projects", () => {
@@ -83,7 +90,16 @@ test("agentsLabel says it in words", () => {
   assert.equal(agentsLabel(PLANS.mid), "every type, up to 4 agents of each");
 });
 
-test("while everyone is on Max, planFor says Max whatever the row holds", () => {
+test("while everyone is on Max, an invited account is Max whatever its row holds", () => {
   if (!EVERYONE_IS_MAX) return;
-  for (const v of [undefined, null, "", "free", "mid", "enterprise"]) assert.equal(planFor(v).id, "max");
+  for (const v of ["free", "mid", "enterprise"]) assert.equal(planFor(v).id, "max");
+});
+
+test("an account nobody invited is free, even while everyone is on Max", () => {
+  // Otherwise opening sign-up would hand every scripted account Max's ceiling.
+  for (const v of [undefined, null, ""]) assert.equal(planFor(v).id, "free");
+});
+
+test("free accounts share a pool smaller than the whole budget", () => {
+  assert.ok(FREE_POOL_BUDGET_USD > 0 && FREE_POOL_BUDGET_USD < MONTHLY_BUDGET_USD);
 });

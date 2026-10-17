@@ -10,6 +10,7 @@ import { AgentMascot } from "@/components/layout/agent-mascot";
 import { IconSun, IconMoon, IconArrow, IconCheck, IconEye, IconEyeOff } from "@/components/layout/agxp-icons";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { captureBetaKeyFromUrl } from "@/lib/beta-key-handoff";
+import { Turnstile, TURNSTILE_SITE_KEY, type TurnstileHandle } from "@/components/layout/turnstile";
 
 type Mode = "signin" | "signup";
 const MODES: Mode[] = ["signin", "signup"];
@@ -31,6 +32,7 @@ function friendlyError(raw: string): string {
   if (m.includes("email not confirmed")) return "Confirm your email first. The link is in your inbox.";
   if (m.includes("already registered") || m.includes("already exists")) return "That email may already have an account. Try signing in.";
   if (m.includes("rate limit") || m.includes("too many")) return "Too many attempts. Wait a minute, then try again.";
+  if (m.includes("captcha")) return "The security check didn't go through. Wait for the check box to tick, then try again.";
   if (m.includes("password should be at least")) return "Use at least 8 characters.";
   if (m.includes("invalid email") || m.includes("unable to validate email")) return "That email address doesn't look right.";
   if (m.includes("network") || m.includes("failed to fetch")) return "No connection to the server. Check your internet.";
@@ -64,6 +66,10 @@ export default function LoginPage() {
   const [busy, setBusy] = useState<"form" | "google" | "forgot" | null>(null);
   const [note, setNote] = useState<{ text: string; ok: boolean } | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
+  /** The bot check's answer. One request each — reset after every use. */
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaFailed, setCaptchaFailed] = useState(false);
+  const captcha = useRef<TurnstileHandle>(null);
 
   const uid = useId();
   const ids = {
@@ -131,16 +137,36 @@ export default function LoginPage() {
     return !!(found.email || found.password);
   }
 
+  /**
+   * The token for the next request, or null after telling the person why there
+   * is none yet. Without a site key there is no check and nothing to wait for.
+   */
+  function captchaReady(): string | undefined | null {
+    if (!TURNSTILE_SITE_KEY) return undefined;
+    if (captchaToken) return captchaToken;
+    setNote({
+      text: captchaFailed
+        ? "The security check couldn't load. Turn off any content blocker for this page and reload."
+        : "One moment — the security check is still running.",
+      ok: false,
+    });
+    return null;
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;
     setNote(null);
     if (reportInvalid(validate(true))) return;
+    const token = captchaReady();
+    if (token === null) return;
 
     setBusy("form");
     try {
       if (mode === "signin") {
-        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+        const { error } = await supabase.auth.signInWithPassword({
+          email: email.trim(), password, options: { captchaToken: token },
+        });
         if (error) setNote({ text: friendlyError(error.message), ok: false });
         else router.replace("/dashboard");
         return;
@@ -152,6 +178,7 @@ export default function LoginPage() {
         options: {
           data: name.trim() ? { full_name: name.trim() } : undefined,
           emailRedirectTo: `${window.location.origin}/auth/callback`,
+          captchaToken: token,
         },
       });
       if (error) { setNote({ text: friendlyError(error.message), ok: false }); return; }
@@ -162,6 +189,8 @@ export default function LoginPage() {
       setMode("signin");
     } finally {
       setBusy(null);
+      // Spent, whatever the outcome: the next try needs a fresh one.
+      captcha.current?.reset();
     }
   }
 
@@ -169,11 +198,15 @@ export default function LoginPage() {
     setNote(null);
     // Only the address matters here; a half-typed password is not an error.
     if (reportInvalid(validate(false))) return;
+    const token = captchaReady();
+    if (token === null) return;
     setBusy("forgot");
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: `${window.location.origin}/reset`,
+      captchaToken: token,
     });
     setBusy(null);
+    captcha.current?.reset();
     // Deliberately the same answer either way — it must not reveal whether an
     // account with that address exists.
     setNote(error
@@ -273,6 +306,8 @@ export default function LoginPage() {
               {signup && <p className="field-hint" id={ids.pwHint}>At least 8 characters</p>}
               {errors.password && <p className="field-err" id={ids.pwErr}>{errors.password}</p>}
             </div>
+
+            <Turnstile ref={captcha} onToken={setCaptchaToken} onFail={() => setCaptchaFailed(true)} />
 
             {note && (
               <div className={`auth-note ${note.ok ? "ok" : "bad"}`} role="status">

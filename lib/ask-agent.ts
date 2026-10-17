@@ -16,6 +16,9 @@ export interface ChatTurn {
 export type AgentErrorCode =
   | "unauthorized"
   | "rate_limited"
+  /** A plan or budget limit (402). The server's message is written for the
+   *  person and says what ran out, so it is the one shown. */
+  | "limit"
   | "not_configured"
   | "bad_request"
   | "network"
@@ -35,11 +38,12 @@ export class AgentError extends Error {
 function codeForStatus(status: number): AgentErrorCode {
   if (status === 401 || status === 403) return "unauthorized";
   if (status === 429) return "rate_limited";
+  if (status === 402) return "limit";
   if (status === 400) return "bad_request";
   return "server";
 }
 
-const CODES = new Set<AgentErrorCode>(["unauthorized", "rate_limited", "not_configured", "bad_request", "network", "empty", "server"]);
+const CODES = new Set<AgentErrorCode>(["unauthorized", "rate_limited", "not_configured", "bad_request", "network", "empty", "server", "limit"]);
 
 /** The route verifies this token, so a missing session must fail here loudly. */
 async function accessToken(): Promise<string> {
@@ -63,13 +67,16 @@ async function accessToken(): Promise<string> {
  */
 export interface AskOptions {
   agent: Agent;
-  messages: ChatTurn[];
+  /** The project and panel to answer. The server reads the conversation from
+   *  the database itself; the browser no longer sends it. */
+  projectId: string;
   /** What this agent learned in the user's earlier projects. */
   memory?: string[];
   /** How much history the two of them have — the agent's tone follows it. */
   experience?: { level: string; projects: number };
-  /** The other panel's conversation, so the two agents aren't blind to each other. */
-  peer?: PeerContext;
+  /** The other agent, so the two aren't blind to each other. Only its role
+   *  and name travel; the server reads what it was told. */
+  peer?: Pick<PeerContext, "role" | "name">;
   onDelta?: (soFar: string) => void;
   signal?: AbortSignal;
 }
@@ -78,10 +85,13 @@ export interface AskResult {
   text: string;
   /** True when `signal` ended the answer early. */
   stopped: boolean;
+  /** Where the server stored the reply, for Try again. */
+  messageId: string | null;
 }
 
-export async function askAgent({ agent, messages, memory = [], experience, peer, onDelta, signal }: AskOptions): Promise<AskResult> {
+export async function askAgent({ agent, projectId, memory = [], experience, peer, onDelta, signal }: AskOptions): Promise<AskResult> {
   let text = "";
+  let messageId: string | null = null;
   try {
     const res = await fetch("/api/agent/chat", {
       method: "POST",
@@ -89,7 +99,10 @@ export async function askAgent({ agent, messages, memory = [], experience, peer,
         "Content-Type": "application/json",
         Authorization: `Bearer ${await accessToken()}`,
       },
-      body: JSON.stringify({ agentType: agent.type, agentKind: kindFor(agent), agentName: agent.name, messages, memory, experience, peer }),
+      body: JSON.stringify({
+        projectId, agentType: agent.type, agentKind: kindFor(agent), agentName: agent.name, memory, experience,
+        peer: peer ? { role: peer.role, name: peer.name } : undefined,
+      }),
       signal,
     });
 
@@ -97,9 +110,12 @@ export async function askAgent({ agent, messages, memory = [], experience, peer,
     if (!res.ok) {
       const data = await res.json().catch(() => ({})) as { error?: string; code?: string };
       const code = data.code && CODES.has(data.code as AgentErrorCode) ? data.code as AgentErrorCode : codeForStatus(res.status);
+      // A limit's message is the user-facing text itself, not a detail for the console.
+      if (code === "limit" && data.error) throw new AgentError("limit", data.error);
       throw new AgentError(code, `${res.status} ${data.error ?? res.statusText}`);
     }
     if (!res.body) throw new AgentError("empty", "response had no body");
+    messageId = res.headers.get("X-Message-Id");
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
@@ -112,7 +128,7 @@ export async function askAgent({ agent, messages, memory = [], experience, peer,
     text += decoder.decode();
   } catch (e) {
     // Stopped on purpose: what arrived so far is the answer.
-    if (signal?.aborted) return { text, stopped: true };
+    if (signal?.aborted) return { text, stopped: true, messageId };
     if (e instanceof AgentError) throw e;
     // fetch rejects with a TypeError when the network is down or the
     // connection drops mid-stream.
@@ -122,5 +138,5 @@ export async function askAgent({ agent, messages, memory = [], experience, peer,
   // The stream can end early if the model call breaks mid-answer; an empty
   // body is a failure, not an answer.
   if (!text.trim()) throw new AgentError("empty", "stream ended without text");
-  return { text, stopped: false };
+  return { text, stopped: false, messageId };
 }

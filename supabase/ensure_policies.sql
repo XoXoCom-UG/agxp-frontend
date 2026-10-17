@@ -60,9 +60,11 @@ drop policy if exists "agxp_project_messages_owner_select" on agxp_project_messa
 create policy "agxp_project_messages_owner_select" on agxp_project_messages for select to authenticated
   using (exists (select 1 from agxp_projects p where p.id = project_id and p.owner_id = auth.uid()));
 
+-- Only the user's own messages: the agent's replies are written by the server
+-- with the service role (migration 0019), so they cannot be forged.
 drop policy if exists "agxp_project_messages_owner_insert" on agxp_project_messages;
 create policy "agxp_project_messages_owner_insert" on agxp_project_messages for insert to authenticated
-  with check (exists (select 1 from agxp_projects p where p.id = project_id and p.owner_id = auth.uid()));
+  with check (role = 'user' and exists (select 1 from agxp_projects p where p.id = project_id and p.owner_id = auth.uid()));
 
 drop policy if exists "agxp_project_messages_owner_delete" on agxp_project_messages;
 create policy "agxp_project_messages_owner_delete" on agxp_project_messages for delete to authenticated

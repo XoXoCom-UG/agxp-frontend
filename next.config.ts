@@ -2,6 +2,36 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 import path from "node:path";
 
+/**
+ * Where the browser may connect. It used to be any https/wss origin, which
+ * means a script injected through some future XSS could post a user's session
+ * or documents anywhere. The browser only ever talks to this site, Supabase
+ * (REST, auth, storage, realtime) and Sentry's ingest, so that is the list.
+ * Resend is called from the server, never the browser.
+ */
+function originOf(url: string | undefined): string | null {
+  try { return url ? new URL(url).origin : null; } catch { return null; }
+}
+const supabase = originOf(process.env.NEXT_PUBLIC_SUPABASE_URL);
+const sentry = originOf(process.env.NEXT_PUBLIC_SENTRY_DSN);
+// Cloudflare Turnstile, the bot check on the login page: its script, the
+// iframe it draws in, and the calls it makes from there.
+const TURNSTILE = "https://challenges.cloudflare.com";
+
+const connectSrc = [
+  "'self'",
+  TURNSTILE,
+  supabase,
+  supabase?.replace(/^https:/, "wss:"),
+  sentry,
+].filter(Boolean).join(" ");
+
+// React's dev tooling needs eval; a production build does not, and allowing
+// it there only helps an injected script.
+const scriptSrc = process.env.NODE_ENV === "production"
+  ? `script-src 'self' 'unsafe-inline' ${TURNSTILE}`
+  : `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${TURNSTILE}`;
+
 const securityHeaders = [
   // Prevent the site from being embedded in iframes (clickjacking)
   { key: "X-Frame-Options", value: "DENY" },
@@ -18,14 +48,16 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      scriptSrc,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
-      "connect-src 'self' https: wss:",
+      `connect-src ${connectSrc}`,
+      `frame-src ${TURNSTILE}`,
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
+      "worker-src 'self' blob:",
       "object-src 'none'",
     ].join("; "),
   },
@@ -67,8 +99,8 @@ const nextConfig: NextConfig = {
 /**
  * Sentry is wired here, not by the two sentry.*.config.ts files alone — those
  * only ever load because something imports them (instrumentation.ts) or because
- * this wrapper is applied. The CSP above already allows the ingest endpoint:
- * `connect-src` permits any https origin.
+ * this wrapper is applied. The CSP above allows the ingest endpoint by taking
+ * its origin from NEXT_PUBLIC_SENTRY_DSN.
  *
  * Source maps are only uploaded when SENTRY_AUTH_TOKEN, SENTRY_ORG and
  * SENTRY_PROJECT are set in the build environment. Without them the build still

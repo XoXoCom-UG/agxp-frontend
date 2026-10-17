@@ -213,8 +213,9 @@ export async function listMessages(projectId: string, column: AgentType): Promis
   return (data ?? []) as ProjectMessage[];
 }
 
-/** Returns the stored row's id, so a reply can later be found again (Try again). */
-export async function addMessage(projectId: string, column: AgentType, role: "user" | "assistant", content: string): Promise<string | null> {
+/** A message the person wrote. The agent's replies are stored by the chat
+ *  route with the service role; RLS refuses them from here (migration 0019). */
+export async function addMessage(projectId: string, column: AgentType, role: "user", content: string): Promise<string | null> {
   const supabase = createClient();
   const { data, error } = await supabase.from("agxp_project_messages")
     .insert({ project_id: projectId, column_type: column, role, content })
