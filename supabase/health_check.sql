@@ -31,7 +31,15 @@ with expected(kind, name, detail, migration) as (values
   ('function', 'enforce_agent_limit',   null,              '0014'),
   ('trigger',  'agents_limit',          'agents',          '0014'),
   ('function', 'enforce_project_agent_owner', null,        '0014'),
-  ('trigger',  'agxp_projects_agent_owner', 'agxp_projects', '0014')
+  ('trigger',  'agxp_projects_agent_owner', 'agxp_projects', '0014'),
+  ('column',   'agxp_usage',            'cost_micro_usd',  '0017'),
+  ('function', 'month_spend_micro_usd', null,              '0017'),
+  ('function', 'take_rate_slot',        null,              '0017'),
+  ('function', 'month_spend_free_micro_usd', null,         '0018'),
+  ('table',    'agxp_ai_switch',        null,              '0021'),
+  ('table',    'agxp_ai_leases',        null,              '0021'),
+  ('function', 'begin_ai_call',         null,              '0021'),
+  ('function', 'settle_ai_call',        null,              '0021')
 )
 select
   e.kind,
@@ -67,7 +75,8 @@ select c.relname as table_name,
   join pg_namespace n on n.oid = c.relnamespace
  where n.nspname = 'public'
    and c.relname in ('agxp_projects','agxp_project_messages','agxp_entitlements',
-                     'agxp_usage','agxp_plan_limits','agxp_beta_keys')
+                     'agxp_usage','agxp_plan_limits','agxp_beta_keys',
+                     'agxp_rate_limits','agxp_ai_switch','agxp_ai_leases')
  order by c.relname;
 
 -- Is anything actually being metered? If the app has been used and this is
@@ -83,3 +92,9 @@ select u.email, e.plan, e.can_switch_plan
   from agxp_entitlements e
   join auth.users u on u.id = e.user_id
  where e.can_switch_plan;
+
+-- Is the kill switch on, and what is in flight right now? A lease older than
+-- a few minutes belongs to a server that died mid-answer; it expires by itself.
+select paused, reason, updated_at from agxp_ai_switch;
+select kind, count(*) as in_flight, sum(reserved_micro_usd) / 1e6 as reserved_usd
+  from agxp_ai_leases where expires_at > now() group by kind;

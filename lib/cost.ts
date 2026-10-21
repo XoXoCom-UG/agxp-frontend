@@ -47,3 +47,36 @@ export function costMicroUsd(t: UsageTokens): number {
 }
 
 export const usd = (dollars: number) => Math.round(dollars * 1_000_000);
+
+/**
+ * What a call is reserved at before it runs (begin_ai_call, migration 0021):
+ * the worst case, so parallel calls cannot all start from the same "spent".
+ *
+ * Input is priced as if nothing were cached and output as if the cap were
+ * reached — both over-count, which is the safe direction. The real cost
+ * replaces this the moment the call is settled.
+ */
+export function reserveMicroUsd(inputTokens: number, maxOutputTokens: number): number {
+  return costMicroUsd({ input: inputTokens, output: maxOutputTokens, cacheRead: 0, cacheWrite: 0 });
+}
+
+/** A rough upper estimate of tokens, from what the request carries. */
+export interface InputSize {
+  /** Characters of text: system prompt, messages, inlined files. */
+  chars: number;
+  /** Raw bytes of attached PDFs. */
+  pdfBytes?: number;
+  /** How many images are attached. */
+  images?: number;
+}
+
+/**
+ * Text: about three characters a token, fewer for German compounds, so /3 is
+ * already generous. PDFs: Claude reads each page as text plus an image, a few
+ * thousand tokens a page; a page is rarely under 30 KB, so a token per 10
+ * bytes stays above that. Images: the API caps one at about 1,600 tokens.
+ */
+export function estimateInputTokens(s: InputSize): number {
+  const n = (v: number | undefined) => (Number.isFinite(v) && (v as number) > 0 ? (v as number) : 0);
+  return Math.ceil(n(s.chars) / 3 + n(s.pdfBytes) / 10 + n(s.images) * 1_600);
+}

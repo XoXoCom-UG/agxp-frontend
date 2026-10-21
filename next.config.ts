@@ -41,6 +41,10 @@ const securityHeaders = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   // Disable powerful browser features we don't use
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
+  // A page opened from here (or that opened us) gets no handle on this window,
+  // so a malicious tab cannot navigate or probe it. Sign-in with a provider is
+  // a full-page redirect, not a popup, so nothing here needs the opener.
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
   // Force HTTPS for 2 years, include subdomains
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
   // Content Security Policy — pragmatic: allows Next.js inline scripts + HTTPS APIs

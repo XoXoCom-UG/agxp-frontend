@@ -184,18 +184,111 @@ export function blocked(a: Allowance): LimitHit | null {
 export type SpentTokens = UsageTokens;
 
 /**
- * Adds what a request actually cost.
+ * How many calls of one kind an account may have running at once. Two chats
+ * because there are two panels, and a user may well type into both; one
+ * title, which only ever runs once per project.
+ */
+const IN_FLIGHT: Record<AiCallKind, number> = { chat: 2, title: 1 };
+
+/**
+ * How long a lease outlives a server that died mid-stream. A full document
+ * streams in a few minutes; this only has to be longer than that.
+ */
+const LEASE_TTL_SECONDS = 15 * 60;
+
+export type AiCallKind = "chat" | "title";
+
+/** A model call that has been admitted and must be settled exactly once. */
+export interface AiLease {
+  id: string;
+  userId: string;
+  period: string;
+}
+
+/**
+ * Admits one model call, or says why not — atomically (begin_ai_call,
+ * migration 0021).
+ *
+ * blocked() above reads and decides in the app, which is fine for one request
+ * and wrong for twenty sent in the same second: they all read the same spend.
+ * This takes a lease in the database instead, where calls in flight count as
+ * spent and a per-account cap on parallel calls holds across instances.
+ * blocked() still runs first, for the invite and unreadable cases and so the
+ * common refusal costs no lock.
+ *
+ * Without the service role, or when the function is missing, development lets
+ * the call through unmetered and production refuses it.
+ */
+export async function beginAiCall(
+  a: Allowance,
+  userId: string,
+  kind: AiCallKind,
+  reserveMicroUsd: number,
+): Promise<{ lease: AiLease } | { hit: LimitHit; status: number }> {
+  const lease: AiLease = { id: crypto.randomUUID(), userId, period: a.periodStart };
+  const db = admin();
+  if (!db) return FAIL_OPEN ? { lease } : { hit: unreadableHit(a), status: 402 };
+
+  const { data, error } = await db.rpc("begin_ai_call", {
+    p_user: userId,
+    p_lease: lease.id,
+    p_kind: kind,
+    p_period: a.periodStart,
+    p_reserve: Math.max(0, Math.ceil(reserveMicroUsd)),
+    p_ceiling: usd(a.plan.costCeilingUsd),
+    p_max_in_flight: IN_FLIGHT[kind],
+    p_is_free: a.plan.id === "free",
+    p_free_pool: usd(FREE_POOL_BUDGET_USD),
+    p_month_budget: usd(MONTHLY_BUDGET_USD),
+    p_ttl_seconds: LEASE_TTL_SECONDS,
+  });
+  if (error) {
+    // Most often migration 0021 not applied yet. supabase/health_check.sql.
+    console.error("[lease] could not take:", error.code, error.message);
+    return FAIL_OPEN ? { lease } : { hit: unreadableHit(a), status: 402 };
+  }
+
+  const plan = a.plan.id;
+  switch (data as string) {
+    case "ok":
+      return { lease };
+    case "paused":
+      console.warn("[lease] AI calls are paused (agxp_ai_switch)");
+      return { status: 503, hit: { kind: "budget", plan, message: "AgentiX is paused for maintenance. Please try again a little later." } };
+    case "busy":
+      return { status: 429, hit: { kind: "budget", plan, message: "An answer is still being written. Wait for it to finish, then send the next message." } };
+    case "month":
+      console.error("[lease] monthly budget reached — refusing model calls until the 1st");
+      return { status: 402, hit: { kind: "budget", plan, message: "AgentiX has reached its usage limit for this month and is paused until the 1st. Sorry for the interruption." } };
+    case "free_pool":
+      console.warn("[lease] free pool spent — free accounts paused until the 1st");
+      return { status: 402, hit: { kind: "budget", plan, message: "The free plan is fully booked for this month. It opens again on the 1st — or upgrade to keep going now." } };
+    default:
+      return { status: 402, hit: blocked({ ...a, spent: usd(a.plan.costCeilingUsd) }) ?? unreadableHit(a) };
+  }
+}
+
+function unreadableHit(a: Allowance): LimitHit {
+  return blocked({ ...a, unreadable: true }) as LimitHit;
+}
+
+/**
+ * Records what the call actually cost and gives its lease back, in one
+ * transaction (settle_ai_call). Called exactly once per admitted call, with
+ * zeros when the call never reached the model.
  *
  * Fire-and-forget by design: the answer has already been streamed to the user
  * by the time this runs, so there is nothing left to fail into. A lost count
- * is cheaper than a thrown error on a finished response.
+ * is cheaper than a thrown error on a finished response — and a lease that
+ * is never settled expires on its own.
  */
-export async function recordUsage(userId: string, period: string, t: SpentTokens): Promise<void> {
+export async function settleAiCall(lease: AiLease, t: SpentTokens): Promise<void> {
   const db = admin();
   if (!db) return;
-  const { error } = await db.rpc("add_usage", {
-    p_user: userId,
-    p_period: period,
+  const { error } = await db.rpc("settle_ai_call", {
+    p_lease: lease.id,
+    p_user: lease.userId,
+    p_period: lease.period,
     p_in: t.input,
     p_out: t.output,
     p_cache_read: t.cacheRead,
@@ -223,7 +316,7 @@ export function peerReadingAllowed(plan: Plan, coachTurnsSoFar: number): boolean
  */
 export async function takeRateSlot(
   userId: string,
-  bucket: "chat" | "title" | "redeem",
+  bucket: "chat" | "title" | "redeem" | "account" | "report",
   max: number,
   windowSeconds = 60,
 ): Promise<boolean> {

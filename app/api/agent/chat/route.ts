@@ -6,13 +6,17 @@ import { DELIVERABLES } from "@/lib/deliverables";
 import { systemPrompt, peerPrompt } from "@/lib/agent-prompt";
 import { withAttachments } from "@/lib/message-files";
 import { peerTranscript, type PeerContext } from "@/lib/peer-context";
-import { allowanceFor, blocked, recordUsage, peerReadingAllowed, takeRateSlot } from "@/lib/entitlement-server";
+import { allowanceFor, blocked, beginAiCall, settleAiCall, peerReadingAllowed, takeRateSlot } from "@/lib/entitlement-server";
+import { estimateInputTokens, reserveMicroUsd } from "@/lib/cost";
 import { validateMessages, cleanLabel, cleanMemory, cleanKind, AGENT_NAME_MAX } from "@/lib/chat-input";
 import { loadConversation, peerTurns, saveReply, isProjectId, type StoredTurn } from "@/lib/conversation-server";
 import { cutUnfinishedMarker } from "@/lib/conversation-state";
 import { bearerOf } from "@/lib/server-db";
 
 const MODEL = "claude-sonnet-5";
+
+/** The reply cap. Why it is this high is explained where it is used. */
+const MAX_OUTPUT_TOKENS = 24_000;
 
 /**
  * Two limits with the same numbers. This in-memory one is a cheap first filter
@@ -76,6 +80,22 @@ function peerFrom(self: AgentType, peer: unknown, other: StoredTurn[]): PeerCont
   const transcript = peerTranscript(turns, name);
   if (!transcript) return undefined;
   return { role: p.role, name, transcript, turns: turns.filter(t => t.role === "assistant").length, docs: 0 };
+}
+
+/** What the request carries, for the reservation — see lib/cost.ts. */
+function inputEstimate(system: Anthropic.TextBlockParam[], msgs: Anthropic.MessageParam[]): number {
+  let chars = system.reduce((n, b) => n + b.text.length, 0);
+  let pdfBytes = 0;
+  let images = 0;
+  for (const m of msgs) {
+    if (typeof m.content === "string") { chars += m.content.length; continue; }
+    for (const b of m.content) {
+      if (b.type === "text") chars += b.text.length;
+      else if (b.type === "image") images++;
+      else if (b.type === "document" && b.source.type === "base64") pdfBytes += Math.ceil(b.source.data.length * 3 / 4);
+    }
+  }
+  return estimateInputTokens({ chars, pdfBytes, images });
 }
 
 /**
@@ -207,6 +227,17 @@ export async function POST(req: NextRequest) {
   }
 
   /*
+   * The call is admitted here, after the request is fully built and before a
+   * single token is paid for: a lease in the database reserves the worst case
+   * this call can cost, so parallel requests see each other (migration 0021).
+   * From this point the lease MUST be settled exactly once — by the stream
+   * below, or right here if the stream never starts.
+   */
+  const admitted = await beginAiCall(allowance, userId, "chat", reserveMicroUsd(inputEstimate(system, msgs), MAX_OUTPUT_TOKENS));
+  if ("hit" in admitted) return fail(admitted.status, admitted.status === 429 ? "rate_limited" : admitted.hit.kind, admitted.hit.message);
+  const lease = admitted.lease;
+
+  /*
    * The cap is not a budget — you are billed for what comes back, not for
    * what you allowed. So it costs nothing to leave real headroom, and
    * leaving none costs a document cut off mid-table.
@@ -217,12 +248,19 @@ export async function POST(req: NextRequest) {
    * compounds tokenise worse than the usual ratio — call it 8,000 tokens
    * against the old cap of 8,192. A 3% margin is not a margin.
    */
-  const stream = anthropic.messages.stream({
-    model: MODEL,
-    max_tokens: 24_000,
-    system,
-    messages: msgs,
-  });
+  let stream: ReturnType<typeof anthropic.messages.stream>;
+  try {
+    stream = anthropic.messages.stream({
+      model: MODEL,
+      max_tokens: MAX_OUTPUT_TOKENS,
+      system,
+      messages: msgs,
+    });
+  } catch (err) {
+    console.error("[agent/chat] could not start:", err);
+    await settleAiCall(lease, { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });
+    return fail(502, "server", "The assistant could not answer right now. Try again.");
+  }
 
   const encoder = new TextEncoder();
   /** The id the reply will be stored under, sent before the first word. */
@@ -304,8 +342,9 @@ export async function POST(req: NextRequest) {
         // What the request cost. Deliberately after close(): the user already
         // has their answer, so metering must not be able to delay or break it.
         // A lost count is cheaper than a thrown error on a finished response.
+        // The same call also gives the lease back.
         try {
-          await recordUsage(userId, allowance.periodStart, usage);
+          await settleAiCall(lease, usage);
         } catch (err) {
           console.error("[agent/chat] usage not recorded:", err);
         }

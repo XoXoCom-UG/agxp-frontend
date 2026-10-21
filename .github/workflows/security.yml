@@ -1,0 +1,70 @@
+name: Security
+
+# Three checks that ci.yml does not do, each one cheap and each one blocking:
+#
+#   secrets   — a key committed by mistake, anywhere in the history. A key in
+#               git is a leaked key even after the line is deleted: rotate it
+#               in Supabase / Anthropic first, then clean up.
+#   audit     — a known vulnerability in a package that ships to production.
+#               Dev-only packages are left out; they never reach a user.
+#   semgrep   — known-dangerous patterns in our own code (eval, unsanitised
+#               HTML, open redirects, hard-coded secrets). Only ERROR-level
+#               rules block, so a style opinion never stops a merge.
+#
+# Runs on every pull request and push to main, and weekly, because a package
+# that was clean on Monday can get an advisory on Friday.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    name: Secrets in git history
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      # The container, not gitleaks-action: the action wants a paid licence
+      # for repositories owned by an organisation, the binary does not.
+      - name: gitleaks
+        run: |
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.21.2 \
+            detect --source /repo --redact --verbose --no-banner
+
+  audit:
+    name: Vulnerable production packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: npm audit
+        run: npm audit --omit=dev --audit-level=high
+
+  semgrep:
+    name: Dangerous code patterns
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep:1.95.0
+    steps:
+      - uses: actions/checkout@v5
+      - name: semgrep
+        run: |
+          semgrep scan \
+            --config p/typescript --config p/react --config p/nextjs --config p/secrets \
+            --severity ERROR --error --metrics off \
+            --exclude node_modules --exclude .next --exclude .agents
