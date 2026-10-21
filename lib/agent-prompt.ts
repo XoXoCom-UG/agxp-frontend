@@ -27,7 +27,13 @@ const CHOICES_INSTRUCTION =
   `konkrete Beispielantworten als Optionen (der Nutzer kann trotzdem frei tippen, die Optionen sind ` +
   `nur ein Vorschlag). Nur wenn deine Antwort mit GAR KEINER Frage endet, lässt du den Marker weg. ` +
   `Der Marker erscheint nie im sichtbaren Text — er wird vom Frontend herausgefiltert und als Buttons ` +
-  `dargestellt.`;
+  `dargestellt.` +
+  `\n\nWenn auf deine Frage MEHRERE der Optionen gleichzeitig zutreffen können — "Welche dieser ` +
+  `Begriffe kennst du?", "Welche Abteilungen sind betroffen?" — schreibst du stattdessen ein PLUS ` +
+  `hinter CHOICES: [[CHOICES+: Option A|Option B|Option C|Keinen davon]]. Der Nutzer kann dann ` +
+  `mehrere ankreuzen und sie zusammen abschicken. Bei einer Frage, auf die es genau EINE Antwort ` +
+  `gibt, bleibt es bei [[CHOICES: ...]] ohne Plus — das Plus ist kein Höflichkeitsangebot, sondern ` +
+  `die Aussage "hier ist mehr als eins richtig".`;
 
 // Patryk's review (2026-09-02): the point of this app is the conversation
 // itself feeling like talking to a real consultant/coach — not an AI dumping

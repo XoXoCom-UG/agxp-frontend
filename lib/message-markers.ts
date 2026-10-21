@@ -30,6 +30,16 @@ export interface ProjectTitle {
 export interface ParsedMessage {
   text: string;
   choices: string[];
+  /**
+   * The question takes more than one answer ([[CHOICES+: ...]]).
+   *
+   * Some questions are not a fork in the road. "Which of these terms do you
+   * already know?" is true of several at once, and offering it as one-tap
+   * buttons forced a wrong answer — whichever was tapped, the rest were
+   * silently "no". The agent marks those with a +, and the UI then lets the
+   * options be toggled and sent together.
+   */
+  multi: boolean;
   progress: number | null;
   /** Which interview station the agent is on ([[TOPIC: 3/8 Pain points]]). */
   topic: TopicMarker | null;
@@ -55,13 +65,19 @@ export interface ParsedMessage {
 export function parseMarkers(raw: string): ParsedMessage {
   let text = raw;
   let choices: string[] = [];
+  let multi = false;
   let progress: number | null = null;
   let topic: TopicMarker | null = null;
   let doc: string | null = null;
 
-  const choicesMatch = text.match(/\[\[CHOICES:\s*([\s\S]*?)\]\]/i);
+  // One regex for both forms, so a "+" can never be read as part of an
+  // option: [[CHOICES: a|b]] picks one, [[CHOICES+: a|b]] picks several.
+  const choicesMatch = text.match(/\[\[CHOICES\s*(\+?)\s*:\s*([\s\S]*?)\]\]/i);
   if (choicesMatch) {
-    choices = choicesMatch[1].split("|").map(s => s.trim()).filter(Boolean);
+    multi = choicesMatch[1] === "+";
+    choices = choicesMatch[2].split("|").map(s => s.trim()).filter(Boolean);
+    // One option is not a choice, it is a button that answers for the user.
+    if (multi && choices.length < 2) multi = false;
     text = text.replace(choicesMatch[0], "");
   }
 
@@ -136,7 +152,7 @@ export function parseMarkers(raw: string): ParsedMessage {
   }
 
   text = text.replace(/\n{3,}/g, "\n\n").trim();
-  return { text, choices, progress, topic, doc, memories, industry, title, files };
+  return { text, choices, multi, progress, topic, doc, memories, industry, title, files };
 }
 
 /** Escapes a string for use inside a RegExp. */

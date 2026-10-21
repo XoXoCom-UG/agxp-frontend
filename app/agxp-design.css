@@ -1483,6 +1483,19 @@ html.light .ico-when-dark{ display:none; }
 .cookie-note p{ font-size:var(--text-2xs); line-height:1.65; color:var(--secondary-foreground); margin-bottom:var(--sp-4); }
 .cookie-note a{ color:var(--primary-soft); text-decoration:underline; text-underline-offset:2px; }
 .cookie-note .btn-primary-wide{ height:38px; font-size:var(--text-2xs); }
+/* Ablehnen and Akzeptieren: the same button twice, side by side. Equal
+   weight is the point — a refusal that is harder to find is not a choice. */
+.cookie-choices{ display:grid; grid-template-columns:1fr 1fr; gap:var(--sp-2); }
+.cookie-choices .btn-secondary-wide{ height:38px; font-size:var(--text-2xs); }
+/* "Cookie-Einstellungen" in the footers: a button that reads as a link. */
+.consent-link{ background:none; border:0; padding:0; font:inherit; color:inherit; cursor:pointer;
+  text-decoration:inherit; opacity:inherit; }
+.consent-link:hover{ text-decoration:underline; text-underline-offset:2px; }
+/* Next to Impressum / Datenschutz / AGB it must look exactly like them. */
+.auth-legal .consent-link, .legal-foot .consent-link{ font-size:var(--text-2xs); color:var(--muted-foreground); }
+.lp-foot .consent-link{ color:var(--muted-foreground); }
+.auth-legal .consent-link:hover{ color:var(--secondary-foreground); }
+.lp-foot .consent-link:hover{ color:var(--foreground); }
 @media (prefers-reduced-motion:reduce){ .cookie-note{ animation:none; } }
 
 /* ---------- STREAMING — the answer as it is written ---------- */
@@ -8382,6 +8395,19 @@ html.light .tour-art{ mix-blend-mode:multiply; opacity:.15; }
 /* The replay row in Settings. */
 .ss-tour-row{ display:flex; align-items:center; justify-content:space-between; gap:var(--sp-4); flex-wrap:wrap; }
 .ss-tour-row .ss-hint{ flex:1; min-width:180px; margin:0; }
+
+/* Settings → Your data. Deleting the account is the one destructive control
+   in Settings, so it is set apart and coloured, and needs the email typed. */
+.ss-danger{ border-top:1px solid var(--border); padding-top:var(--sp-4); }
+.ss-danger-btn{ color:var(--destructive); }
+.ss-danger-row{ gap:var(--sp-2); }
+
+/* Report an answer: the share dialog's frame, with a note and one action. */
+.report-note{ width:100%; margin-top:var(--sp-3); padding:10px 12px; border-radius:var(--radius-sm);
+  border:1px solid var(--border); background:transparent; color:inherit; font:inherit; font-size:var(--text-xs); resize:vertical; }
+.report-hint{ margin:var(--sp-2) 0 0; font-size:var(--text-2xs); color:var(--muted-foreground); }
+.report-actions{ display:flex; justify-content:flex-end; margin-top:var(--sp-3); }
+.report-done{ display:flex; align-items:center; gap:var(--sp-2); font-size:var(--text-xs); }
 
 /* --- Narrow: one column, the scene under the words ------------------------ */
 @media (max-width:900px){

@@ -11,6 +11,7 @@ import { IconSun, IconMoon, IconArrow, IconCheck, IconEye, IconEyeOff } from "@/
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { captureBetaKeyFromUrl } from "@/lib/beta-key-handoff";
 import { Turnstile, TURNSTILE_SITE_KEY, type TurnstileHandle } from "@/components/layout/turnstile";
+import { ConsentLink } from "@/components/layout/cookie-banner";
 
 type Mode = "signin" | "signup";
 const MODES: Mode[] = ["signin", "signup"];
@@ -341,6 +342,7 @@ export default function LoginPage() {
             <Link href="/impressum">Impressum</Link>
             <Link href="/datenschutz">Datenschutz</Link>
             <Link href="/agb">AGB</Link>
+            <ConsentLink />
           </div>
         </div>
       </div>

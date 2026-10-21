@@ -131,3 +131,32 @@ test("an empty or missing title marker is no title, never an empty name", () => 
   assert.equal(parseMarkers("[[TITLE: ]]").title, null);
   assert.equal(parseMarkers("[[TITLE: | nur Beschreibung]]").title, null);
 });
+
+test("[[CHOICES+]] marks a question that takes several answers", () => {
+  const p = parseMarkers("Welche Begriffe kennst du?\n[[CHOICES+: Gap-Analyse|SWOT|Keinen davon]]");
+  assert.equal(p.multi, true);
+  assert.deepEqual(p.choices, ["Gap-Analyse", "SWOT", "Keinen davon"]);
+  assert.equal(p.text.trim(), "Welche Begriffe kennst du?");
+});
+
+test("a plain [[CHOICES]] still picks exactly one", () => {
+  const p = parseMarkers("Wie lange?\n[[CHOICES: Unter 5 Minuten|6-8 Minuten]]");
+  assert.equal(p.multi, false);
+  assert.deepEqual(p.choices, ["Unter 5 Minuten", "6-8 Minuten"]);
+});
+
+test("the + is never read as part of the first option", () => {
+  const p = parseMarkers("[[CHOICES +: A|B]]");
+  assert.equal(p.multi, true);
+  assert.deepEqual(p.choices, ["A", "B"]);
+});
+
+test("a single option is not offered as a multi-select", () => {
+  const p = parseMarkers("[[CHOICES+: Nur eine]]");
+  assert.equal(p.multi, false);
+  assert.deepEqual(p.choices, ["Nur eine"]);
+});
+
+test("an unfinished [[CHOICES+ never flashes into the chat", () => {
+  assert.equal(streamingText("Welche kennst du?\n[[CHOICES+: Gap-Analyse|SW"), "Welche kennst du?");
+});

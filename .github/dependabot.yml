@@ -1,0 +1,17 @@
+# Weekly pull requests for outdated or vulnerable npm packages, and for the
+# GitHub Actions in this repo if any are added. Security fixes come as soon as
+# GitHub knows about them; the weekly run groups the rest so it stays readable.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

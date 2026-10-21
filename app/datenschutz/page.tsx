@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { LegalShell, LegalSection, TodoNotice, MissingDataNotice } from "@/components/layout/legal";
 import { COMPANY, postalAddress } from "@/lib/company";
+import { ConsentLink } from "@/components/layout/cookie-banner";
 
 export const metadata: Metadata = { title: "Datenschutzerklärung" };
 
@@ -13,6 +14,12 @@ export const metadata: Metadata = { title: "Datenschutzerklärung" };
  *  - §6 Sentry: instrumentation-client.ts / sentry.*.config.ts. No session
  *    replay and sendDefaultPii:false — an earlier version of this page claimed
  *    replay was running, which was never true.
+ *  - §4 Cloudflare Turnstile: components/layout/turnstile.tsx, login page only.
+ *  - §4 Resend: lib/send-mail.ts, invitation emails the team sends.
+ *  - §2 memory: lib/agent-memory.ts reads [[MEMORY:]] notes from the user's
+ *    own stored replies; reports: agxp_reports (0020).
+ *  - §8 self-service: Settings → Your data (lib/account-data.ts,
+ *    app/api/account/delete/route.ts).
  *  - §9 local storage: the sb-* auth cookie and UI preferences only.
  *
  * If you change what the app sends anywhere, this page changes with it.
@@ -30,7 +37,8 @@ export default function DatenschutzPage() {
         (Abschnitt 7), die Drittlandübermittlung an Anthropic (Abschnitt 4) und die
         Frage, ob für Sentry eine Einwilligung nach § 25 TDDDG nötig ist. Offene
         Angaben: Hosting-Region von Supabase, Speicherdauer bei Sentry, Stand der
-        Auftragsverarbeitungsverträge.
+        Auftragsverarbeitungsverträge (auch Cloudflare und Resend), und ob die
+        Merkfunktion der Agenten (Abschnitt 2) eine eigene Einwilligung braucht.
       </TodoNotice>
 
       <LegalSection heading="1. Verantwortlicher">
@@ -52,9 +60,17 @@ export default function DatenschutzPage() {
           Nachricht anhängst. Sie werden in einem privaten Speicher abgelegt, der nur deinem
           Konto zugänglich ist, und bei jeder weiteren Nachricht desselben Gesprächs erneut
           an Anthropic übermittelt, damit der Agent sie weiter berücksichtigen kann.</p>
-        <p>• Nutzungsumfang: Anzahl der Anfragen und der verarbeiteten Token pro
-          Abrechnungszeitraum, um die Grenzen deines Plans durchzusetzen. Keine Inhalte,
-          nur Zahlen.</p>
+        <p>• Lernnotizen der Agenten: Ein Agent kann sich kurze Notizen über dich und dein
+          Unternehmen merken (etwa Branche oder bevorzugte Arbeitsweise) und sie in deinen
+          späteren Projekten mit demselben Agenten wieder berücksichtigen. Die Notizen stehen
+          in deinen gespeicherten Gesprächen, sind nur deinem Konto zugänglich und werden mit
+          ihnen gelöscht.</p>
+        <p>• Nutzungsumfang: Anzahl der Anfragen, verarbeitete Token und die daraus berechneten
+          Kosten pro Monat, um die Grenzen deines Plans und unser Gesamtbudget durchzusetzen.
+          Keine Inhalte, nur Zahlen.</p>
+        <p>• Meldungen: Wenn du eine Antwort des Agenten meldest, speichern wir den Grund,
+          deine optionale Notiz und die ersten Zeilen der gemeldeten Antwort (höchstens 600
+          Zeichen), damit wir den Fall prüfen können.</p>
         <p>• Technische Daten: für Betrieb und Sicherheit notwendige Log- und
           Verbindungsdaten.</p>
       </LegalSection>
@@ -76,6 +92,13 @@ export default function DatenschutzPage() {
           und Nachrichten dauerhaft.</p>
         <p>• <b>Vercel Inc.</b> (USA) – Hosting und Auslieferung der Anwendung.</p>
         <p>• <b>Functional Software, Inc. (Sentry)</b> – Fehlerüberwachung, siehe Abschnitt 6.</p>
+        <p>• <b>Cloudflare, Inc.</b> (USA) – Turnstile, eine Prüfung auf der Anmeldeseite, die
+          automatisierte Registrierungen und Anmeldeversuche abwehrt. Dabei verarbeitet Cloudflare
+          technische Angaben wie IP-Adresse und Browsermerkmale. Rechtsgrundlage ist Art. 6 Abs. 1
+          lit. f DSGVO; unser berechtigtes Interesse ist der Schutz der Konten und des Dienstes
+          vor Missbrauch.</p>
+        <p>• <b>Resend</b> (USA) – Versand von Einladungs-E-Mails, wenn wir
+          dich zur Beta einladen. Übermittelt werden deine E-Mail-Adresse und der Einladungscode.</p>
         <p>Mit diesen Anbietern sind Auftragsverarbeitungsverträge nach Art. 28 DSGVO zu
           schließen. Für Übermittlungen in die USA ist die jeweilige Grundlage anzugeben
           (EU-U.S. Data Privacy Framework oder Standardvertragsklauseln).</p>
@@ -95,14 +118,18 @@ export default function DatenschutzPage() {
 
       <LegalSection heading="6. Fehlerüberwachung (Sentry)">
         <p>Um technische Fehler zu erkennen und zu beheben, nutzen wir im Live-Betrieb den Dienst
-          Sentry (Functional Software, Inc.). Tritt ein Fehler auf, werden technische Angaben
+          Sentry (Functional Software, Inc., USA). Tritt ein Fehler auf, werden technische Angaben
           übermittelt: Fehlermeldung und Programmablauf, die betroffene Seite, Browser und
           Betriebssystem sowie der Zeitpunkt.</p>
+        <p>In deinem Browser läuft Sentry <b>nur, wenn du im Cookie-Hinweis zustimmst</b>
+          (Art. 6 Abs. 1 lit. a DSGVO, § 25 Abs. 1 TDDDG). Lehnst du ab, werden aus deinem Browser
+          keine Fehlerberichte gesendet. Fehler, die auf unseren Servern auftreten, melden wir
+          unabhängig davon.</p>
         <p>Es findet <b>keine Bildschirmaufzeichnung</b> (Session Replay) statt. Die Übermittlung
           von IP-Adresse, Cookies und Anfrage-Kopfzeilen ist in der Konfiguration ausdrücklich
           abgeschaltet.</p>
-        <p>Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO; unser berechtigtes Interesse liegt in
-          einem stabilen und sicheren Betrieb des Dienstes.</p>
+        <p>Für Fehlerberichte vom Server ist die Rechtsgrundlage Art. 6 Abs. 1 lit. f DSGVO; unser
+          berechtigtes Interesse liegt in einem stabilen und sicheren Betrieb des Dienstes.</p>
       </LegalSection>
 
       <LegalSection heading="7. Speicherdauer">
@@ -110,24 +137,33 @@ export default function DatenschutzPage() {
           ein Projekt, werden seine Nachrichten und die daran angehängten Dateien mitgelöscht.
           Wird das Konto gelöscht, entfallen damit auch Projekte, Nachrichten, Dateien und
           Nutzungszähler.</p>
-        <p>Für Log- und Fehlerdaten gelten die Fristen der jeweiligen Anbieter; konkrete Angaben
-          werden ergänzt.</p>
+        <p>Meldungen zu Antworten werden mit dem Konto gelöscht. Für Log- und Fehlerdaten gelten
+          die Fristen der jeweiligen Anbieter; konkrete Angaben werden ergänzt.</p>
       </LegalSection>
 
       <LegalSection heading="8. Deine Rechte">
         <p>Du hast das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung,
           Datenübertragbarkeit und Widerspruch (Art. 15–21 DSGVO) sowie ein Beschwerderecht bei einer
-          Aufsichtsbehörde. Anfragen richte bitte an{" "}
+          Aufsichtsbehörde.</p>
+        <p>Zwei davon kannst du jederzeit selbst ausüben, unter <b>Einstellungen → Your data</b>:
+          eine vollständige Kopie deiner Daten als Datei herunterladen (Art. 15 und 20 DSGVO) und
+          dein Konto mit allen Projekten, Gesprächen, Dateien und Agenten löschen (Art. 17 DSGVO).</p>
+        <p>Alle übrigen Anfragen richte bitte an{" "}
           {COMPANY.privacyEmail
             ? COMPANY.privacyEmail
             : <span className="legal-gap">— noch nicht eingetragen —</span>}.</p>
       </LegalSection>
 
       <LegalSection heading="9. Cookies und lokale Speicherung">
-        <p>Wir verwenden nur technisch notwendige Cookies und lokale Speicherung: ein Cookie für
-          deine Login-Sitzung und einige Einstellungen im Browser (etwa Farbschema und
-          Fensteraufteilung). Es findet kein Tracking zu Werbezwecken statt, und es werden keine
-          Daten für Werbenetzwerke weitergegeben.</p>
+        <p><b>Notwendig</b> (§ 25 Abs. 2 Nr. 2 TDDDG, ohne Einwilligung): ein Cookie für deine
+          Login-Sitzung, deine Einstellungen im Browser (etwa Farbschema, Akzentfarbe und
+          Fensteraufteilung), ob du die Einführung schon gesehen hast, und deine Auswahl im
+          Cookie-Hinweis selbst. Ohne sie funktioniert der Dienst nicht wie von dir gewünscht.</p>
+        <p><b>Optional</b>, nur mit deiner Einwilligung: Fehlerberichte aus dem Browser an Sentry
+          (Abschnitt 6).</p>
+        <p>Es findet kein Tracking zu Werbezwecken statt, und es werden keine Daten für
+          Werbenetzwerke weitergegeben. Deine Einwilligung kannst du jederzeit mit Wirkung für die
+          Zukunft widerrufen: <ConsentLink /></p>
       </LegalSection>
 
       <LegalSection heading="10. Kontakt zum Datenschutz">

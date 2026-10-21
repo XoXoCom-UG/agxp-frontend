@@ -72,6 +72,8 @@ export interface ConversationState {
   lastAssistantIdx: number;
   /** What the newest answer offers to pick from. */
   choices: string[];
+  /** Those choices take more than one answer ([[CHOICES+: ...]]). */
+  multi: boolean;
 }
 
 export function deriveConversation(entries: Entry[]): ConversationState {
@@ -98,6 +100,7 @@ export function deriveConversation(entries: Entry[]): ConversationState {
     versionOf: new Map(docs.map((d, i) => [d.m.id, i + 1])),
     lastAssistantIdx,
     choices: last && !last.isError ? last.p.choices : [],
+    multi: !!last && !last.isError && last.p.multi,
   };
 }
 

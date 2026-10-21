@@ -29,7 +29,7 @@ const MAX_H = 220;
  * clicked back into; now only sending is held until the answer lands, and
  * the send button becomes Stop in the meantime.
  */
-export function ChatComposer({ role, sending, canSend, projectId, inputRef, onSend, onStop, onAttentiveChange }: {
+export function ChatComposer({ role, sending, canSend, projectId, inputRef, appendRef, onSend, onStop, onAttentiveChange }: {
   role: AgentType;
   sending: boolean;
   /** False until the history is in. */
@@ -38,6 +38,9 @@ export function ChatComposer({ role, sending, canSend, projectId, inputRef, onSe
    *  also when there is nothing to attach them to — the clip stays off. */
   projectId?: string;
   inputRef: React.RefObject<HTMLTextAreaElement | null>;
+  /** Filled in here so the panel can write a suggested answer into the box
+   *  instead of sending it — see the multi-answer case in parseMarkers. */
+  appendRef?: React.RefObject<((text: string) => void) | null>;
   onSend: (text: string) => void;
   onStop: () => void;
   /** The agent looks at the composer while you are writing to it. */
@@ -57,6 +60,24 @@ export function ChatComposer({ role, sending, canSend, projectId, inputRef, onSe
   // A file on its own is a message: "here, look at this" needs no sentence.
   const ready = (!!input.trim() || files.length > 0) && !sending && canSend && uploading === 0;
   const canAttach = !!projectId && !sending;
+
+  /*
+   * Writing a suggested answer into the box instead of sending it.
+   *
+   * When the question takes more than one answer, tapping an option adds it
+   * here rather than answering straight away, so a second and third tap can
+   * follow and Enter sends them together. The text stays editable, which is
+   * the point — "SWOT, SMART goals, and we tried OKRs once" is a better
+   * answer than any set of buttons could be.
+   */
+  useLayoutEffect(() => {
+    if (!appendRef) return;
+    appendRef.current = (text: string) => {
+      setInput(prev => (prev.trim() ? prev.replace(/\s+$/, "") + ", " + text : text));
+      inputRef.current?.focus({ preventScroll: true });
+    };
+    return () => { appendRef.current = null; };
+  }, [appendRef, inputRef]);
 
   // The composer grows with what you write, up to a cap, then scrolls —
   // so a long message stays readable instead of hiding behind one line.
@@ -185,7 +206,13 @@ export function ChatComposer({ role, sending, canSend, projectId, inputRef, onSe
       twice, and this one has to still be true on the hundredth message.
       A sibling of the box rather than a child, so it sits outside its frame.
     */}
-    <p className="pb-ai">AI can make mistakes. Check anything you rely on.</p>
+    {/* Art. 50 AI Act: say plainly that this is an AI. Plus the two things a
+        business user most needs to hear: it is not professional advice, and
+        secrets do not belong in the box. */}
+    <p className="pb-ai">
+      You&apos;re talking to an AI agent. It can make mistakes and is no substitute for legal,
+      tax or financial advice. Don&apos;t share passwords or payment details.
+    </p>
     </>
   );
 }

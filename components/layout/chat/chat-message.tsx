@@ -122,7 +122,7 @@ export function ChatMessage({ entry, agentName, docTitle, isNew, isLeaving, isLa
     ? <Choices choices={p.choices} disabled={sending} onPick={onPick} />
     : null;
   const actions = (
-    <MessageActions text={p.text} agentName={agentName}
+    <MessageActions text={p.text} agentName={agentName} messageId={m.id}
       onRetry={isLast ? onRetry : undefined} retryDisabled={busy} />
   );
 

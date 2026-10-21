@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Agent, AgentType } from "@/lib/agents";
 import type { Project } from "@/lib/projects";
 import { type MemoryNote } from "@/lib/message-markers";
@@ -207,7 +207,25 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
     if (composerHadFocus.current || hasFinePointer()) inputRef.current?.focus({ preventScroll: true });
   }, [sending, keyboardActive]);
 
-  useChoiceKeys({ choices: convo.choices, active: keyboardActive, sending, panelRef, onPick: chat.sendRef });
+  /*
+   * What tapping a suggested answer does.
+   *
+   * Normally it answers: one tap, one message. But some questions take more
+   * than one answer at a time — "which of these terms do you already know?"
+   * is true of several at once, and sending on the first tap quietly answered
+   * "no" for all the rest. When the agent marks the question with a plus
+   * ([[CHOICES+]]), a tap writes the option into the composer instead, so
+   * taps add up and Enter sends them as one ordinary sentence.
+   */
+  const appendRef = useRef<((text: string) => void) | null>(null);
+  const pick = useCallback((choice: string) => {
+    if (convo.multi && appendRef.current) appendRef.current(choice);
+    else chat.send(choice);
+  }, [convo.multi, chat]);
+  const pickRef = useRef(pick);
+  useLayoutEffect(() => { pickRef.current = pick; });
+
+  useChoiceKeys({ choices: convo.choices, active: keyboardActive, sending, panelRef, onPick: pickRef });
   useReadAlongNudge({
     enabled: role === "coach", loaded, hasHistory: messages.length > 0,
     peerTurns: peer?.turns ?? 0, peerDocs: peer?.docs ?? 0, sending, sendRef: chat.sendRef,
@@ -363,7 +381,7 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
             version={versionOf.get(entry.m.id) ?? 1}
             sending={sending} busy={busy}
             onRetry={chat.retry}
-            onPick={chat.send}
+            onPick={pick}
             onOpenDoc={title => onOpenDoc?.(buildDoc(entry.p.text, title, entry.m.created_at, versionOf.get(entry.m.id) ?? 1))}
           />
         ))}
@@ -375,7 +393,7 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
       </div>
 
       <ChatComposer role={role} sending={sending} canSend={loaded} projectId={project.id}
-        inputRef={inputRef}
+        inputRef={inputRef} appendRef={appendRef}
         onSend={chat.send} onStop={chat.stop} onAttentiveChange={setAttentive} />
       <div className="visually-hidden" role="status" aria-live="polite">{announce}</div>
       {confirmChange && onChangeAgent && (

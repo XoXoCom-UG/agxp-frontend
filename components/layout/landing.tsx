@@ -8,6 +8,7 @@ import { BrandLogo } from "@/components/layout/brand-logo";
 import { IconArrow, IconChart, IconUsers, IconAlert } from "@/components/layout/agxp-icons";
 import { useAuth } from "@/lib/auth-context";
 import { COMPANY } from "@/lib/company";
+import { ConsentLink } from "@/components/layout/cookie-banner";
 
 /**
  * The public page at "/".
@@ -97,6 +98,7 @@ export function Landing() {
           <Link href="/impressum">Impressum</Link>
           <Link href="/datenschutz">Datenschutz</Link>
           <Link href="/agb">AGB</Link>
+          <ConsentLink />
         </nav>
       </footer>
     </div>

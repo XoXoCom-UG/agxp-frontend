@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { IconAlert } from "@/components/layout/agxp-icons";
 import { COMPANY, missingCompanyFields } from "@/lib/company";
+import { ConsentLink } from "@/components/layout/cookie-banner";
 
 /**
  * Shared frame for the public legal pages (Impressum / Datenschutz / AGB).
@@ -31,6 +32,7 @@ export function LegalShell({ title, children }: { title: string; children: React
           <Link href="/impressum">Impressum</Link>
           <Link href="/datenschutz">Datenschutz</Link>
           <Link href="/agb">AGB</Link>
+          <ConsentLink />
           {/* Straight to the workspace: "/" only decides where to send you. */}
           <Link href="/dashboard" className="back">← Zur App</Link>
         </div>

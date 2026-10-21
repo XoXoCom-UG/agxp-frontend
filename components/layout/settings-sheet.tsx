@@ -15,11 +15,13 @@ import { PLANS, projectsLabel, agentsLabel, type Plan } from "@/lib/plans";
 import { DevPlanTools } from "@/components/layout/dev-plan-tools";
 import { DevMemory } from "@/components/layout/dev-memory";
 import { replayTour } from "@/components/layout/tour-host";
+import { PrivacyTab } from "@/components/layout/privacy-tab";
 
-type Tab = "profile" | "plan" | "appearance";
+type Tab = "profile" | "plan" | "data" | "appearance";
 const TABS: { id: Tab; label: string }[] = [
   { id: "profile", label: "Profile" },
   { id: "plan", label: "Plan" },
+  { id: "data", label: "Your data" },
   { id: "appearance", label: "Appearance" },
 ];
 
@@ -126,7 +128,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="ss-body" role="tabpanel" id={`${uid}-panel`} aria-labelledby={`${uid}-tab-${tab}`}>
-          {tab === "plan" ? <PlanTab /> : tab === "profile" ? (
+          {tab === "plan" ? <PlanTab /> : tab === "data" ? <PrivacyTab /> : tab === "profile" ? (
             <>
               <div className="ss-identity">
                 <span className="ss-avatar" aria-hidden="true">{initials}</span>

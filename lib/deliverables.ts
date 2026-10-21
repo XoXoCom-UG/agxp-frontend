@@ -152,7 +152,8 @@ const knowledgeCheck = (topic: string, terms: string, ask3: string): Station => 
   goal:
     `Wissens-Check, bevor es inhaltlich losgeht: DREI kurze Multiple-Choice-Fragen zum Thema ${topic}, ` +
     `eine pro Antwort, jede mit CHOICES. Frage 1: bisherige Erfahrung (noch nie / einmal / mehrmals). ` +
-    `Frage 2: welche Begriffe der Nutzer kennt (${terms}, keinen davon). Frage 3: ${ask3}. Danach stufst ` +
+    `Frage 2: welche Begriffe der Nutzer kennt (${terms}, keinen davon) — diese Frage MIT CHOICES+, ` +
+    `weil mehrere Begriffe gleichzeitig bekannt sein können. Frage 3: ${ask3}. Danach stufst ` +
     `du ein — Einsteiger, Fortgeschritten oder Experte —, sagst die Stufe in EINEM Satz mit dem Grund ` +
     `und merkst sie dir: sie bestimmt Wortwahl, Länge des Lexikons und die Zahl der Nachfragen für den ` +
     `Rest des Gesprächs. Einsteiger bekommen kürzere Fragen und mehr Erklärung, Experten weniger.`,
