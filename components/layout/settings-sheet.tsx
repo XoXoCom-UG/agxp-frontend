@@ -128,7 +128,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="ss-body" role="tabpanel" id={`${uid}-panel`} aria-labelledby={`${uid}-tab-${tab}`}>
-          {tab === "plan" ? <PlanTab /> : tab === "data" ? <PrivacyTab /> : tab === "profile" ? (
+          {tab === "plan" ? <PlanTab /> : tab === "data" ? <PrivacyTab closeThen={next => exitThen(() => { onClose(); next(); })} /> : tab === "profile" ? (
             <>
               <div className="ss-identity">
                 <span className="ss-avatar" aria-hidden="true">{initials}</span>

@@ -4,14 +4,19 @@ import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { exportMyData, downloadJson, deleteMyAccount, signOutEverywhere } from "@/lib/account-data";
-import { ConsentLink } from "@/components/layout/cookie-banner";
+import { openConsentSettings } from "@/lib/consent";
 
 /**
  * Settings → Your data. The rights the Datenschutzerklärung promises, as
  * things a person can do themselves instead of writing to us: take a copy
  * (Art. 15/20), end every session, and delete the account (Art. 17).
+ *
+ * `closeThen` closes Settings before running something that needs the whole
+ * screen — the cookie banner, here. Opened on top of Settings it sat under
+ * the dialog's backdrop, and the dialog's focus trap kept Tab from reaching
+ * it: the same reason the guided tour closes Settings first.
  */
-export function PrivacyTab() {
+export function PrivacyTab({ closeThen }: { closeThen: (next: () => void) => void }) {
   const { user } = useAuth();
   const [busy, setBusy] = useState<"export" | "signout" | "delete" | null>(null);
   const [error, setError] = useState("");
@@ -65,7 +70,9 @@ export function PrivacyTab() {
         <span className="ss-label">Cookies</span>
         <div className="ss-tour-row">
           <p className="ss-hint">Change whether we may send error reports from your browser.</p>
-          <ConsentLink className="btn btn-ghost" />
+          <button className="btn btn-ghost" onClick={() => closeThen(openConsentSettings)}>
+            Cookie-Einstellungen
+          </button>
         </div>
       </div>
 

@@ -1474,7 +1474,9 @@ html.light .ico-when-dark{ display:none; }
 .legal-list li{ line-height:1.65; }
 
 .cookie-note{
-  position:fixed; bottom:16px; right:16px; left:16px; max-width:380px; z-index:var(--z-toast);
+  /* Above dialogs, not toasts: it is itself a decision the person asked to
+     make, and under a dialog's backdrop it could be seen but not used. */
+  position:fixed; bottom:16px; right:16px; left:16px; max-width:380px; z-index:calc(var(--z-dialog) + 1);
   margin-left:auto; padding:var(--sp-5);
   background:var(--popover); border:1px solid var(--input);
   --rise:14px;

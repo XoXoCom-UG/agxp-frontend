@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useExit } from "@/lib/use-exit";
 import { readConsent, setConsent, openConsentSettings, OPEN_CONSENT_EVENT, type Consent } from "@/lib/consent";
@@ -25,13 +25,22 @@ import { readConsent, setConsent, openConsentSettings, OPEN_CONSENT_EVENT, type 
 export function CookieBanner() {
   const [show, setShow] = useState(false);
   const [current, setCurrent] = useState<Consent | null>(null);
+  /** Opened on purpose from a "Cookie-Einstellungen" link, not on first visit. */
+  const [asked, setAsked] = useState(false);
+  const firstChoice = useRef<HTMLButtonElement>(null);
   // It arrived from the bottom edge; it leaves the same way, a touch quicker.
   const [closing, exitThen] = useExit(180);
+
+  // Someone who clicked "Cookie-Einstellungen" is here to choose: put the
+  // keyboard on the first choice instead of leaving it on the link behind.
+  useEffect(() => {
+    if (show && asked) firstChoice.current?.focus({ preventScroll: true });
+  }, [show, asked]);
 
   useEffect(() => {
     // `current` is only drawn when the banner is reopened, and read fresh then.
     const existing = readConsent();
-    const reopen = () => { setCurrent(readConsent()); setShow(true); };
+    const reopen = () => { setCurrent(readConsent()); setAsked(true); setShow(true); };
     window.addEventListener(OPEN_CONSENT_EVENT, reopen);
     // Asked once; the old "Verstanden" acknowledgement was not consent to
     // anything optional, so it does not count as an answer.
@@ -62,7 +71,7 @@ export function CookieBanner() {
         Mehr in der <Link href="/datenschutz">Datenschutzerklärung</Link>.
       </p>
       <div className="cookie-choices">
-        <button className="btn-secondary-wide" type="button" onClick={() => choose("declined")}>Ablehnen</button>
+        <button ref={firstChoice} className="btn-secondary-wide" type="button" onClick={() => choose("declined")}>Ablehnen</button>
         <button className="btn-secondary-wide" type="button" onClick={() => choose("accepted")}>Akzeptieren</button>
       </div>
     </div>
