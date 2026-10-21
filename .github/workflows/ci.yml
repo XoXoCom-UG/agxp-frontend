@@ -29,7 +29,7 @@ jobs:
       # were not built for. The v5 line targets it properly.
       - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           # Quoted on purpose — unquoted YAML numbers lose trailing digits
           # (22.10 would become 22.1).
