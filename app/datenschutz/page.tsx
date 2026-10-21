@@ -64,7 +64,10 @@ export default function DatenschutzPage() {
           Unternehmen merken (etwa Branche oder bevorzugte Arbeitsweise) und sie in deinen
           späteren Projekten mit demselben Agenten wieder berücksichtigen. Die Notizen stehen
           in deinen gespeicherten Gesprächen, sind nur deinem Konto zugänglich und werden mit
-          ihnen gelöscht.</p>
+          ihnen gelöscht. In den Datenschutz-Einstellungen („Cookie-Einstellungen“) kannst du
+          die Lernnotizen jederzeit ausschalten (Widerspruch, Art. 21 DSGVO); dann beginnt jedes
+          neue Gespräch ohne Notizen aus früheren Projekten. Die Einstellung gilt für dein Konto
+          auf allen Geräten.</p>
         <p>• Nutzungsumfang: Anzahl der Anfragen, verarbeitete Token und die daraus berechneten
           Kosten pro Monat, um die Grenzen deines Plans und unser Gesamtbudget durchzusetzen.
           Keine Inhalte, nur Zahlen.</p>

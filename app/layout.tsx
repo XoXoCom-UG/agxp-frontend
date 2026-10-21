@@ -68,8 +68,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           <StaleBuildRecovery />
           <TooltipWarmth />
-          <AuthProvider>{children}</AuthProvider>
-          <CookieBanner />
+          {/* Inside the provider: the privacy settings also hold the agent
+              memory choice, which belongs to the signed-in account. */}
+          <AuthProvider>
+            {children}
+            <CookieBanner />
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

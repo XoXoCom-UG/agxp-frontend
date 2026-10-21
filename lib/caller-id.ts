@@ -9,6 +9,11 @@ import type { NextRequest } from "next/server";
  * Supabase access token, which is verified against Supabase here.
  */
 export async function callerId(req: NextRequest): Promise<string | null> {
+  return (await caller(req))?.id ?? null;
+}
+
+/** The verified user: id plus the account's own metadata (preferences). */
+export async function caller(req: NextRequest): Promise<{ id: string; meta: Record<string, unknown> } | null> {
   const header = req.headers.get("authorization") ?? "";
   const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
   if (!token) return null;
@@ -21,5 +26,6 @@ export async function callerId(req: NextRequest): Promise<string | null> {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const { data, error } = await supabase.auth.getUser(token);
-  return error || !data.user ? null : data.user.id;
+  if (error || !data.user) return null;
+  return { id: data.user.id, meta: (data.user.user_metadata ?? {}) as Record<string, unknown> };
 }

@@ -1489,6 +1489,30 @@ html.light .ico-when-dark{ display:none; }
    weight is the point — a refusal that is harder to find is not a choice. */
 .cookie-choices{ display:grid; grid-template-columns:1fr 1fr; gap:var(--sp-2); }
 .cookie-choices .btn-secondary-wide{ height:38px; font-size:var(--text-2xs); }
+.cookie-choices.is-three{ grid-template-columns:1fr 1fr 1fr; }
+.cookie-choices .btn-secondary-wide{ background:var(--secondary); padding:0 var(--sp-2); white-space:nowrap; }
+.cookie-title{ font-size:var(--text-sm); font-weight:600; margin:0 0 var(--sp-2); color:var(--foreground); }
+
+/* The details: every category, what it does, and its switch. Wider than the
+   summary, and scrolls inside itself on a short screen. */
+.cookie-note.is-details{ max-width:460px; max-height:calc(100dvh - 32px); overflow-y:auto; }
+.consent-list{ list-style:none; margin:0 0 var(--sp-3); padding:0; display:grid; gap:var(--sp-2); }
+.consent-item{ border:1px solid var(--border); border-radius:var(--radius-sm); padding:var(--sp-3); }
+.consent-item p{ margin:var(--sp-1) 0 0; font-size:var(--text-2xs); line-height:1.55; color:var(--muted-foreground); }
+.consent-row{ display:flex; align-items:center; justify-content:space-between; gap:var(--sp-3); }
+.consent-name{ font-size:var(--text-xs); font-weight:600; color:var(--foreground); }
+.consent-always{ font-size:var(--text-3xs); color:var(--muted-foreground); text-transform:uppercase; letter-spacing:0.06em; }
+.consent-never{ font-size:var(--text-3xs) !important; color:var(--muted-foreground) !important; }
+.consent-error{ font-size:var(--text-2xs) !important; color:var(--destructive) !important; }
+/* A real switch: role="switch" with aria-checked, 36x20, the knob slides. */
+.consent-switch{ position:relative; flex-shrink:0; width:36px; height:20px; border-radius:999px; border:1px solid var(--border-strong);
+  background:var(--secondary); cursor:pointer; padding:0; transition:background-color 160ms var(--ease-out); }
+.consent-switch > span{ position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%;
+  background:var(--muted-foreground); transition:transform 160ms var(--ease-out), background-color 160ms var(--ease-out); }
+.consent-switch.on{ background:var(--primary); border-color:var(--primary); }
+.consent-switch.on > span{ transform:translateX(16px); background:#fff; }
+.consent-switch:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
+@media (prefers-reduced-motion:reduce){ .consent-switch, .consent-switch > span{ transition:none; } }
 /* "Cookie-Einstellungen" in the footers: a button that reads as a link. */
 .consent-link{ background:none; border:0; padding:0; font:inherit; color:inherit; cursor:pointer;
   text-decoration:inherit; opacity:inherit; }
@@ -4533,12 +4557,12 @@ h1, h2, h3, .picker-card-title, .panel-head h2, .ah-text h2, .md-h1, .md-h2, .do
 /* The cookie notice on a phone: one compact strip along the bottom instead of
    a card that covered the composer and the legal links until dismissed. */
 @media (max-width:640px){
-  .cookie-note{
-    left:var(--sp-3); right:var(--sp-3); bottom:var(--sp-3); max-width:none;
-    display:flex; align-items:center; gap:var(--sp-3); padding:var(--sp-3) var(--sp-4);
+  /* A choice now, with three equal buttons, so it stays a card — just
+     edge to edge and a little tighter. */
+  .cookie-note, .cookie-note.is-details{
+    left:var(--sp-3); right:var(--sp-3); bottom:var(--sp-3); max-width:none; padding:var(--sp-4);
   }
-  .cookie-note p{ margin:0; flex:1; min-width:0; line-height:1.5; }
-  .cookie-note .btn-primary-wide{ width:auto; flex-shrink:0; padding:0 var(--sp-4); height:36px; }
+  .cookie-choices.is-three{ grid-template-columns:1fr; }
 }
 
 /* =============================================================================

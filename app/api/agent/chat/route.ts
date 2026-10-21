@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
-import { callerId } from "@/lib/caller-id";
+import { caller } from "@/lib/caller-id";
+import { memoryAllowed } from "@/lib/memory-pref";
 import type { AgentType } from "@/lib/agents";
 import { DELIVERABLES } from "@/lib/deliverables";
 import { systemPrompt, peerPrompt } from "@/lib/agent-prompt";
@@ -108,7 +109,8 @@ function fail(status: number, code: string, error: string) {
 }
 
 export async function POST(req: NextRequest) {
-  const userId = await callerId(req);
+  const me = await caller(req);
+  const userId = me?.id ?? null;
   if (!userId) {
     return fail(401, "unauthorized", "Your session has expired. Sign in again.");
   }
@@ -165,7 +167,9 @@ export async function POST(req: NextRequest) {
   const sys = systemPrompt(
       body.agentType,
       cleanLabel(body.agentName, AGENT_NAME_MAX) || "dein Agent",
-      cleanMemory(body.memory),
+      // Lernnotizen switched off on the account: none reach the prompt, whatever
+      // the browser sends (the privacy settings, lib/memory-pref.ts).
+      memoryAllowed(me?.meta) ? cleanMemory(body.memory) : [],
       body.experience,
       allowance.plan.stations,
       // Only a known id is passed on; the rest falls back to the role's default.

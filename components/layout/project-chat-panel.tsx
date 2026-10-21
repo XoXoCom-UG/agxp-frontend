@@ -5,6 +5,8 @@ import type { Agent, AgentType } from "@/lib/agents";
 import type { Project } from "@/lib/projects";
 import { type MemoryNote } from "@/lib/message-markers";
 import { loadAgentMemory, memoryLines, EMPTY_MEMORY, type AgentMemory } from "@/lib/agent-memory";
+import { useAuth } from "@/lib/auth-context";
+import { memoryAllowed } from "@/lib/memory-pref";
 import { deliverableFor } from "@/lib/deliverables";
 import { kindFor } from "@/lib/agent-types";
 import { levelFor } from "@/lib/agent-progress";
@@ -90,6 +92,8 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
   // picked up during this session.
   const [memory, setMemory] = useState<AgentMemory>(EMPTY_MEMORY);
   const [learned, setLearned] = useState<MemoryNote[]>([]);
+  const { user } = useAuth();
+  const memoryOn = memoryAllowed(user?.user_metadata as Record<string, unknown> | undefined);
   /** What the screen reader hears when an answer lands. */
   const [announce, setAnnounce] = useState("");
   /** "Change agent" asks first — it is a one-click way to lose your place. */
@@ -149,7 +153,9 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
 
   const chat = useAgentConversation({
     project, role, agent, deliverable,
-    context: () => ({ memory: memoryLines(memory, learned), experience: { level, projects: totalProjects }, peer }),
+    // Lernnotizen switched off in the privacy settings: the agent starts every
+    // project without what it learned in earlier ones (lib/memory-pref.ts).
+    context: () => ({ memory: memoryOn ? memoryLines(memory, learned) : [], experience: { level, projects: totalProjects }, peer }),
     onProjectNamed,
     onStart: isGenerating => {
       composerHadFocus.current = !!inputRef.current && document.activeElement === inputRef.current;

@@ -62,7 +62,10 @@ export function setConsent(c: Consent): void {
   else stopErrorReporting();
 }
 
-/** Brings the banner back so the choice can be changed. */
-export function openConsentSettings(): void {
-  window.dispatchEvent(new Event(OPEN_CONSENT_EVENT));
+/**
+ * Brings the privacy settings back so a choice can be changed. `detail` opens
+ * straight on the per-category view rather than the three-button summary.
+ */
+export function openConsentSettings(detail = true): void {
+  window.dispatchEvent(new CustomEvent(OPEN_CONSENT_EVENT, { detail }));
 }
