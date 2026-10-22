@@ -90,6 +90,40 @@ export const TOUR_SPOTS: Spot[] = [
   },
 ];
 
+/**
+ * The chat walk (lib/tour.ts, CHAT_TOUR_VERSION): who is who, and where to
+ * write. Four stops, in the order a first-time user's eyes go — the agent they
+ * are talking to, the box, the second agent, and how far along they are.
+ * Anchors are the same ones the long walk uses; a stop whose anchor is not on
+ * screen is dropped, exactly as there.
+ */
+export const CHAT_SPOTS: Spot[] = [
+  {
+    anchor: "panel-consultant",
+    title: "Start here: this is your Consultant",
+    body: "You write to the Consultant. It interviews you, one question at a time, and builds your document from what you say. Nothing else is needed to get a result.",
+    prefer: "right",
+  },
+  {
+    anchor: "composer",
+    title: "Answer in this box",
+    body: "Type in your own words, or press one of the suggested answers above it. The paper clip takes a PDF or an image if that says it better.",
+    prefer: "top",
+  },
+  {
+    anchor: "panel-switch",
+    title: "The Coach is the second agent",
+    body: "The Coach plans the people side — who is affected and how the rollout lands — in a conversation of its own. Open it when you want that. Methods shows the work taking shape.",
+    prefer: "left",
+  },
+  {
+    anchor: "rail",
+    title: "How far along you are",
+    body: "The steps of the interview, ticked off as you go. Once there is enough, you can ask for the document from here.",
+    prefer: "left",
+  },
+];
+
 /* --- Where the bubble goes ------------------------------------------------ */
 
 export interface Rect { x: number; y: number; width: number; height: number }

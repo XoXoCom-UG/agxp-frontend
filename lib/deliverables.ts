@@ -229,6 +229,23 @@ const TABLE_RULE =
   "eine normale Markdown-Tabelle mit GENAU diesen Spaltenüberschriften in dieser Reihenfolge";
 const TABLE_LEAD = `E${TABLE_RULE.slice(1)}`;
 
+/**
+ * One sentence under the title of the Methods panel, before the document
+ * exists: what is going on here, and why. Patryk, 2026-10-16 (00:06:49) — "eine
+ * kleine Notiz irgendwo, was hier gerade passiert": a first-time user sees a
+ * list of steps and a percentage and has to guess that they are being
+ * interviewed to produce a document.
+ *
+ * Built from the deliverable's own title and subtitle, so each of the four
+ * documents says what IS its own and the sentence cannot go stale when a
+ * document is renamed.
+ */
+export function introFor(d: Pick<Deliverable, "title" | "subtitle">, asker = "Your Consultant"): string {
+  const what = d.subtitle.trim().replace(/\.$/, "");
+  const lower = what.charAt(0).toLowerCase() + what.slice(1);
+  return `${asker} asks the questions below, one at a time. Your answers build the ${d.title}: ${lower}.`;
+}
+
 /** The prompts that start and redo the document — same shape for every type. */
 const promptsFor = (title: string, filledWith: string) => ({
   generatePrompt:

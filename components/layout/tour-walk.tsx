@@ -20,7 +20,11 @@ import { placeBubble, TOUR_SPOTS, type Placed, type Rect, type Spot } from "@/li
  *     the step count matches what you will actually be shown and there is no
  *     step that highlights nothing.
  */
-export function TourWalk({ onDone }: { onDone: () => void }) {
+export function TourWalk({ onDone, spots: all = TOUR_SPOTS }: {
+  onDone: () => void;
+  /** Which walk this is. The long one by default; the chat walk passes its own. */
+  spots?: Spot[];
+}) {
   const onClient = useOnClient();
   /*
    * Which spots exist, decided once at mount.
@@ -32,7 +36,7 @@ export function TourWalk({ onDone }: { onDone: () => void }) {
   const [spots] = useState<Spot[]>(() =>
     typeof document === "undefined"
       ? []
-      : TOUR_SPOTS.filter(s => document.querySelector(`[data-tour="${s.anchor}"]`)));
+      : all.filter(s => document.querySelector(`[data-tour="${s.anchor}"]`)));
 
   const [i, setI] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);

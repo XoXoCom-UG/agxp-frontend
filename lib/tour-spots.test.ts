@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { placeBubble, TOUR_SPOTS, GAP, type Rect, type Box } from "./tour-spots.ts";
+import { placeBubble, TOUR_SPOTS, CHAT_SPOTS, GAP, type Rect, type Box } from "./tour-spots.ts";
 
 const VIEW: Box = { width: 1440, height: 900 };
 const BUBBLE: Box = { width: 300, height: 160 };
@@ -80,4 +80,19 @@ test("every spot is usable", () => {
     assert.ok(/^[a-z-]+$/.test(s.anchor), `${s.anchor}: the anchor goes in a data attribute and a selector`);
     assert.ok(s.title.length > 0 && s.body.length > 0, `${s.anchor}: says something`);
   }
+});
+
+test("the chat walk names each stop once, with words, and only points at things the chat has", () => {
+  const anchors = CHAT_SPOTS.map(s => s.anchor);
+  assert.equal(new Set(anchors).size, anchors.length);
+  for (const s of CHAT_SPOTS) {
+    assert.ok(s.title.length > 0 && s.body.length > 0, s.anchor);
+    // Anchors that exist in the long walk too, so one data-tour contract serves both.
+    assert.ok(TOUR_SPOTS.some(t => t.anchor === s.anchor), s.anchor);
+  }
+});
+
+test("the chat walk starts with who to write to", () => {
+  assert.equal(CHAT_SPOTS[0].anchor, "panel-consultant");
+  assert.match(CHAT_SPOTS[0].body, /You write to the Consultant/);
 });

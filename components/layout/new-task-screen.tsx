@@ -16,6 +16,7 @@ import { AgentPickerPanel } from "@/components/layout/agent-picker-panel";
 import { ProjectChatPanel } from "@/components/layout/project-chat-panel";
 import { MethodsPanel } from "@/components/layout/methods-panel";
 import { RightTabs, type RightView } from "@/components/layout/right-tabs";
+import { ChatTour } from "@/components/layout/chat-tour";
 import { deliverableFor } from "@/lib/deliverables";
 import { kindFor } from "@/lib/agent-types";
 import { DeliverableView, type DeliverableDoc } from "@/components/layout/deliverable-view";
@@ -527,6 +528,8 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
   return (
     <div className="app">
       <AgentNav started={started} projectName={project?.name} projectCategory={project?.category} />
+      {/* First chat only: who is who, where to write (lib/tour.ts, chat walk). */}
+      {started && consultantChatting && <ChatTour />}
       {/* No page title and no description: clicking "New Task" should show the
           two agents and nothing else (Patryk, 2026-09-11 — "wenn es so clean
           ist, weiß der User sofort, was als nächstes zu tun ist"). */}

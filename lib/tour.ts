@@ -92,6 +92,41 @@ export function clearLocalTour(): void {
   }
 }
 
+/* --- The chat walk-through ------------------------------------------------ */
+
+/**
+ * The short walk that runs once, the first time a chat actually starts — the
+ * moment the question "which one do I write to?" is real (Tudor, 2026-10-16:
+ * with the Coach there too, a first user "has no idea who the main one is").
+ * The big tour cannot answer it, because at sign-in no chat is on screen yet
+ * and every step that points at the composer would be dropped.
+ *
+ * Its own flag and version, so changing the big tour does not replay this one
+ * and the reverse. Same two homes as the big tour, for the same reasons.
+ */
+export const CHAT_TOUR_VERSION = 1;
+export const CHAT_TOUR_META_KEY = "agxp_chat_tour";
+const CHAT_LOCAL_KEY = "agxp.chat-tour";
+
+export function chatTourSeen(metaValue: unknown, localValue: string | null): boolean {
+  return asVersion(metaValue) >= CHAT_TOUR_VERSION || asVersion(localValue) >= CHAT_TOUR_VERSION;
+}
+
+export function readLocalChatTour(): string | null {
+  if (typeof window === "undefined") return null;
+  try { return window.localStorage.getItem(CHAT_LOCAL_KEY); } catch { return null; }
+}
+
+export function writeLocalChatTour(version: number = CHAT_TOUR_VERSION): void {
+  if (typeof window === "undefined") return;
+  try { window.localStorage.setItem(CHAT_LOCAL_KEY, String(version)); } catch { /* the account copy still settles it */ }
+}
+
+export function clearLocalChatTour(): void {
+  if (typeof window === "undefined") return;
+  try { window.localStorage.removeItem(CHAT_LOCAL_KEY); } catch { /* the replay button drives it directly anyway */ }
+}
+
 /* --- The steps ------------------------------------------------------------ */
 
 /**

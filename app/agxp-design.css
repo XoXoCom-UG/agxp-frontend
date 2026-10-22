@@ -796,6 +796,7 @@ html.light .m-antenna{ stroke:color-mix(in srgb, var(--primary) 45%, transparent
   background:transparent; border:none; padding:var(--sp-2) var(--sp-2);
 }
 .doc-side-btn svg{ flex-shrink:0; color:var(--muted-foreground); }
+.doc-side-btn:disabled{ opacity:.55; cursor:progress; }
 @media (hover:hover) and (pointer:fine){
   .doc-side-btn:hover{ color:var(--foreground); background:var(--card); }
   .doc-side-btn:hover svg{ color:var(--secondary-foreground); }
@@ -2307,6 +2308,7 @@ html.light .methods-panel{ border-color:rgba(0,0,0,0.07); }
 .mp-title{ margin:0; font-size:var(--text-xl); font-weight:700; letter-spacing:-0.02em; color:var(--foreground); }
 .mp-actions{ padding:var(--sp-3) var(--sp-5) var(--sp-4) var(--sp-5); }
 .mp-sub{ margin:var(--sp-2) 0 0; font-size:var(--text-sm); line-height:1.5; color:var(--muted-foreground); }
+.mp-intro{ margin:var(--sp-2) 0 0; max-width:46ch; font-size:var(--text-xs); line-height:1.55; color:var(--muted-foreground); }
 .mp-tool{ flex-shrink:0; }
 /* The version's actions, in the header where they belong to the title. The
    primary one wears the app's own gradient, like every other primary action. */

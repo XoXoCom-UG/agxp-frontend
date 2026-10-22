@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import type { PanelSnapshot } from "@/lib/peer-context";
 import type { DeliverableDoc } from "@/components/layout/deliverable-view";
-import type { Deliverable } from "@/lib/deliverables";
+import { introFor, type Deliverable } from "@/lib/deliverables";
 import { md, handleCodeCopyClick } from "@/lib/markdown";
 import { ArtifactActions, versionLine } from "@/components/layout/deliverable-rail";
 import { IconCheck, IconLock, IconMinimise, IconSpark } from "@/components/layout/agxp-icons";
@@ -72,6 +72,8 @@ export function MethodsPanel({ tabs, deliverable, snap, onOpenDoc, onMinimise }:
           <h2 id="mp-title" className="mp-title">{d.title}</h2>
           {/* Only the version, once there is one. Before that the title stands alone. */}
           {doc && rail && <p className="mp-sub">{versionLine(rail.version, doc.createdAt, rail.restored)}</p>}
+          {/* Before there is a document: what is happening here, and why. */}
+          {!doc && <p className="mp-intro">{introFor(d)}</p>}
         </div>
 
         {doc && rail && controls && (

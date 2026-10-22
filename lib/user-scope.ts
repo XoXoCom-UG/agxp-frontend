@@ -21,7 +21,7 @@
 const OWNER_KEY = "agxp.owner";
 
 /** Every key whose contents are about one account's work. */
-export const USER_BOUND_KEYS = ["agxp.last-project", "agxp.mascot-replies", "agxp.tour"];
+export const USER_BOUND_KEYS = ["agxp.last-project", "agxp.mascot-replies", "agxp.tour", "agxp.chat-tour"];
 
 /** Events the stores listen for, so what is on screen follows the clear. */
 const REFRESH_EVENTS = ["agxp:last-project", "agxp:mascot-level"];

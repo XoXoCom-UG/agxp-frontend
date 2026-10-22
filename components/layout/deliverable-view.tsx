@@ -7,7 +7,7 @@ import { md, handleCodeCopyClick } from "@/lib/markdown";
 import { useDialogFocus } from "@/lib/use-dialog-focus";
 import { useExit } from "@/lib/use-exit";
 import { AgentMascot } from "@/components/layout/agent-mascot";
-import { IconX, IconCopy, IconCheck, IconDownload, IconPrint, IconList } from "@/components/layout/agxp-icons";
+import { IconX, IconCopy, IconCheck, IconDownload, IconPrint, IconList, IconDoc } from "@/components/layout/agxp-icons";
 
 export interface DeliverableDoc {
   /** "Transformation Concept" | "Change Plan" — whatever the agent titled it. */
@@ -196,6 +196,35 @@ export function DeliverableView({ doc, onClose }: { doc: DeliverableDoc; onClose
     } catch { /* clipboard blocked — the download button still works */ }
   }
 
+  /*
+   * The Word file is made on demand, in the browser, from the markdown that is
+   * already open — nothing is uploaded. The library is loaded by this click and
+   * not before, so it is not part of anyone's first page. A second click while
+   * it is working does nothing; a failure says so instead of leaving the button
+   * looking pressed.
+   */
+  const [wordState, setWordState] = useState<"idle" | "busy" | "failed">("idle");
+  async function downloadWord() {
+    if (wordState === "busy") return;
+    setWordState("busy");
+    try {
+      const { docxBlob } = await import("@/lib/docx-export");
+      const blob = await docxBlob({
+        title: doc.title, projectName: doc.projectName, agentName: doc.agentName,
+        createdAt: doc.createdAt, version: doc.version,
+      }, doc.content);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${slug(doc.projectName)}-${slug(doc.title)}.docx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setWordState("idle");
+    } catch {
+      setWordState("failed");
+    }
+  }
+
   function download() {
     const blob = new Blob([doc.content], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -230,8 +259,16 @@ export function DeliverableView({ doc, onClose }: { doc: DeliverableDoc; onClose
               <button className="doc-side-btn" onClick={copy}>
                 {copied ? <IconCheck size={14} className="icon-swap" /> : <IconCopy size={14} className={copyUsed ? "icon-swap" : undefined} />}<span className="t">{copied ? "Copied" : "Copy"}</span>
               </button>
-              <button className="doc-side-btn" onClick={download}><IconDownload size={14} /><span className="t">.md</span></button>
-              <button className="doc-side-btn" onClick={() => window.print()}><IconPrint size={14} /><span className="t">Print / PDF</span></button>
+              <button className="doc-side-btn" onClick={downloadWord} disabled={wordState === "busy"}
+                data-tooltip="Download as a Word file" aria-label="Download as a Word file">
+                <IconDoc size={14} /><span className="t">{wordState === "busy" ? "Making…" : wordState === "failed" ? "Failed, retry" : "Word"}</span>
+              </button>
+              <button className="doc-side-btn" onClick={() => window.print()}
+                data-tooltip="Opens the print window: choose Save as PDF" aria-label="Save as PDF, through the print window">
+                <IconPrint size={14} /><span className="t">PDF</span>
+              </button>
+              <button className="doc-side-btn" onClick={download}
+                data-tooltip="Download the text as Markdown" aria-label="Download as Markdown"><IconDownload size={14} /><span className="t">.md</span></button>
             </div>
             <span className="lbl">Contents</span>
             <div className="toc-nav" role="navigation" aria-label="Contents">

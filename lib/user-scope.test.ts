@@ -16,6 +16,6 @@ test("data with no recorded owner is not handed to whoever signs in next", () =>
   assert.equal(mustClear(null, "a"), true);
 });
 
-test("the project name, the levels and the tour flag are the user-bound ones", () => {
-  assert.deepEqual([...USER_BOUND_KEYS].sort(), ["agxp.last-project", "agxp.mascot-replies", "agxp.tour"]);
+test("the project name, the levels and the two tour flags are the user-bound ones", () => {
+  assert.deepEqual([...USER_BOUND_KEYS].sort(), ["agxp.chat-tour", "agxp.last-project", "agxp.mascot-replies", "agxp.tour"]);
 });

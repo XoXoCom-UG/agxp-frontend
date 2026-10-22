@@ -5,7 +5,7 @@ import type { User } from "@supabase/supabase-js";
 import { useAuth } from "@/lib/auth-context";
 import { createClient } from "@/lib/supabase";
 import {
-  TOUR_META_KEY, TOUR_VERSION, tourSeen, readLocalTour, writeLocalTour, clearLocalTour,
+  TOUR_META_KEY, TOUR_VERSION, tourSeen, readLocalTour, writeLocalTour, clearLocalTour, clearLocalChatTour,
 } from "@/lib/tour";
 import { Tour } from "@/components/layout/tour";
 import { TourWalk } from "@/components/layout/tour-walk";
@@ -16,6 +16,8 @@ export const TOUR_REPLAY_EVENT = "agxp:tour-replay";
 /** Anything can ask for the tour: `replayTour()` from a button, anywhere. */
 export function replayTour(): void {
   clearLocalTour();
+  // The chat walk too: it runs again the next time a chat starts.
+  clearLocalChatTour();
   window.dispatchEvent(new Event(TOUR_REPLAY_EVENT));
 }
 

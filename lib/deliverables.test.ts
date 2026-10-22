@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  DELIVERABLES, CONSULTANT_DELIVERABLES, ALL_DELIVERABLES, deliverableFor, isDeliverableCommand, agendaPrompt,
+  DELIVERABLES, CONSULTANT_DELIVERABLES, ALL_DELIVERABLES, deliverableFor, isDeliverableCommand, agendaPrompt, introFor,
 } from "./deliverables.ts";
 import { TYPE_CATALOG } from "./agent-types.ts";
 
@@ -176,4 +176,15 @@ test("the interview asks the timeline the measures need", () => {
   assert.ok(CONSULTANT_DELIVERABLES.architect.stations.some(s => /Zeitrahmen/.test(s.goal)));
   assert.ok(CONSULTANT_DELIVERABLES.strategy.stations.some(s => /Zeitrahmen/.test(s.goal)));
   assert.ok(CONSULTANT_DELIVERABLES.change.stations.some(s => /Go-live/.test(s.goal)));
+});
+
+test("the note under the Methods title names the document and says what it is for", () => {
+  for (const [id, d] of consultants) {
+    const note = introFor(d);
+    assert.ok(note.includes(d.title), id);
+    assert.match(note, /one at a time/, id);
+    // The subtitle comes through whole, lower-cased and without its full stop.
+    assert.ok(note.toLowerCase().includes(d.subtitle.replace(/\.$/, "").toLowerCase()), id);
+    assert.ok(!note.includes(".."), id);
+  }
 });

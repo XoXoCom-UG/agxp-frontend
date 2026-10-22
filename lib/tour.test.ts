@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { tourSeen, TOUR_VERSION, TOUR_STEPS } from "./tour.ts";
+import { tourSeen, chatTourSeen, CHAT_TOUR_VERSION, TOUR_VERSION, TOUR_STEPS } from "./tour.ts";
 
 test("never seen means never seen, whatever shape the nothing arrives in", () => {
   assert.equal(tourSeen(undefined, null), false);
@@ -41,4 +41,13 @@ test("the steps are a usable sequence", () => {
     assert.ok(s.tag.length > 0 && s.tag.length <= 10, `${s.id}: the rail tag has to fit on a phone`);
     assert.ok(s.title.length > 0 && s.line.length > 0, `${s.id}: every step says something`);
   }
+});
+
+test("the chat walk has its own seen flag, independent of the big tour", () => {
+  assert.equal(chatTourSeen(undefined, null), false);
+  assert.equal(chatTourSeen(CHAT_TOUR_VERSION, null), true);
+  assert.equal(chatTourSeen(undefined, String(CHAT_TOUR_VERSION)), true);
+  // Having seen the big tour says nothing about the chat walk.
+  assert.equal(chatTourSeen(TOUR_VERSION, String(TOUR_VERSION)), TOUR_VERSION >= CHAT_TOUR_VERSION);
+  assert.equal(chatTourSeen("nope", "nope"), false);
 });
