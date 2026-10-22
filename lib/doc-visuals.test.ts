@@ -48,6 +48,14 @@ test("the management summary is three labelled rows", () => {
   assert.match(html, /Erwarteter Mehrwert/);
 });
 
+test("risk and potential are rows of their own, with a tone class", () => {
+  const html = renderDocVisual("agxp-summary",
+    "Was | a\nWarum | b\nMehrwert | c\nRisiko | Disponenten blockieren.\nPotenzial | Zweite Region.") ?? "";
+  assert.equal((html.match(/class="v-sum-row/g) ?? []).length, 5);
+  assert.match(html, /class="v-sum-row risk"><span class="k">Größtes Risiko<\/span><p>Disponenten blockieren\.<\/p>/);
+  assert.match(html, /class="v-sum-row potential"><span class="k">Größtes Potenzial<\/span>/);
+});
+
 test("a summary row with no text is dropped, and an empty summary draws nothing", () => {
   assert.equal((renderDocVisual("agxp-summary", "Was | a\nWarum | ") ?? "").match(/v-sum-row"/g)?.length, 1);
   assert.equal(renderDocVisual("agxp-summary", ""), null);

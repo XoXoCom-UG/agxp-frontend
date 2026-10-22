@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  validateMessages, cleanLabel, cleanMemory, stripMarkerSyntax,
+  validateMessages, cleanLabel, cleanMemory, stripMarkerSyntax, ownPath,
   MAX_MESSAGES, MAX_USER_CHARS, MAX_ASSISTANT_CHARS, MAX_TOTAL_CHARS,
 } from "./chat-input.ts";
 
@@ -75,4 +75,20 @@ test("cleanMemory keeps strings only, cleaned, capped by count and length", () =
 
 test("stripMarkerSyntax keeps line breaks", () => {
   assert.equal(stripMarkerSyntax("a [[CHOICES: x]]\nb"), "a CHOICES: x\nb");
+});
+
+test("an attachment path must sit in the caller's own folder", () => {
+  const me = "11111111-1111-1111-1111-111111111111";
+  const other = "22222222-2222-2222-2222-222222222222";
+  assert.equal(ownPath(`${me}/proj/file.pdf`, me), true);
+  assert.equal(ownPath(`${other}/proj/file.pdf`, me), false);
+});
+
+test("a path that climbs out, doubles a slash or is too short is refused", () => {
+  const me = "11111111-1111-1111-1111-111111111111";
+  assert.equal(ownPath(`${me}/../${"2".repeat(8)}/proj/file.pdf`, me), false);
+  assert.equal(ownPath(`${me}/./proj/file.pdf`, me), false);
+  assert.equal(ownPath(`${me}//file.pdf`, me), false);
+  assert.equal(ownPath(`${me}/file.pdf`, me), false);
+  assert.equal(ownPath("", me), false);
 });

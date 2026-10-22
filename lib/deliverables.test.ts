@@ -52,7 +52,7 @@ test("every consultant document opens with the same four sections", () => {
   }
 });
 
-test("the management summary is the structured three-row block", () => {
+test("the management summary is the structured five-row block", () => {
   for (const [id, d] of consultants) {
     const s = d.sections.find(x => x.title === "Management Summary")!;
     assert.match(s.must, /agxp-summary/, id);
@@ -60,6 +60,9 @@ test("the management summary is the structured three-row block", () => {
     assert.match(s.must, /`Was`/);
     assert.match(s.must, /`Warum`/);
     assert.match(s.must, /`Mehrwert`/);
+    assert.match(s.must, /`Risiko`/, id);
+    assert.match(s.must, /`Potenzial`/, id);
+    assert.match(s.must, /genau fünf Zeilen/, id);
   }
 });
 

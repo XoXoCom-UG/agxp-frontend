@@ -4,14 +4,14 @@
 -- lib/plans.ts e true. Baza are insa propria copie a doua limite, in
 -- agxp_plan_limits: proiectele pe perioada (0008) si agentii pe tip (0014).
 -- Fara randul de mai jos, un cont "free" ar fi vazut Max in aplicatie si ar fi
--- fost oprit de trigger la al treilea proiect pe saptamana sau la al doilea agent
+-- fost oprit de trigger la al treilea proiect pe luna sau la al doilea agent
 -- de acelasi tip.
 --
 -- Se ridica randurile free si mid la valorile lui max. Randurile din
 -- agxp_entitlements nu se ating, deci fiecare cont isi pastreaza planul real.
 --
 -- CA SA REVII (cand EVERYONE_IS_MAX devine false), ruleaza:
---   update agxp_plan_limits set projects = 3,  period = 'week',  agents_per_type = 1 where plan = 'free';
+--   update agxp_plan_limits set projects = 3,  period = 'month', agents_per_type = 1 where plan = 'free';
 --   update agxp_plan_limits set projects = 15, period = 'month', agents_per_type = 4 where plan = 'mid';
 
 update agxp_plan_limits l

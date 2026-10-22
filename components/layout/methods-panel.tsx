@@ -6,7 +6,7 @@ import type { DeliverableDoc } from "@/components/layout/deliverable-view";
 import type { Deliverable } from "@/lib/deliverables";
 import { md, handleCodeCopyClick } from "@/lib/markdown";
 import { ArtifactActions, versionLine } from "@/components/layout/deliverable-rail";
-import { IconCheck, IconMinimise, IconSpark } from "@/components/layout/agxp-icons";
+import { IconCheck, IconLock, IconMinimise, IconSpark } from "@/components/layout/agxp-icons";
 
 /** How far the interview has to be before the document can be asked for. */
 const GENERATE_FROM_PCT = 60;
@@ -48,6 +48,8 @@ export function MethodsPanel({ tabs, deliverable, snap, onOpenDoc, onMinimise }:
 
   // A plan may cover fewer stations than the full agenda; the agent says how many.
   const stations = d.stations.slice(0, rail?.totalStations ?? d.stations.length);
+  // What the plan leaves out: the stations past the ones this conversation has.
+  const locked = d.stations.slice(stations.length);
   const finished = !!doc;
   // Before the first answer the first question is the one being worked on.
   const nowIdx = finished ? -1 : Math.max(0, rail?.stationIdx ?? 0);
@@ -120,11 +122,24 @@ export function MethodsPanel({ tabs, deliverable, snap, onOpenDoc, onMinimise }:
                   <span className="mp-node" aria-hidden="true">
                     {state === "done" && <IconCheck size={11} />}
                   </span>
-                  <span className="mp-step-l">{s.label}</span>
+                  <span className="mp-step-t">
+                    <span className="mp-step-l">{s.label}</span>
+                    {s.note && <span className="mp-step-n">{s.note}</span>}
+                  </span>
                   <span className="visually-hidden">{state === "done" ? ", done" : state === "now" ? ", in progress" : ", not yet"}</span>
                 </li>
               );
             })}
+            {locked.map(s => (
+              <li key={s.label} className="mp-step locked">
+                <span className="mp-node" aria-hidden="true"><IconLock size={11} /></span>
+                <span className="mp-step-t">
+                  <span className="mp-step-l">{s.label}</span>
+                  {s.note && <span className="mp-step-n">{s.note}</span>}
+                </span>
+                <span className="visually-hidden">, locked on this plan</span>
+              </li>
+            ))}
           </ol>
         )}
 
@@ -134,6 +149,15 @@ export function MethodsPanel({ tabs, deliverable, snap, onOpenDoc, onMinimise }:
               <div className="doc-body" dangerouslySetInnerHTML={{ __html: html }} />
             </div>
           </div>
+        )}
+
+        {locked.length > 0 && (
+          <p className="mp-unlock">
+            <IconLock size={12} />
+            {finished
+              ? `This is the short version. Unlock the other ${locked.length} ${locked.length === 1 ? "step" : "steps"} and the full document by upgrading.`
+              : `${locked.length} more ${locked.length === 1 ? "step" : "steps"} unlock by upgrading.`}
+          </p>
         )}
       </div>
     </section>

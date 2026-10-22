@@ -211,7 +211,7 @@ export async function POST(req: NextRequest) {
    * carries a [[FILE:]] path, and lib/message-files.ts reads it back under
    * the caller's own token so a forged path reaches nothing.
    */
-  const msgs: Anthropic.MessageParam[] = await withAttachments(messages, bearer);
+  const msgs: Anthropic.MessageParam[] = await withAttachments(messages, bearer, userId);
 
   const last = msgs.length - 1;
   if (!peerBlock && last >= 0) {

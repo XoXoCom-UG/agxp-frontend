@@ -19,7 +19,7 @@ import { useSyncExternalStore } from "react";
 const KEY = "agxp.last-project";
 export const LAST_PROJECT_EVENT = "agxp:last-project";
 
-export interface LastProject { id: string; name: string }
+export interface LastProject { id: string; name: string; category?: string | null }
 
 let cachedRaw: string | null = null;
 let cached: LastProject | null = null;
@@ -35,7 +35,9 @@ export function readLastProject(): LastProject | null {
   cachedRaw = raw;
   try {
     const o = raw ? JSON.parse(raw) : null;
-    cached = o && typeof o.id === "string" && typeof o.name === "string" ? { id: o.id, name: o.name } : null;
+    cached = o && typeof o.id === "string" && typeof o.name === "string"
+      ? { id: o.id, name: o.name, category: typeof o.category === "string" ? o.category : null }
+      : null;
   } catch {
     cached = null;
   }

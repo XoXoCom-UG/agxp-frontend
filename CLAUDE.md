@@ -85,9 +85,18 @@ This is **Agentix Projects (AgXP)**: a user pairs with two AI agents on one proj
 - Claude reads PDFs and images natively (`document` / `image` blocks), so no parser dependency was added; text files are inlined. Caps: 10 MB per file (enforced on the bucket, not just the browser) and 24 MB per conversation, because the whole history is resent every turn.
 - Deleting a project cascades to messages through a foreign key but **not** to storage — the link is a string inside a message — so `delete_project_files()` in 0011 is what stops orphaned, paid-for objects.
 
+### Isolation between users
+
+Every account's data is separated by row level security, written against `auth.uid()` — never by anything the client sends. The owner-scoped tables are `agxp_projects` (owner column), `agxp_project_messages` (through the parent project), `agents` / `agent_methods` / `agent_projects` (through `created_by`, [0014](supabase/migrations/0014_agents_per_user.sql), plus a trigger that refuses an agent that is not the project owner's), `agxp_entitlements` and `agxp_usage` (select-own, no write for users) and the `project-files` bucket (the first path segment is the user id). `agxp_beta_keys`, `agxp_rate_limits` and the AI lease tables have RLS and no policy: only the service role touches them.
+
+- **Knowing another user's URL or id gets nothing.** `/dashboard/project/<id>` loads through the caller's own token, so a project that is not theirs reads as "not found"; a forged `[[FILE: <other user>/…]]` marker is refused twice — `ownPath()` in [lib/chat-input.ts](lib/chat-input.ts) before the request, RLS on the download.
+- **The server derives the user from the verified token** (`callerId()`), never from the request body. The service role is only used in `server-only` modules and the two server routes.
+- **This database is shared with an older app** whose tables the AgxP migrations never covered. [supabase/isolation_check.sql](supabase/isolation_check.sql) lists every table without RLS, every `anon` grant and every public function, and its part 2 acts as one user against another and reports; [supabase/lock_down_public.sql](supabase/lock_down_public.sql) closes what part 1 finds. Run both after any schema change you did not write yourself.
+- **The browser's own memory is per account too** ([lib/user-scope.ts](lib/user-scope.ts)): the last project's name, agent levels and the tour flag are dropped on sign-out and when a different account signs in, so a shared computer cannot show the next person the last one's project name.
+
 ### The team-only panels
 
-Switch plan, Invitations and Agent memory in Settings → Plan are drawn only for the team, and "the team" is **two conditions at once** ([0012](supabase/migrations/0012_team_domain.sql)): the account was granted `can_switch_plan`, **and** its confirmed `auth.users.email` is on `@xoxocom.net`. Neither half alone opens anything — a flag granted by mistake is useless from a private address, and a company address is useless without the grant.
+Switch plan, Invitations, Usage this month (per account, in USD from the stored request cost — `team_usage()`, [0022](supabase/migrations/0022_usage_for_the_team.sql)) and Agent memory in Settings → Plan are drawn only for the team, and "the team" is **two conditions at once** ([0012](supabase/migrations/0012_team_domain.sql)): the account was granted `can_switch_plan`, **and** its confirmed `auth.users.email` is on `@xoxocom.net`. Neither half alone opens anything — a flag granted by mistake is useless from a private address, and a company address is useless without the grant.
 
 The rule lives in one place, `is_team_member()`, and every privileged function asks it. Clients and the API route ask `am_i_team()`, which takes no argument and reads `auth.uid()` from the verified token, so it cannot be aimed at another account. Hiding a panel is a courtesy; the refusal inside the function is the security.
 

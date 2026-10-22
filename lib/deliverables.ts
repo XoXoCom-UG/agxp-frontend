@@ -15,6 +15,9 @@ export interface Station {
   label: string;
   /** What the agent has to find out here — goes verbatim into the system prompt. */
   goal: string;
+  /** What happens at this stop, in a line the user can read beside the step.
+   *  Shown in the Methods panel; never sent to the model. */
+  note?: string;
 }
 
 /** One `##` section of the finished document, with what it has to contain. */
@@ -107,11 +110,14 @@ const VISUAL_SPEC =
   "11) Wissensstand — genau eine Zeile `Stufe | Grund`. Die Stufe ist `Einsteiger`, `Fortgeschritten` " +
   "oder `Experte`, der Grund ein Satz:\n" +
   "```agxp-level\nEinsteiger | Noch nie eine App gebaut, kennt nur HTML, 20 Tage Zeit\n```\n\n" +
-  "12) Management Summary — genau drei Zeilen `Was | Text`, `Warum | Text`, `Mehrwert | Text`:\n" +
+  "12) Management Summary — genau fünf Zeilen `Was | Text`, `Warum | Text`, `Mehrwert | Text`, " +
+  "`Risiko | Text`, `Potenzial | Text`:\n" +
   "```agxp-summary\nWas | Die Tourenplanung wird in einem Tool zusammengeführt, das Aufträge erkennt und Touren " +
   "vorschlägt. Die Disponenten geben frei.\n" +
   "Warum | Heute kostet die Planung zwölf Minuten pro Tour und vier Leerkilometer-Touren pro Woche.\n" +
-  "Mehrwert | Planung unter drei Minuten pro Tour und rund 600 Euro weniger Diesel im Monat.\n```\n\n" +
+  "Mehrwert | Planung unter drei Minuten pro Tour und rund 600 Euro weniger Diesel im Monat.\n" +
+  "Risiko | Die Disponenten tragen das Tool nicht mit, und die Planung läuft nebenher weiter in Excel.\n" +
+  "Potenzial | Dieselbe Lösung lässt sich auf die zweite Region übertragen und spart dort die Nachtschichten.\n```\n\n" +
   "TABELLEN — wo eine Sektion eine Tabelle verlangt, schreibst du eine normale Markdown-Tabelle mit " +
   "GENAU den genannten Spaltenüberschriften in genau dieser Reihenfolge, ohne Zusatzspalten. Eine " +
   "Skala von 1 bis 5 schreibst du als Quadrate mit Zahl, z. B. `■■□□□ 2`. Verwende keine Emojis.";
@@ -149,6 +155,7 @@ export function isDeliverableCommand(text: string): boolean {
 /** The Knowledge Check, as a station: three questions, one per answer. */
 const knowledgeCheck = (topic: string, terms: string, ask3: string): Station => ({
   label: "Knowledge check",
+  note: "Three quick questions set the level of everything after.",
   goal:
     `Wissens-Check, bevor es inhaltlich losgeht: DREI kurze Multiple-Choice-Fragen zum Thema ${topic}, ` +
     `eine pro Antwort, jede mit CHOICES. Frage 1: bisherige Erfahrung (noch nie / einmal / mehrmals). ` +
@@ -184,17 +191,23 @@ const SEC_LEXICON: DocSection = {
 // Patryk, 2026-10-09: "das ist keine Management Summary, sondern eine Abfolge
 // der Todos". A summary says what is done, why, and what it is worth — in that
 // order, and short enough to read standing up. Ana, 2026-10-16: better
-// structured, so it is three labelled rows instead of one block of prose.
+// structured, so it is labelled rows instead of one block of prose. Patryk's
+// definition (09.10, 00:43:04) has five parts: what, why, the value expected,
+// the biggest risk and the biggest potential — so five rows.
 const SEC_SUMMARY: DocSection = {
   title: "Management Summary",
   must:
-    "Ein `agxp-summary` Block mit genau drei Zeilen, in dieser Reihenfolge, und sonst nichts — kein " +
+    "Ein `agxp-summary` Block mit genau fünf Zeilen, in dieser Reihenfolge, und sonst nichts — kein " +
     "Bullet, kein fetter Satz, keine eigene Überschrift darunter. Zeile `Was`: WAS getan wird, in " +
     "zwei bis drei Sätzen. Zeile `Warum`: WARUM es getan wird — was der heutige Zustand kostet, mit " +
     "Zahl, in ein bis zwei Sätzen. Zeile `Mehrwert`: welcher MEHRWERT erwartet wird, wenn möglich " +
-    "beziffert, in ein bis zwei Sätzen. KEINE Aufzählung der Maßnahmen und KEINE Liste von To-dos — die " +
-    "stehen weiter unten; hier steht der Zusammenhang, dort stehen die Belege. Wiederhole keine " +
-    "Zahlen, die in den folgenden Sektionen schon als Grafik stehen.",
+    "beziffert, in ein bis zwei Sätzen. Zeile `Risiko`: das EINE größte Risiko, das dieses Vorhaben " +
+    "zum Scheitern bringen kann, in einem Satz, konkret für diesen Fall und nicht allgemein (kein " +
+    "\"mangelnde Akzeptanz\" ohne zu sagen, wer was nicht mittragen würde). Zeile `Potenzial`: das EINE " +
+    "größte Potenzial, das über das Ziel hinausgeht — was sich aus dem Erreichten noch machen ließe, in " +
+    "einem Satz. Risiko und Potenzial sind je EIN Punkt, keine Aufzählung. KEINE Aufzählung der " +
+    "Maßnahmen und KEINE Liste von To-dos — die stehen weiter unten; hier steht der Zusammenhang, dort " +
+    "stehen die Belege. Wiederhole keine Zahlen, die in den folgenden Sektionen schon als Grafik stehen.",
 };
 
 // The closing section every consultant document has: what happens next, by
@@ -249,17 +262,17 @@ const STRATEGY: Deliverable = {
       "Gap-Analyse, SWOT, Build-or-Buy, SMART-Ziele",
       "wie viel Zeit der Nutzer hat (unter 1 Monat / 1-3 Monate / mehr)",
     ),
-    { label: "Starting point", goal: "Worum geht es überhaupt? Branche, Unternehmensgröße, Auslöser für das Projekt, wer fragt an und warum jetzt. Daraus entstehen das Kernproblem in einem Satz, die Beschreibung, das benötigte Wissen bzw. die Technologien und die Eckdaten (Personen, Zeit, Budget)." },
-    { label: "Current process", goal: "Der Ist-Prozess Schritt für Schritt: was passiert zuerst, was danach, wo wird gewartet, was ist manuell." },
-    { label: "People & systems", goal: "Wer macht diese Arbeit heute (Rollen, Anzahl Personen), mit welchen Tools/Systemen, wo liegen die Daten und in welchem Format." },
-    { label: "Pain points", goal: "Wo tut es konkret weh: Häufigkeit, Zeitaufwand, Fehlerquote, Kosten, wer beschwert sich zuerst. Immer nach Zahlen oder einem konkreten Beispiel fragen." },
-    { label: "Target state & goals", goal: "Wie soll es nach der Transformation laufen? Was soll automatisch passieren, was bleibt bewusst beim Menschen. Frag dabei zuerst nach dem ZIEL — was will der Nutzer erreichen, woran würde man es merken. Der Soll-Zustand steht vor dem Ist-Zustand der Gap-Analyse." },
-    { label: "Constraints", goal: "Budgetrahmen, Zeitrahmen, IT-Landschaft, Datenschutz/Compliance, interne Ressourcen, bestehende Verträge." },
-    { label: "Gaps & actions", goal: "Gap-Analyse: Frag nur so viel nach, bis du die 2-3 Dimensionen kennst, die dem Nutzer wichtig sind (Ziele, Reifegrad, Fähigkeiten und Skills, Technologien, Menschen, sonstige Ressourcen). Je Dimension: heute, Ziel, Lücke — und danach die Maßnahmen, nach Priorität geordnet. Vieles weißt du schon aus den Stationen davor: fasse es zusammen und frag nur nach, was fehlt." },
-    { label: "Market & opportunity", goal: "NUR wenn der Nutzer veröffentlichen oder verkaufen will — sonst sag in einem Satz, dass du diese Station überspringst, und geh weiter. Beschreibe die heutige Marktlage, benenne das POTENZIAL (was der Markt belohnen würde, nicht was sich der Nutzer wünscht), leite daraus Lücke und Maßnahme ab." },
-    { label: "Build, buy or partner", goal: "Welche Fähigkeiten braucht das Vorhaben? Liste sie auf und bewerte je Fähigkeit Selbstbauen, Kaufen und Partnerschaft nach Kosten, Zeit und Kontrolle. Dann eine Empfehlung je Fähigkeit: Standardbausteine kauft man, was das Vorhaben besonders macht, baut man selbst." },
-    { label: "Success metrics", goal: "Woran würde man in 6 Monaten merken, dass es funktioniert hat? Messbare Kennzahlen, Ausgangswert und Zielwert. Schreib jedes Ziel gemeinsam mit dem Nutzer um, bis es sich mit Ja oder Nein prüfen lässt (SMART), und ergänze Frist und Messung: woran, bis wann, wer prüft." },
-    { label: "Risks & dependencies", goal: "Was könnte das Projekt zum Scheitern bringen, welche Entscheidungen/Freigaben hängen an anderen Personen." },
+    { label: "Starting point", note: "What this is about, and why now.", goal: "Worum geht es überhaupt? Branche, Unternehmensgröße, Auslöser für das Projekt, wer fragt an und warum jetzt. Daraus entstehen das Kernproblem in einem Satz, die Beschreibung, das benötigte Wissen bzw. die Technologien und die Eckdaten (Personen, Zeit, Budget)." },
+    { label: "Current process", note: "How the work runs today, step by step.", goal: "Der Ist-Prozess Schritt für Schritt: was passiert zuerst, was danach, wo wird gewartet, was ist manuell." },
+    { label: "People & systems", note: "Who does it, with which tools and data.", goal: "Wer macht diese Arbeit heute (Rollen, Anzahl Personen), mit welchen Tools/Systemen, wo liegen die Daten und in welchem Format." },
+    { label: "Pain points", note: "Where it hurts, in numbers.", goal: "Wo tut es konkret weh: Häufigkeit, Zeitaufwand, Fehlerquote, Kosten, wer beschwert sich zuerst. Immer nach Zahlen oder einem konkreten Beispiel fragen." },
+    { label: "Target state & goals", note: "What you want to reach, and how you will notice.", goal: "Wie soll es nach der Transformation laufen? Was soll automatisch passieren, was bleibt bewusst beim Menschen. Frag dabei zuerst nach dem ZIEL — was will der Nutzer erreichen, woran würde man es merken. Der Soll-Zustand steht vor dem Ist-Zustand der Gap-Analyse." },
+    { label: "Constraints", note: "Budget, time, IT and compliance limits.", goal: "Budgetrahmen, Zeitrahmen, IT-Landschaft, Datenschutz/Compliance, interne Ressourcen, bestehende Verträge." },
+    { label: "Gaps & actions", note: "The distance between today and the goal, and what closes it.", goal: "Gap-Analyse: Frag nur so viel nach, bis du die 2-3 Dimensionen kennst, die dem Nutzer wichtig sind (Ziele, Reifegrad, Fähigkeiten und Skills, Technologien, Menschen, sonstige Ressourcen). Je Dimension: heute, Ziel, Lücke — und danach die Maßnahmen, nach Priorität geordnet. Vieles weißt du schon aus den Stationen davor: fasse es zusammen und frag nur nach, was fehlt." },
+    { label: "Market & opportunity", note: "What the market would reward. Skipped if you are not selling.", goal: "NUR wenn der Nutzer veröffentlichen oder verkaufen will — sonst sag in einem Satz, dass du diese Station überspringst, und geh weiter. Beschreibe die heutige Marktlage, benenne das POTENZIAL (was der Markt belohnen würde, nicht was sich der Nutzer wünscht), leite daraus Lücke und Maßnahme ab." },
+    { label: "Build, buy or partner", note: "Per capability: make it, buy it or share it.", goal: "Welche Fähigkeiten braucht das Vorhaben? Liste sie auf und bewerte je Fähigkeit Selbstbauen, Kaufen und Partnerschaft nach Kosten, Zeit und Kontrolle. Dann eine Empfehlung je Fähigkeit: Standardbausteine kauft man, was das Vorhaben besonders macht, baut man selbst." },
+    { label: "Success metrics", note: "Goals rewritten until a yes or no can check them.", goal: "Woran würde man in 6 Monaten merken, dass es funktioniert hat? Messbare Kennzahlen, Ausgangswert und Zielwert. Schreib jedes Ziel gemeinsam mit dem Nutzer um, bis es sich mit Ja oder Nein prüfen lässt (SMART), und ergänze Frist und Messung: woran, bis wann, wer prüft." },
+    { label: "Risks & dependencies", note: "What could stop it, and who has to approve.", goal: "Was könnte das Projekt zum Scheitern bringen, welche Entscheidungen/Freigaben hängen an anderen Personen." },
   ],
   sections: [
     SEC_LEVEL,
@@ -337,13 +350,13 @@ const ARCHITECT: Deliverable = {
       "API, Container, CI/CD, MLOps",
       "wie groß das Team ist und wie viel Zeit es gibt (allein / 2-5 Personen / mehr)",
     ),
-    { label: "Starting point", goal: "Worum geht es? Anwendungsfall und Stand (Idee, Prototyp, PoC, schon im Betrieb), die Frage \"Wie baue ich das produktiv, skalierbar und sicher auf?\", erwartete Nutzerzahl, Branche, Team, Budget — und welcher Architekturstil dem Nutzer vorschwebt (Monolith, Serverless, Microservices). Daraus entstehen Kernproblem, Beschreibung, benötigtes Wissen und Eckdaten." },
-    { label: "Components", goal: "Architektur-Überblick: Welche Plattformen (Web, Mobil, Backend), welcher Echtzeit-Bedarf, welche externen Dienste? Liste die Komponenten und je Komponente Verantwortung, Technologie und mit wem sie spricht — der Datenfluss ist der rote Faden." },
-    { label: "Technology decisions", goal: "Technologie-Entscheidungen (ADR): Je bedeutender Entscheidung eine Zeile — welche Optionen standen zur Wahl, was wurde gewählt, warum, und welche Folge hat das. Bei Cloud, On-Prem oder Hybrid, Framework, Datenbank, Hosting nachfragen." },
-    { label: "Quality requirements", goal: "Nichtfunktionale Anforderungen: Welche Qualität erwartet der Nutzer bei Geschwindigkeit, Skalierung, Sicherheit und Verfügbarkeit? Mach jede messbar (\"unter 2 s auf 4G\", \"100 Räume parallel\") und gib die Antwort des Designs darauf." },
-    { label: "Data & ML pipeline", goal: "Falls ein Modell trainiert oder produktiv betrieben wird: die Stufen Daten holen, aufbereiten, trainieren, ausliefern (Model Serving) und überwachen (inkl. Drift und Neu-Training) — je Stufe Tool, Frequenz und Verantwortlicher. Ohne Modell: der Datenfluss von der Quelle bis zur Auslieferung. Frag ausdrücklich, wer Monitoring und Data Governance übernimmt." },
-    { label: "Infrastructure", goal: "Infrastruktur-Plan: Cloud, On-Prem oder Hybrid — für Hosting, Daten und Modell-Betrieb einzeln. Container und Orchestrierung (Docker, Kubernetes) ja oder nein, welche Umgebungen (Entwicklung, Test, Produktion), wer betreibt es, wie wird es abgesichert." },
-    { label: "Costs & timeline", goal: "Kostenmodell (TCO): Welche Kostenpositionen gibt es, einmalig und monatlich — Hosting, Dienste und Lizenzen, Training und Betrieb, und die Arbeitszeit der Menschen. Frag nach Annahmen und halte sie fest. Danach der Zeitrahmen: bis wann soll was laufen, wer baut und betreibt es, welche Freigaben hängen an anderen Personen — daraus entstehen Maßnahmen und nächste Schritte." },
+    { label: "Starting point", note: "The use case, and how far it has come.", goal: "Worum geht es? Anwendungsfall und Stand (Idee, Prototyp, PoC, schon im Betrieb), die Frage \"Wie baue ich das produktiv, skalierbar und sicher auf?\", erwartete Nutzerzahl, Branche, Team, Budget — und welcher Architekturstil dem Nutzer vorschwebt (Monolith, Serverless, Microservices). Daraus entstehen Kernproblem, Beschreibung, benötigtes Wissen und Eckdaten." },
+    { label: "Components", note: "The parts of the system and how they talk.", goal: "Architektur-Überblick: Welche Plattformen (Web, Mobil, Backend), welcher Echtzeit-Bedarf, welche externen Dienste? Liste die Komponenten und je Komponente Verantwortung, Technologie und mit wem sie spricht — der Datenfluss ist der rote Faden." },
+    { label: "Technology decisions", note: "What was chosen, the alternatives, and why.", goal: "Technologie-Entscheidungen (ADR): Je bedeutender Entscheidung eine Zeile — welche Optionen standen zur Wahl, was wurde gewählt, warum, und welche Folge hat das. Bei Cloud, On-Prem oder Hybrid, Framework, Datenbank, Hosting nachfragen." },
+    { label: "Quality requirements", note: "Speed, scale, security and uptime as numbers.", goal: "Nichtfunktionale Anforderungen: Welche Qualität erwartet der Nutzer bei Geschwindigkeit, Skalierung, Sicherheit und Verfügbarkeit? Mach jede messbar (\"unter 2 s auf 4G\", \"100 Räume parallel\") und gib die Antwort des Designs darauf." },
+    { label: "Data & ML pipeline", note: "How data becomes a served model. Only if you train one.", goal: "Falls ein Modell trainiert oder produktiv betrieben wird: die Stufen Daten holen, aufbereiten, trainieren, ausliefern (Model Serving) und überwachen (inkl. Drift und Neu-Training) — je Stufe Tool, Frequenz und Verantwortlicher. Ohne Modell: der Datenfluss von der Quelle bis zur Auslieferung. Frag ausdrücklich, wer Monitoring und Data Governance übernimmt." },
+    { label: "Infrastructure", note: "Cloud, on-premises or both, layer by layer.", goal: "Infrastruktur-Plan: Cloud, On-Prem oder Hybrid — für Hosting, Daten und Modell-Betrieb einzeln. Container und Orchestrierung (Docker, Kubernetes) ja oder nein, welche Umgebungen (Entwicklung, Test, Produktion), wer betreibt es, wie wird es abgesichert." },
+    { label: "Costs & timeline", note: "One-time and monthly costs, and when they fall.", goal: "Kostenmodell (TCO): Welche Kostenpositionen gibt es, einmalig und monatlich — Hosting, Dienste und Lizenzen, Training und Betrieb, und die Arbeitszeit der Menschen. Frag nach Annahmen und halte sie fest. Danach der Zeitrahmen: bis wann soll was laufen, wer baut und betreibt es, welche Freigaben hängen an anderen Personen — daraus entstehen Maßnahmen und nächste Schritte." },
   ],
   sections: [
     SEC_LEVEL,
@@ -437,13 +450,13 @@ const CHANGE: Deliverable = {
       "Stakeholder, ADKAR, Widerstand, KPI",
       "welche Rolle der Nutzer im Projekt hat und wie viel Zeit er hat (unter 1 Monat / 1-3 Monate / mehr)",
     ),
-    { label: "Starting point", goal: "Welche Veränderung kommt, warum, wer hat sie angestoßen, wann ist Go-live? Branche und Unternehmensgröße. Wie viele Menschen sind betroffen — die ZAHL und die Gruppen. Daraus entstehen Kernproblem, Beschreibung, benötigtes Wissen und Eckdaten." },
-    { label: "Stakeholders", goal: "Stakeholder-Landkarte: Wer ist betroffen, wer kann blockieren, wer ist begeistert? Je Gruppe die Größe, das Interesse und den Einfluss (gering, mittel, hoch), die Haltung (Unterstützer, neutral, skeptisch) und welche Rolle sie in der Veränderung bekommt." },
-    { label: "Roles", goal: "Rollen-Matrix: NUR wenn sich Aufgaben oder Verantwortung ändern — sonst sag in einem Satz, dass du die Station überspringst. Welche Rollen sind betroffen, wie sieht die Arbeit heute aus, wie danach, und was bleibt gleich? Gerade das Gleichbleibende nimmt die Angst." },
-    { label: "Skills", goal: "Fähigkeitslücken: Welche Gruppen sind betroffen? Je Gruppe höchstens 3 arbeitsbezogene Fähigkeiten. Für jede heute und Ziel auf einer Skala von 1 bis 5, dann das Lernformat (Hands-on-Workshop, Coaching, Merkblatt, Herstellerschulung)." },
-    { label: "Readiness (ADKAR)", goal: "ADKAR-Einschätzung: Je Gruppe die fünf Stufen Awareness, Desire, Knowledge, Ability, Reinforcement mit 1 bis 5 bewerten. Finde die ERSTE Stufe unter 3 — dort stockt die Veränderung — und ordne nur an dieser Stufe eine Maßnahme zu." },
-    { label: "Training & communication", goal: "Schulungs- und Kommunikationsplan: Reihenfolge Warum, Wie, Ergebnisse — erst kommunizieren, vor dem Go-live schulen, danach Ergebnisse teilen. Je Schritt Zeitpunkt, Gruppe, Botschaft oder Schulung, Kanal und Verantwortlicher." },
-    { label: "Adoption KPIs", goal: "Adoptions-KPIs: Woran sieht man, dass die Veränderung wirklich genutzt wird? Nutzung messen, nicht Schulungsteilnahme. Je KPI Zielwert, wie gemessen und bis wann." },
+    { label: "Starting point", note: "The change that is coming, why, and by when.", goal: "Welche Veränderung kommt, warum, wer hat sie angestoßen, wann ist Go-live? Branche und Unternehmensgröße. Wie viele Menschen sind betroffen — die ZAHL und die Gruppen. Daraus entstehen Kernproblem, Beschreibung, benötigtes Wissen und Eckdaten." },
+    { label: "Stakeholders", note: "Who is affected, who can block, who helps.", goal: "Stakeholder-Landkarte: Wer ist betroffen, wer kann blockieren, wer ist begeistert? Je Gruppe die Größe, das Interesse und den Einfluss (gering, mittel, hoch), die Haltung (Unterstützer, neutral, skeptisch) und welche Rolle sie in der Veränderung bekommt." },
+    { label: "Roles", note: "How tasks change. Skipped if they do not.", goal: "Rollen-Matrix: NUR wenn sich Aufgaben oder Verantwortung ändern — sonst sag in einem Satz, dass du die Station überspringst. Welche Rollen sind betroffen, wie sieht die Arbeit heute aus, wie danach, und was bleibt gleich? Gerade das Gleichbleibende nimmt die Angst." },
+    { label: "Skills", note: "What each group has to learn.", goal: "Fähigkeitslücken: Welche Gruppen sind betroffen? Je Gruppe höchstens 3 arbeitsbezogene Fähigkeiten. Für jede heute und Ziel auf einer Skala von 1 bis 5, dann das Lernformat (Hands-on-Workshop, Coaching, Merkblatt, Herstellerschulung)." },
+    { label: "Readiness (ADKAR)", note: "Where the change gets stuck, group by group.", goal: "ADKAR-Einschätzung: Je Gruppe die fünf Stufen Awareness, Desire, Knowledge, Ability, Reinforcement mit 1 bis 5 bewerten. Finde die ERSTE Stufe unter 3 — dort stockt die Veränderung — und ordne nur an dieser Stufe eine Maßnahme zu." },
+    { label: "Training & communication", note: "Who hears what, when, and from whom.", goal: "Schulungs- und Kommunikationsplan: Reihenfolge Warum, Wie, Ergebnisse — erst kommunizieren, vor dem Go-live schulen, danach Ergebnisse teilen. Je Schritt Zeitpunkt, Gruppe, Botschaft oder Schulung, Kanal und Verantwortlicher." },
+    { label: "Adoption KPIs", note: "How you will see that it is really used.", goal: "Adoptions-KPIs: Woran sieht man, dass die Veränderung wirklich genutzt wird? Nutzung messen, nicht Schulungsteilnahme. Je KPI Zielwert, wie gemessen und bis wann." },
   ],
   sections: [
     SEC_LEVEL,
@@ -529,12 +542,12 @@ const COACH: Deliverable = {
   title: "Change Plan",
   subtitle: "How the organisation comes along — the human half of the transformation.",
   stations: [
-    { label: "Affected roles", goal: "Wer ist von der Veränderung betroffen? Rollen, Teams, Anzahl Menschen, wer merkt es am stärksten." },
-    { label: "Mood & resistance", goal: "Wie ist die Stimmung heute? Konkrete Sorgen und Widerstände — wer sagt was, und was steckt dahinter (Angst um den Job, Kontrollverlust, Mehraufwand)." },
-    { label: "Communication so far", goal: "Was wurde bisher kommuniziert, von wem, über welchen Kanal, und wie wurde es aufgenommen." },
-    { label: "Skills & training", goal: "Was müssen die Leute können, was können sie heute schon, wie lernen sie am liebsten (Learning by doing, Schulung, Doku)." },
-    { label: "Champions", goal: "Wer im Team ist offen oder begeistert und könnte Multiplikator sein? Wer hat informelle Autorität." },
-    { label: "Rollout & milestones", goal: "Zeitrahmen des Rollouts, feste Termine, wann welche Gruppe dran ist, was zuerst pilotiert wird." },
+    { label: "Affected roles", note: "Who the change reaches.", goal: "Wer ist von der Veränderung betroffen? Rollen, Teams, Anzahl Menschen, wer merkt es am stärksten." },
+    { label: "Mood & resistance", note: "The worries and the pushback, in their words.", goal: "Wie ist die Stimmung heute? Konkrete Sorgen und Widerstände — wer sagt was, und was steckt dahinter (Angst um den Job, Kontrollverlust, Mehraufwand)." },
+    { label: "Communication so far", note: "What was said, by whom, through which channel.", goal: "Was wurde bisher kommuniziert, von wem, über welchen Kanal, und wie wurde es aufgenommen." },
+    { label: "Skills & training", note: "What people must be able to do, and how they learn.", goal: "Was müssen die Leute können, was können sie heute schon, wie lernen sie am liebsten (Learning by doing, Schulung, Doku)." },
+    { label: "Champions", note: "Who in the team can carry it to the others.", goal: "Wer im Team ist offen oder begeistert und könnte Multiplikator sein? Wer hat informelle Autorität." },
+    { label: "Rollout & milestones", note: "The timeline, and who goes live when.", goal: "Zeitrahmen des Rollouts, feste Termine, wann welche Gruppe dran ist, was zuerst pilotiert wird." },
   ],
   sections: [
     { title: "Auf einen Blick", must: "Ein `agxp-kpi` Block mit 4 Zahlen (betroffene Menschen, betroffene Rollen, Wochen bis Rollout, Anzahl offener Widerstände), danach 3-4 Bullets zur Lage." },

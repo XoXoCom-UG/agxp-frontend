@@ -5,13 +5,13 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { listProjects, renameProject, archiveProject, discardEmptyProjects, PLACEHOLDER_PROJECT_NAME, type Project } from "@/lib/projects";
-import { normalizeIndustry } from "@/lib/industry";
+import { normalizeIndustry, industryHue } from "@/lib/industry";
 import { listAgents, type Agent, type AgentType } from "@/lib/agents";
 import { loadProjectStats, type ProjectStats } from "@/lib/project-stats";
 import { templateFor, TYPE_CATALOG } from "@/lib/agent-types";
 import { AgentNav } from "@/components/layout/agent-nav";
 import { ConfirmDialog } from "@/components/layout/confirm-dialog";
-import { IconFolder, IconArrow, IconMore, IconSearch, IconPlus, IconAlert, IconRefresh, IconChevronDown, IconCheck, IconArrowUp, IconX } from "@/components/layout/agxp-icons";
+import { IconIndustry, IconPencil, IconArrow, IconMore, IconSearch, IconPlus, IconAlert, IconRefresh, IconChevronDown, IconCheck, IconArrowUp, IconX } from "@/components/layout/agxp-icons";
 import { AgentMascot } from "@/components/layout/agent-mascot";
 import { SkeletonRows } from "@/components/layout/skeleton";
 import { EmptyState } from "@/components/layout/empty-state";
@@ -566,7 +566,7 @@ function ProjectHistory() {
                         ? members.map(([r, id]) => (
                           <span key={r} className={`ph-face ${r}`}><AgentMascot role={r} size={members.length === 2 ? 40 : 52} agentId={id} /></span>
                         ))
-                        : <IconFolder size={20} />}
+                        : <IconIndustry label={category} size={26} />}
                     </span>
                     <span className="ph-body">
                       {isRenaming ? (
@@ -591,7 +591,9 @@ function ProjectHistory() {
                         {category && (
                           <>
                             <span className="ph-sep" aria-hidden="true">|</span>
-                            <span className="ph-ind">Industry: <b>{category}</b></span>
+                            <span className="ph-ind" style={{ "--ind-hue": industryHue(category) } as React.CSSProperties}>
+                              <IconIndustry label={category} size={15} /><b>{category}</b>
+                            </span>
                           </>
                         )}
                       </span>
@@ -624,7 +626,7 @@ function ProjectHistory() {
                         data-origin="top-right" role="menu" aria-label={`Actions for ${name}`}
                         onClick={e => e.stopPropagation()} onKeyDown={e => menuKeyDown(closeMenu)(e)}>
                         <button type="button" role="menuitem" tabIndex={-1} className="mi" onClick={() => startRename(p)}>
-                          <IconFolder size={13} />Rename project
+                          <IconPencil size={13} />Rename project
                         </button>
                         {p.status !== "Archived" && (
                           <button type="button" role="menuitem" tabIndex={-1} className="mi"

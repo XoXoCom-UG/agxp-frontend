@@ -352,24 +352,29 @@ function level(body: string): string {
 }
 
 /**
- * Management Summary — `Was | …`, `Warum | …`, `Mehrwert | …`.
+ * Management Summary — `Was | …`, `Warum | …`, `Mehrwert | …`, `Risiko | …`,
+ * `Potenzial | …`.
  *
- * Patryk, 2026-10-09: a summary says what is done, why, and what it is worth.
- * Ana, 2026-10-16: better structured — so three labelled rows with a hairline
- * between them, not one block of prose.
+ * Patryk, 2026-10-09: a summary says what is done, why, what it is worth, and
+ * names the biggest risk and the biggest potential. Ana, 2026-10-16: better
+ * structured — so labelled rows with a hairline between them, not one block
+ * of prose. Risk and potential carry a tone class so they read at a glance;
+ * documents written with the first three rows still draw as they did.
  */
 function summary(body: string): string {
-  const LABEL: [RegExp, string][] = [
-    [/^(was|what)/i, "Was wir tun"],
-    [/^(warum|why)/i, "Warum"],
-    [/^(mehrwert|value|nutzen|benefit)/i, "Erwarteter Mehrwert"],
+  const LABEL: [RegExp, string, string][] = [
+    [/^(was|what)/i, "Was wir tun", ""],
+    [/^(warum|why)/i, "Warum", ""],
+    [/^(mehrwert|value|nutzen|benefit)/i, "Erwarteter Mehrwert", ""],
+    [/^(risiko|risk)/i, "Größtes Risiko", " risk"],
+    [/^(potenzial|potential|chance)/i, "Größtes Potenzial", " potential"],
   ];
   const out = rows(body).map(r => {
     const key = r[0] ?? "";
     const text = r.slice(1).join(" | ");
     if (!key || !text) return "";
-    const label = LABEL.find(([re]) => re.test(key))?.[1] ?? key;
-    return `<div class="v-sum-row"><span class="k">${label}</span><p>${text}</p></div>`;
+    const hit = LABEL.find(([re]) => re.test(key));
+    return `<div class="v-sum-row${hit?.[2] ?? ""}"><span class="k">${hit?.[1] ?? key}</span><p>${text}</p></div>`;
   }).join("");
   return out ? `<div class="v-sum">${out}</div>` : "";
 }

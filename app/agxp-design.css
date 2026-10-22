@@ -2352,8 +2352,15 @@ html.light .methods-panel{ border-color:rgba(0,0,0,0.07); }
 .mp-steps{ list-style:none; margin:0 0 var(--sp-5); padding:0 0 0 var(--sp-1); display:flex; flex-direction:column; }
 .mp-step{
   position:relative; display:flex; align-items:center; gap:var(--sp-3);
-  min-height:46px; font-size:var(--text-sm); color:var(--muted-foreground);
+  min-height:54px; font-size:var(--text-sm); color:var(--muted-foreground);
 }
+/* The step's name, and under it — beside the line — what happens there. */
+.mp-step-t{ display:flex; flex-direction:column; gap:2px; min-width:0; padding:6px 0; }
+.mp-step-n{
+  font-size:var(--text-xs); font-weight:400; line-height:1.45;
+  color:var(--muted-foreground);
+}
+.mp-step.now .mp-step-n{ color:var(--secondary-foreground); }
 .mp-node{
   position:relative; z-index:1; flex-shrink:0; width:26px; height:26px; border-radius:50%;
   display:flex; align-items:center; justify-content:center;
@@ -2387,6 +2394,16 @@ html.light .methods-panel{ border-color:rgba(0,0,0,0.07); }
   animation:orbWait 2400ms ease-in-out infinite;
 }
 .mp-step.todo{ opacity:.7; }
+/* Steps the plan leaves out: drawn, so the shape of the whole is visible, but
+   dim and with a lock in the node instead of a tick. */
+.mp-step.locked{ opacity:.45; }
+.mp-step.locked .mp-node{ border-style:solid; color:var(--muted-foreground); }
+.mp-unlock{
+  display:flex; align-items:center; gap:7px; margin:0 0 var(--sp-5);
+  font-size:var(--text-xs); line-height:1.5; color:var(--muted-foreground);
+}
+.mp-unlock svg{ flex:none; }
+.mp-doc + .mp-unlock{ margin:var(--sp-4) 0 0; }
 @media (prefers-reduced-motion:reduce){
   .mp-step::after{ transition:none; }
   .mp-step.now .mp-node{ animation:none; box-shadow:0 0 0 4px color-mix(in srgb, var(--acc-mid) 16%, transparent); }
@@ -3297,6 +3314,9 @@ html.light .ver-menu{ background:#FFFFFF; }
   border:1px solid color-mix(in srgb, var(--primary-soft) 32%, transparent);
 }
 .nb-current svg{ flex-shrink:0; color:var(--primary-soft); }
+/* A project with an industry wears its colour (industryHue in lib/industry.ts). */
+.nb-current[style*="--ind-hue"] svg{ color:hsl(var(--ind-hue) 72% 66%); }
+html.light .nb-current[style*="--ind-hue"] svg{ color:hsl(var(--ind-hue) 62% 38%); }
 /* A project name can be a sentence; the chip takes what it can and the menu
    shows the rest. */
 .nb-current .nbc-name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:190px; }
@@ -4661,14 +4681,14 @@ html.light{
   --dust-3:color-mix(in srgb, var(--primary) 74%, transparent);
 }
 
-.app::before, .app::after{
+.app::before, .app::after, .lp::before, .lp::after{
   content:""; position:absolute; z-index:0; pointer-events:none;
 }
 
 /* The far plane: 82 specks in a 360px tile, none wider than 1.5px. Dust is
    MANY SMALL bright specks — few large soft ones read as snow, which is what
    the first bright pass looked like. */
-.app::before{
+.app::before, .lp::before{
   inset:-400px;
   background-image:
     radial-gradient(circle at 4px 40px, var(--dust-2) 0, transparent 1.3px),
@@ -4764,7 +4784,7 @@ html.light{
 /* The near plane: 9 motes in a 520px tile, each a bright core in a tight
    halo. The halo carries them through the glass panels, which swallow a flat
    speck; kept small, or they become snowflakes. */
-.app::after{
+.app::after, .lp::after{
   inset:-560px;
   background-image:
     radial-gradient(circle at 22px 307px, var(--dust-2) 0, var(--dust-2) 0.7px, transparent 1.9px),
@@ -4801,12 +4821,14 @@ html.light{
   to{ opacity:1; }
 }
 
-html[data-bg="dots"] .app::before, html[data-bg="dots"] .app::after{ animation:none; }
-html[data-bg="plain"] .app::before, html[data-bg="plain"] .app::after{ display:none; }
+html[data-bg="dots"] .app::before, html[data-bg="dots"] .app::after,
+html[data-bg="dots"] .lp::before, html[data-bg="dots"] .lp::after{ animation:none; }
+html[data-bg="plain"] .app::before, html[data-bg="plain"] .app::after,
+html[data-bg="plain"] .lp::before, html[data-bg="plain"] .lp::after{ display:none; }
 /* Decoration that moves, so it stops when the system says movement is not
    welcome — the dust itself stays, it simply holds still. */
 @media (prefers-reduced-motion:reduce){
-  .app::before, .app::after{ animation:none !important; opacity:1 !important; }
+  .app::before, .app::after, .lp::before, .lp::after{ animation:none !important; opacity:1 !important; }
 }
 
 /* --- How much glass ------------------------------------------------------
@@ -6006,7 +6028,7 @@ html.light .auth::before{ background:radial-gradient(38vw 38vw at 18% -10%, colo
 .v-level .badge{ font-size:var(--text-sm); font-weight:600; color:var(--foreground); }
 .v-level .why{ font-size:var(--text-xs); color:var(--secondary-foreground); }
 
-/* --- Management Summary: what, why, what it is worth ------------------------ */
+/* --- Management Summary: what, why, what it is worth, the risk, the upside --- */
 .v-sum{ margin:var(--sp-3) 0 var(--sp-5); border-top:1px solid var(--border); }
 .v-sum-row{
   display:grid; grid-template-columns:minmax(110px, 150px) 1fr; gap:var(--sp-5);
@@ -6019,6 +6041,14 @@ html.light .auth::before{ background:radial-gradient(38vw 38vw at 18% -10%, colo
 }
 @supports (background-clip:text){ .v-sum-row .k{ color:transparent; } }
 .v-sum-row p{ margin:0; font-size:var(--text-sm); line-height:1.65; color:var(--foreground); }
+/* Risk and potential: the only two rows with a tone, so they are the two a
+   skimming reader finds first. A dot in the label, not a tinted background —
+   the sheet stays one colour. */
+.v-sum-row.risk .k, .v-sum-row.potential .k{ display:inline-flex; align-items:center; gap:7px; }
+.v-sum-row.risk .k::before, .v-sum-row.potential .k::before{
+  content:""; width:6px; height:6px; border-radius:50%; flex:none; background:var(--warn);
+}
+.v-sum-row.potential .k::before{ background:var(--success); }
 @container panel (max-width:560px){
   .v-sum-row{ grid-template-columns:1fr; gap:var(--sp-2); }
 }
@@ -6576,6 +6606,16 @@ html.light .bg-card{
 /* Settings → Plan, team only: the agent-memory read-out.
    The rate is the headline because it is the thing that can silently go to
    zero; the lessons below are the evidence that it did not. */
+/* Team usage: the month in total, then one line per account. */
+.ss-use-total{ display:flex; flex-direction:column; gap:7px; margin-bottom:var(--sp-4); }
+.ss-use-top{ display:flex; align-items:baseline; gap:9px; flex-wrap:wrap; }
+.ss-use-top b{ font-family:var(--font-display); font-size:var(--text-xl); font-weight:600; letter-spacing:-0.02em; font-variant-numeric:tabular-nums; }
+.ss-use-top span{ font-size:var(--text-2xs); color:var(--muted-foreground); }
+.ss-use-table{ width:100%; border-collapse:collapse; font-size:var(--text-2xs); font-variant-numeric:tabular-nums; }
+.ss-use-table th, .ss-use-table td{ padding:6px 8px 6px 0; text-align:right; border-bottom:1px solid var(--border); white-space:nowrap; }
+.ss-use-table thead th{ font-family:var(--font-mono); font-size:var(--text-3xs); letter-spacing:0.12em; text-transform:uppercase; font-weight:500; color:var(--muted-foreground); }
+.ss-use-table th:first-child{ text-align:left; max-width:150px; overflow:hidden; text-overflow:ellipsis; font-weight:500; color:var(--secondary-foreground); }
+.ss-use-table td:last-child, .ss-use-table th:last-child{ padding-right:0; }
 .ss-mem-reload{
   margin-left:auto; display:inline-flex; align-items:center; justify-content:center;
   width:22px; height:22px; border-radius:7px; color:var(--muted-foreground);
@@ -7776,6 +7816,10 @@ html.light .hh-planet{ opacity:.55; }
 .hh-net{
   position:absolute; inset:-62%; width:224%; height:224%;
   overflow:visible; pointer-events:none;
+  /* The lines end at the net's own corners; fading them there stops them
+     reading as a rectangle cut out of the page. */
+  -webkit-mask-image:radial-gradient(closest-side, #000 38%, transparent 100%);
+  mask-image:radial-gradient(closest-side, #000 38%, transparent 100%);
 }
 .hh-net polygon, .hh-net path, .hh-net circle{
   fill:none; stroke-width:1; vector-effect:non-scaling-stroke;
@@ -7835,7 +7879,23 @@ html.light .hh-planet{ opacity:.55; }
   margin-bottom:clamp(6px, 1.2vh, 14px);
 }
 
-.hh-slot{ display:inline-flex; }
+.hh-slot{ display:inline-flex; flex-direction:column; align-items:center; gap:clamp(6px, 1.2vh, 12px); }
+
+/* Under a real agent: name, level bar, what is left to the next level. Quiet
+   on purpose — the mascots are the picture, this is the label on the frame. */
+.hh-tag{ display:flex; flex-direction:column; align-items:center; gap:5px; max-width:200px; text-align:center; }
+.hh-tag-name{
+  font-family:var(--font-display); font-size:var(--text-sm); font-weight:600; color:var(--foreground);
+  max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.hh-tag-lv{ display:inline-flex; gap:4px; }
+.hh-tag-lv i{ width:22px; height:4px; border-radius:2px; background:var(--input); transition:background-color 300ms var(--ease-out); }
+.hh-tag-lv i.on{ background:var(--doc-accent-grad, var(--primary-soft)); }
+.hh-tag-note{
+  font-family:var(--font-mono); font-size:var(--text-3xs); letter-spacing:0.12em; text-transform:uppercase;
+  color:var(--muted-foreground); line-height:1.5; white-space:nowrap;
+}
+@media (max-width:430px){ .hh-tag-note{ display:none; } }
 
 /* Duolingo-ish: a slow float with the two out of phase, so the pair looks
    alive rather than placed. On the slot, never on the mascot — the mascot
@@ -8617,7 +8677,12 @@ html.light .walk-hole{ box-shadow:0 0 0 9999px rgba(12,18,32,0.5),
   min-height:100vh; min-height:100dvh;
   display:flex; flex-direction:column;
   background:var(--background); color:var(--foreground);
+  /* The same dust as inside the app (the .app::before/::after rules above),
+     so the page you arrive on and the room you walk into are one place. The
+     lights are absolute, so the page needs its own box to hold and clip them. */
+  position:relative; isolation:isolate; overflow:clip;
 }
+.lp > *{ position:relative; z-index:1; }
 
 .lp-bar{
   flex-shrink:0; display:flex; align-items:center; justify-content:space-between;
@@ -8627,6 +8692,7 @@ html.light .walk-hole{ box-shadow:0 0 0 9999px rgba(12,18,32,0.5),
   display:inline-flex; align-items:center; gap:7px; flex-shrink:0;
   height:36px; padding:0 16px; border-radius:var(--radius-pill);
   border:1px solid var(--border); background:var(--card);
+  backdrop-filter:blur(var(--blur-surface)) saturate(1.3);
   color:var(--secondary-foreground); font-size:var(--text-xs); font-weight:500;
   text-decoration:none;
   transition:color 160ms var(--ease-out), border-color 160ms var(--ease-out);
@@ -8645,19 +8711,35 @@ html.light .walk-hole{ box-shadow:0 0 0 9999px rgba(12,18,32,0.5),
 .lp-main .home-hero{ flex:0 0 auto; padding-block:clamp(16px, 4vh, 54px); }
 .lp-main .hh-planet{ height:min(420px, 46vh); }
 
-/* The two deliverables, named exactly as lib/deliverables.ts names them. */
+/* The two deliverables, named exactly as lib/deliverables.ts names them.
+   Two short cards in the app's own glass: an icon beside a mono eyebrow, the
+   name, one line. The colour of each seat is the only thing that tells them
+   apart, the same as in the workspace. */
 .lp-pair{
-  width:100%; max-width:860px;
-  display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));
+  width:100%; max-width:760px;
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));
   gap:var(--sp-4); margin-top:clamp(8px, 2vh, 24px);
 }
 .lp-pair article{
-  padding:var(--sp-5); border-radius:20px;
-  border:1px solid var(--border); background:var(--card);
+  position:relative; padding:var(--sp-4) var(--sp-5); border-radius:18px;
+  border:1px solid var(--border);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--foreground) 4%, transparent), transparent 55%),
+    var(--card);
+  backdrop-filter:blur(var(--blur-surface)) saturate(1.3);
+  transition:border-color 200ms var(--ease-out), translate 200ms var(--ease-out);
+}
+@media (hover:hover) and (pointer:fine){
+  .lp-pair article:hover{ border-color:var(--border-strong); translate:0 -2px; }
+}
+.lp-card-top{ display:flex; align-items:center; gap:var(--sp-3); margin-bottom:var(--sp-3); }
+.lp-eyebrow{
+  font-family:var(--font-mono); font-size:var(--text-3xs); letter-spacing:0.2em;
+  text-transform:uppercase; color:var(--muted-foreground);
 }
 .lp-ic{
-  display:inline-flex; align-items:center; justify-content:center;
-  width:38px; height:38px; border-radius:12px; margin-bottom:var(--sp-4);
+  display:inline-flex; align-items:center; justify-content:center; flex:none;
+  width:30px; height:30px; border-radius:10px;
   border:1px solid color-mix(in srgb, var(--acc) 34%, transparent);
   background:color-mix(in srgb, var(--acc) 12%, transparent);
   color:var(--acc-hi);
@@ -8672,21 +8754,18 @@ html.light .walk-hole{ box-shadow:0 0 0 9999px rgba(12,18,32,0.5),
   font-weight:600; letter-spacing:-0.02em; color:var(--foreground);
 }
 .lp-pair p{
-  margin:9px 0 0; font-size:var(--text-xs); line-height:1.65;
+  margin:6px 0 0; font-size:var(--text-xs); line-height:1.55;
   color:var(--secondary-foreground);
 }
 
 /* The AI notice. On the page, not in the terms: the documents these agents
-   write get taken into real meetings. */
+   write get taken into real meetings. A grey line, not a box — it has to be
+   there without asking to be read twice. */
 .lp-ai{
-  display:flex; align-items:flex-start; gap:9px;
-  width:100%; max-width:860px; margin:var(--sp-5) 0 0;
-  padding:12px var(--sp-4); border-radius:14px;
-  border:1px solid color-mix(in srgb, var(--warn) 32%, var(--border));
-  background:color-mix(in srgb, var(--warn) 7%, transparent);
-  font-size:var(--text-2xs); line-height:1.6; color:var(--secondary-foreground);
+  width:100%; max-width:760px; margin:var(--sp-5) 0 0;
+  font-size:var(--text-3xs); line-height:1.6; text-align:center;
+  color:var(--muted-foreground);
 }
-.lp-ai svg{ flex-shrink:0; margin-top:1px; color:var(--warn); }
 
 .lp-beta{
   margin:var(--sp-4) 0 clamp(20px, 4vh, 48px);
@@ -8730,7 +8809,10 @@ html.light .walk-hole{ box-shadow:0 0 0 9999px rgba(12,18,32,0.5),
   font-size:var(--text-xs); color:var(--muted-foreground);
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
-.ph-ind b{ font-weight:500; color:var(--secondary-foreground); }
+.ph-ind{ display:inline-flex; align-items:center; gap:5px; }
+.ph-ind svg{ flex:none; color:hsl(var(--ind-hue) 72% 66%); }
+html.light .ph-ind svg{ color:hsl(var(--ind-hue) 62% 38%); }
+.ph-ind b{ font-weight:500; color:var(--secondary-foreground); overflow:hidden; text-overflow:ellipsis; }
 
 /* Sort direction, beside the sort menu. */
 .ph-dir{

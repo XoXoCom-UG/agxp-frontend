@@ -37,6 +37,7 @@ export const IconSearch = make("search");
 export const IconFilter = make("filter");
 export const IconChevronDown = make("chevronDown");
 export const IconFolder = make("folder");
+export const IconPencil = make("pencil");
 export const IconHistory = make("history");
 export const IconClock = make("clock");
 export const IconTrash = make("trash");
@@ -87,3 +88,26 @@ export const IconLock = make("lock");
 export const IconNodes = make("nodes");
 export const IconGear = make("gear");
 export const IconUsers = make("users");
+
+
+/**
+ * The glyph for a project's industry (the closed set in lib/industry.ts).
+ * No industry yet — a fresh project, an old one — gets the generic project
+ * mark, never a folder: a folder reads as something you can open.
+ */
+const INDUSTRY_ICON: Record<string, IconName> = {
+  "Banking": "indBanking", "Insurance": "indInsurance", "Logistics": "indLogistics",
+  "Retail": "indRetail", "E-commerce": "indEcommerce", "Healthcare": "indHealthcare",
+  "Software & IT": "indSoftware", "Automotive": "indAutomotive", "Manufacturing": "indManufacturing",
+  "Energy": "indEnergy", "Public sector": "indPublic", "Telecom": "indTelecom",
+  "Education": "indEducation", "Real estate": "indRealEstate", "Hospitality": "indHospitality",
+  "Media": "indMedia",
+};
+
+export function industryIconName(label: string | null | undefined): IconName {
+  return (label && INDUSTRY_ICON[label]) || "indProject";
+}
+
+export function IconIndustry({ label, ...p }: IconProps & { label: string | null | undefined }) {
+  return <Svg {...p} name={industryIconName(label)} />;
+}

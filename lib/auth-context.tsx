@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase";
+import { scopeToUser } from "@/lib/user-scope";
 
 interface AuthContextType {
   session: Session | null;
@@ -93,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession()
       .then(({ data }) => {
         setSession(data.session);
+        scopeToUser(data.session?.user?.id ?? null);
         // No session, but the proxy's gate cookie is still around: stale. Clear it
         // before any page acts on the missing token, or the redirect it triggers
         // bounces straight back here.
@@ -106,6 +108,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
+      // What the browser remembers about one account's work goes when the
+      // account does (lib/user-scope.ts) — a shared computer must not show the
+      // next person the last one's project name.
+      scopeToUser(s?.user?.id ?? null);
       setLoading(false);
       // Covers the case that produced the loop in the first place: a refresh token
       // that stops working mid-session leaves the cookie in place.

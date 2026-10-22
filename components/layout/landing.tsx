@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AgentHero } from "@/components/layout/agent-hero";
 import { BrandLogo } from "@/components/layout/brand-logo";
-import { IconArrow, IconChart, IconUsers, IconAlert } from "@/components/layout/agxp-icons";
+import { IconArrow, IconChart, IconUsers } from "@/components/layout/agxp-icons";
 import { useAuth } from "@/lib/auth-context";
 import { COMPANY } from "@/lib/company";
 import { ConsentLink } from "@/components/layout/cookie-banner";
@@ -58,31 +58,27 @@ export function Landing() {
             easiest way to lose the first customer. */}
         <section className="lp-pair" aria-label="What you get">
           <article>
-            <span className="lp-ic consultant" aria-hidden="true"><IconChart size={17} /></span>
+            <div className="lp-card-top">
+              <span className="lp-ic consultant" aria-hidden="true"><IconChart size={15} /></span>
+              <span className="lp-eyebrow">Consultant</span>
+            </div>
             <h2>Transformation Concept</h2>
-            <p>
-              Your Consultant interviews you about where you are, what it costs you today
-              and where you are going — and writes it up as charts, not paragraphs.
-            </p>
+            <p>Where you are, what it costs, where you are going, as charts.</p>
           </article>
           <article>
-            <span className="lp-ic coach" aria-hidden="true"><IconUsers size={17} /></span>
+            <div className="lp-card-top">
+              <span className="lp-ic coach" aria-hidden="true"><IconUsers size={15} /></span>
+              <span className="lp-eyebrow">Coach</span>
+            </div>
             <h2>Change Plan</h2>
-            <p>
-              Your Coach works the other half: who is affected, what they are afraid of,
-              and how the rollout actually lands with the people who have to live with it.
-            </p>
+            <p>Who is affected, what they fear, and how the rollout lands.</p>
           </article>
         </section>
 
         {/* Required, and placed where it is read rather than buried in the
             terms: the agents write documents people take into real meetings. */}
         <p className="lp-ai" role="note">
-          <IconAlert size={14} aria-hidden="true" />
-          <span>
-            AgentiX Projects is powered by AI. It can get things wrong — check anything
-            you rely on before acting on it.
-          </span>
+          AgentiX Projects is powered by AI and can get things wrong. Check anything you rely on.
         </p>
 
         <p className="lp-beta">Closed beta. You need an invitation to sign in.</p>

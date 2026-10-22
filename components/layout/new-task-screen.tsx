@@ -313,8 +313,8 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
   // is open. Named projects only — "New Project" as a button label tells the
   // user nothing about where it goes.
   useEffect(() => {
-    if (project?.id) rememberProject({ id: project.id, name: project.name });
-  }, [project?.id, project?.name]);
+    if (project?.id) rememberProject({ id: project.id, name: project.name, category: project.category });
+  }, [project?.id, project?.name, project?.category]);
 
   useEffect(() => {
     if (!token) return;
@@ -526,7 +526,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
 
   return (
     <div className="app">
-      <AgentNav started={started} projectName={project?.name} />
+      <AgentNav started={started} projectName={project?.name} projectCategory={project?.category} />
       {/* No page title and no description: clicking "New Task" should show the
           two agents and nothing else (Patryk, 2026-09-11 — "wenn es so clean
           ist, weiß der User sofort, was als nächstes zu tun ist"). */}

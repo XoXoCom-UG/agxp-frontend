@@ -2,7 +2,7 @@ import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type Anthropic from "@anthropic-ai/sdk";
 import { parseMarkers, type FileRef } from "@/lib/message-markers";
-import { cleanLabel, ATTACHMENT_NAME_MAX } from "@/lib/chat-input";
+import { cleanLabel, ownPath, ATTACHMENT_NAME_MAX } from "@/lib/chat-input";
 
 /**
  * message-files.ts — turns [[FILE:]] markers back into something Claude reads.
@@ -58,6 +58,7 @@ const isImage = (mime: string) =>
 export async function withAttachments(
   messages: { role: "user" | "assistant"; content: string }[],
   token: string,
+  userId: string,
 ): Promise<Anthropic.MessageParam[]> {
   const anyFiles = messages.some(m => m.role === "user" && m.content.includes("[[FILE:"));
   if (!anyFiles) return messages.map(m => ({ role: m.role, content: m.content }));
@@ -82,7 +83,7 @@ export async function withAttachments(
 
     const blocks: Block[] = [];
     for (const ref of parsed.files) {
-      const block = await resolve(supabase, ref, budget);
+      const block = await resolve(supabase, ref, budget, userId);
       budget -= block.bytes;
       blocks.push(block.block);
     }
@@ -99,12 +100,21 @@ async function resolve(
   supabase: SupabaseClient,
   ref: FileRef,
   budget: number,
+  userId: string,
 ): Promise<{ block: Block; bytes: number }> {
   // The name and type come out of a marker the client wrote; they end up in
   // the prompt, so they are cleaned like any other client text.
   ref = { ...ref, name: cleanLabel(ref.name, ATTACHMENT_NAME_MAX) || "Datei", mime: cleanLabel(ref.mime, 80) };
   const note = (text: string): { block: Block; bytes: number } =>
     ({ block: { type: "text", text }, bytes: 0 });
+
+  // A second lock behind the database's own: a path that does not sit in the
+  // caller's folder is never even asked for. Row level security already answers
+  // such a request with nothing; this keeps it from being asked, and keeps a
+  // "../" from being tried against the storage layer at all.
+  if (!ownPath(ref.path, userId)) {
+    return note(`[Anhang "${ref.name}" konnte nicht gelesen werden.]`);
+  }
 
   if (budget <= 0) {
     return note(`[Anhang "${ref.name}" ausgelassen — zu viele Dateien in diesem Gespräch.]`);

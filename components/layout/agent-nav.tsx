@@ -5,7 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/lib/auth-context";
-import { IconSun, IconMoon, IconUser, IconLogout, IconPlus, IconFolder, IconClock, IconChart } from "@/components/layout/agxp-icons";
+import { IconSun, IconMoon, IconUser, IconLogout, IconPlus, IconIndustry, IconClock, IconChart } from "@/components/layout/agxp-icons";
+import { industryHue } from "@/lib/industry";
 import { PLACEHOLDER_PROJECT_NAME } from "@/lib/projects";
 import { useLastProject } from "@/lib/last-project";
 import { BrandLogo } from "@/components/layout/brand-logo";
@@ -62,11 +63,18 @@ function projectLabel(name: string): string {
   return name === PLACEHOLDER_PROJECT_NAME ? "Untitled task" : name;
 }
 
-export function AgentNav({ started, projectName }: {
+/** The chip's glyph takes its industry's colour; no industry, the bar's own. */
+function industryStyle(category: string | null | undefined): React.CSSProperties | undefined {
+  return category ? ({ "--ind-hue": industryHue(category) } as React.CSSProperties) : undefined;
+}
+
+export function AgentNav({ started, projectName, projectCategory }: {
   /** The conversation is running: the bar names the project. */
   started?: boolean;
   /** The project this bar is sitting on, so the chip can name it. */
   projectName?: string;
+  /** Its industry, which picks the glyph on the chip. */
+  projectCategory?: string | null;
 }) {
   const { user, profileName, signOut } = useAuth();
   const pathname = usePathname();
@@ -191,13 +199,14 @@ export function AgentNav({ started, projectName }: {
              over; this returns you to the one you were last in. A dropdown
              was tried and dropped on 2026-09-30 — "lieber kein Dropdown,
              weil das verwirrt". */
-          <button className="nb-current" onClick={() => router.push(`/dashboard/project/${lastProject.id}`)}>
-            <IconFolder size={15} />
+          <button className="nb-current" onClick={() => router.push(`/dashboard/project/${lastProject.id}`)}
+            style={industryStyle(lastProject.category)}>
+            <IconIndustry label={lastProject.category} size={18} />
             <span className="nbc-name">{projectLabel(lastProject.name)}</span>
           </button>
         ) : started ? (
-          <span className="nb-current is-static">
-            <IconFolder size={15} />
+          <span className="nb-current is-static" style={industryStyle(projectCategory)}>
+            <IconIndustry label={projectCategory} size={18} />
             <span className="nbc-name">{projectName ? projectLabel(projectName) : "Current Project"}</span>
           </span>
         ) : null}

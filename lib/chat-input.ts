@@ -111,3 +111,9 @@ export const ATTACHMENT_NAME_MAX = 120;
 export function stripMarkerSyntax(text: string): string {
   return text.replace(/\[\[|\]\]/g, "");
 }
+
+/** `<user id>/<project id>/<file>` with the caller's own id first, and nothing that climbs out of it. */
+export function ownPath(path: string, userId: string): boolean {
+  const parts = path.split("/");
+  return parts.length >= 3 && parts[0] === userId && parts.every(p => p !== "" && p !== "." && p !== "..");
+}

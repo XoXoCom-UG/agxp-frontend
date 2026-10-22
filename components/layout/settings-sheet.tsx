@@ -14,6 +14,7 @@ import { useEntitlement } from "@/lib/entitlement";
 import { PLANS, projectsLabel, agentsLabel, type Plan } from "@/lib/plans";
 import { DevPlanTools } from "@/components/layout/dev-plan-tools";
 import { DevMemory } from "@/components/layout/dev-memory";
+import { DevUsage } from "@/components/layout/dev-usage";
 import { replayTour } from "@/components/layout/tour-host";
 import { PrivacyTab } from "@/components/layout/privacy-tab";
 
@@ -335,7 +336,7 @@ function PlanTab() {
               </div>
               <ul>
                 <li><b>{projectsLabel(p)}</b> projects per {p.period}</li>
-                <li>{p.stations === null ? "Full interview" : `${p.stations} of 8 interview steps`}</li>
+                <li>{p.stations === null ? "Full interview" : `First ${p.stations} interview steps`}</li>
                 <li>{p.peerReading === "full"
                   ? "Coach reads the consultation"
                   : "Coach reads it once, as a preview"}</li>
@@ -349,6 +350,7 @@ function PlanTab() {
       </div>
 
       {canSwitch && <DevPlanTools current={plan.id} onChanged={refresh} />}
+      {canSwitch && <DevUsage />}
       {canSwitch && <DevMemory />}
     </>
   );

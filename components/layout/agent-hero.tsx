@@ -2,6 +2,56 @@
 
 import { useRef, useState, type ReactNode } from "react";
 import { AgentMascot } from "@/components/layout/agent-mascot";
+import { useMascotLevel } from "@/lib/mascot-level";
+import { LEVEL_ORDER, levelFor, nextLevel } from "@/lib/agent-progress";
+import type { AgentType } from "@/lib/agents";
+
+/**
+ * The user's own agent for one seat, when there is one. Home passes these in;
+ * the public landing page does not, and its pair stays the showpiece it was.
+ */
+export interface HeroAgent {
+  id: string;
+  name: string;
+  /** Projects this agent has worked on for this user — what its level is built from. */
+  projects: number;
+}
+
+/**
+ * One seat: the mascot, and — for a real agent — its name and how far along it
+ * is. The look follows the level the agent has earned (mascot-level.ts), the
+ * label follows the experience it has built (agent-progress.ts), so the seat
+ * answers "who is this and how much have we done together" without a box.
+ */
+function Seat({ role, agent, cheer, at }: {
+  role: AgentType;
+  agent?: HeroAgent;
+  cheer: boolean;
+  at: { x: number; y: number } | null;
+}) {
+  const earned = useMascotLevel(agent?.id);
+  const level = agent ? levelFor(agent.projects) : null;
+  const next = agent ? nextLevel(agent.projects) : null;
+  return (
+    <span className={`hh-slot ${role}`}>
+      <AgentMascot role={role} size={150} state="idle" level={agent ? earned : 4}
+        mood={cheer ? "pleased" : null} lookAt={at} />
+      {agent && level && next && (
+        <span className="hh-tag">
+          <b className="hh-tag-name">{agent.name}</b>
+          <span className="hh-tag-lv" aria-hidden="true">
+            {LEVEL_ORDER.map((l, i) => <i key={l} className={i <= LEVEL_ORDER.indexOf(level) ? "on" : ""} />)}
+          </span>
+          <span className="hh-tag-note">
+            {next.next
+              ? `${level} · ${next.remaining} more to ${next.next}`
+              : `${level} · top level`}
+          </span>
+        </span>
+      )}
+    </span>
+  );
+}
 
 /**
  * The two agents on their orbit, with whatever words and button the caller
@@ -17,13 +67,15 @@ import { AgentMascot } from "@/components/layout/agent-mascot";
  * A photograph blended with the accent is what used to be here, and it put
  * hard bands across the hero on any warm accent.
  */
-export function AgentHero({ kicker, title, lede, children }: {
+export function AgentHero({ kicker, title, lede, children, team }: {
   kicker: string;
   /** The heading itself, so each caller owns its own level and id. */
   title: ReactNode;
   lede: string;
   /** The call to action. It is measured, so the pair look at it. */
   children: ReactNode;
+  /** The user's own agents, by seat. Absent on the public page. */
+  team?: Partial<Record<AgentType, HeroAgent>>;
 }) {
   /*
    * The two agents notice the button. Hovering or focusing it makes them
@@ -82,14 +134,8 @@ export function AgentHero({ kicker, title, lede, children }: {
           </div>
         </div>
 
-        <span className="hh-slot consultant">
-          <AgentMascot role="consultant" size={150} state="idle" level={4}
-            mood={cheer ? "pleased" : null} lookAt={at} />
-        </span>
-        <span className="hh-slot coach">
-          <AgentMascot role="coach" size={150} state="idle" level={4}
-            mood={cheer ? "pleased" : null} lookAt={at} />
-        </span>
+        <Seat role="consultant" agent={team?.consultant} cheer={cheer} at={at} />
+        <Seat role="coach" agent={team?.coach} cheer={cheer} at={at} />
       </div>
     </div>
   );
