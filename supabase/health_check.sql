@@ -40,7 +40,9 @@ with expected(kind, name, detail, migration) as (values
   ('table',    'agxp_ai_leases',        null,              '0021'),
   ('function', 'begin_ai_call',         null,              '0021'),
   ('function', 'settle_ai_call',        null,              '0021'),
-  ('function', 'team_usage',            null,              '0022')
+  ('function', 'team_usage',            null,              '0022'),
+  ('table',    'agxp_ip_rate_limits',   null,              '0023'),
+  ('function', 'take_ip_slot',          null,              '0023')
 )
 select
   e.kind,

@@ -13,6 +13,7 @@ import { validateMessages, cleanLabel, cleanMemory, cleanKind, AGENT_NAME_MAX } 
 import { loadConversation, peerTurns, saveReply, isProjectId, type StoredTurn } from "@/lib/conversation-server";
 import { cutUnfinishedMarker } from "@/lib/conversation-state";
 import { bearerOf } from "@/lib/server-db";
+import { ipGate } from "@/lib/ip-gate";
 
 const MODEL = "claude-sonnet-5";
 
@@ -109,6 +110,10 @@ function fail(status: number, code: string, error: string) {
 }
 
 export async function POST(req: NextRequest) {
+  // Per network, before anything else: a refused request costs no session lookup.
+  const crowded = await ipGate(req, "chat");
+  if (crowded) return crowded;
+
   const me = await caller(req);
   const userId = me?.id ?? null;
   if (!userId) {

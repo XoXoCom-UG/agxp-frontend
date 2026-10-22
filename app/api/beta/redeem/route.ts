@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { ipGate } from "@/lib/ip-gate";
 import { takeRateSlot } from "@/lib/entitlement-server";
 
 /**
@@ -56,6 +57,10 @@ function tooManyTries(userId: string): boolean {
 }
 
 export async function POST(req: NextRequest) {
+  // Per network first: guessing keys from many accounts at once is the attack an account limit cannot see.
+  const crowded = await ipGate(req, "redeem");
+  if (crowded) return crowded;
+
   const userId = await callerId(req);
   if (!userId) {
     return NextResponse.json({ error: "Your session has expired. Sign in again." }, { status: 401 });

@@ -54,7 +54,11 @@ const securityHeaders = [
       "default-src 'self'",
       scriptSrc,
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https:",
+      // No https: here. Nothing in the app shows a picture from another site, and
+      // an image whose address carries data is how a model that was talked into it
+      // would send that data away without a click (lib/markdown.ts never draws one
+      // either; this is the second lock).
+      "img-src 'self' data: blob:",
       "font-src 'self' data:",
       `connect-src ${connectSrc}`,
       `frame-src ${TURNSTILE}`,

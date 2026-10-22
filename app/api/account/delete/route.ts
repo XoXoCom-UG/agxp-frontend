@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ipGate } from "@/lib/ip-gate";
 import { callerId } from "@/lib/caller-id";
 import { serviceClient, userClient, bearerOf } from "@/lib/server-db";
 import { takeRateSlot } from "@/lib/entitlement-server";
@@ -56,6 +57,9 @@ async function removeFiles(db: NonNullable<ReturnType<typeof serviceClient>>, us
 }
 
 export async function POST(req: NextRequest) {
+  const crowded = await ipGate(req, "account");
+  if (crowded) return crowded;
+
   const userId = await callerId(req);
   if (!userId) return fail(401, "Your session has expired. Sign in again.");
   if (!(await takeRateSlot(userId, "account", 5, 600))) {

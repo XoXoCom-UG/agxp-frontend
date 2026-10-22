@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 import { callerId } from "@/lib/caller-id";
+import { ipGate } from "@/lib/ip-gate";
 import { allowanceFor, blocked, beginAiCall, settleAiCall, takeRateSlot, type SpentTokens } from "@/lib/entitlement-server";
 import { estimateInputTokens, reserveMicroUsd } from "@/lib/cost";
 import { validateMessages, stripMarkerSyntax } from "@/lib/chat-input";
@@ -33,6 +34,10 @@ const fail = (status: number, code: string, error: string) =>
   NextResponse.json({ error, code }, { status });
 
 export async function POST(req: NextRequest) {
+  // Per network, before the session is even looked up.
+  const crowded = await ipGate(req, "title");
+  if (crowded) return crowded;
+
   const userId = await callerId(req);
   if (!userId) return fail(401, "unauthorized", "Your session has expired. Sign in again.");
   if (overLimit(userId) || !(await takeRateSlot(userId, "title", 10))) {

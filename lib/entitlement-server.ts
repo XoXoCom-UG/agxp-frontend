@@ -334,3 +334,41 @@ export async function takeRateSlot(
   }
   return data === true;
 }
+
+/**
+ * The same fixed-window count as takeRateSlot, keyed by a network instead of
+ * an account (take_ip_slot, migration 0023). The key is already a keyed hash of
+ * the address — see lib/ip-gate.ts — so no address is stored.
+ *
+ * It FAILS OPEN, in production too, unlike takeRateSlot: an address limit is a
+ * second line behind the account limits and the budget, and a migration that
+ * has not been run yet must not turn it into a reason nobody can sign in. The
+ * route's in-memory count still applies. The first failure is logged, not every
+ * one, so a missing function does not fill the log.
+ */
+let ipSlotWarned = false;
+
+export async function takeIpSlot(
+  key: string,
+  bucket: string,
+  max: number,
+  windowSeconds = 60,
+): Promise<boolean> {
+  const db = admin();
+  if (!db) return true;
+  const { data, error } = await db.rpc("take_ip_slot", {
+    p_key: key,
+    p_bucket: bucket,
+    p_window_seconds: windowSeconds,
+    p_max: max,
+  });
+  if (error) {
+    if (!ipSlotWarned) {
+      ipSlotWarned = true;
+      console.error("[rate] address limit unavailable (is migration 0023 applied?):", error.code, error.message);
+    }
+    return true;
+  }
+  return data === true;
+}
+

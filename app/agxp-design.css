@@ -2163,6 +2163,9 @@ html.light .es-shadow{ background:radial-gradient(closest-side, var(--tint-4), t
 .md-ul li, .md-ol li{ line-height:1.6; }
 .md-link{ color:var(--primary-soft); text-decoration:underline; text-underline-offset:2px; }
 @media (hover:hover) and (pointer:fine){ .md-link:hover{ color:var(--foreground); } }
+/* Where a link really goes, written out beside it; and what stands in for an image. */
+.md-link-host{ font-size:.85em; color:var(--muted-foreground); white-space:nowrap; }
+.md-img-blocked{ font-size:.9em; font-style:italic; color:var(--muted-foreground); }
 
 /* Inline `code` — a tint of the accent, not a grey chip that fights the text. */
 .md-tick{
