@@ -7,7 +7,7 @@ import { DELIVERABLES } from "@/lib/deliverables";
 import { systemPrompt, peerPrompt } from "@/lib/agent-prompt";
 import { withAttachments } from "@/lib/message-files";
 import { peerTranscript, type PeerContext } from "@/lib/peer-context";
-import { allowanceFor, blocked, beginAiCall, settleAiCall, peerReadingAllowed, takeRateSlot } from "@/lib/entitlement-server";
+import { allowanceFor, blocked, beginAiCall, settleAiCall, peerReadingAllowed } from "@/lib/entitlement-server";
 import { estimateInputTokens, reserveMicroUsd } from "@/lib/cost";
 import { validateMessages, cleanLabel, cleanMemory, cleanKind, AGENT_NAME_MAX } from "@/lib/chat-input";
 import { loadConversation, peerTurns, saveReply, isProjectId, type StoredTurn } from "@/lib/conversation-server";
@@ -19,28 +19,6 @@ const MODEL = "claude-sonnet-5";
 
 /** The reply cap. Why it is this high is explained where it is used. */
 const MAX_OUTPUT_TOKENS = 24_000;
-
-/**
- * Two limits with the same numbers. This in-memory one is a cheap first filter
- * that costs no round trip; serverless instances don't share memory, so on its
- * own a caller spread over instances got more than this. takeRateSlot() below
- * counts in the database, which every instance shares, and is the real limit.
- */
-const WINDOW_MS = 60_000;
-const MAX_PER_WINDOW = 20;
-const hits = new Map<string, number[]>();
-
-function overLimit(userId: string): boolean {
-  const now = Date.now();
-  const recent = (hits.get(userId) ?? []).filter(t => now - t < WINDOW_MS);
-  recent.push(now);
-  hits.set(userId, recent);
-  // Keep the map from growing forever on a long-lived instance.
-  if (hits.size > 500) {
-    for (const [k, v] of hits) if (!v.some(t => now - t < WINDOW_MS)) hits.delete(k);
-  }
-  return recent.length > MAX_PER_WINDOW;
-}
 
 // The user wants EVERY question to end with pickable options — no free-text
 // guessing, no exceptions. This is a hard requirement, not a "when it makes
@@ -119,9 +97,9 @@ export async function POST(req: NextRequest) {
   if (!userId) {
     return fail(401, "unauthorized", "Your session has expired. Sign in again.");
   }
-  if (overLimit(userId) || !(await takeRateSlot(userId, "chat", MAX_PER_WINDOW))) {
-    return fail(429, "rate_limited", "Too many messages in a short time. Wait a minute, then try again.");
-  }
+  // No per-minute limit on messages (Ana, 2026-10-23: removed). What still
+  // protects the spend: the lease below (parallel calls, budget, free pool)
+  // and the network limit above.
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {

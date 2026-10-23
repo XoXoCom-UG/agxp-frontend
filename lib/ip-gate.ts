@@ -24,7 +24,7 @@ import { takeIpSlot } from "@/lib/entitlement-server";
  */
 
 const SCOPES = {
-  /** A conversation turn: the account allows 20 a minute. */
+  /** A conversation turn. The account itself has no per-minute limit any more. */
   chat:    { max: 60, windowSeconds: 60 },
   /** Naming a project: the account allows 10 a minute. */
   title:   { max: 40, windowSeconds: 60 },
