@@ -3,7 +3,6 @@
 import { useRef, useState, type ReactNode } from "react";
 import { AgentMascot } from "@/components/layout/agent-mascot";
 import { useMascotLevel } from "@/lib/mascot-level";
-import { LEVEL_ORDER, levelFor, nextLevel } from "@/lib/agent-progress";
 import type { AgentType } from "@/lib/agents";
 
 /**
@@ -18,10 +17,9 @@ export interface HeroAgent {
 }
 
 /**
- * One seat: the mascot, and — for a real agent — its name and how far along it
- * is. The look follows the level the agent has earned (mascot-level.ts), the
- * label follows the experience it has built (agent-progress.ts), so the seat
- * answers "who is this and how much have we done together" without a box.
+ * One seat: the mascot. For a real agent its look follows the level it has
+ * earned (mascot-level.ts); there is no caption under it any more (Ana,
+ * 2026-10-23: name, level bar and "top level" removed from Home).
  */
 function Seat({ role, agent, cheer, at }: {
   role: AgentType;
@@ -30,25 +28,10 @@ function Seat({ role, agent, cheer, at }: {
   at: { x: number; y: number } | null;
 }) {
   const earned = useMascotLevel(agent?.id);
-  const level = agent ? levelFor(agent.projects) : null;
-  const next = agent ? nextLevel(agent.projects) : null;
   return (
     <span className={`hh-slot ${role}`}>
-      <AgentMascot role={role} size={150} state="idle" level={agent ? earned : 4}
+      <AgentMascot role={role} size={186} state="idle" level={agent ? earned : 4}
         mood={cheer ? "pleased" : null} lookAt={at} />
-      {agent && level && next && (
-        <span className="hh-tag">
-          <b className="hh-tag-name">{agent.name}</b>
-          <span className="hh-tag-lv" aria-hidden="true">
-            {LEVEL_ORDER.map((l, i) => <i key={l} className={i <= LEVEL_ORDER.indexOf(level) ? "on" : ""} />)}
-          </span>
-          <span className="hh-tag-note">
-            {next.next
-              ? `${level} · ${next.remaining} more to ${next.next}`
-              : `${level} · top level`}
-          </span>
-        </span>
-      )}
     </span>
   );
 }

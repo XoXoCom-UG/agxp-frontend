@@ -10,6 +10,7 @@ import {
   OPEN_CONSENT_EVENT,
 } from "@/lib/consent";
 import { memoryAllowed } from "@/lib/memory-pref";
+import { IconX } from "@/components/layout/agxp-icons";
 
 /**
  * Datenschutz-Einstellungen: the cookie banner, and the settings behind it.
@@ -98,6 +99,15 @@ export function CookieBanner() {
 
   if (!show) return null;
 
+  // The X is "not now", not a choice: nothing is stored, so the optional items
+  // stay off (no consent) and the question comes back on the next visit.
+  const closeBtn = (
+    <button type="button" className="cookie-close" aria-label="Schließen" disabled={saving}
+      onClick={() => exitThen(() => { setShow(false); setView("summary"); })}>
+      <IconX size={14} />
+    </button>
+  );
+
   const cls = `cookie-note${view === "details" ? " is-details" : ""}${closing ? " is-closing" : ""}`;
 
   if (view === "summary") {
@@ -105,6 +115,7 @@ export function CookieBanner() {
       // lang="de" so a screen reader switches voice for it. A dialog, not a
       // status: it asks for a decision.
       <div className={cls} role="dialog" aria-label="Datenschutz-Einstellungen" lang="de">
+        {closeBtn}
         <h2 className="cookie-title">Datenschutz-Einstellungen</h2>
         <p>
           Notwendige Cookies für Login und Sicherheit sind immer aktiv. Optional sind Fehlerberichte
@@ -127,6 +138,7 @@ export function CookieBanner() {
 
   return (
     <div className={cls} role="dialog" aria-modal="false" aria-labelledby="consent-title" lang="de">
+      {closeBtn}
       <h2 className="cookie-title" id="consent-title">Datenschutz-Einstellungen</h2>
       <p>Du entscheidest, was über das Notwendige hinaus passiert. Du kannst das jederzeit hier ändern.</p>
 

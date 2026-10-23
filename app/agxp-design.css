@@ -1492,7 +1492,14 @@ html.light .ico-when-dark{ display:none; }
 .cookie-choices .btn-secondary-wide{ height:38px; font-size:var(--text-2xs); }
 .cookie-choices.is-three{ grid-template-columns:1fr 1fr 1fr; }
 .cookie-choices .btn-secondary-wide{ background:var(--secondary); padding:0 var(--sp-2); white-space:nowrap; }
-.cookie-title{ font-size:var(--text-sm); font-weight:600; margin:0 0 var(--sp-2); color:var(--foreground); }
+.cookie-title{ font-size:var(--text-sm); font-weight:600; margin:0 0 var(--sp-2); color:var(--foreground); padding-right:28px; }
+.cookie-close{
+  position:absolute; top:var(--sp-3); right:var(--sp-3);
+  display:inline-grid; place-items:center; width:28px; height:28px; border-radius:var(--radius-sm);
+  background:none; border:0; color:var(--muted-foreground); cursor:pointer;
+}
+@media (hover:hover) and (pointer:fine){ .cookie-close:hover{ color:var(--foreground); background:var(--tint-2); } }
+.cookie-close:active{ transform:scale(0.94); }
 
 /* The details: every category, what it does, and its switch. Wider than the
    summary, and scrolls inside itself on a short screen. */
@@ -7885,22 +7892,6 @@ html.light .hh-planet{ opacity:.55; }
 }
 
 .hh-slot{ display:inline-flex; flex-direction:column; align-items:center; gap:clamp(6px, 1.2vh, 12px); }
-
-/* Under a real agent: name, level bar, what is left to the next level. Quiet
-   on purpose — the mascots are the picture, this is the label on the frame. */
-.hh-tag{ display:flex; flex-direction:column; align-items:center; gap:5px; max-width:200px; text-align:center; }
-.hh-tag-name{
-  font-family:var(--font-display); font-size:var(--text-sm); font-weight:600; color:var(--foreground);
-  max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-}
-.hh-tag-lv{ display:inline-flex; gap:4px; }
-.hh-tag-lv i{ width:22px; height:4px; border-radius:2px; background:var(--input); transition:background-color 300ms var(--ease-out); }
-.hh-tag-lv i.on{ background:var(--doc-accent-grad, var(--primary-soft)); }
-.hh-tag-note{
-  font-family:var(--font-mono); font-size:var(--text-3xs); letter-spacing:0.12em; text-transform:uppercase;
-  color:var(--muted-foreground); line-height:1.5; white-space:nowrap;
-}
-@media (max-width:430px){ .hh-tag-note{ display:none; } }
 
 /* Duolingo-ish: a slow float with the two out of phase, so the pair looks
    alive rather than placed. On the slot, never on the mascot — the mascot
