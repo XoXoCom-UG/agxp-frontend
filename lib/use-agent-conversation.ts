@@ -39,6 +39,7 @@ function userFacingError(e: unknown, stage: "save" | "reply"): string {
   switch (e.code) {
     case "unauthorized": return "Your session has expired. Sign in again, then try again.";
     case "rate_limited": return "Too many messages in a short time. Wait a minute, then try again.";
+    case "busy": return e.message || "An answer is still being written. Wait for it to finish, then try again.";
     case "limit": return e.message || "This account has reached its limit for now.";
     case "not_configured": return "The assistant isn't configured on the server yet. Try again later.";
     case "bad_request": return "This conversation couldn't be sent. Reload the page and try again.";

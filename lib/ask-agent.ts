@@ -16,6 +16,9 @@ export interface ChatTurn {
 export type AgentErrorCode =
   | "unauthorized"
   | "rate_limited"
+  /** This account already has as many answers in flight as it may (the lease
+   *  in migration 0021) — not the same as sending too much. */
+  | "busy"
   /** A plan or budget limit (402). The server's message is written for the
    *  person and says what ran out, so it is the one shown. */
   | "limit"
@@ -43,7 +46,7 @@ function codeForStatus(status: number): AgentErrorCode {
   return "server";
 }
 
-const CODES = new Set<AgentErrorCode>(["unauthorized", "rate_limited", "not_configured", "bad_request", "network", "empty", "server", "limit"]);
+const CODES = new Set<AgentErrorCode>(["unauthorized", "rate_limited", "busy", "not_configured", "bad_request", "network", "empty", "server", "limit"]);
 
 /** The route verifies this token, so a missing session must fail here loudly. */
 async function accessToken(): Promise<string> {
@@ -111,7 +114,7 @@ export async function askAgent({ agent, projectId, memory = [], experience, peer
       const data = await res.json().catch(() => ({})) as { error?: string; code?: string };
       const code = data.code && CODES.has(data.code as AgentErrorCode) ? data.code as AgentErrorCode : codeForStatus(res.status);
       // A limit's message is the user-facing text itself, not a detail for the console.
-      if (code === "limit" && data.error) throw new AgentError("limit", data.error);
+      if ((code === "limit" || code === "busy") && data.error) throw new AgentError(code, data.error);
       throw new AgentError(code, `${res.status} ${data.error ?? res.statusText}`);
     }
     if (!res.body) throw new AgentError("empty", "response had no body");

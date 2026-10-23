@@ -221,7 +221,10 @@ export async function POST(req: NextRequest) {
    * below, or right here if the stream never starts.
    */
   const admitted = await beginAiCall(allowance, userId, "chat", reserveMicroUsd(inputEstimate(system, msgs), MAX_OUTPUT_TOKENS));
-  if ("hit" in admitted) return fail(admitted.status, admitted.status === 429 ? "rate_limited" : admitted.hit.kind, admitted.hit.message);
+  // Not "rate_limited": the browser words that one itself as "too many
+  // messages", and a call still in flight is not that. The lease's message is
+  // written for the person, so these codes tell the client to show it.
+  if ("hit" in admitted) return fail(admitted.status, admitted.status === 429 ? "busy" : "limit", admitted.hit.message);
   const lease = admitted.lease;
 
   /*
