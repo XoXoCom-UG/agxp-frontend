@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase";
 import { readEntitlement, QuotaError } from "@/lib/entitlement";
-import { typesFor } from "@/lib/agent-types";
+import { typesFor, templateFor } from "@/lib/agent-types";
 
 export type AgentType = "consultant" | "coach";
 
@@ -86,12 +86,18 @@ export async function listAgents(): Promise<Agent[]> {
 
   return (agents ?? []).map(a => {
     const methods = methodsByAgent.get(a.id) ?? [];
+    // A consultant leads with ITS type's primary methods, not with whatever the
+    // shared row says: the method sheet has the same method primary for one
+    // type and secondary for another (Stakeholder Map, Impact Mapping,
+    // Governance Model), and methods.is_primary can only hold one answer.
+    const tpl = a.type === "consultant" ? templateFor(a) : null;
+    const isPrimary = (m: Method) => (tpl ? tpl.primary.includes(m.name) : m.is_primary);
     return {
       ...a,
       archived_at: a.archived_at ?? null,
       methods,
-      primaryMethods: methods.filter(m => m.is_primary),
-      secondaryMethods: methods.filter(m => !m.is_primary),
+      primaryMethods: methods.filter(isPrimary),
+      secondaryMethods: methods.filter(m => !isPrimary(m)),
       last_projects: (projectsByAgent.get(a.id) ?? []).slice(0, 3),
     };
   });

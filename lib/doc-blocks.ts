@@ -174,6 +174,104 @@ export function visualBlocks(kind: string, body: string): Block[] {
         .map(x => [LABEL.find(([re]) => re.test(x[0]))?.[1] ?? x[0], x.slice(1).join(" | ")]);
       return r.length ? [{ kind: "table", header: null, rows: r, widths: [24, 76] }] : [];
     }
+    // The method sheet's pictures (2026-10-23). CSS and SVG do not travel into a .docx,
+    // so each one becomes the table that says the same in words.
+    case "agxp-quadrant": {
+      const pts = R.filter(x => x[0] && isFinite(parseFloat(x[1] ?? "")) && isFinite(parseFloat(x[2] ?? "")));
+      const q = (b: string) => b.split("\n").map(l => l.trim()).find(l => /^q\s*:/i.test(l))?.replace(/^q\s*:/i, "").split("|").map(t => t.trim()) ?? [];
+      const names = q(body);
+      const field = (x: number, y: number) => names[(y >= 50 ? 2 : 0) + (x >= 50 ? 1 : 0)] ?? `${y >= 50 ? "oben" : "unten"} ${x >= 50 ? "rechts" : "links"}`;
+      const r = pts.map(x => [x[0], field(parseFloat(x[1]), parseFloat(x[2])), `${x[1]} / ${x[2]}`]);
+      return r.length ? [{ kind: "table", header: ["Eintrag", "Feld", "Position (x / y)"], rows: r, widths: [40, 34, 26] }] : [];
+    }
+    case "agxp-graph": {
+      const label = new Map<string, string>();
+      const edges: string[][] = [];
+      for (const l of body.split("\n").map(x => x.trim()).filter(Boolean)) {
+        const e = l.match(/^(\w+)\s*-{1,2}>\s*(\w+)\s*(?::\s*(.*))?$/);
+        if (e) { edges.push([e[1], e[2], (e[3] ?? "").split("|")[0].trim()]); continue; }
+        const n = l.match(/^(\w+)\s*:\s*(.+)$/);
+        if (n && !/^dir$/i.test(n[1])) label.set(n[1], n[2].split("|")[0].trim());
+      }
+      const name = (id: string) => label.get(id) ?? id;
+      const r = edges.map(([a, b, t]) => [name(a), name(b), t || "—"]);
+      return r.length ? [{ kind: "table", header: ["Von", "Nach", "Beschriftung"], rows: r, widths: [30, 30, 40] }] : [];
+    }
+    case "agxp-sequence": {
+      const r: string[][] = [];
+      for (const l of body.split("\n").map(x => x.trim()).filter(Boolean)) {
+        const m = l.match(/^(.+?)\s*(-{1,2})>\s*(.+?)\s*(?::\s*(.*))?$/);
+        if (m) r.push([String(r.length + 1), m[1].trim(), m[3].trim(), (m[4] ?? "").replace(/\s*\*$/, " (automatisch)").trim() || "—"]);
+      }
+      return r.length ? [{ kind: "table", header: ["Nr.", "Von", "An", "Nachricht"], rows: r, widths: [8, 24, 24, 44] }] : [];
+    }
+    case "agxp-journey": {
+      const r = R.filter(x => x[0] && x[1]).map(x => [x[0], x[1], x[2] ?? "", x[3] ?? "", x.slice(4).join(" | ")]);
+      return r.length ? [{ kind: "table", header: ["Stufe", "Nutzeraktion", "Gefühl", "Abbruchrisiko", "Lösung"], rows: r, widths: [16, 30, 14, 14, 26] }] : [];
+    }
+    case "agxp-gantt": {
+      const r = R.filter(x => x.length >= 3 && !/^(unit|ticks)\s*:/i.test(x[0]) && isFinite(parseFloat(x[2])))
+        .map(x => [x[0], x[1], x[2], x[3] && isFinite(parseFloat(x[3])) ? x[3] : x[2]]);
+      return r.length ? [{ kind: "table", header: ["Lane", "Punkt", "Start", "Ende"], rows: r, widths: [24, 52, 12, 12] }] : [];
+    }
+    case "agxp-timeline": {
+      const r = R.filter(x => x[0] && x[2]).map(x => [x[0], x[1] ?? "", x[2], x[3] ?? "", x[4] ?? ""]);
+      return r.length ? [{ kind: "table", header: ["Wann", "Gruppe", "Botschaft / Schulung", "Kanal", "Verantwortlich"], rows: r, widths: [14, 18, 32, 18, 18] }] : [];
+    }
+    case "agxp-moscow": {
+      const r = R.filter(x => x[0] && x[1]).map(x => [x[0], items(x.slice(1).join(" | ")).join("\n")]);
+      return r.length ? [{ kind: "table", header: ["MoSCoW", "Features"], rows: r, widths: [20, 80] }] : [];
+    }
+    case "agxp-cards": {
+      const out: Block[] = [];
+      for (const g of body.split(/\n\s*\n/)) {
+        const ls = g.split("\n").map(l => l.trim()).filter(Boolean);
+        if (ls.length < 2) continue;
+        const r = ls.slice(1).map(l => l.split("|").map(c => c.trim())).filter(x => x[0] && x[1]).map(x => [x[0], items(x.slice(1).join(" | ")).join(", ") || x.slice(1).join(" | ")]);
+        if (!r.length) continue;
+        out.push({ kind: "label", text: ls[0].split("|")[0].trim() }, { kind: "table", header: null, rows: r, widths: [28, 72] });
+      }
+      return out;
+    }
+    case "agxp-canvas": {
+      const r = R.filter(x => x[0] && x[1]).map(x => [x[0], x.slice(1).join(" | ")]);
+      return r.length ? [{ kind: "table", header: ["Block", "Inhalt"], rows: r, widths: [28, 72] }] : [];
+    }
+    case "agxp-checklist": {
+      const r = R.filter(x => x[0]).map(x => {
+        const m = x[0].match(/^\[( |x|X)\]\s*(.*)$/);
+        return [`${m && m[1].toLowerCase() === "x" ? "☑" : "☐"} ${m ? m[2] : x[0]}`, x[1] ?? "", x.slice(2).join(" | ")];
+      });
+      return r.length ? [{ kind: "table", header: ["Prüfpunkt", "Gilt für", "Wer prüft"], rows: r, widths: [54, 22, 24] }] : [];
+    }
+    case "agxp-okr": {
+      const r: string[][] = [];
+      let obj = "";
+      for (const x of R) {
+        const o = (x[0] ?? "").match(/^(objective|ziel)\s*:\s*(.+)$/i);
+        if (o) { obj = o[2]; continue; }
+        if (x[0] && obj) r.push([r.length && r[r.length - 1][0] === obj ? "" : obj, x[0], x[1] ?? "", x[2] ?? "", x[3] ? `${x[3]} %` : ""]);
+      }
+      return r.length ? [{ kind: "table", header: ["Objective", "Key Result", "Frist", "Verantwortlich", "Fortschritt"], rows: r, widths: [24, 34, 12, 18, 12] }] : [];
+    }
+    case "agxp-debate": {
+      let title = "", pro = "", con = "", choice = "", why = "";
+      for (const l of body.split("\n").map(x => x.trim()).filter(Boolean)) {
+        const t = l.match(/^(entscheidung|decision)\s*:\s*(.+)$/i);
+        if (t) { title = t[2]; continue; }
+        const c = l.split("|").map(x => x.trim());
+        const k = (c[0] ?? "").toLowerCase();
+        if (/^(dafür|daf(ue)r|for|pro)$/.test(k)) pro = items(c.slice(1).join(" | ")).map((s, i) => `${i + 1}. ${s}`).join("\n");
+        else if (/^(dagegen|against|contra)$/.test(k)) con = items(c.slice(1).join(" | ")).map((s, i) => `${i + 1}. ${s}`).join("\n");
+        else if (/^(wahl|entscheidung des nutzers|nutzer|user|choice)$/.test(k)) { choice = c[1] ?? ""; why = c.slice(2).join(" | "); }
+      }
+      return pro && con ? [{ kind: "table", header: ["Entscheidung", "Argumente dafür", "Argumente dagegen", "Entscheidung des Nutzers", "Begründung"],
+        rows: [[title, pro, con, choice || "offen", why]], widths: [18, 26, 26, 15, 15] }] : [];
+    }
+    case "agxp-mock": {
+      const ls = body.split("\n").map(l => l.trim()).filter(Boolean);
+      return ls.length ? [{ kind: "code", text: ls.map(l => (/^->/.test(l) ? `   click → ${l.replace(/^->\s*/, "")}` : `[ ${l.replace(/\s*\*$/, "")}${/\*$/.test(l) ? "  ← Fake Door" : ""} ]`)).join("\n") }] : [];
+    }
     default:
       return [{ kind: "code", text: body.trim() }];
   }

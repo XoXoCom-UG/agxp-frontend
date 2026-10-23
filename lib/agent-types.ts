@@ -35,15 +35,29 @@ export interface TypeTemplate {
 }
 
 /*
- * The consultant types are three (Ana, 2026-10-16): Strategy Consultant,
- * Solution Architect, Change Manager — each with the methods from the method
- * sheet, and each with a document of its own (lib/deliverables.ts). The
- * Digital Transformation Manager is gone; the Change Manager moved here from
- * the coaches, where it had no method set of its own.
+ * The consultant types are nine (Ana, 2026-10-23, "AgxP – Method Groups per
+ * Consultant"): Strategy Consultant, Business Analyst, Digital Transformation
+ * Manager, Data Scientist, Product Manager, Solution Architect, Enterprise
+ * Architect, Startup CTO and Change Manager — each with ALL the methods the
+ * sheet gives it, and each with a document of its own (lib/deliverables.ts).
+ * Before that there were three (2026-10-16); the Digital Transformation
+ * Manager had been dropped and comes back with its old tagline, so agents made
+ * under it find their type again.
  *
- * `primary` is what the type tile and the agent card lead with; the three core
- * methods every type starts with (Knowledge Check, Lexicon, At a Glance) sit in
- * `secondary` so they do not make the types look alike.
+ * `primary` is the sheet's "Primary" methods — what the type tile and the agent
+ * card lead with. The Strategy Consultant keeps the three it led with before
+ * (Build / Buy / Partner is "always" for it, SWOT is what its document is
+ * known for). Everything else — Core, Secondary, Closing, New — sits in
+ * `secondary`, and the three core methods every type starts with (Knowledge
+ * Check, Lexicon, At a Glance) are last so they do not make the types look alike.
+ *
+ * Which methods are primary is a property of the TYPE, not of the method: the
+ * sheet has Stakeholder Map primary for the Change Manager and secondary for
+ * the Digital Transformation Manager, Impact Mapping primary for the Product
+ * Manager and secondary for the Business Analyst, Governance Model primary for
+ * the Enterprise Architect and secondary for the Digital Transformation Manager.
+ * methods.is_primary cannot say that, so listAgents() splits an agent's methods
+ * by its template (lib/agents.ts).
  */
 const CORE = ["Knowledge Check", "Lexicon", "At a Glance"];
 
@@ -52,15 +66,48 @@ export const TYPE_CATALOG: Record<AgentType, TypeTemplate[]> = {
     { id: "strategy", type: "Strategy Consultant", sub: "Strategy & AI transformation", status: "confirmed",
       description: "Where you stand, where you want to be, and whether to build, buy or partner: strategy for AI and IT transformation.",
       primary: ["Gap Analysis + Action Plan", "Build / Buy / Partner Matrix", "SWOT"],
-      secondary: ["Market / Opportunity Gaps", "SMART Goals", ...CORE] },
+      secondary: ["Market / Opportunity Gaps", "Competitor Benchmark", "Scenario Planning", "Future Headline",
+        "Consultant-Coach Debate", "SMART Goals", ...CORE] },
+    { id: "business-analyst", type: "Business Analyst", sub: "Requirements & processes", status: "confirmed",
+      description: "Turns a wish into something buildable: today against target, requirements as user stories, edge cases and a shared definition of done.",
+      primary: ["As-Is / To-Be", "Gap Analysis + Action Plan", "Requirements (User Stories + MoSCoW)"],
+      secondary: ["Impact Mapping", "Process Mapping", "Pain Point Heatmap", "Data Mapping", "Edge Case Hunt",
+        "Definition of Done", "SMART Goals", "Risk Register", ...CORE] },
+    { id: "transformation", type: "Digital Transformation Manager", sub: "Roadmap & adoption", status: "confirmed",
+      description: "Takes an organisation from where it is to AI at work: maturity, which use cases come first, the roadmap, governance and the OKRs that prove it.",
+      primary: ["Capability Maturity", "Use-Case Prioritization", "Roadmap"],
+      secondary: ["Governance Model", "Stakeholder Map", "AI Use-Case Canvas", "Transformation Pulse Check",
+        "Pre-Mortem", "OKRs", "Risk Register", ...CORE] },
+    { id: "data-scientist", type: "Data Scientist", sub: "Data & machine learning", status: "confirmed",
+      description: "From business question to proof of concept: the ML task, whether the data is good enough, the model options and the threshold for a yes.",
+      primary: ["Problem Framing", "Data Readiness", "Model Options"],
+      secondary: ["Root Cause Analysis (5 Whys)", "Label Audit", "Human-in-the-Loop Design", "Model Card",
+        "Evaluation Metrics", "PoC Experiment Plan", "Risk Register", ...CORE] },
+    { id: "product", type: "Product Manager", sub: "Product & users", status: "confirmed",
+      description: "Who the product is for, what the first release contains and what stays out, and which assumptions to test before building.",
+      primary: ["Personas", "Impact Mapping", "MVP Scope (MoSCoW)"],
+      secondary: ["User Journey", "A/B Test Plan", "Jobs-to-be-Done", "Feature Kill List", "Fake Door Test",
+        "Retention Hook Map", "Future Headline", "OKRs", "Assumption Tests", ...CORE] },
     { id: "architect", type: "Solution Architect", sub: "Systems & integration", status: "confirmed",
       description: "Designs the system behind the idea: components, technology choices, data and ML pipeline, infrastructure and cost.",
       primary: ["Architecture Overview", "Tech Stack Decisions (ADR)", "Non-Functional Requirements"],
-      secondary: ["Data & ML Pipeline", "Infrastructure Plan", "Cost Model (TCO)", "Risk Register", ...CORE] },
+      secondary: ["Data & ML Pipeline", "Infrastructure Plan", "Failure Mode Walkthrough", "Vendor Lock-in Check",
+        "Load Story", "Consultant-Coach Debate", "Cost Model (TCO)", "Risk Register", ...CORE] },
+    { id: "enterprise", type: "Enterprise Architect", sub: "Enterprise IT & governance", status: "confirmed",
+      description: "Fits an AI use case into the company: the systems it touches, the integrations, the rules, compliance and what changes for whom.",
+      primary: ["IT Landscape", "Integration Blueprint", "Governance Model"],
+      secondary: ["Compliance Check", "AI Model Register", "Shadow AI Scan", "Data Lineage Map", "Change Impact",
+        "Risk Register", ...CORE] },
+    { id: "startup-cto", type: "Startup CTO", sub: "Startup tech & shipping", status: "confirmed",
+      description: "The leanest way to a first user: the business model, the smallest loop worth shipping, a stack that is cheap to leave, and the signals to pivot.",
+      primary: ["Lean Canvas", "MVP Core Loop", "Lean Tech Stack"],
+      secondary: ["Team Setup", "Pivot Triggers", "Weekly Ship Log", "Hiring Scorecard", "Pre-Mortem",
+        "Build-Measure-Learn Milestones", "Tech Debt Log", ...CORE] },
     { id: "change", type: "Change Manager", sub: "Change & adoption", status: "confirmed",
-      description: "Plans the human side of the change: who is affected, what they need to learn, and how adoption is measured.",
+      description: "Plans the human side of the change: who is affected, what they need to learn, how fears are answered and how adoption is measured.",
       primary: ["Stakeholder Map", "Skill-Gap Analysis", "ADKAR Assessment"],
-      secondary: ["Role Matrix", "Training & Communication Plan", "Adoption KPIs", ...CORE] },
+      secondary: ["Role Matrix", "Fear & Myth Board", "Champion Network", "Win Wall",
+        "Training & Communication Plan", "Adoption KPIs", ...CORE] },
   ],
   coach: [
     { id: "analyst", type: "AI Business Analyst", sub: "Process & requirements", status: "confirmed",
@@ -93,7 +140,7 @@ export function typesFor(role: AgentType, plan?: Pick<Plan, "agentTypes">): Type
  */
 const same = (a: string | null | undefined, b: string) => (a ?? "").trim().toLowerCase() === b.toLowerCase();
 
-export function templateFor(agent: Agent): TypeTemplate | null {
+export function templateFor(agent: Pick<Agent, "type" | "tagline">): TypeTemplate | null {
   return TYPE_CATALOG[agent.type].find(t => same(agent.tagline, t.sub)) ?? null;
 }
 

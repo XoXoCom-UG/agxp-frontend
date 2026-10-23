@@ -22,6 +22,12 @@
  * — never as decoration.
  */
 
+// The method sheet's pictures live in two files: the ones that need coordinates
+// (quadrant, graph, sequence) and the ones that are layouts. Relative with the
+// extension, like markdown.ts: node's test runner loads this file directly.
+import { quadrant, graph, sequence } from "./doc-diagrams.ts";
+import { journey, gantt, timeline, moscow, cards, canvas, checklist, okr, debate, mock } from "./doc-layouts.ts";
+
 /** Pipe-separated rows, empty cells and blank lines dropped. */
 function rows(body: string): string[][] {
   return body
@@ -425,6 +431,20 @@ const RENDERERS: Record<string, (body: string) => string> = {
   "agxp-glance": glance,
   "agxp-diff": diff,
   "agxp-swot": swot,
+  // Added with the method sheet of 2026-10-23.
+  "agxp-quadrant": quadrant,
+  "agxp-graph": graph,
+  "agxp-sequence": sequence,
+  "agxp-journey": journey,
+  "agxp-gantt": gantt,
+  "agxp-timeline": timeline,
+  "agxp-moscow": moscow,
+  "agxp-cards": cards,
+  "agxp-canvas": canvas,
+  "agxp-checklist": checklist,
+  "agxp-okr": okr,
+  "agxp-debate": debate,
+  "agxp-mock": mock,
 };
 
 /** Every block type the agent may use, for the system prompt. */

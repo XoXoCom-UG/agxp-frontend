@@ -1,4 +1,17 @@
 import type { AgentType } from "@/lib/agents";
+// Relative and with the extension: scripts/testfaelle.mjs loads this through
+// agent-prompt.ts with plain node, which knows neither the alias nor a missing
+// extension. Type-only imports are erased, so they could stay aliased.
+import {
+  knowledgeCheck, SEC_LEVEL, SEC_LEXICON, SEC_SUMMARY, SEC_NEXT_STEPS, glanceSection, TABLE_RULE, TABLE_LEAD, promptsFor,
+  type Station, type DocSection, type Deliverable,
+} from "./deliverable-parts.ts";
+
+import * as M from "./method-library.ts";
+import { visualSpecsFor } from "./visual-specs.ts";
+import { SHEET_DELIVERABLES } from "./consultant-documents.ts";
+
+export type { Station, DocSection, Deliverable };
 
 /**
  * deliverables.ts — the single source of truth for what each panel is working
@@ -9,35 +22,6 @@ import type { AgentType } from "@/lib/agents";
  * number of segments on screen can never drift apart.
  */
 
-/** One stop of the interview — the agent stays here until it really understands it. */
-export interface Station {
-  /** Short label for the progress rail. The UI is English throughout. */
-  label: string;
-  /** What the agent has to find out here — goes verbatim into the system prompt. */
-  goal: string;
-  /** What happens at this stop, in a line the user can read beside the step.
-   *  Shown in the Methods panel; never sent to the model. */
-  note?: string;
-}
-
-/** One `##` section of the finished document, with what it has to contain. */
-export interface DocSection {
-  title: string;
-  must: string;
-}
-
-export interface Deliverable {
-  /** Document title, also the marker value: [[DOC: Transformation Concept]]. */
-  title: string;
-  /** One line under the title, in the document header. */
-  subtitle: string;
-  stations: Station[];
-  sections: DocSection[];
-  /** What the rail's generate button sends as the user's message. */
-  generatePrompt: string;
-  /** Same, for a full rebuild once a version already exists. */
-  regeneratePrompt: string;
-}
 
 /**
  * The graphics vocabulary. The renderer for these lives in lib/doc-visuals.ts
@@ -143,91 +127,21 @@ export function isDeliverableCommand(text: string): boolean {
 
    One document per consultant type, each built from the methods of the method
    sheet — the stations are the questions those methods need answered, the
-   sections are their outputs, column for column. Anything the sheet marks as
-   not yet wanted (Competitor Benchmark, Scenario Planning, Future Headline,
-   Consultant-Coach Debate; the "New" methods of the Change Manager and of the
-   Solution Architect) is deliberately not here.
+   sections are their outputs, column for column.
+
+   Ana, 2026-10-23: the sheet now has nine types and ALL their methods, the
+   "New" ones included (Competitor Benchmark, Scenario Planning, Future
+   Headline, Consultant-Coach Debate, Failure Mode Walkthrough, Vendor Lock-in
+   Check, Load Story, Fear & Myth Board, Champion Network, Win Wall). The first
+   three types below keep everything they already had and gained those; the
+   other six are built from the sheet alone in lib/consultant-documents.ts, with
+   the methods they share in lib/method-library.ts.
 
    The three methods every type starts with — Knowledge Check, Lexicon, At a
    Glance — are shared; everything else is the type's own.
    --------------------------------------------------------------------------- */
 
-/** The Knowledge Check, as a station: three questions, one per answer. */
-const knowledgeCheck = (topic: string, terms: string, ask3: string): Station => ({
-  label: "Knowledge check",
-  note: "Three quick questions set the level of everything after.",
-  goal:
-    `Wissens-Check, bevor es inhaltlich losgeht: DREI kurze Multiple-Choice-Fragen zum Thema ${topic}, ` +
-    `eine pro Antwort, jede mit CHOICES. Frage 1: bisherige Erfahrung (noch nie / einmal / mehrmals). ` +
-    `Frage 2: welche Begriffe der Nutzer kennt (${terms}, keinen davon) — diese Frage MIT CHOICES+, ` +
-    `weil mehrere Begriffe gleichzeitig bekannt sein können. Frage 3: ${ask3}. Danach stufst ` +
-    `du ein — Einsteiger, Fortgeschritten oder Experte —, sagst die Stufe in EINEM Satz mit dem Grund ` +
-    `und merkst sie dir: sie bestimmt Wortwahl, Länge des Lexikons und die Zahl der Nachfragen für den ` +
-    `Rest des Gesprächs. Einsteiger bekommen kürzere Fragen und mehr Erklärung, Experten weniger.`,
-});
 
-const SEC_LEVEL: DocSection = {
-  title: "Wissensstand",
-  must:
-    "Ein `agxp-level` Block mit genau einer Zeile: die Stufe (`Einsteiger`, `Fortgeschritten` oder " +
-    "`Experte`) und der Grund in einem Satz — aus den drei Fragen des Wissens-Checks. Danach genau " +
-    "1 Bullet: wie dieser Stand Wortwahl, Länge des Lexikons und Tiefe der Sektionen bestimmt hat.",
-};
-
-// Agreed with Patryk on 2026-10-02. The Lexicon comes first because the first
-// thing separating a beginner from an expert is the vocabulary (00:22:22), and
-// the whole concept is unreadable until that is fixed.
-const SEC_LEXICON: DocSection = {
-  title: "Lexikon",
-  must:
-    "Ein `agxp-lexicon` Block mit JEDEM Fachbegriff und Fremdwort, das weiter unten im Dokument " +
-    "vorkommt, nach Thema geclustert; jedes Thema bekommt zusätzlich eine eigene Zeile " +
-    "`Thema | * | Erklärung`, die in einem Satz sagt, was das Thema bedeutet. Die Länge richtet sich " +
-    "nach dem Wissensstand: Einsteiger bekommen jeden Begriff, Experten nur das Neue oder Fachfremde. " +
-    "Davor genau 2 Bullets: die Geschäftshypothese (der Mehrwert in einem Satz) und wofür das Ganze " +
-    "verwendet wird (was wofür eingesetzt wird).",
-};
-
-// Patryk, 2026-10-09: "das ist keine Management Summary, sondern eine Abfolge
-// der Todos". A summary says what is done, why, and what it is worth — in that
-// order, and short enough to read standing up. Ana, 2026-10-16: better
-// structured, so it is labelled rows instead of one block of prose. Patryk's
-// definition (09.10, 00:43:04) has five parts: what, why, the value expected,
-// the biggest risk and the biggest potential — so five rows.
-const SEC_SUMMARY: DocSection = {
-  title: "Management Summary",
-  must:
-    "Ein `agxp-summary` Block mit genau fünf Zeilen, in dieser Reihenfolge, und sonst nichts — kein " +
-    "Bullet, kein fetter Satz, keine eigene Überschrift darunter. Zeile `Was`: WAS getan wird, in " +
-    "zwei bis drei Sätzen. Zeile `Warum`: WARUM es getan wird — was der heutige Zustand kostet, mit " +
-    "Zahl, in ein bis zwei Sätzen. Zeile `Mehrwert`: welcher MEHRWERT erwartet wird, wenn möglich " +
-    "beziffert, in ein bis zwei Sätzen. Zeile `Risiko`: das EINE größte Risiko, das dieses Vorhaben " +
-    "zum Scheitern bringen kann, in einem Satz, konkret für diesen Fall und nicht allgemein (kein " +
-    "\"mangelnde Akzeptanz\" ohne zu sagen, wer was nicht mittragen würde). Zeile `Potenzial`: das EINE " +
-    "größte Potenzial, das über das Ziel hinausgeht — was sich aus dem Erreichten noch machen ließe, in " +
-    "einem Satz. Risiko und Potenzial sind je EIN Punkt, keine Aufzählung. KEINE Aufzählung der " +
-    "Maßnahmen und KEINE Liste von To-dos — die stehen weiter unten; hier steht der Zusammenhang, dort " +
-    "stehen die Belege. Wiederhole keine Zahlen, die in den folgenden Sektionen schon als Grafik stehen.",
-};
-
-// The closing section every consultant document has: what happens next, by
-// whom, by when. Three bullets, because a list of ten is a list nobody starts.
-const SEC_NEXT_STEPS: DocSection = {
-  title: "Nächste Schritte",
-  must: "Genau 3 Bullets, jedes mit Verantwortlichem, Termin und dem, was danach entschieden werden kann. Kein Visual.",
-};
-
-const glanceSection = (extraRow: string, knowledgeLabel: string): DocSection => ({
-  title: "Auf einen Blick",
-  must:
-    `Ein \`agxp-glance\` Block mit genau diesen Zeilen: Kernproblem, Beschreibung, ${knowledgeLabel}, ` +
-    `Empfohlene Richtung, ${extraRow}. Danach ein \`agxp-kpi\` Block mit 4 Kennzahlen aus dem Gespräch ` +
-    `(die wichtigsten Eckdaten: Personen, Zeit, Budget, Zielwert). Keine Bullets.`,
-});
-
-const TABLE_RULE =
-  "eine normale Markdown-Tabelle mit GENAU diesen Spaltenüberschriften in dieser Reihenfolge";
-const TABLE_LEAD = `E${TABLE_RULE.slice(1)}`;
 
 /**
  * One sentence under the title of the Methods panel, before the document
@@ -246,18 +160,6 @@ export function introFor(d: Pick<Deliverable, "title" | "subtitle">, asker = "Yo
   return `${asker} asks the questions below, one at a time. Your answers build the ${d.title}: ${lower}.`;
 }
 
-/** The prompts that start and redo the document — same shape for every type. */
-const promptsFor = (title: string, filledWith: string) => ({
-  generatePrompt:
-    `Create the complete ${title} now, based on our whole conversation. ` +
-    `Graphics and bullets only — no paragraphs: every section leads with its visual block or table, ` +
-    `filled with ${filledWith} we discussed. ` +
-    `Answer in the language we have been speaking.`,
-  regeneratePrompt:
-    `Rebuild the complete ${title} from scratch, sharper than the last version: ` +
-    `every block and table filled with the real ${filledWith} from our conversation, and no ` +
-    `paragraphs. Answer in the language we have been speaking.`,
-});
 
 /* --- Strategy Consultant: the Transformation Concept ----------------------
 
@@ -270,6 +172,11 @@ const promptsFor = (title: string, filledWith: string) => ({
    ce nu era sau daca era sa fie imbunatatit".
    --------------------------------------------------------------------------- */
 
+const headlineStrategy = M.futureHeadline("SMART-Ziele");
+const competitors = M.competitorBenchmark();
+const scenarios = M.scenarioPlanning();
+const debateStrategy = M.debate();
+
 const STRATEGY: Deliverable = {
   title: "Transformation Concept",
   subtitle: "Where you stand today, where you want to be, and how to get there.",
@@ -279,6 +186,7 @@ const STRATEGY: Deliverable = {
       "Gap-Analyse, SWOT, Build-or-Buy, SMART-Ziele",
       "wie viel Zeit der Nutzer hat (unter 1 Monat / 1-3 Monate / mehr)",
     ),
+    headlineStrategy.station,
     { label: "Starting point", note: "What this is about, and why now.", goal: "Worum geht es überhaupt? Branche, Unternehmensgröße, Auslöser für das Projekt, wer fragt an und warum jetzt. Daraus entstehen das Kernproblem in einem Satz, die Beschreibung, das benötigte Wissen bzw. die Technologien und die Eckdaten (Personen, Zeit, Budget)." },
     { label: "Current process", note: "How the work runs today, step by step.", goal: "Der Ist-Prozess Schritt für Schritt: was passiert zuerst, was danach, wo wird gewartet, was ist manuell." },
     { label: "People & systems", note: "Who does it, with which tools and data.", goal: "Wer macht diese Arbeit heute (Rollen, Anzahl Personen), mit welchen Tools/Systemen, wo liegen die Daten und in welchem Format." },
@@ -287,7 +195,10 @@ const STRATEGY: Deliverable = {
     { label: "Constraints", note: "Budget, time, IT and compliance limits.", goal: "Budgetrahmen, Zeitrahmen, IT-Landschaft, Datenschutz/Compliance, interne Ressourcen, bestehende Verträge." },
     { label: "Gaps & actions", note: "The distance between today and the goal, and what closes it.", goal: "Gap-Analyse: Frag nur so viel nach, bis du die 2-3 Dimensionen kennst, die dem Nutzer wichtig sind (Ziele, Reifegrad, Fähigkeiten und Skills, Technologien, Menschen, sonstige Ressourcen). Je Dimension: heute, Ziel, Lücke — und danach die Maßnahmen, nach Priorität geordnet. Vieles weißt du schon aus den Stationen davor: fasse es zusammen und frag nur nach, was fehlt." },
     { label: "Market & opportunity", note: "What the market would reward. Skipped if you are not selling.", goal: "NUR wenn der Nutzer veröffentlichen oder verkaufen will — sonst sag in einem Satz, dass du diese Station überspringst, und geh weiter. Beschreibe die heutige Marktlage, benenne das POTENZIAL (was der Markt belohnen würde, nicht was sich der Nutzer wünscht), leite daraus Lücke und Maßnahme ab." },
+    competitors.station,
     { label: "Build, buy or partner", note: "Per capability: make it, buy it or share it.", goal: "Welche Fähigkeiten braucht das Vorhaben? Liste sie auf und bewerte je Fähigkeit Selbstbauen, Kaufen und Partnerschaft nach Kosten, Zeit und Kontrolle. Dann eine Empfehlung je Fähigkeit: Standardbausteine kauft man, was das Vorhaben besonders macht, baut man selbst." },
+    debateStrategy.station,
+    scenarios.station,
     { label: "Success metrics", note: "Goals rewritten until a yes or no can check them.", goal: "Woran würde man in 6 Monaten merken, dass es funktioniert hat? Messbare Kennzahlen, Ausgangswert und Zielwert. Schreib jedes Ziel gemeinsam mit dem Nutzer um, bis es sich mit Ja oder Nein prüfen lässt (SMART), und ergänze Frist und Messung: woran, bis wann, wer prüft." },
     { label: "Risks & dependencies", note: "What could stop it, and who has to approve.", goal: "Was könnte das Projekt zum Scheitern bringen, welche Entscheidungen/Freigaben hängen an anderen Personen." },
   ],
@@ -296,6 +207,7 @@ const STRATEGY: Deliverable = {
     SEC_LEXICON,
     SEC_SUMMARY,
     glanceSection("Strategische Option (Build / Buy / Partner)", "Benötigtes Wissen und Technologien"),
+    headlineStrategy.section,
     { title: "Prozess: heute und morgen", must: "Ein `agxp-flow` Block mit je 4-6 Schritten in as-is und to-be (`*` an jedem automatisierten Schritt), danach 3-5 Bullets zu den Unterschieden." },
     {
       title: "Gap-Analyse und Aktionsplan",
@@ -322,6 +234,7 @@ const STRATEGY: Deliverable = {
         "schreib genau einen Satz: dass dafür die Angaben fehlen oder das Vorhaben nicht für den Markt " +
         "gedacht ist. Erfinde keine Marktchance.",
     },
+    competitors.section,
     {
       title: "Build / Buy / Partner",
       must:
@@ -333,6 +246,7 @@ const STRATEGY: Deliverable = {
         "(dann selbst bauen). Danach 2-4 Bullets: was man sich mit der Empfehlung einhandelt und wann sie kippt.",
     },
     { title: "Tools und Technologien", must: "Eine Tabelle mit 3-5 namentlich benannten Optionen: Tool | Passt weil | Pro | Contra | Aufwand. Danach eine begründete Empfehlung in 3-4 Bullets: welche Option, warum gerade diese gegen die zweitbeste, was man sich damit einhandelt, und unter welcher Bedingung die Empfehlung kippt. Das ist die Wahl des konkreten Tools — ob man etwas baut, kauft oder einen Partner nimmt, steht schon in Build / Buy / Partner; wiederhole es nicht, sondern bau darauf auf." },
+    debateStrategy.section,
     {
       title: "SMART-Ziele",
       must:
@@ -348,6 +262,7 @@ const STRATEGY: Deliverable = {
         "Unternehmen, und jeder Punkt hängt an einer Lücke oder einem Ziel aus den Methoden davor. " +
         "Danach genau 1 Bullet: welche Schwäche zuerst angegangen wird.",
     },
+    scenarios.section,
     { title: "Maßnahmen", must: "Ein `agxp-roadmap` Block mit 3 Phasen und je 2-3 Maßnahmen, nach Priorität geordnet. Nimm dafür die priorisierten Aktionspläne aus der Gap-Analyse und die Empfehlungen aus Build / Buy / Partner auf und ordne sie in Phasen — erfinde keine zweite, davon abweichende Liste. Danach pro Maßnahme ein Bullet mit Verantwortlichem, Aufwand und der Abhängigkeit, die sie blockieren könnte — und ein letztes Bullet dazu, was die erste Phase unbrauchbar machen würde." },
     { title: "Erfolgsmessung", must: "Ein `agxp-gap` Block mit den Kennzahlen (heute vs. Ziel), danach pro Kennzahl ein Bullet: wie und wann gemessen. Die Kennzahlen sind dieselben wie in den SMART-Zielen, nur als Zahl gegen Zahl gezeichnet." },
     { title: "Risiken", must: "Ein `agxp-risks` Block mit 3-5 Risiken — die Gegenmaßnahme steht IM Block, in der vierten Spalte. Wiederhole sie danach NICHT als Bullet; jeder Risikoname stünde sonst zweimal auf der Seite. Die Bullets darunter sagen etwas Neues: welches Risiko zuerst adressiert wird und warum, und welche zwei Risiken zusammen eintreten würden." },
@@ -357,6 +272,11 @@ const STRATEGY: Deliverable = {
 };
 
 /* --- Solution Architect: the Architecture Blueprint ----------------------- */
+
+const failures = M.failureModes();
+const lockIn = M.vendorLockIn();
+const load = M.loadStory();
+const debateArchitect = M.debate();
 
 const ARCHITECT: Deliverable = {
   title: "Architecture Blueprint",
@@ -373,6 +293,10 @@ const ARCHITECT: Deliverable = {
     { label: "Quality requirements", note: "Speed, scale, security and uptime as numbers.", goal: "Nichtfunktionale Anforderungen: Welche Qualität erwartet der Nutzer bei Geschwindigkeit, Skalierung, Sicherheit und Verfügbarkeit? Mach jede messbar (\"unter 2 s auf 4G\", \"100 Räume parallel\") und gib die Antwort des Designs darauf." },
     { label: "Data & ML pipeline", note: "How data becomes a served model. Only if you train one.", goal: "Falls ein Modell trainiert oder produktiv betrieben wird: die Stufen Daten holen, aufbereiten, trainieren, ausliefern (Model Serving) und überwachen (inkl. Drift und Neu-Training) — je Stufe Tool, Frequenz und Verantwortlicher. Ohne Modell: der Datenfluss von der Quelle bis zur Auslieferung. Frag ausdrücklich, wer Monitoring und Data Governance übernimmt." },
     { label: "Infrastructure", note: "Cloud, on-premises or both, layer by layer.", goal: "Infrastruktur-Plan: Cloud, On-Prem oder Hybrid — für Hosting, Daten und Modell-Betrieb einzeln. Container und Orchestrierung (Docker, Kubernetes) ja oder nein, welche Umgebungen (Entwicklung, Test, Produktion), wer betreibt es, wie wird es abgesichert." },
+    failures.station,
+    lockIn.station,
+    load.station,
+    debateArchitect.station,
     { label: "Costs & timeline", note: "One-time and monthly costs, and when they fall.", goal: "Kostenmodell (TCO): Welche Kostenpositionen gibt es, einmalig und monatlich — Hosting, Dienste und Lizenzen, Training und Betrieb, und die Arbeitszeit der Menschen. Frag nach Annahmen und halte sie fest. Danach der Zeitrahmen: bis wann soll was laufen, wer baut und betreibt es, welche Freigaben hängen an anderen Personen — daraus entstehen Maßnahmen und nächste Schritte." },
   ],
   sections: [
@@ -383,7 +307,8 @@ const ARCHITECT: Deliverable = {
     {
       title: "Architektur-Überblick",
       must:
-        `${TABLE_LEAD}: Komponente | Verantwortung | Technologie | Spricht mit. ` +
+        `Davor ein \`agxp-graph\` Block: jede Komponente ein Knoten (Datenbanken als \`db\`, Modelle als \`model\`, externe ` +
+        `Dienste mit \`muted\`), die Kanten mit dem Protokoll oder Datenfluss beschriftet. ${TABLE_LEAD}: Komponente | Verantwortung | Technologie | Spricht mit. ` +
         "Eine Zeile je Komponente (4-8), `Spricht mit` nennt die verbundenen Komponenten beim Namen. " +
         "Danach ein Bullet je Hauptdatenfluss (z. B. \"Anfrage → Gateway → Modell-Service → Datenbank\") " +
         "und ein Bullet zum Architekturstil: warum dieser und nicht der nächste.",
@@ -408,7 +333,8 @@ const ARCHITECT: Deliverable = {
     {
       title: "Daten- & ML-Pipeline",
       must:
-        `${TABLE_LEAD}: Stufe | Tool | Frequenz | Verantwortlich. ` +
+        `Davor ein \`agxp-graph\` Block: die Stufen als Kette (Daten holen → Aufbereiten → Trainieren → Ausliefern → Überwachen), ` +
+        `und der Auslöser fürs Neu-Trainieren als Kante zurück zum Training (\`drift\`). ${TABLE_LEAD}: Stufe | Tool | Frequenz | Verantwortlich. ` +
         "Wenn ein Modell trainiert oder betrieben wird: mindestens die Stufen Daten holen, Aufbereiten, " +
         "Trainieren, Ausliefern (Model Serving), Überwachen (Drift) und Neu trainieren (mit Auslöser), " +
         "dazu eine Zeile Governance. Ohne Modell: nur der Datenfluss von der Quelle bis zur Auslieferung, " +
@@ -424,6 +350,10 @@ const ARCHITECT: Deliverable = {
         "`On-Prem` oder `Hybrid`. Container und Orchestrierung (Docker, Kubernetes) stehen in `Technologie`, " +
         "wenn sie gewählt wurden. Danach höchstens 3 Bullets: was bei einem Anbieterwechsel zu ändern wäre.",
     },
+    failures.section,
+    lockIn.section,
+    load.section,
+    debateArchitect.section,
     {
       title: "Kostenmodell (TCO)",
       must:
@@ -458,6 +388,10 @@ const ARCHITECT: Deliverable = {
 
 /* --- Change Manager: the Adoption Plan ------------------------------------ */
 
+const fears = M.fearMythBoard();
+const champions = M.championNetwork();
+const wins = M.winWall();
+
 const CHANGE: Deliverable = {
   title: "Adoption Plan",
   subtitle: "Who is affected, what they need, and how you will know the change is actually used.",
@@ -472,6 +406,9 @@ const CHANGE: Deliverable = {
     { label: "Roles", note: "How tasks change. Skipped if they do not.", goal: "Rollen-Matrix: NUR wenn sich Aufgaben oder Verantwortung ändern — sonst sag in einem Satz, dass du die Station überspringst. Welche Rollen sind betroffen, wie sieht die Arbeit heute aus, wie danach, und was bleibt gleich? Gerade das Gleichbleibende nimmt die Angst." },
     { label: "Skills", note: "What each group has to learn.", goal: "Fähigkeitslücken: Welche Gruppen sind betroffen? Je Gruppe höchstens 3 arbeitsbezogene Fähigkeiten. Für jede heute und Ziel auf einer Skala von 1 bis 5, dann das Lernformat (Hands-on-Workshop, Coaching, Merkblatt, Herstellerschulung)." },
     { label: "Readiness (ADKAR)", note: "Where the change gets stuck, group by group.", goal: "ADKAR-Einschätzung: Je Gruppe die fünf Stufen Awareness, Desire, Knowledge, Ability, Reinforcement mit 1 bis 5 bewerten. Finde die ERSTE Stufe unter 3 — dort stockt die Veränderung — und ordne nur an dieser Stufe eine Maßnahme zu." },
+    fears.station,
+    champions.station,
+    wins.station,
     { label: "Training & communication", note: "Who hears what, when, and from whom.", goal: "Schulungs- und Kommunikationsplan: Reihenfolge Warum, Wie, Ergebnisse — erst kommunizieren, vor dem Go-live schulen, danach Ergebnisse teilen. Je Schritt Zeitpunkt, Gruppe, Botschaft oder Schulung, Kanal und Verantwortlicher." },
     { label: "Adoption KPIs", note: "How you will see that it is really used.", goal: "Adoptions-KPIs: Woran sieht man, dass die Veränderung wirklich genutzt wird? Nutzung messen, nicht Schulungsteilnahme. Je KPI Zielwert, wie gemessen und bis wann." },
   ],
@@ -483,7 +420,8 @@ const CHANGE: Deliverable = {
     {
       title: "Stakeholder-Landkarte",
       must:
-        `${TABLE_LEAD}: Gruppe | Größe | Interesse | Einfluss | Haltung | Einbindung. ` +
+        `Davor ein \`agxp-quadrant\` Block: Interesse auf der x-Achse, Einfluss auf der y-Achse, jede Gruppe ein Punkt (0-100), ` +
+        `die Felder \`Beobachten | Informieren | Zufrieden halten | Eng einbinden\`. ${TABLE_LEAD}: Gruppe | Größe | Interesse | Einfluss | Haltung | Einbindung. ` +
         "Eine Zeile je betroffener Gruppe. Interesse und Einfluss sind `gering`, `mittel` oder `hoch`; Haltung " +
         "ist `Unterstützer`, `neutral` oder `skeptisch`. `Einbindung` beginnt mit dem Feld, in das die Gruppe " +
         "fällt — `Eng einbinden` (hoher Einfluss, hohes Interesse), `Zufrieden halten` (hoher Einfluss, " +
@@ -516,9 +454,13 @@ const CHANGE: Deliverable = {
         "was gleich bleibt. Ändert sich nichts an den Rollen, lass die Tabelle weg und schreib genau einen " +
         "Satz dazu.",
     },
+    fears.section,
+    champions.section,
+    wins.section,
     {
       title: "Schulungs- und Kommunikationsplan",
       must:
+        `Davor ein \`agxp-timeline\` Block mit denselben Zeilen (\`Wann | Gruppe | Botschaft / Schulung | Kanal | Verantwortlich\`). ` +
         `${TABLE_LEAD}: Wann | Gruppe | Botschaft / Schulung | Kanal | Verantwortlich. ` +
         "Chronologisch und in dieser Logik: erst kommunizieren (Warum, Wie), vor dem Go-live schulen, " +
         "danach Ergebnisse teilen. 3-6 Zeilen. Danach höchstens 3 Bullets: was passiert, wenn die erste " +
@@ -551,6 +493,7 @@ const CHANGE: Deliverable = {
 /** The consultant types' documents, by TYPE_CATALOG id (lib/agent-types.ts). */
 export const CONSULTANT_DELIVERABLES: Record<string, Deliverable> = {
   strategy: STRATEGY,
+  ...SHEET_DELIVERABLES,
   architect: ARCHITECT,
   change: CHANGE,
 };
@@ -688,6 +631,7 @@ WICHTIG — dieser Nutzer ist auf der kostenlosen Stufe: Das Interview endet nac
     `KOMPLETTE Dokument neu (wieder mit Marker) — niemals nur die geänderte Sektion, niemals ` +
     `"hier der angepasste Abschnitt".` +
     VISUAL_SPEC +
+    visualSpecsFor(sections) +
     `\n\nAufbau des Dokuments: "# ${d.title}" als Titel, danach genau diese Sektionen als ` +
     `"##"-Überschriften, in dieser Reihenfolge:\n${sections}\n\n` +
     // The 2026-09-09 rule was "graphics, barely any words", because the

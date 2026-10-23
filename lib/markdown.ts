@@ -11,6 +11,7 @@
 // (lib/markdown.test.ts) and knows nothing about the "@/" alias.
 import { renderDocVisual } from "./doc-visuals.ts";
 import { iconSvg } from "./icon-paths.ts";
+import { cellMarkup, headerClass } from "./table-cells.ts";
 
 function escapeHtml(t: string): string {
   return t
@@ -219,13 +220,18 @@ function renderTable(rows: string[]): string {
   const dataRows = rows.filter(r => !isSep(r) && r.trim());
   if (!dataRows.length) return "";
   const [head, ...body] = dataRows;
-  const ths = parseRow(head).map(h =>
-    `<th>${inlineFmt(h)}</th>`
-  ).join("");
+  const headers = parseRow(head);
+  const ths = headers.map(h => {
+    const cls = headerClass(h);
+    return `<th${cls ? ` class="${cls}"` : ""}>${inlineFmt(h)}</th>`;
+  }).join("");
   const trs = body.map(r => {
-    const tds = parseRow(r).map(c =>
-      `<td>${inlineFmt(c)}</td>`
-    ).join("");
+    // A cell that is a mark the method sheet draws (a dot, a tick, squares, a bar) becomes
+    // that mark; every other cell is text.
+    const tds = parseRow(r).map((c, i) => {
+      const mark = cellMarkup(c, headers[i] ?? "");
+      return mark ? `<td class="has-mark">${mark}</td>` : `<td>${inlineFmt(c)}</td>`;
+    }).join("");
     return `<tr>${tds}</tr>`;
   }).join("");
   return `<div class="md-table"><table><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table></div>`;
@@ -313,6 +319,18 @@ export function md(raw: string): string {
         i++;
       }
       out.push(`<ol class="md-ol">${items.join("")}</ol>`);
+      continue;
+    }
+
+    // Quote: the headline of a Future Headline, the sentence of a Pre-Mortem.
+    // The text is escaped already, so the marker is `&gt;`.
+    if (/^&gt;\s?/.test(trimmed)) {
+      const quoted: string[] = [];
+      while (i < lines.length && /^&gt;\s?/.test(lines[i].trim())) {
+        quoted.push(lines[i].trim().replace(/^&gt;\s?/, ""));
+        i++;
+      }
+      out.push(`<blockquote class="md-quote">${inlineFmt(quoted.join(" "))}</blockquote>`);
       continue;
     }
 

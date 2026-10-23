@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Familjen_Grotesk, IBM_Plex_Mono, Schibsted_Grotesk } from "next/font/google";
 import "./globals.css";
 import "./agxp-design.css";
+import "./doc-visuals.css";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { AuthProvider } from "@/lib/auth-context";
 import { CookieBanner } from "@/components/layout/cookie-banner";
