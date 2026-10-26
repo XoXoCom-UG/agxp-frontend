@@ -27,7 +27,7 @@ jobs:
     steps:
       # v5, not v4: GitHub now forces v4 actions onto Node 24, which they
       # were not built for. The v5 line targets it properly.
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v5
         with:
