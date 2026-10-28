@@ -81,7 +81,10 @@ export default function DatenschutzPage() {
           geöffneten Projekts (höchstens 100.000 Zeichen). Ohne Häkchen wird nichts aus deinen
           Gesprächen gelesen oder gesendet. Markierst du dein Feedback als schwerwiegendes
           Problem, senden wir deine Nachricht (nie die Gespräche) zusätzlich per E-Mail an
-          zwei Mitglieder unseres Teams; der Versand läuft über Resend (Abschnitt 4).</p>
+          zwei Mitglieder unseres Teams; der Versand läuft über Resend (Abschnitt 4). Um das
+          Feedback nach Dringlichkeit zu ordnen, wird deine Nachricht (nie die Gespräche) an
+          ein Sprachmodell von Anthropic gesendet, das sie in vier Stufen einordnet; die Stufe
+          und eine Begründung in einem Satz speichern wir beim Feedback.</p>
         <p>• Technische Daten: für Betrieb und Sicherheit notwendige Log- und
           Verbindungsdaten.</p>
       </LegalSection>

@@ -85,15 +85,20 @@ function FeedbackDialog({ onClose }: { onClose: () => void }) {
                 <small>Something is broken or blocks you. The team gets an email right away.</small>
               </span>
             </label>
-            {projectId && (
-              <label className="fb-check">
-                <input type="checkbox" checked={withChat} onChange={e => setWithChat(e.target.checked)} />
-                <span>
-                  <strong>Send this project&rsquo;s conversation too</strong>
-                  <small>Both chats, so the team can see what happened. They may contain business details.</small>
-                </span>
-              </label>
-            )}
+            {/* Always drawn, so it is clear the choice exists; with no project open
+                there is nothing to attach and it says so instead of vanishing. */}
+            <label className={`fb-check${projectId ? "" : " is-off"}`}>
+              <input type="checkbox" checked={projectId ? withChat : false} disabled={!projectId}
+                onChange={e => setWithChat(e.target.checked)} />
+              <span>
+                <strong>Send this project&rsquo;s conversation too</strong>
+                <small>
+                  {projectId
+                    ? "Both chats, so the team can see what happened. They may contain business details."
+                    : "Open a project first: there is no conversation to send from here."}
+                </small>
+              </span>
+            </label>
             <p className="report-hint">
               {withChat
                 ? "Sent to the AgentiX team: your message and both conversations of this project."

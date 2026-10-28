@@ -66,19 +66,24 @@ export async function sendFeedback(f: {
     throw new Error("The feedback couldn't be sent. Try again in a moment.");
   }
 
-  if (f.serious) {
-    try {
-      const { data } = await db.auth.getSession();
-      const token = data.session?.access_token;
-      if (token) {
-        await fetch("/api/feedback/alert", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ id }),
-        });
-      }
-    } catch (e) {
-      console.warn("[feedback] alert request failed:", (e as Error).message);
+  // After the row is saved, two things the server does with it: rate it (for
+  // everyone — the dashboard orders by that) and, for a serious one, email the
+  // team. Neither is waited for: the person has already been thanked, and a
+  // failure leaves the row for the team to see as "not rated" / "email not sent".
+  try {
+    const { data } = await db.auth.getSession();
+    const token = data.session?.access_token;
+    if (token) {
+      const ask = (path: string) => fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ id }),
+        keepalive: true,
+      }).catch(e => console.warn(`[feedback] ${path} failed:`, (e as Error).message));
+      void ask("/api/feedback/triage");
+      if (f.serious) void ask("/api/feedback/alert");
     }
+  } catch (e) {
+    console.warn("[feedback] follow-up requests failed:", (e as Error).message);
   }
 }

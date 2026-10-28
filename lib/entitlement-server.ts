@@ -316,7 +316,7 @@ export function peerReadingAllowed(plan: Plan, coachTurnsSoFar: number): boolean
  */
 export async function takeRateSlot(
   userId: string,
-  bucket: "chat" | "title" | "redeem" | "account" | "report" | "feedback",
+  bucket: "chat" | "title" | "redeem" | "account" | "report" | "feedback" | "triage",
   max: number,
   windowSeconds = 60,
 ): Promise<boolean> {
