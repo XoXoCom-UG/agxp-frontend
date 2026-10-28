@@ -32,6 +32,8 @@ const SCOPES = {
   redeem:  { max: 25, windowSeconds: 600 },
   /** Deleting an account: the account allows 5 in ten minutes. */
   account: { max: 10, windowSeconds: 600 },
+  /** The email for a serious problem: the account allows 10 in ten minutes. */
+  feedback: { max: 30, windowSeconds: 600 },
 } as const;
 
 export type IpScope = keyof typeof SCOPES;

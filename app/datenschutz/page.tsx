@@ -17,7 +17,8 @@ export const metadata: Metadata = { title: "Datenschutzerklärung" };
  *  - §4 Cloudflare Turnstile: components/layout/turnstile.tsx, login page only.
  *  - §4 Resend: lib/send-mail.ts, invitation emails the team sends.
  *  - §2 memory: lib/agent-memory.ts reads [[MEMORY:]] notes from the user's
- *    own stored replies; reports: agxp_reports (0020).
+ *    own stored replies; reports: agxp_reports (0020); feedback: agxp_feedback
+ *    (0025, lib/send-feedback.ts — the conversation only with the ticked box).
  *  - §8 self-service: Settings → Your data (lib/account-data.ts,
  *    app/api/account/delete/route.ts).
  *  - §9 local storage: the sb-* auth cookie and UI preferences only.
@@ -74,6 +75,13 @@ export default function DatenschutzPage() {
         <p>• Meldungen: Wenn du eine Antwort des Agenten meldest, speichern wir den Grund,
           deine optionale Notiz und die ersten Zeilen der gemeldeten Antwort (höchstens 600
           Zeichen), damit wir den Fall prüfen können.</p>
+        <p>• Feedback: Wenn du über den Feedback-Knopf schreibst, speichern wir deine Nachricht
+          (höchstens 2000 Zeichen) und die Seite, auf der du warst. Nur wenn du das Kästchen
+          ausdrücklich ankreuzt, speichern wir zusätzlich eine Textkopie beider Gespräche des
+          geöffneten Projekts (höchstens 100.000 Zeichen). Ohne Häkchen wird nichts aus deinen
+          Gesprächen gelesen oder gesendet. Markierst du dein Feedback als schwerwiegendes
+          Problem, senden wir deine Nachricht (nie die Gespräche) zusätzlich per E-Mail an
+          zwei Mitglieder unseres Teams; der Versand läuft über Resend (Abschnitt 4).</p>
         <p>• Technische Daten: für Betrieb und Sicherheit notwendige Log- und
           Verbindungsdaten.</p>
       </LegalSection>
@@ -140,7 +148,9 @@ export default function DatenschutzPage() {
           ein Projekt, werden seine Nachrichten und die daran angehängten Dateien mitgelöscht.
           Wird das Konto gelöscht, entfallen damit auch Projekte, Nachrichten, Dateien und
           Nutzungszähler.</p>
-        <p>Meldungen zu Antworten werden mit dem Konto gelöscht. Für Log- und Fehlerdaten gelten
+        <p>Meldungen zu Antworten und Feedback werden mit dem Konto gelöscht. Eine mit dem
+          Feedback gesendete Gesprächskopie bleibt auch dann erhalten, wenn du das Projekt
+          löschst; sie ist eine eigene Kopie und wird erst mit dem Konto gelöscht. Für Log- und Fehlerdaten gelten
           die Fristen der jeweiligen Anbieter; konkrete Angaben werden ergänzt.</p>
       </LegalSection>
 

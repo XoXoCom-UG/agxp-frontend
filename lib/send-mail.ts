@@ -118,16 +118,34 @@ export async function sendInvite(to: string, code: string, appUrl: string): Prom
   return plain.sent ? { ...plain, via: "built-in" } : plain;
 }
 
+/**
+ * A message to the team itself (serious feedback). Same sender and provider as
+ * the invitation; no template. Like every send here it is optional — the
+ * caller is told why it did not go, and the feedback is already saved.
+ */
+export async function sendTeamAlert(to: string[], mail: { subject: string; text: string; html: string }): Promise<MailResult> {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) {
+    return { sent: false, reason: "Email isn't set up on the server (RESEND_API_KEY)." };
+  }
+  return post(key, { text: mail.text, html: mail.html }, to, mail.subject);
+}
+
 /** One request to Resend. `content` is either the template or the html/text. */
-async function post(key: string, content: Record<string, unknown>, to: string): Promise<MailResult> {
+async function post(
+  key: string,
+  content: Record<string, unknown>,
+  to: string | string[],
+  subject: string = inviteSubject(),
+): Promise<MailResult> {
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         from: inviteFrom(),
-        to: [to.trim()],
-        subject: inviteSubject(),
+        to: (Array.isArray(to) ? to : [to]).map(a => a.trim()),
+        subject,
         ...content,
       }),
       // A hung provider must not hold the request open: the key is already

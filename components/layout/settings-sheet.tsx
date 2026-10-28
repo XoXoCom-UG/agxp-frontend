@@ -15,6 +15,7 @@ import { PLANS, projectsLabel, agentsLabel, type Plan } from "@/lib/plans";
 import { DevPlanTools } from "@/components/layout/dev-plan-tools";
 import { DevMemory } from "@/components/layout/dev-memory";
 import { DevUsage } from "@/components/layout/dev-usage";
+import { DevFeedback } from "@/components/layout/dev-feedback";
 import { replayTour } from "@/components/layout/tour-host";
 import { PrivacyTab } from "@/components/layout/privacy-tab";
 
@@ -351,6 +352,7 @@ function PlanTab() {
 
       {canSwitch && <DevPlanTools current={plan.id} onChanged={refresh} />}
       {canSwitch && <DevUsage />}
+      {canSwitch && <DevFeedback />}
       {canSwitch && <DevMemory />}
     </>
   );

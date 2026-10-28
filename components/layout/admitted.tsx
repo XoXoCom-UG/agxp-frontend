@@ -3,6 +3,7 @@
 import { useEntitlement } from "@/lib/entitlement";
 import { BetaGate } from "@/components/layout/beta-gate";
 import { TourHost } from "@/components/layout/tour-host";
+import { FeedbackButton } from "@/components/layout/feedback-button";
 
 /**
  * Wraps every signed-in page while the product is invite-only.
@@ -24,5 +25,5 @@ export function Admitted({ children }: { children: React.ReactNode }) {
   // The tour rides along for the same reason the gate does: mounted once
   // here, every signed-in screen has it, including the next one somebody
   // adds. It draws nothing until it decides this account has not seen it.
-  return <><TourHost />{children}</>;
+  return <><TourHost />{children}<FeedbackButton /></>;
 }
