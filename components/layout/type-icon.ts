@@ -5,6 +5,8 @@ import {
 /** A glyph per agent type, keyed by the template's name (lib/agent-types.ts).
  *  Used by the picker's type tiles and type bands. */
 export const TYPE_ICON: Record<string, typeof IconChart> = {
+  "General Consultant": IconUser,
+  "Agentics Consultant": IconSpark,
   "Strategy Consultant": IconChart,
   "Business Analyst": IconList,
   "Digital Transformation Manager": IconSwap,

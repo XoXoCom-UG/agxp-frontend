@@ -26,8 +26,24 @@ test("there is no Other: an agent that matches nothing goes under the first type
 test("an agent of a type the plan does not show is not lost", () => {
   const sa = agent("sa", "consultant", TYPE_CATALOG.consultant[1].sub);
   const { columns } = groupByType([sa], "consultant", { agentTypes: 1 });
-  assert.equal(columns.length, 1);
-  assert.deepEqual(columns[0].agents.map(a => a.id), ["sa"]);
+  // Shown: the two simple ones and Strategy; the Business Analyst goes under the catalog's first type.
+  assert.deepEqual(columns.map(c => c.template.id), ["general", "agentics", "strategy"]);
+  assert.deepEqual(columns.find(c => c.template.id === "strategy")!.agents.map(a => a.id), ["sa"]);
+});
+
+test("an agent that matches nothing is a Strategy Consultant, not a General one", () => {
+  const stray = agent("stray", "consultant", "Something we never had");
+  const { columns } = groupByType([stray], "consultant");
+  assert.deepEqual(columns.find(c => c.template.id === "strategy")!.agents.map(a => a.id), ["stray"]);
+  assert.equal(columns.find(c => c.template.id === "general")!.agents.length, 0);
+  assert.equal(kindFor(stray), "strategy");
+});
+
+test("an agent of a simple type is found under its own type", () => {
+  const g = agent("g", "consultant", "Ideas & first steps");
+  assert.equal(kindFor(g), "general");
+  assert.equal(templateFor(g)?.type, "General Consultant");
+  assert.equal(kindFor(agent("a", "consultant", "AI ideas in plain words")), "agentics");
 });
 
 test("agents of the other role are left alone", () => {
@@ -36,15 +52,41 @@ test("agents of the other role are left alone", () => {
   assert.equal(typesFor("coach").length, TYPE_CATALOG.coach.length);
 });
 
-test("the nine consultant types of the method sheet, in the sheet's order", () => {
-  assert.deepEqual(TYPE_CATALOG.consultant.map(t => t.type), [
+const professional = TYPE_CATALOG.consultant.filter(t => t.tier === "professional");
+const recommended = TYPE_CATALOG.consultant.filter(t => t.tier === "recommended");
+
+test("the nine professional consultant types of the method sheet, in the sheet's order", () => {
+  assert.deepEqual(professional.map(t => t.type), [
     "Strategy Consultant", "Business Analyst", "Digital Transformation Manager", "Data Scientist", "Product Manager",
     "Solution Architect", "Enterprise Architect", "Startup CTO", "Change Manager",
   ]);
-  assert.deepEqual(TYPE_CATALOG.consultant.map(t => t.id), [
+  assert.deepEqual(professional.map(t => t.id), [
     "strategy", "business-analyst", "transformation", "data-scientist", "product",
     "architect", "enterprise", "startup-cto", "change",
   ]);
+});
+
+test("the two simple consultants come after the nine in the catalog, so the first type stays Strategy", () => {
+  assert.deepEqual(recommended.map(t => t.id), ["general", "agentics"]);
+  assert.equal(TYPE_CATALOG.consultant[0].id, "strategy");
+  assert.deepEqual(TYPE_CATALOG.consultant.slice(-2).map(t => t.id), ["general", "agentics"]);
+  // The Coach has one kind.
+  assert.equal(TYPE_CATALOG.coach.every(t => t.tier === "professional"), true);
+});
+
+test("the simple consultants are drawn first, and the catalog order is not what is drawn", () => {
+  const shown = typesFor("consultant").map(t => t.id);
+  assert.deepEqual(shown.slice(0, 2), ["general", "agentics"]);
+  assert.equal(shown[2], "strategy");
+  assert.equal(shown.length, TYPE_CATALOG.consultant.length);
+});
+
+test("a plan limits the professional types, never the simple ones", () => {
+  const free = typesFor("consultant", { agentTypes: 1 }).map(t => t.id);
+  assert.deepEqual(free, ["general", "agentics", "strategy"]);
+  assert.equal(typesFor("consultant", { agentTypes: null }).length, 11);
+  // The Coach is unchanged.
+  assert.equal(typesFor("coach", { agentTypes: 1 }).length, 1);
 });
 
 test("every type id is one the chat route accepts as an agent kind", () => {
@@ -116,7 +158,7 @@ const SHEET: Record<string, string[]> = {
 };
 
 test("each type carries exactly the methods the sheet gives it", () => {
-  for (const t of TYPE_CATALOG.consultant) {
+  for (const t of professional) {
     assert.deepEqual([...t.primary, ...t.secondary].sort(), [...SHEET[t.id]].sort(), t.id);
   }
 });
@@ -134,7 +176,7 @@ test("the sheet's Primary methods lead each tile", () => {
     "startup-cto": ["Lean Canvas", "MVP Core Loop", "Lean Tech Stack"],
     change: ["Stakeholder Map", "Skill-Gap Analysis", "ADKAR Assessment"],
   };
-  for (const t of TYPE_CATALOG.consultant) assert.deepEqual(t.primary, primary[t.id], t.id);
+  for (const t of professional) assert.deepEqual(t.primary, primary[t.id], t.id);
 });
 
 test("a method can be primary for one type and secondary for another, as on the sheet", () => {
@@ -147,8 +189,8 @@ test("a method can be primary for one type and secondary for another, as on the 
   assert.ok(by("transformation").secondary.includes("Governance Model"));
 });
 
-test("every type starts with the three core methods, and they never lead", () => {
-  for (const t of TYPE_CATALOG.consultant) {
+test("every professional type starts with the three core methods, and they never lead", () => {
+  for (const t of professional) {
     for (const m of ["Knowledge Check", "Lexicon", "At a Glance"]) {
       assert.ok(t.secondary.includes(m), `${t.id}: ${m}`);
       assert.ok(!t.primary.includes(m), `${t.id}: ${m} must not lead`);
@@ -161,11 +203,38 @@ test("migration 0024 creates every method of every type, and relinks every tagli
   // that cannot be created in production.
   const sql = readFileSync(new URL("../supabase/migrations/0024_all_consultant_types.sql", import.meta.url), "utf8");
   const q = (x: string) => x.replace(/'/g, "''");
-  for (const t of TYPE_CATALOG.consultant) {
+  for (const t of professional) {
     assert.ok(sql.includes(`'${q(t.sub.toLowerCase())}'`), `${t.id}: tagline`);
     for (const m of [...t.primary, ...t.secondary]) {
       assert.ok(sql.includes(`('${q(m)}',`), `${t.id}: ${m} is not created`);
       assert.ok(sql.includes(`('${q(t.sub.toLowerCase())}', '${q(m)}')`), `${t.id}: ${m} is not linked`);
     }
+  }
+});
+
+test("migration 0028 creates the methods only the simple consultants have, and no other method is missing", () => {
+  const sql0028 = readFileSync(new URL("../supabase/migrations/0028_mainstream_consultants.sql", import.meta.url), "utf8");
+  const earlier = ["0016_consultant_methods.sql", "0024_all_consultant_types.sql"]
+    .map(f => readFileSync(new URL(`../supabase/migrations/${f}`, import.meta.url), "utf8")).join("\n");
+  const q = (x: string) => x.replace(/'/g, "''");
+  for (const t of recommended) {
+    for (const m of [...t.primary, ...t.secondary]) {
+      const here = sql0028.includes(`('${q(m)}',`);
+      const before = earlier.includes(`('${q(m)}',`);
+      assert.ok(here || before, `${t.id}: ${m} is created by no migration`);
+    }
+  }
+  // The ones created here are exactly the methods no earlier migration has.
+  const mine = new Set(recommended.flatMap(t => [...t.primary, ...t.secondary]));
+  for (const m of mine) {
+    if (!earlier.includes(`('${q(m)}',`)) assert.ok(sql0028.includes(`('${q(m)}',`), `${m} must be created in 0028`);
+  }
+});
+
+test("a simple consultant leads with its own three methods and has few of them", () => {
+  for (const t of recommended) {
+    assert.equal(t.primary.length, 3, t.id);
+    assert.ok(t.primary.length + t.secondary.length <= 10, `${t.id} stays small: that is the point of it`);
+    assert.ok(t.secondary.includes("Knowledge Check") && t.secondary.includes("At a Glance"), t.id);
   }
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useId, useState, type ReactNode } from "react";
 import type { Agent, AgentType, Method } from "@/lib/agents";
 import { listAllMethods, createAgent } from "@/lib/agents";
 import { assignAgent, type Project } from "@/lib/projects";
@@ -309,7 +309,16 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
           {/* One tile per type (Ana, 2026-10-05): what it is, one line on what
               it does, what it works with, and how many of the four you hold. */}
           <div className="type-grid">
-            {typesFor(role, plan).map(t => {
+            {typesFor(role, plan).map((t, i, all) => {
+              // Two kinds of consultant (Patryk, 2026-10-23): the simple ones first,
+              // the professional ones under their own heading. Only drawn when
+              // the role has both — the Coach has one kind and no headings.
+              const split = all.some(x => x.tier !== t.tier);
+              const heading = split && (i === 0 || all[i - 1].tier !== t.tier)
+                ? (t.tier === "recommended"
+                  ? { title: "Recommended", hint: "For an idea, in plain words" }
+                  : { title: "Professional AI Consultants", hint: "Consulting methods, for work in a company" })
+                : null;
               // The plan's cap per type (Patryk, 2026-09-30: four).  Past it the
               // answer is not a failed insert — it is "delete one first",
               // said before the click.
@@ -317,7 +326,11 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
               const full = used >= plan.agentsPerType;
               const Icon = TYPE_ICON[t.type] ?? IconSpark;
               return (
-                <button key={t.type} className={`type-tile${full ? " is-full" : ""}`}
+                <Fragment key={t.type}>
+                {heading && (
+                  <h3 className={`type-tier ${t.tier}`}>{heading.title}<span>{heading.hint}</span></h3>
+                )}
+                <button className={`type-tile${t.tier === "recommended" ? " is-recommended" : ""}${full ? " is-full" : ""}`}
                   aria-disabled={full || undefined}
                   onClick={() => { if (!full) { setDraft(t); setState("configure"); } }}>
                   <span className="tt-icon" aria-hidden="true"><Icon size={20} /></span>
@@ -334,6 +347,7 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
                     </span>
                   </span>
                 </button>
+                </Fragment>
               );
             })}
           </div>

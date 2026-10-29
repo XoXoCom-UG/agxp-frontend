@@ -48,8 +48,8 @@ const part = (label: string, note: string, goal: string, title: string, must: st
 
 /* ============================== OPENERS ================================== */
 
-/** Future Headline — Strategy Consultant, Product Manager. Optional opener. */
-export const futureHeadline = (linkedTo: "SMART-Ziele" | "OKRs"): MethodParts => part(
+/** Future Headline — Strategy Consultant, Product Manager, General Consultant. Optional opener. */
+export const futureHeadline = (linkedTo: "SMART-Ziele" | "OKRs" | "Ersten Schritten"): MethodParts => part(
   "Future headline",
   "An optional start: the headline of your success, 12 months from now.",
   "Zukunftsschlagzeile — ein OPTIONALER Einstieg: biete ihn EINMAL gleich nach dem Wissens-Check an (\"Magst du mit " +

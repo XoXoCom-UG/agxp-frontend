@@ -89,6 +89,11 @@ const LABELS: Record<string, string> = {
   "Fear & Myth Board": "What people fear, answered honestly",
   "Champion Network": "Colleagues who carry the change",
   "Win Wall": "Small wins, made visible",
+  // The two simple consultants (2026-10-27): plain words, because these are for people with no consulting background.
+  "Idea Check": "What you want, and why now",
+  "First Steps Plan": "What to do first, next and later",
+  "What the AI Needs": "What the AI needs from you",
+  "First Small Version": "The smallest version to try first",
 };
 
 const BLURBS: Record<string, string> = {
@@ -176,6 +181,10 @@ const BLURBS: Record<string, string> = {
   "Fear & Myth Board": "Fears collected anonymously, answered with proof.",
   "Champion Network": "One volunteer per team, trained first.",
   "Win Wall": "Wins collected weekly and shared where people see them.",
+  "Idea Check": "Your idea in one sentence: who it is for, which problem it solves and why now.",
+  "First Steps Plan": "Three steps in time, this week, this month and after: what to do and how you know it worked.",
+  "What the AI Needs": "The information it works with: do you have it, where is it, may you use it.",
+  "First Small Version": "What must be in the first version, what can wait, and what stays out.",
 };
 
 export function methodLabel(name: string): string {

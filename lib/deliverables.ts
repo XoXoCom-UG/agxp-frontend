@@ -10,6 +10,7 @@ import {
 import * as M from "./method-library.ts";
 import { visualSpecsFor } from "./visual-specs.ts";
 import { SHEET_DELIVERABLES } from "./consultant-documents.ts";
+import { MAINSTREAM_DELIVERABLES } from "./mainstream-documents.ts";
 
 export type { Station, DocSection, Deliverable };
 
@@ -496,6 +497,7 @@ export const CONSULTANT_DELIVERABLES: Record<string, Deliverable> = {
   ...SHEET_DELIVERABLES,
   architect: ARCHITECT,
   change: CHANGE,
+  ...MAINSTREAM_DELIVERABLES,
 };
 
 const COACH: Deliverable = {

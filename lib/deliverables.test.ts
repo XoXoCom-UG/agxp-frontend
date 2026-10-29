@@ -19,8 +19,8 @@ test("each document has its own name, and none reuses the Coach's", () => {
   assert.deepEqual(
     consultants.map(([, d]) => d.title).sort(),
     [
-      "Adoption Plan", "Architecture Blueprint", "Data Science Plan", "Enterprise Architecture Plan",
-      "Product Brief", "Requirements Specification", "Startup Tech Plan", "Transformation Concept",
+      "AI Idea Brief", "Adoption Plan", "Architecture Blueprint", "Data Science Plan", "Enterprise Architecture Plan",
+      "Idea Plan", "Product Brief", "Requirements Specification", "Startup Tech Plan", "Transformation Concept",
       "Transformation Roadmap",
     ],
   );
@@ -77,6 +77,8 @@ test("the interview has as many stations as the document has questions to answer
   assert.deepEqual(counts, {
     strategy: 16, "business-analyst": 13, transformation: 12, "data-scientist": 12, product: 14,
     architect: 12, enterprise: 11, "startup-cto": 12, change: 11,
+    // The two simple consultants (lib/mainstream-documents.ts): few stations on purpose.
+    general: 8, agentics: 6,
   });
   for (const [id, d] of consultants) {
     const labels = d.stations.map(s => s.label);
@@ -92,6 +94,9 @@ test("the interview has as many stations as the document has questions to answer
  */
 const SECTION_OF: Record<string, string[]> = {
   "Knowledge Check": ["Wissensstand"], "Lexicon": ["Lexikon"], "At a Glance": ["Auf einen Blick"],
+  // The two simple consultants' own methods (migration 0028).
+  "Idea Check": ["Deine Idee"], "First Steps Plan": ["Erste Schritte"],
+  "What the AI Needs": ["Was die KI braucht"], "First Small Version": ["Die erste kleine Version"],
   "Gap Analysis + Action Plan": ["Gap-Analyse und Aktionsplan"],
   "Market / Opportunity Gaps": ["Markt- und Chancenlücken"],
   "Build / Buy / Partner Matrix": ["Build / Buy / Partner"],
@@ -232,6 +237,8 @@ test("every method a type names has its station, so the interview asks what the 
     "Tech Debt Log": "Tech debt log", "Skill-Gap Analysis": "Skills", "ADKAR Assessment": "Readiness (ADKAR)",
     "Role Matrix": "Roles", "Fear & Myth Board": "Fears & myths", "Champion Network": "Champions", "Win Wall": "Win wall",
     "Training & Communication Plan": "Training & communication", "Adoption KPIs": "Adoption KPIs",
+    "Idea Check": "Your idea", "First Steps Plan": "First steps",
+    "What the AI Needs": "What it needs", "First Small Version": "First version",
   };
   // SWOT is the agent's own evaluation of the plan ("Always, agent does it for the user"), written from
   // the stations before it; it asks nothing of its own.
