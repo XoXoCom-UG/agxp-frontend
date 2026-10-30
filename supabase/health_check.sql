@@ -8,6 +8,44 @@
 -- keeps serving: a missing quota trigger just means the project limit is only
 -- the browser's polite message, and a missing entitlements column means the
 -- team panel disappears. Both look like "working" until someone counts.
+--
+-- The SQL editor shows only the LAST statement's result, so the migration
+-- checklist is last. Select one of the earlier queries and run just that to
+-- see its answer.
+
+-- Row level security, separately: a table with RLS off is readable by every
+-- signed-in user, which is the failure these policies exist to prevent.
+select c.relname as table_name,
+       case when c.relrowsecurity then 'on' else 'RLS IS OFF' end as rls,
+       (select count(*) from pg_policy p where p.polrelid = c.oid) as policies
+  from pg_class c
+  join pg_namespace n on n.oid = c.relnamespace
+ where n.nspname = 'public'
+   and c.relname in ('agxp_projects','agxp_project_messages','agxp_entitlements',
+                     'agxp_usage','agxp_plan_limits','agxp_beta_keys',
+                     'agxp_rate_limits','agxp_ai_switch','agxp_ai_leases',
+                     'agxp_ip_rate_limits','agxp_feedback')
+ order by c.relname;
+
+-- Is anything actually being metered? If the app has been used and this is
+-- empty, SUPABASE_SERVICE_ROLE_KEY is missing from the server environment:
+-- every account then reads as free and nothing is written. See CLAUDE.md.
+select count(*) as usage_rows,
+       count(*) filter (where cache_read_tokens > 0) as rows_with_cache_hits,
+       max(period_start) as newest_period
+  from agxp_usage;
+
+-- Who on the team can switch their own plan and mint invitations.
+select u.email, e.plan, e.can_switch_plan
+  from agxp_entitlements e
+  join auth.users u on u.id = e.user_id
+ where e.can_switch_plan;
+
+-- Is the kill switch on, and what is in flight right now? A lease older than
+-- a few minutes belongs to a server that died mid-answer; it expires by itself.
+select paused, reason, updated_at from agxp_ai_switch;
+select kind, count(*) as in_flight, sum(reserved_micro_usd) / 1e6 as reserved_usd
+  from agxp_ai_leases where expires_at > now() group by kind;
 
 with expected(kind, name, detail, migration) as (values
   ('table',    'agxp_projects',         null,              '0003'),
@@ -42,9 +80,18 @@ with expected(kind, name, detail, migration) as (values
   ('function', 'settle_ai_call',        null,              '0021'),
   ('function', 'team_usage',            null,              '0022'),
   ('table',    'agxp_ip_rate_limits',   null,              '0023'),
-  ('function', 'take_ip_slot',          null,              '0023')
+  ('function', 'take_ip_slot',          null,              '0023'),
+  ('method',   'Scenario Planning',     null,              '0024'),
+  ('table',    'agxp_feedback',         null,              '0025'),
+  ('trigger',  'agxp_feedback_daily_cap', 'agxp_feedback', '0025'),
+  ('column',   'agxp_feedback',         'notified_at',     '0026'),
+  ('function', 'team_feedback_conversation', null,         '0026'),
+  ('column',   'agxp_feedback',         'severity',        '0027'),
+  ('method',   'Idea Check',            null,              '0028')
 )
+select * from (
 select
+  e.migration,
   e.kind,
   e.name || case when e.kind = 'column' then '.' || e.detail else '' end as object,
   case when exists (
@@ -66,38 +113,12 @@ select
      join pg_class c on c.oid = t.tgrelid
     where not t.tgisinternal and t.tgname = e.name and c.relname = e.detail
       and e.kind = 'trigger'
+    union all
+    -- Seed rows, not schema: the picker cannot create a type whose methods
+    -- are missing here, and nothing else would say so.
+    select 1 from methods m where m.name = e.name and e.kind = 'method'
   ) then 'ok' else 'MISSING — run migration ' || e.migration end as status
-from expected e;
-
--- Row level security, separately: a table with RLS off is readable by every
--- signed-in user, which is the failure these policies exist to prevent.
-select c.relname as table_name,
-       case when c.relrowsecurity then 'on' else 'RLS IS OFF' end as rls,
-       (select count(*) from pg_policy p where p.polrelid = c.oid) as policies
-  from pg_class c
-  join pg_namespace n on n.oid = c.relnamespace
- where n.nspname = 'public'
-   and c.relname in ('agxp_projects','agxp_project_messages','agxp_entitlements',
-                     'agxp_usage','agxp_plan_limits','agxp_beta_keys',
-                     'agxp_rate_limits','agxp_ai_switch','agxp_ai_leases')
- order by c.relname;
-
--- Is anything actually being metered? If the app has been used and this is
--- empty, SUPABASE_SERVICE_ROLE_KEY is missing from the server environment:
--- every account then reads as free and nothing is written. See CLAUDE.md.
-select count(*) as usage_rows,
-       count(*) filter (where cache_read_tokens > 0) as rows_with_cache_hits,
-       max(period_start) as newest_period
-  from agxp_usage;
-
--- Who on the team can switch their own plan and mint invitations.
-select u.email, e.plan, e.can_switch_plan
-  from agxp_entitlements e
-  join auth.users u on u.id = e.user_id
- where e.can_switch_plan;
-
--- Is the kill switch on, and what is in flight right now? A lease older than
--- a few minutes belongs to a server that died mid-answer; it expires by itself.
-select paused, reason, updated_at from agxp_ai_switch;
-select kind, count(*) as in_flight, sum(reserved_micro_usd) / 1e6 as reserved_usd
-  from agxp_ai_leases where expires_at > now() group by kind;
+from expected e
+) checklist
+-- MISSING first, so a long list cannot hide the one that matters.
+order by status = 'ok', migration;
