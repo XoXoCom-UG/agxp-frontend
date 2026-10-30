@@ -8086,8 +8086,11 @@ html.light .hh-planet{ opacity:.55; }
   .hh-slot.consultant{ justify-self:start; margin-left:clamp(6px, 4vw, 40px); }
   .hh-slot.coach{ justify-self:end; margin-right:clamp(6px, 4vw, 40px); }
   .home-hero .home-title{ max-width:none; }
-  /* Width too: the base 80% with this -2% inset left it off-centre. */
-  .hh-orbit{ inset:-6% -2%; width:104%; height:112%; }
+  /* Stretched to the stacked band (preserveAspectRatio="none") the two arcs
+     became an oval twice as tall as wide. A box near the drawing's own
+     proportions keeps them close to a circle around the words, ending at the
+     two antennas; -58% sits it on the title rather than the band's middle. */
+  .hh-orbit{ inset:auto; left:-2%; top:50%; width:104%; height:auto; aspect-ratio:1000 / 760; transform:translateY(-58%); }
 }
 @media (max-height:760px){
   .hh-stage .mascot{ width:112px !important; height:112px !important; }
@@ -9110,4 +9113,15 @@ html.light .ph-dir{ background:#FFFFFF; }
    sheet keeps its own margin; the paper around it gives way. */
 @media (max-width:640px){
   .doc-paper{ padding:var(--sp-4) 0 var(--sp-6); }
+}
+
+/* Stacked, the picker could not be scrolled on a phone: the slot and the
+   panel kept min-height:auto, grew to their content past the bottom of the
+   screen, and the shell clipped the rest — so the list that is meant to
+   scroll (.pick-empty) was never shorter than what it holds. Held to the
+   screen, it scrolls; the cards keep their own height instead of being
+   squeezed to fit. */
+@media (max-width:1000px){
+  main.workspace .slot, main.workspace .panel{ min-height:0; }
+  .pick-empty .pick-cards{ flex:none; }
 }
