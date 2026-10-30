@@ -15,6 +15,7 @@ import { SettingsSheet } from "@/components/layout/settings-sheet";
 import { PlanBadge } from "@/components/layout/plan-badge";
 import { readAccent, applyAccent } from "@/lib/accent";
 import { readAppearance, applyAppearance } from "@/lib/appearance";
+import { readLang, applyLang, useT } from "@/lib/language";
 
 type Tab = "newtask" | "history" | "agents";
 
@@ -59,8 +60,8 @@ function useIsApple(): boolean {
 
 /** A project that was never renamed from its first message still carries the
  *  placeholder, which is no use as a label. */
-function projectLabel(name: string): string {
-  return name === PLACEHOLDER_PROJECT_NAME ? "Untitled task" : name;
+function projectLabel(name: string, t: (en: string) => string): string {
+  return name === PLACEHOLDER_PROJECT_NAME ? t("Untitled task") : name;
 }
 
 /** The chip's glyph takes its industry's colour; no industry, the bar's own. */
@@ -86,6 +87,7 @@ export function AgentNav({ started, projectName, projectCategory }: {
   const [popover, setPopover] = useState<PopoverName>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const isApple = useIsApple();
+  const t = useT();
   const menuId = useId();
 
   // Paint the saved accent and the saved room before anything else renders
@@ -95,6 +97,7 @@ export function AgentNav({ started, projectName, projectCategory }: {
   useEffect(() => {
     applyAccent(readAccent(), false);
     applyAppearance(readAppearance());
+    applyLang(readLang());
   }, []);
 
   // Cmd+, on Apple and Ctrl+, elsewhere opens settings: settings.md — "people
@@ -177,7 +180,7 @@ export function AgentNav({ started, projectName, projectCategory }: {
     // room behind the glass, not paint on the bar.
     <>
     {/* First thing a keyboard reaches: jump past the bar to the work. */}
-    <a className="skip-link" href="#main-content">Skip to content</a>
+    <a className="skip-link" href="#main-content">{t("Skip to content")}</a>
     <header className="navbar" onClick={e => e.stopPropagation()}>
       {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} />}
       <div className="nb-left">
@@ -185,7 +188,7 @@ export function AgentNav({ started, projectName, projectCategory }: {
             The project row appears the moment the user actually picks an
             agent or sends a message (see NewTaskScreen.ensureProject), so
             abandoned starts don't leave empty projects behind. */}
-        <Link className="brand nb-brand" href="/dashboard" aria-label="AgentiX Projects, home">
+        <Link className="brand nb-brand" href="/dashboard" aria-label={t("AgentiX Projects, home")}>
           <BrandLogo size={26} />
         </Link>
 
@@ -202,12 +205,12 @@ export function AgentNav({ started, projectName, projectCategory }: {
           <button className="nb-current" onClick={() => router.push(`/dashboard/project/${lastProject.id}`)}
             style={industryStyle(lastProject.category)}>
             <IconIndustry label={lastProject.category} size={18} />
-            <span className="nbc-name">{projectLabel(lastProject.name)}</span>
+            <span className="nbc-name">{projectLabel(lastProject.name, t)}</span>
           </button>
         ) : started ? (
           <span className="nb-current is-static" style={industryStyle(projectCategory)}>
             <IconIndustry label={projectCategory} size={18} />
-            <span className="nbc-name">{projectName ? projectLabel(projectName) : "Current Project"}</span>
+            <span className="nbc-name">{projectName ? projectLabel(projectName, t) : t("Current Project")}</span>
           </span>
         ) : null}
 
@@ -219,21 +222,21 @@ export function AgentNav({ started, projectName, projectCategory }: {
           aria-current={tab === "newtask" ? "page" : undefined}>
           {/* The label is wrapped so the bar can drop it on a narrow phone
               without losing the accessible name — see the 380px rule. */}
-          <IconPlus size={15} /><span className="nb-label">New Task</span>
+          <IconPlus size={15} /><span className="nb-label">{t("New Task")}</span>
         </Link>
       </div>
 
       <div className="nb-right">
         {/* Links, not buttons: they are places, so they open in a new tab,
             show their address on hover and announce which one you are on. */}
-        <nav className="nb-tabs" aria-label="Main">
-          {TABS.map((t, i) => (
-            <Fragment key={t.id}>
+        <nav className="nb-tabs" aria-label={t("Main")}>
+          {TABS.map((tb, i) => (
+            <Fragment key={tb.id}>
               {i > 0 && <span className="nb-rule" aria-hidden="true" />}
-              <Link href={t.href} data-tour={t.id}
-                className={`nb-item${tab === t.id ? " active" : ""}`}
-                aria-current={tab === t.id ? "page" : undefined}>
-                <t.icon size={15} />{t.label}
+              <Link href={tb.href} data-tour={tb.id}
+                className={`nb-item${tab === tb.id ? " active" : ""}`}
+                aria-current={tab === tb.id ? "page" : undefined}>
+                <tb.icon size={15} />{t(tb.label)}
               </Link>
             </Fragment>
           ))}
@@ -246,7 +249,7 @@ export function AgentNav({ started, projectName, projectCategory }: {
               the way to pressing New Task, not discovered afterwards. */}
           <PlanBadge />
 
-          <button className="icon-btn" data-tooltip="Switch light or dark theme" aria-label="Switch light or dark theme"
+          <button className="icon-btn" data-tooltip={t("Switch light or dark theme")} aria-label={t("Switch light or dark theme")}
             onClick={e => { e.stopPropagation(); setTheme(document.documentElement.classList.contains("light") ? "dark" : "light"); }}>
             {/* Both icons, one hidden by the theme class — picking in JS made the
                 server and client markup differ, which broke hydration. */}
@@ -258,7 +261,7 @@ export function AgentNav({ started, projectName, projectCategory }: {
               edge, not the whole header's, now that the avatar isn't the last
               child of .util any more (Start sits to its right). */}
           <div className="avatar-wrap" ref={wrapRef} data-tour="account">
-            <button ref={triggerRef} className="avatar" aria-label="Account menu" aria-haspopup="menu"
+            <button ref={triggerRef} className="avatar" aria-label={t("Account menu")} aria-haspopup="menu"
               aria-expanded={menuOpen} aria-controls={menuOpen ? menuId : undefined}
               onKeyDown={onTriggerKey}
               onClick={e => { e.stopPropagation(); toggle("avatar"); }}>
@@ -266,7 +269,7 @@ export function AgentNav({ started, projectName, projectCategory }: {
             </button>
 
             {avatarPhase !== "closed" && (
-              <div ref={menuRef} id={menuId} role="menu" aria-label="Account"
+              <div ref={menuRef} id={menuId} role="menu" aria-label={t("Account")}
                 className={`popover t-dropdown${phaseClass(avatarPhase)}`} data-origin="top-right"
                 onKeyDown={onMenuKey}
                 onClick={e => e.stopPropagation()}>
@@ -279,14 +282,14 @@ export function AgentNav({ started, projectName, projectCategory }: {
                     triggerRef.current?.focus();
                     setPopover(null); setSettingsOpen(true);
                   }}>
-                  <IconUser size={13} />Profile &amp; settings
+                  <IconUser size={13} />{t("Profile & settings")}
                   <span className="mi-key" aria-hidden="true">{isApple ? "⌘," : "Ctrl ,"}</span>
                 </button>
                 <hr />
-                <button className="mi" role="menuitem" tabIndex={-1} onClick={() => signOut()}><IconLogout size={13} />Sign out</button>
+                <button className="mi" role="menuitem" tabIndex={-1} onClick={() => signOut()}><IconLogout size={13} />{t("Sign out")}</button>
                 {/* The legal pages have to be reachable from inside the app,
                     not only from the sign-in screen. Small, at the bottom. */}
-                <div className="mi-legal" role="group" aria-label="Legal">
+                <div className="mi-legal" role="group" aria-label={t("Legal")}>
                   <Link role="menuitem" tabIndex={-1} href="/impressum" onClick={() => setPopover(null)}>Impressum</Link>
                   <Link role="menuitem" tabIndex={-1} href="/datenschutz" onClick={() => setPopover(null)}>Datenschutz</Link>
                   <Link role="menuitem" tabIndex={-1} href="/agb" onClick={() => setPopover(null)}>AGB</Link>

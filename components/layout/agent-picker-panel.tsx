@@ -17,6 +17,7 @@ import {
   IconUsers, IconSpark, IconChevronDown,
 } from "@/components/layout/agxp-icons";
 import { TYPE_ICON } from "@/components/layout/type-icon";
+import { useT } from "@/lib/language";
 
 type PanelState = "empty" | "list" | "detail" | "type" | "configure";
 
@@ -65,6 +66,7 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   // never offers more than the account may build.
   const { plan } = useEntitlement();
   const totalProjects = (a: Agent) => a.last_projects.length + (projectCounts[a.id] ?? 0);
+  const tr = useT();
   const [state, setState] = useState<PanelState>("empty");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -140,11 +142,11 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
         <div className="selected-summary">
           <div className="sel-name">{assignedAgent.name}</div>
           {assignedAgent.tagline && <div className="sel-type">{assignedAgent.tagline}</div>}
-          <div className="sel-type">{levelFor(total)} · {total} {total === 1 ? "project" : "projects"} together</div>
+          <div className="sel-type">{tr(total === 1 ? "{level} · 1 project together" : "{level} · {n} projects together", { level: tr(levelFor(total)), n: total })}</div>
           {assignedAgent.primaryMethods.length > 0 && (
             <div className="sel-methods">{assignedAgent.primaryMethods.map(m => methodLabel(m.name)).join(" · ")}</div>
           )}
-          {onChangeAgent && <button className="btn btn-hero" onClick={onChangeAgent}>Change agent</button>}
+          {onChangeAgent && <button className="btn btn-hero" onClick={onChangeAgent}>{tr("Change agent")}</button>}
         </div>
       </section>
     );
@@ -159,7 +161,7 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
       {showBack && (
         <div className="panel-head panel-head-back">
           <button className="back-link" onClick={() => setState(state === "detail" ? "list" : state === "configure" ? "type" : "empty")}>
-            <IconBack size={11} /> Back
+            <IconBack size={11} /> {tr("Back")}
           </button>
         </div>
       )}
@@ -169,7 +171,7 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
           <IconAlert size={14} />
           <p className="ie-detail">{selectError.message}</p>
           <button className="btn btn-ghost" disabled={busy} onClick={() => select(selectError.agentId)}>
-            <IconRefresh size={12} />Retry
+            <IconRefresh size={12} />{tr("Retry")}
           </button>
         </div>
       )}
@@ -181,8 +183,8 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
         // it opens is quieter than two dimmed buttons nobody may press.
         <div className="pick-empty pick-waiting">
           <AgentMascot role={role} size={64} />
-          <p className="pw-title">Your coach joins next</p>
-          <p className="pw-sub" id={lockedHintId}>Pick a Consultant first. This seat opens once there is one.</p>
+          <p className="pw-title">{tr("Your coach joins next")}</p>
+          <p className="pw-sub" id={lockedHintId}>{tr("Pick a Consultant first. This seat opens once there is one.")}</p>
         </div>
       ) : state === "empty" ? (
         // Patryk, 2026-09-30: the card said "Create new AI Consultant", then
@@ -209,14 +211,14 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
                   <span className="pc-badge"><IconPlus size={16} /></span>
                 </span>
               </span>
-              <span className="picker-card-title">{PICKER_HEAD[role].create}</span>
+              <span className="picker-card-title">{tr(PICKER_HEAD[role].create)}</span>
             </button>
 
             <button className="picker-card pc-train" onClick={() => setState("list")}>
               <span className="pc-face" aria-hidden="true">
                 <span className="pc-lift"><AgentMascot role={role} size={104} level={trainedLevel} /></span>
               </span>
-              <span className="picker-card-title">{PICKER_HEAD[role].train}</span>
+              <span className="picker-card-title">{tr(PICKER_HEAD[role].train)}</span>
             </button>
           </div>
         </div>
@@ -224,13 +226,13 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
       ) : state === "list" ? (
         <>
           <header className="pick-title">
-            <h2>Your {ROLE_PLURAL[role]}</h2>
-            <p>Open a name to see its profile, or Select to bring it into this project.</p>
+            <h2>{tr(`Your ${ROLE_PLURAL[role]}`)}</h2>
+            <p>{tr("Open a name to see its profile, or Select to bring it into this project.")}</p>
           </header>
           <div className="list-toolbar">
             <div className="search-box"><IconSearch size={13} />
-              <label htmlFor={searchId} className="visually-hidden">Search your {ROLE_PLURAL[role]}</label>
-              <input id={searchId} type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name or what they do…" />
+              <label htmlFor={searchId} className="visually-hidden">{tr(`Search your ${ROLE_PLURAL[role]}`)}</label>
+              <input id={searchId} type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder={tr("Search by name or what they do…")} />
             </div>
           </div>
           {/* Grouped by type, the way the Agent Dashboard groups them (Ana,
@@ -238,9 +240,9 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
               cards inside it. A search opens every band that has a match. */}
           {groups.every(g => g.agents.length === 0) && search.trim() ? (
             <div className="empty-search">
-              <div className="t">No agents found</div>
-              <div className="d">Try another name, or make a new one.</div>
-              <button className="btn btn-ghost" onClick={() => setSearch("")}>Clear search</button>
+              <div className="t">{tr("No agents found")}</div>
+              <div className="d">{tr("Try another name, or make a new one.")}</div>
+              <button className="btn btn-ghost" onClick={() => setSearch("")}>{tr("Clear search")}</button>
             </div>
           ) : (
             <div className="tgroups">
@@ -260,10 +262,10 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
                     </button>
                     {open && (g.agents.length === 0 ? (
                       <div className="tg-empty">
-                        <span>No {g.title} yet.</span>
+                        <span>{tr("No {type} yet.", { type: g.title })}</span>
                         {g.template && (
                           <button className="btn btn-ghost" onClick={() => { setDraft(g.template); setState("configure"); }}>
-                            <IconPlus size={12} />Create one
+                            <IconPlus size={12} />{tr("Create one")}
                           </button>
                         )}
                       </div>
@@ -282,20 +284,20 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
                                     <span className="level-bar" aria-hidden="true">
                                       {LEVEL_ORDER.map((l, i) => <span key={l} className={`level-seg ${i <= LEVEL_ORDER.indexOf(levelFor(total)) ? "on" : ""}`} />)}
                                     </span>
-                                    {levelFor(total)} experience
+                                    {tr("{level} experience", { level: tr(levelFor(total)) })}
                                   </span>
                                 </span>
                               </div>
                               {a.primaryMethods.length > 0 && (
-                                <ul className="chip-row" aria-label="Works with">
+                                <ul className="chip-row" aria-label={tr("Works with")}>
                                   {a.primaryMethods.slice(0, 3).map(m => <li key={m.id}>{methodLabel(m.name)}</li>)}
                                 </ul>
                               )}
                               <div className="ag-foot">
-                                <span className="ag-proj"><IconUsers size={15} />{total} {total === 1 ? "project" : "projects"}</span>
+                                <span className="ag-proj"><IconUsers size={15} />{tr(total === 1 ? "1 project" : "{n} projects", { n: total })}</span>
                                 <button className="ag-select" disabled={busy} onClick={() => select(a.id)}
-                                  aria-label={`Select ${a.name}`}>
-                                  Select <IconArrow />
+                                  aria-label={tr("Select {name}", { name: a.name })}>
+                                  {tr("Select")} <IconArrow />
                                 </button>
                               </div>
                             </div>
@@ -319,9 +321,9 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
           <header className="pick-title">
             <span className="team-step">
               <span className="ts-pips" aria-hidden="true"><span className="ts-pip on" /><span className="ts-pip" /></span>
-              Step 1 of 2
+              {tr("Step 1 of 2")}
             </span>
-            <h2>What kind of help?</h2>
+            <h2>{tr("What kind of help?")}</h2>
           </header>
           {/* One tile per type (Ana, 2026-10-05): what it is, one line on what
               it does, what it works with, and how many of the four you hold. */}
@@ -334,8 +336,8 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
               <section key={tier} className={`type-tier-group ${tier}`}>
                 {groups.length > 1 && (
                   <header className="type-tier">
-                    <h3>{TIER_HEAD[tier].title}</h3>
-                    <p>{TIER_HEAD[tier].hint}</p>
+                    <h3>{tr(TIER_HEAD[tier].title)}</h3>
+                    <p>{tr(TIER_HEAD[tier].hint)}</p>
                   </header>
                 )}
                 <div className="type-tier-grid">
@@ -358,7 +360,7 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
                         </span>
                         <span className="tt-foot">
                           <IconUsers size={15} />
-                          <span className="tt-count">{full ? "Full, archive one first" : `${used} of ${plan.agentsPerType} in use`}</span>
+                          <span className="tt-count">{full ? tr("Full, archive one first") : tr("{used} of {max} in use", { used, max: plan.agentsPerType })}</span>
                           <span className="tt-dots" aria-hidden="true">
                             {Array.from({ length: plan.agentsPerType }, (_, i) => <span key={i} className={i < used ? "on" : ""} />)}
                           </span>
@@ -396,30 +398,31 @@ function DetailView({ agent, role, busy, totalProjects, onSelect }: {
   totalProjects: (a: Agent) => number;
   onSelect: (agent: Agent) => void;
 }) {
+  const tr = useT();
   if (!agent) return null;
   const total = totalProjects(agent);
   const level = levelFor(total);
   return (
     <div className="detail">
-      <div className="role-line"><span className={`role-dot ${role}`} /><span className="role-eyebrow">{ROLE_LABEL[role]}</span></div>
+      <div className="role-line"><span className={`role-dot ${role}`} /><span className="role-eyebrow">{tr(ROLE_LABEL[role])}</span></div>
       <h2>{agent.name}</h2>
       {agent.description && <div className="detail-desc">{agent.description}</div>}
       <div className="sb-stats">
         <div>
-          <span className="lbl">Experience</span>
+          <span className="lbl">{tr("Experience")}</span>
           <div className="level">
-            <b>{level}</b>
+            <b>{tr(level)}</b>
             <span className="level-bar">
               {LEVEL_ORDER.map((l, i) => <span key={l} className={`level-seg ${i <= LEVEL_ORDER.indexOf(level) ? "on" : ""}`} />)}
             </span>
           </div>
         </div>
-        <div><span className="lbl">Projects together</span><b>{total}</b></div>
-        {agent.tagline && <div><span className="lbl">Role</span><b>{agent.tagline}</b></div>}
+        <div><span className="lbl">{tr("Projects together")}</span><b>{total}</b></div>
+        {agent.tagline && <div><span className="lbl">{tr("Role")}</span><b>{agent.tagline}</b></div>}
       </div>
       {agent.methods.length > 0 && (
         <div className="detail-section">
-          <span className="lbl">Can help with</span>
+          <span className="lbl">{tr("Can help with")}</span>
           <ul className="plist">
             {[...agent.primaryMethods, ...agent.secondaryMethods].map(m => (
               <li key={m.id}>{methodLabel(m.name)}</li>
@@ -428,20 +431,21 @@ function DetailView({ agent, role, busy, totalProjects, onSelect }: {
         </div>
       )}
       {agent.last_projects.length > 0 && (
-        <div className="detail-section"><span className="lbl">Recent projects</span>
+        <div className="detail-section"><span className="lbl">{tr("Recent projects")}</span>
           <div className="timeline">{agent.last_projects.map(p => (
             <div key={p.id} className="t-item"><div className="pn">{p.name}</div><div className="pd">{dateStr(p.created_at)}</div></div>
           ))}</div>
         </div>
       )}
       <button className="detail-select-btn" disabled={busy} onClick={() => onSelect(agent)}>
-        Select {ROLE_LABEL[role]} <IconArrow />
+        {tr(`Select ${ROLE_LABEL[role]}`)} <IconArrow />
       </button>
     </div>
   );
 }
 
 function ConfigureView({ role, template, onCreated }: { role: AgentType; template: TypeTemplate | null; onCreated: (a: Agent) => void }) {
+  const tr = useT();
   const t = template ?? TYPE_CATALOG[role][0];
   const [name, setName] = useState(t.type);
   const [description, setDescription] = useState(t.description);
@@ -478,9 +482,9 @@ function ConfigureView({ role, template, onCreated }: { role: AgentType; templat
   /** Why Create won't go yet, in words — shown beside the button, not only
    *  in a tooltip. The load error has its own box with a Retry. */
   const blockReason = saving || methodsError ? null
-    : allMethods === null ? "Loading what this agent can help with…"
-    : methodIds.length === 0 ? "None of this type's methods are in the database yet, so it can't be created."
-    : !name.trim() ? "Give the agent a name first."
+    : allMethods === null ? tr("Loading what this agent can help with…")
+    : methodIds.length === 0 ? tr("None of this type's methods are in the database yet, so it can't be created.")
+    : !name.trim() ? tr("Give the agent a name first.")
     : null;
 
   async function submit() {
@@ -508,22 +512,22 @@ function ConfigureView({ role, template, onCreated }: { role: AgentType; templat
         <div className="cfg-hero">
           <span className="team-step">
             <span className="ts-pips" aria-hidden="true"><span className="ts-pip on" /><span className="ts-pip on" /></span>
-            Step 2 of 2 · Name your {ROLE_LABEL[role].toLowerCase()}
+            {tr(`Step 2 of 2 · Name your ${ROLE_LABEL[role].toLowerCase()}`)}
           </span>
           <span className="cfg-face" aria-hidden="true"><AgentMascot role={role} size={92} level={1} enter /></span>
-          <p className="cfg-name" aria-hidden="true">{name.trim() || "Unnamed"}</p>
+          <p className="cfg-name" aria-hidden="true">{name.trim() || tr("Unnamed")}</p>
           <span className="cfg-type"><Icon size={14} />{t.type}</span>
         </div>
 
         <div className="cfg-panel">
           <div className="field">
-            <label htmlFor={nameId}>Name</label>
+            <label htmlFor={nameId}>{tr("Name")}</label>
             <input id={nameId} type="text" value={name} onChange={e => setName(e.target.value)}
               aria-invalid={touched && !name.trim() ? true : undefined} />
-            {touched && !name.trim() && <div className="field-err">Agent name is required.</div>}
+            {touched && !name.trim() && <div className="field-err">{tr("Agent name is required.")}</div>}
           </div>
           <div className="field">
-            <label htmlFor={descId}>Description</label>
+            <label htmlFor={descId}>{tr("Description")}</label>
             <textarea id={descId} rows={3} value={description} onChange={e => setDescription(e.target.value)} />
           </div>
         </div>
@@ -533,25 +537,25 @@ function ConfigureView({ role, template, onCreated }: { role: AgentType; templat
             The type's main methods are lit, the rest follow plain. */}
         <div className="cfg-panel">
           <div className="field">
-            <span className="field-label" id={helpsId}>Can help with</span>
+            <span className="field-label" id={helpsId}>{tr("Can help with")}</span>
             <ul className="chip-row" aria-labelledby={helpsId}>
               {t.primary.map(m => <li key={m} className="is-main">{methodLabel(m)}</li>)}
               {t.secondary.map(m => <li key={m}>{methodLabel(m)}</li>)}
             </ul>
           </div>
           <div className="cfg-xp">
-            <span className="field-label">Experience</span>
+            <span className="field-label">{tr("Experience")}</span>
             <span className="level-bar" aria-hidden="true">
               {LEVEL_ORDER.map((l, i) => <span key={l} className={`level-seg ${i === 0 ? "on" : ""}`} />)}
             </span>
-            <span className="field-val">New. You two have not worked together yet.</span>
+            <span className="field-val">{tr("New. You two have not worked together yet.")}</span>
           </div>
         </div>
         {methodsError && (
           <div className="inline-error" role="alert">
             <IconAlert size={14} />
             <p className="ie-detail">{methodsError}</p>
-            <button className="btn btn-ghost" onClick={retryMethods}><IconRefresh size={12} />Retry</button>
+            <button className="btn btn-ghost" onClick={retryMethods}><IconRefresh size={12} />{tr("Retry")}</button>
           </div>
         )}
         {error && <div className="field-err" role="alert">{error}</div>}
@@ -563,8 +567,8 @@ function ConfigureView({ role, template, onCreated }: { role: AgentType; templat
             data-tooltip={blockReason ?? undefined}
             onClick={submit}>
             {saving
-              ? <><span className="spinner" aria-hidden="true" /><span className="visually-hidden">Creating…</span></>
-              : (<><IconCheck size={13} />Create</>)}
+              ? <><span className="spinner" aria-hidden="true" /><span className="visually-hidden">{tr("Creating…")}</span></>
+              : (<><IconCheck size={13} />{tr("Create")}</>)}
           </button>
         </div>
         {blockReason && <p className="create-hint" id={reasonId}>{blockReason}</p>}

@@ -17,6 +17,7 @@ import { SkeletonRows } from "@/components/layout/skeleton";
 import { EmptyState } from "@/components/layout/empty-state";
 import { agoStr, menuKeyDown, focusFirstMenuItem } from "@/lib/utils";
 import { usePresence, phaseClass } from "@/lib/use-presence";
+import { useT } from "@/lib/language";
 import { useMediaQuery } from "@/lib/use-media-query";
 
 function statusClass(s: Project["status"]) { return s.toLowerCase().replace(/\s+/g, "-"); }
@@ -117,6 +118,7 @@ export default function ProjectHistoryPage() {
 function ProjectHistory() {
   const { token, loading: authLoading } = useAuth();
   const router = useRouter();
+  const tr = useT();
   const [projects, setProjects] = useState<Project[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -258,9 +260,11 @@ function ProjectHistory() {
     return ([["consultant", p.consultant_agent_id], ["coach", p.coach_agent_id]] as const)
       .filter(([, id]) => !!id) as [AgentType, string][];
   }
+  /** The name as shown: the placeholder reads "Untitled task", in the chosen language. */
+  function shownName(name: string) { return name === PLACEHOLDER_PROJECT_NAME ? tr("Untitled task") : name; }
   function teamLabel(p: Project) {
     const parts = [agentName(p.consultant_agent_id), agentName(p.coach_agent_id)].filter(Boolean);
-    return parts.length ? parts.join(" + ") : "No agents assigned yet";
+    return parts.length ? parts.join(" + ") : tr("No agents assigned yet");
   }
 
   function startRename(p: Project) {
@@ -292,7 +296,7 @@ function ProjectHistory() {
       await renameProject(p.id, name);
     } catch {
       setProjects(prev => prev.map(x => x.id === p.id ? { ...x, name: p.name } : x));
-      setActionError(`"${displayName(p.name)}" couldn't be renamed. Check your connection and try again.`);
+      setActionError(tr("\"{name}\" couldn't be renamed. Check your connection and try again.", { name: shownName(p.name) }));
     }
   }
 
@@ -306,7 +310,7 @@ function ProjectHistory() {
       // Kept in the list as archived: the Archived filter is where it lives now.
       setProjects(prev => prev.map(x => x.id === p.id ? { ...x, status: "Archived" } : x));
     } catch {
-      setActionError(`"${displayName(p.name)}" couldn't be archived. Check your connection and try again.`);
+      setActionError(tr("\"{name}\" couldn't be archived. Check your connection and try again.", { name: shownName(p.name) }));
     } finally {
       setArchiving(false);
       setConfirmArchive(null);
@@ -362,11 +366,11 @@ function ProjectHistory() {
     key: k,
     // The Consultant's document is named by its type (Transformation Concept,
     // Architecture Blueprint, Adoption Plan), so the filter names the role.
-    label: k === "none" ? "Not generated yet" : k === "consultant" ? "Consultant document generated" : "Change Plan generated",
+    label: tr(k === "none" ? "Not generated yet" : k === "consultant" ? "Consultant document generated" : "Change Plan generated"),
     n: inStatus.filter(p => hasDoc(p, k)).length,
   })).filter(it => it.n > 0);
   const inPeriod = (p: Project, k: Period) => now - new Date(p.last_activity_at).getTime() <= PERIODS.find(x => x.key === k)!.days * DAY;
-  const periodItems = PERIODS.map(x => ({ key: x.key, label: x.label, n: inStatus.filter(p => inPeriod(p, x.key)).length }))
+  const periodItems = PERIODS.map(x => ({ key: x.key, label: tr(x.label), n: inStatus.filter(p => inPeriod(p, x.key)).length }))
     .filter(it => it.n > 0 || it.key === period);
   const anyFilter = !!(agentFilter || docFilter || industryFilter || period);
   function clearFilters() {
@@ -374,11 +378,11 @@ function ProjectHistory() {
   }
   /** What is narrowing the list, as chips above it: the filter cards can be folded shut. */
   const chips: { key: string; label: string; clear: () => void }[] = [
-    ...(statusFilter !== "all" ? [{ key: "status", label: STATUS_FILTERS.find(f => f.key === statusFilter)!.label, clear: () => setStatusFilter("all") }] : []),
-    ...(period ? [{ key: "period", label: PERIODS.find(x => x.key === period)!.label, clear: () => setPeriod(null) }] : []),
+    ...(statusFilter !== "all" ? [{ key: "status", label: tr(STATUS_FILTERS.find(f => f.key === statusFilter)!.label), clear: () => setStatusFilter("all") }] : []),
+    ...(period ? [{ key: "period", label: tr(PERIODS.find(x => x.key === period)!.label), clear: () => setPeriod(null) }] : []),
     ...(agentFilter ? [{ key: "agent", label: agentFilter, clear: () => setAgentFilter(null) }] : []),
-    ...(industryFilter ? [{ key: "industry", label: `Industry: ${industryFilter}`, clear: () => setIndustryFilter(null) }] : []),
-    ...(docFilter ? [{ key: "docs", label: docItems.find(i => i.key === docFilter)?.label ?? "Documents", clear: () => setDocFilter(null) }] : []),
+    ...(industryFilter ? [{ key: "industry", label: tr("Industry: {name}", { name: industryFilter }), clear: () => setIndustryFilter(null) }] : []),
+    ...(docFilter ? [{ key: "docs", label: docItems.find(i => i.key === docFilter)?.label ?? tr("Documents"), clear: () => setDocFilter(null) }] : []),
   ];
 
   // "All" is everything still in play; archived projects are behind their own filter.
@@ -415,7 +419,7 @@ function ProjectHistory() {
   if (authLoading || !token) return (
     <main className="app app-wait">
       <span className="spinner spinner-lg" aria-hidden="true" />
-      <span className="visually-hidden" role="status">Loading…</span>
+      <span className="visually-hidden" role="status">{tr("Loading…")}</span>
     </main>
   );
 
@@ -423,8 +427,8 @@ function ProjectHistory() {
     <div className="app">
       <AgentNav />
       {confirmArchive && (
-        <ConfirmDialog title="Archive project?" body={`"${displayName(confirmArchive.name)}" will be moved out of your active projects.`}
-          confirmLabel="Archive" onConfirm={doArchive}
+        <ConfirmDialog title={tr("Archive project?")} body={tr("\"{name}\" will be moved out of your active projects.", { name: shownName(confirmArchive.name) })}
+          confirmLabel={tr("Archive")} onConfirm={doArchive}
           onCancel={() => { focusMore(confirmArchive.id); setConfirmArchive(null); }} />
       )}
       <main className="view-root view-enter" id="main-content" tabIndex={-1}>
@@ -432,69 +436,69 @@ function ProjectHistory() {
             2026-10-05). Colour is kept for what it means: progress, and the
             filter you are on. */}
         <div className="ph" onClick={() => { setMenuFor(null); setSortOpen(false); }}>
-          <aside className="ph-side" aria-label="Overview and filters">
+          <aside className="ph-side" aria-label={tr("Overview and filters")}>
             <section className="ph-card ph-overview">
-              <h2 className="ph-eyebrow">Project overview</h2>
+              <h2 className="ph-eyebrow">{tr("Project overview")}</h2>
               <div className="ph-ov-total">
                 <b>{counts.all}</b>
-                <span>Total projects</span>
+                <span>{tr("Total projects")}</span>
               </div>
               <ul className="ph-ov-list">
-                <li><span className="sd in-progress" aria-hidden="true" /><b>{activeCount}</b> Active</li>
-                <li><span className="sd completed" aria-hidden="true" /><b>{counts.Completed}</b> Completed</li>
-                <li><span className="sd archived" aria-hidden="true" /><b>{counts.Archived}</b> Archived</li>
+                <li><span className="sd in-progress" aria-hidden="true" /><b>{activeCount}</b> {tr("Active")}</li>
+                <li><span className="sd completed" aria-hidden="true" /><b>{counts.Completed}</b> {tr("Completed")}</li>
+                <li><span className="sd archived" aria-hidden="true" /><b>{counts.Archived}</b> {tr("Archived")}</li>
               </ul>
             </section>
 
-            <nav className="ph-card ph-filters" aria-label="Filter projects">
-              <FilterSection title="Filter by status" foldOnPhone={false}>
+            <nav className="ph-card ph-filters" aria-label={tr("Filter projects")}>
+              <FilterSection title={tr("Filter by status")} foldOnPhone={false}>
               <div className="ph-fl">
                 {STATUS_FILTERS.filter(f => f.key === "all" || counts[f.key] > 0 || f.key === statusFilter).map(f => (
                   <button key={f.key} type="button" className="ph-f" aria-pressed={statusFilter === f.key}
                     onClick={() => setStatusFilter(f.key)}>
                     <span className={`sd ${f.key === "all" ? "all" : statusClass(f.key as Project["status"])}`} aria-hidden="true" />
-                    <span className="ph-f-l">{f.label}</span>
+                    <span className="ph-f-l">{tr(f.label)}</span>
                     <span className="ph-f-n">{counts[f.key]}</span>
                   </button>
                 ))}
               </div>
               </FilterSection>
-              <FilterGroup title="Last updated" value={period} onChange={setPeriod} items={periodItems} />
-              <FilterGroup title="Agents" value={agentFilter} onChange={setAgentFilter}
+              <FilterGroup title={tr("Last updated")} value={period} onChange={setPeriod} items={periodItems} />
+              <FilterGroup title={tr("Agents")} value={agentFilter} onChange={setAgentFilter}
                 items={[...agentCounts.entries()].sort((x, y) => y[1] - x[1]).map(([type, n]) => ({ key: type, label: type, n }))} />
-              <FilterGroup title="Industry" value={industryFilter} onChange={setIndustryFilter}
+              <FilterGroup title={tr("Industry")} value={industryFilter} onChange={setIndustryFilter}
                 items={[...industryCounts.entries()].sort((x, y) => y[1] - x[1]).map(([k, n]) => ({ key: k, label: k, n }))} />
-              <FilterGroup title="Documents" value={docFilter} onChange={setDocFilter} items={docItems} />
-              {anyFilter && <button type="button" className="ph-clear" onClick={clearFilters}>Clear filters</button>}
+              <FilterGroup title={tr("Documents")} value={docFilter} onChange={setDocFilter} items={docItems} />
+              {anyFilter && <button type="button" className="ph-clear" onClick={clearFilters}>{tr("Clear filters")}</button>}
             </nav>
           </aside>
 
           <section className="ph-main">
             <header className="ph-head">
               <div className="ph-title">
-                <h1>Project History</h1>
+                <h1>{tr("Project History")}</h1>
               </div>
               <div className="ph-tools">
                 <div className="search-box"><IconSearch size={13} />
-                  <label className="visually-hidden" htmlFor={searchId}>Search projects</label>
-                  <input id={searchId} type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search projects…" />
+                  <label className="visually-hidden" htmlFor={searchId}>{tr("Search projects")}</label>
+                  <input id={searchId} type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder={tr("Search projects…")} />
                 </div>
                 <div className="ph-sort-wrap">
                   <button ref={sortBtnRef} type="button" className="ph-sort" aria-haspopup="menu" aria-expanded={sortOpen}
                     aria-controls={sortOpen ? sortMenuId : undefined}
                     onClick={e => { e.stopPropagation(); setMenuFor(null); setSortOpen(o => !o); }}>
-                    <span className="ph-sort-k">Sort by</span>
-                    <span className="ph-sort-v">{SORT_LABEL[sort]}</span>
+                    <span className="ph-sort-k">{tr("Sort by")}</span>
+                    <span className="ph-sort-v">{tr(SORT_LABEL[sort])}</span>
                     <IconChevronDown size={13} />
                   </button>
                   {sortPhase !== "closed" && (
                     <div ref={sortMenuRef} id={sortMenuId} className={`popover ph-sort-menu t-dropdown${phaseClass(sortPhase)}`}
-                      data-origin="top-right" role="menu" aria-label="Sort projects by"
+                      data-origin="top-right" role="menu" aria-label={tr("Sort projects by")}
                       onClick={e => e.stopPropagation()} onKeyDown={e => menuKeyDown(closeSort)(e)}>
                       {(Object.keys(SORT_LABEL) as SortKey[]).map(k => (
                         <button key={k} type="button" role="menuitemradio" aria-checked={sort === k} tabIndex={-1} className="mi"
                           onClick={() => { if (k !== sort) setReversed(false); setSort(k); closeSort(true); }}>
-                          <span className="mi-l">{SORT_LABEL[k]}</span>
+                          <span className="mi-l">{tr(SORT_LABEL[k])}</span>
                           {sort === k && <IconCheck size={13} />}
                         </button>
                       ))}
@@ -502,23 +506,23 @@ function ProjectHistory() {
                   )}
                 </div>
                 <button type="button" className="ph-dir" aria-pressed={reversed}
-                  aria-label={`Order: ${SORT_ORDER[sort][reversed ? 1 : 0]}. Click to reverse.`}
+                  aria-label={tr("Order: {order}. Click to reverse.", { order: tr(SORT_ORDER[sort][reversed ? 1 : 0]) })}
                   onClick={() => setReversed(r => !r)}>
                   <span className="ph-dir-ic" data-down={naturalDir === -1 ? !reversed : reversed} aria-hidden="true"><IconArrowUp size={13} /></span>
-                  {SORT_ORDER[sort][reversed ? 1 : 0]}
+                  {tr(SORT_ORDER[sort][reversed ? 1 : 0])}
                 </button>
               </div>
             </header>
 
             {chips.length > 0 && (
-              <div className="ph-chips" role="group" aria-label="Active filters">
+              <div className="ph-chips" role="group" aria-label={tr("Active filters")}>
                 {chips.map(c => (
-                  <button key={c.key} type="button" className="ph-chip" onClick={c.clear} aria-label={`Remove filter: ${c.label}`}>
+                  <button key={c.key} type="button" className="ph-chip" onClick={c.clear} aria-label={tr("Remove filter: {name}", { name: c.label })}>
                     {c.label}<IconX size={11} />
                   </button>
                 ))}
                 {chips.length > 1 && (
-                  <button type="button" className="ph-clear" onClick={() => { setStatusFilter("all"); clearFilters(); }}>Clear all</button>
+                  <button type="button" className="ph-clear" onClick={() => { setStatusFilter("all"); clearFilters(); }}>{tr("Clear all")}</button>
                 )}
               </div>
             )}
@@ -527,7 +531,7 @@ function ProjectHistory() {
               <div className="load-error" role="alert">
                 <IconAlert size={14} />
                 <span className="le-text">{actionError}</span>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setActionError(null)}>Dismiss</button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setActionError(null)}>{tr("Dismiss")}</button>
               </div>
             )}
 
@@ -536,29 +540,29 @@ function ProjectHistory() {
             {!loading && loadError && (
               <div className="load-error" role="alert">
                 <IconAlert size={14} />
-                <span className="le-text">Your projects couldn&apos;t be loaded. Check your connection and try again.</span>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={retry}><IconRefresh size={12} />Retry</button>
+                <span className="le-text">{tr("Your projects couldn't be loaded. Check your connection and try again.")}</span>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={retry}><IconRefresh size={12} />{tr("Retry")}</button>
               </div>
             )}
 
             {!loading && !loadError && filtered.length === 0 && (
               search.trim() ? (
-                <EmptyState title="No project by that name"
-                  body="Nothing here matches what you typed. Try a shorter word. The search looks at names, descriptions, categories and agents." />
+                <EmptyState title={tr("No project by that name")}
+                  body={tr("Nothing here matches what you typed. Try a shorter word. The search looks at names, descriptions, categories and agents.")} />
               ) : projects.length > 0 ? (
-                <EmptyState title="Nothing in this filter"
-                  body="No project matches the filters on the left."
-                  action={<button className="btn btn-ghost" onClick={() => { setStatusFilter("all"); clearFilters(); }}>Show all projects</button>} />
+                <EmptyState title={tr("Nothing in this filter")}
+                  body={tr("No project matches the filters on the left.")}
+                  action={<button className="btn btn-ghost" onClick={() => { setStatusFilter("all"); clearFilters(); }}>{tr("Show all projects")}</button>} />
               ) : (
-                <EmptyState title="Nothing here yet"
-                  body="Start a task and it turns up here on its own, with the agents that worked on it and everything they produced."
-                  action={<button className="btn btn-hero" onClick={() => router.push("/dashboard")}><IconPlus />New task</button>} />
+                <EmptyState title={tr("Nothing here yet")}
+                  body={tr("Start a task and it turns up here on its own, with the agents that worked on it and everything they produced.")}
+                  action={<button className="btn btn-hero" onClick={() => router.push("/dashboard")}><IconPlus />{tr("New task")}</button>} />
               )
             )}
 
             <div className="ph-list">
               {!loading && !loadError && filtered.map((p, i) => {
-                const name = displayName(p.name);
+                const name = shownName(p.name);
                 const isRenaming = renamingId === p.id;
                 const menuOpen = menuFor === p.id;
                 const menuId = `${uid}-menu-${p.id}`;
@@ -579,7 +583,7 @@ function ProjectHistory() {
                     <span className="ph-body">
                       {isRenaming ? (
                         <input ref={renameRef} className="pr-rename-input" type="text" value={renameDraft}
-                          aria-label="Project name" placeholder="Untitled task"
+                          aria-label={tr("Project name")} placeholder={tr("Untitled task")}
                           onChange={e => setRenameDraft(e.target.value)}
                           onKeyDown={e => {
                             if (e.key === "Enter") { e.preventDefault(); commitRename(p, true); }
@@ -607,9 +611,9 @@ function ProjectHistory() {
                       </span>
                     </span>
                     <span className="ph-facts">
-                      <span className={`status-pill ${statusClass(p.status)}`}><span className="sd" />{p.status}</span>
-                      <span>{st ? `${st.messages} ${st.messages === 1 ? "message" : "messages"}` : ""}{st?.docs ? ` · ${st.docs} ${st.docs === 1 ? "document" : "documents"}` : ""}</span>
-                      <span>Updated {agoStr(p.last_activity_at)}</span>
+                      <span className={`status-pill ${statusClass(p.status)}`}><span className="sd" />{tr(p.status)}</span>
+                      <span>{st ? tr(st.messages === 1 ? "1 message" : "{n} messages", { n: st.messages }) : ""}{st?.docs ? ` · ${tr(st.docs === 1 ? "1 document" : "{n} documents", { n: st.docs })}` : ""}</span>
+                      <span>{tr("Updated {when}", { when: tr(agoStr(p.last_activity_at)) })}</span>
                     </span>
                     <span className="ph-open" aria-hidden="true"><IconArrow /></span>
                   </>
@@ -623,7 +627,7 @@ function ProjectHistory() {
                       : <Link href={`/dashboard/project/${p.id}`} className="ph-link">{content}</Link>}
                     {!isRenaming && (
                       <button ref={el => { moreRefs.current[p.id] = el; }} type="button" className="overflow-btn"
-                        data-tooltip="More" aria-label={`More actions for ${name}`}
+                        data-tooltip={tr("More")} aria-label={tr("More actions for {name}", { name })}
                         aria-haspopup="menu" aria-expanded={menuOpen} aria-controls={menuOpen ? menuId : undefined}
                         onClick={e => { e.stopPropagation(); setMenuFor(menuOpen ? null : p.id); }}>
                         <IconMore />
@@ -631,15 +635,15 @@ function ProjectHistory() {
                     )}
                     {menuPhase !== "closed" && (menuFor ?? lastMenuFor) === p.id && (
                       <div ref={menuRef} id={menuId} className={`popover row-menu t-dropdown${phaseClass(menuPhase)}`}
-                        data-origin="top-right" role="menu" aria-label={`Actions for ${name}`}
+                        data-origin="top-right" role="menu" aria-label={tr("Actions for {name}", { name })}
                         onClick={e => e.stopPropagation()} onKeyDown={e => menuKeyDown(closeMenu)(e)}>
                         <button type="button" role="menuitem" tabIndex={-1} className="mi" onClick={() => startRename(p)}>
-                          <IconPencil size={13} />Rename project
+                          <IconPencil size={13} />{tr("Rename project")}
                         </button>
                         {p.status !== "Archived" && (
                           <button type="button" role="menuitem" tabIndex={-1} className="mi"
                             onClick={() => { setMenuFor(null); setConfirmArchive(p); }}>
-                            Archive project
+                            {tr("Archive project")}
                           </button>
                         )}
                       </div>

@@ -5,6 +5,7 @@ import { AgentHero, type HeroAgent } from "@/components/layout/agent-hero";
 import { IconArrow } from "@/components/layout/agxp-icons";
 import { listAgents, type AgentType } from "@/lib/agents";
 import { projectCountsByAgent } from "@/lib/agent-progress";
+import { useT } from "@/lib/language";
 
 /**
  * The agent you have done the most with, per seat. Ties go to the one made
@@ -49,6 +50,7 @@ async function leadAgents(): Promise<Partial<Record<AgentType, HeroAgent>>> {
  * started anything.
  */
 export function HomeScreen({ onNew }: { onNew: () => void }) {
+  const t = useT();
   const [team, setTeam] = useState<Partial<Record<AgentType, HeroAgent>>>();
   useEffect(() => {
     let alive = true;
@@ -60,12 +62,12 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
     <section className="home" aria-labelledby="home-title">
       <AgentHero
         kicker="AgentiX Projects"
-        title={<h1 id="home-title" className="home-title">Two agents.<br /><span>One project.</span></h1>}
-        lede="Bring an idea. A consultant works it out with you, step by step."
+        title={<h1 id="home-title" className="home-title">{t("Two agents.")}<br /><span>{t("One project.")}</span></h1>}
+        lede={t("Bring an idea. A consultant works it out with you, step by step.")}
         team={team}
       >
         <button className="home-start" onClick={onNew}>
-          Start a new chat <IconArrow size={16} />
+          {t("Start a new chat")} <IconArrow size={16} />
         </button>
       </AgentHero>
     </section>

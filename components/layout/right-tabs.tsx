@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "@/lib/language";
+
 export type RightView = "methods" | "coach";
 
 /**
@@ -15,15 +17,16 @@ export function RightTabs({ view, onChange, coachUnseen = false }: {
   /** The Coach has said something while it was out of sight. */
   coachUnseen?: boolean;
 }) {
+  const t = useT();
   return (
-    <div className="rt-tabs" role="group" aria-label="Show on this side" data-tour="panel-switch">
+    <div className="rt-tabs" role="group" aria-label={t("Show on this side")} data-tour="panel-switch">
       <button type="button" className="rt-tab" aria-pressed={view === "methods"}
-        onClick={() => onChange("methods")}>Methods</button>
+        onClick={() => onChange("methods")}>{t("Methods")}</button>
       <button type="button" className="rt-tab" aria-pressed={view === "coach"}
         onClick={() => onChange("coach")}>
-        Coach
+        {t("Coach")}
         {coachUnseen && (
-          <><span className="rt-dot" aria-hidden="true" /><span className="visually-hidden">, has something to add</span></>
+          <><span className="rt-dot" aria-hidden="true" /><span className="visually-hidden">{t(", has something to add")}</span></>
         )}
       </button>
     </div>

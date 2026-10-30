@@ -12,6 +12,7 @@ import { AgentMascot, type MascotState, type MascotMood, type LookTarget } from 
 import type { DeliverableDoc } from "@/components/layout/deliverable-view";
 import { DeliverableRail } from "@/components/layout/deliverable-rail";
 import { IconDoc, IconChevronDown, IconMinimise } from "@/components/layout/agxp-icons";
+import { useT } from "@/lib/language";
 
 /** How many remembered facts the profile lists before "and N more". */
 const LESSONS_SHOWN = 3;
@@ -87,6 +88,7 @@ export function ChatHead({
   onRegenerate: () => void;
   onRestoreVersion: (version: number) => void;
 }) {
+  const t = useT();
   /** Which head popover is open: the agent profile, or the document. */
   const [pop, setPop] = useState<"agent" | "doc" | null>(null);
   const headRef = useRef<HTMLDivElement>(null);
@@ -126,8 +128,8 @@ export function ChatHead({
           {topRow}
           {onMinimise && (
             <button className="head-min" onClick={onMinimise}
-              data-tooltip="Fold away. The Coach keeps listening."
-              aria-label="Fold this panel away">
+              data-tooltip={t("Fold away. The Coach keeps listening.")}
+              aria-label={t("Fold this panel away")}>
               <IconMinimise size={14} />
             </button>
           )}
@@ -148,7 +150,7 @@ export function ChatHead({
               the agent is doing anything, and a second, blue, changing word
               beside the name only added noise (Ana, 2026-09-28). */}
           <span className="r"><span className={`role-dot ${role}`} />
-            {role === "coach" ? "Coach" : "Consultant"}
+            {t(role === "coach" ? "Coach" : "Consultant")}
           </span>
         </span>
         <IconChevronDown size={11} />
@@ -159,10 +161,10 @@ export function ChatHead({
       {!hideRail && <button data-tour="rail" className={`doc-pill${ready ? " ready" : ""}${currentDoc ? " done" : ""}`}
         style={{ ["--fill" as string]: (currentDoc ? 100 : pct) / 100 }}
         aria-expanded={pop === "doc"} data-tooltip={deliverable.title}
-        aria-label={`${deliverable.title}, ${currentDoc ? "ready" : `${pct}% ready`}`}
+        aria-label={currentDoc ? t("{title}, ready", { title: deliverable.title }) : t("{title}, {pct}% ready", { title: deliverable.title, pct })}
         onClick={() => setPop(p => (p === "doc" ? null : "doc"))}>
         <IconDoc size={12} />
-        <span>{currentDoc ? "ready" : `${pct}%`}</span>
+        <span>{currentDoc ? t("ready") : `${pct}%`}</span>
       </button>}
 
       {/* The waiting panel says so itself. The badge is the control —
@@ -170,8 +172,8 @@ export function ChatHead({
           so the unread state has somewhere to go other than the seam button. */}
       {unread && onFocusPanel && (
         <button className="head-unread" onClick={onFocusPanel}
-          data-tooltip={`Read what ${agent.name} said`}>
-          <span className="hu-dot" aria-hidden="true" />New
+          data-tooltip={t("Read what {name} said", { name: agent.name })}>
+          <span className="hu-dot" aria-hidden="true" />{t("New")}
         </button>
       )}
 
@@ -180,8 +182,8 @@ export function ChatHead({
           covers the composer. */}
       {!topRow && onMinimise && (
         <button className="head-min" onClick={onMinimise}
-          data-tooltip="Fold away. The Coach keeps listening."
-          aria-label="Fold this panel away">
+          data-tooltip={t("Fold away. The Coach keeps listening.")}
+          aria-label={t("Fold this panel away")}>
           <IconMinimise size={14} />
         </button>
       )}
@@ -193,43 +195,43 @@ export function ChatHead({
           data-origin="top-left" onClick={e => e.stopPropagation()}>
           <div className="hp-stats">
             <div>
-              <span className="lbl">Experience</span>
+              <span className="lbl">{t("Experience")}</span>
               <div className="level">
-                <b>{level}</b>
+                <b>{t(level)}</b>
                 <span className="level-bar">
                   {LEVEL_ORDER.map((l, i) => (
                     <span key={l} className={`level-seg ${i <= LEVEL_ORDER.indexOf(level) ? "on" : ""}`} />
                   ))}
                 </span>
-                {leveledUp && <span className="level-up">Level up</span>}
+                {leveledUp && <span className="level-up">{t("Level up")}</span>}
               </div>
-              {next && <div className="level-hint">{remaining} more project{remaining === 1 ? "" : "s"} to {next}</div>}
+              {next && <div className="level-hint">{t(remaining === 1 ? "1 more project to {next}" : "{n} more projects to {next}", { n: remaining, next: t(next) })}</div>}
             </div>
-            <div><span className="lbl">Projects together</span><b>{totalProjects}</b></div>
+            <div><span className="lbl">{t("Projects together")}</span><b>{totalProjects}</b></div>
             {onChangeAgent && (
               <button className="btn btn-hero btn-sm hp-change" onClick={() => { setPop(null); onChangeAgent(); }}>
-                Change agent
+                {t("Change agent")}
               </button>
             )}
           </div>
-          {agent.tagline && <div className="hp-grp"><span className="lbl">Role</span><div className="val">{agent.tagline}</div></div>}
+          {agent.tagline && <div className="hp-grp"><span className="lbl">{t("Role")}</span><div className="val">{agent.tagline}</div></div>}
           {lessons.length > 0 && (
             <div className="hp-grp">
               <span className="lbl">
-                Remembers about you
-                {learned.length > 0 && <em className="mem-new">+{learned.length} new</em>}
+                {t("Remembers about you")}
+                {learned.length > 0 && <em className="mem-new">{t("+{n} new", { n: learned.length })}</em>}
               </span>
               <ul className="plist mem">
                 {lessons.slice(0, LESSONS_SHOWN).map(l => (
                   <li key={l.fact} className={l.fresh ? "fresh" : undefined}>{l.fact}</li>
                 ))}
-                {lessons.length > LESSONS_SHOWN && <li className="muted">and {lessons.length - LESSONS_SHOWN} more</li>}
+                {lessons.length > LESSONS_SHOWN && <li className="muted">{t("and {n} more", { n: lessons.length - LESSONS_SHOWN })}</li>}
               </ul>
             </div>
           )}
           {agent.primaryMethods.length > 0 && (
             <div className="hp-grp">
-              <span className="lbl">Can help with</span>
+              <span className="lbl">{t("Can help with")}</span>
               <ul className="plist">
                 {[...agent.primaryMethods, ...agent.secondaryMethods].map(m => (
                   <li key={m.id}>{methodLabel(m.name)}</li>

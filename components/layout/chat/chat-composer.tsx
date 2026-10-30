@@ -6,6 +6,7 @@ import { IconArrowUp, IconAttach, IconStop, IconX, IconDoc } from "@/components/
 import { ACCEPT_ATTR, uploadProjectFile, removeProjectFile, fileMarker } from "@/lib/project-files";
 import type { FileRef } from "@/lib/message-markers";
 import { MAX_COMPOSER_CHARS } from "@/lib/chat-input";
+import { useT } from "@/lib/language";
 
 /** The two 30px buttons beside the text, and the gaps between them. */
 const BUTTON_W = 30;
@@ -46,6 +47,7 @@ export function ChatComposer({ role, sending, canSend, projectId, inputRef, appe
   /** The agent looks at the composer while you are writing to it. */
   onAttentiveChange: (attentive: boolean) => void;
 }) {
+  const t = useT();
   const [input, setInput] = useState("");
   const [files, setFiles] = useState<FileRef[]>([]);
   const [uploading, setUploading] = useState(0);
@@ -145,7 +147,7 @@ export function ChatComposer({ role, sending, canSend, projectId, inputRef, appe
             <span key={f.path} className="pb-chip" title={f.name}>
               <IconDoc size={11} />
               <b>{f.name}</b>
-              <button type="button" onClick={() => drop(f)} aria-label={`Remove ${f.name}`}>
+              <button type="button" onClick={() => drop(f)} aria-label={t("Remove {name}", { name: f.name })}>
                 <IconX size={10} />
               </button>
             </span>
@@ -153,7 +155,7 @@ export function ChatComposer({ role, sending, canSend, projectId, inputRef, appe
           {uploading > 0 && (
             <span className="pb-chip is-busy">
               <IconDoc size={11} />
-              <b>{uploading === 1 ? "Uploading…" : `Uploading ${uploading}…`}</b>
+              <b>{uploading === 1 ? t("Uploading…") : t("Uploading {n}…", { n: uploading })}</b>
             </span>
           )}
           {fileError && <span className="pb-file-error" role="alert">{fileError}</span>}
@@ -168,8 +170,8 @@ export function ChatComposer({ role, sending, canSend, projectId, inputRef, appe
           onKeyDown={e => {
             if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit(); }
           }}
-          aria-label={`Message your ${who}`}
-          placeholder={`Ask your ${who}…`} />
+          aria-label={t(`Message your ${who}`)}
+          placeholder={t(`Ask your ${who}…`)} />
         {/* aria-disabled rather than disabled while it cannot be used, so it
             stays focusable and the tooltip can say why. */}
         <input ref={pickRef} type="file" className="visually-hidden" multiple
@@ -177,19 +179,19 @@ export function ChatComposer({ role, sending, canSend, projectId, inputRef, appe
           onChange={e => pick(e.target.files)} />
         <button type="button" className="pb-btn pb-attach"
           aria-disabled={!canAttach || undefined}
-          data-tooltip={canAttach ? "Attach a file" : sending ? "Wait for the answer" : "Not available yet"}
-          aria-label="Attach a file"
+          data-tooltip={t(canAttach ? "Attach a file" : sending ? "Wait for the answer" : "Not available yet")}
+          aria-label={t("Attach a file")}
           onClick={() => { if (canAttach) pickRef.current?.click(); }}>
           <IconAttach size={16} />
         </button>
         {sending ? (
           <button key="stop" type="button" className="pb-btn pb-send pb-stop"
-            data-tooltip="Stop generating" aria-label="Stop generating" onClick={onStop}>
+            data-tooltip={t("Stop generating")} aria-label={t("Stop generating")} onClick={onStop}>
             <IconStop size={16} />
           </button>
         ) : (
           <button key="send" type="button" className={`pb-btn pb-send${ready ? " can-send" : ""}`}
-            data-tooltip="Send message" aria-label="Send message"
+            data-tooltip={t("Send message")} aria-label={t("Send message")}
             disabled={!ready} onClick={submit}>
             <IconArrowUp size={16} />
           </button>
@@ -210,8 +212,7 @@ export function ChatComposer({ role, sending, canSend, projectId, inputRef, appe
         business user most needs to hear: it is not professional advice, and
         secrets do not belong in the box. */}
     <p className="pb-ai">
-      You&apos;re talking to an AI agent. It can make mistakes and is no substitute for legal,
-      tax or financial advice. Don&apos;t share passwords or payment details.
+      {t("You're talking to an AI agent. It can make mistakes and is no substitute for legal, tax or financial advice. Don't share passwords or payment details.")}
     </p>
     </>
   );

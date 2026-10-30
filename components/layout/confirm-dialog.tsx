@@ -4,6 +4,7 @@ import { useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useDialogFocus } from "@/lib/use-dialog-focus";
 import { useExit } from "@/lib/use-exit";
+import { useT } from "@/lib/language";
 
 export interface ConfirmDialogProps {
   title: string;
@@ -14,6 +15,7 @@ export interface ConfirmDialogProps {
 }
 
 export function ConfirmDialog({ title, body, confirmLabel, onConfirm, onCancel }: ConfirmDialogProps) {
+  const t = useT();
   const ref = useRef<HTMLDivElement>(null);
   // Per instance: two dialogs (or one closing while the next opens) must not
   // share an id, or the label points at the wrong heading.
@@ -43,7 +45,7 @@ export function ConfirmDialog({ title, body, confirmLabel, onConfirm, onCancel }
         <h2 id={titleId}>{title}</h2>
         <div className="sub" id={bodyId}>{body}</div>
         <div className="modal-actions">
-          <button className="btn btn-ghost" onClick={cancel}>Cancel</button>
+          <button className="btn btn-ghost" onClick={cancel}>{t("Cancel")}</button>
           <button className="btn btn-plum" onClick={onConfirm}>{confirmLabel || "Confirm"}</button>
         </div>
       </div>

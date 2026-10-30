@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 import { ACCENTS, readAccent, applyAccent, type Accent } from "@/lib/accent";
 import { SPLIT_PRESETS, useChatSplit, useSplitLocked, broadcastSplit, broadcastSplitLocked, presetFor } from "@/lib/chat-split";
 import { BACKGROUND_OPTIONS, GLASS_OPTIONS, useAppearance, setAppearance } from "@/lib/appearance";
+import { LANG_OPTIONS, useLang, setLang, useT } from "@/lib/language";
 import { IconX, IconCheck, IconMonitor, IconSun, IconMoon, IconSpark } from "@/components/layout/agxp-icons";
 import { useDialogFocus } from "@/lib/use-dialog-focus";
 import { useExit } from "@/lib/use-exit";
@@ -46,6 +47,8 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const split = useChatSplit();
   const splitLocked = useSplitLocked();
   const appearance = useAppearance();
+  const lang = useLang();
+  const t = useT();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
@@ -74,7 +77,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
 
   /** Left/Right/Home/End between the two tabs; Tab itself goes to the panel. */
   function onTabKey(e: React.KeyboardEvent<HTMLElement>) {
-    const i = TABS.findIndex(t => t.id === tab);
+    const i = TABS.findIndex(x => x.id === tab);
     const next = e.key === "ArrowRight" ? TABS[(i + 1) % TABS.length]
       : e.key === "ArrowLeft" ? TABS[(i - 1 + TABS.length) % TABS.length]
       : e.key === "Home" ? TABS[0]
@@ -102,7 +105,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
       setSaved(true);
       setTimeout(() => setSaved(false), 2200);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not save your name.");
+      setError(e instanceof Error ? e.message : t("Could not save your name."));
     } finally {
       setSaving(false);
     }
@@ -116,16 +119,16 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
       onClick={e => { if (e.target === e.currentTarget) close(); }}>
       <div ref={sheetRef} className="settings-sheet" role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <header className="ss-head">
-          <h2 id={titleId}>Settings</h2>
-          <button className="ss-close" onClick={close} aria-label="Close settings"><IconX size={14} /></button>
+          <h2 id={titleId}>{t("Settings")}</h2>
+          <button className="ss-close" onClick={close} aria-label={t("Close settings")}><IconX size={14} /></button>
         </header>
 
-        <div className="ss-tabs" role="tablist" aria-label="Settings sections" onKeyDown={onTabKey}>
-          {TABS.map(t => (
-            <button key={t.id} role="tab" id={`${uid}-tab-${t.id}`} aria-selected={tab === t.id}
-              aria-controls={`${uid}-panel`} tabIndex={tab === t.id ? 0 : -1}
-              ref={el => { tabRefs.current[t.id] = el; }}
-              className={tab === t.id ? "on" : ""} onClick={() => setTab(t.id)}>{t.label}</button>
+        <div className="ss-tabs" role="tablist" aria-label={t("Settings sections")} onKeyDown={onTabKey}>
+          {TABS.map(x => (
+            <button key={x.id} role="tab" id={`${uid}-tab-${x.id}`} aria-selected={tab === x.id}
+              aria-controls={`${uid}-panel`} tabIndex={tab === x.id ? 0 : -1}
+              ref={el => { tabRefs.current[x.id] = el; }}
+              className={tab === x.id ? "on" : ""} onClick={() => setTab(x.id)}>{t(x.label)}</button>
           ))}
         </div>
 
@@ -135,33 +138,33 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
               <div className="ss-identity">
                 <span className="ss-avatar" aria-hidden="true">{initials}</span>
                 <div>
-                  <div className="ss-name">{name.trim() || "Add your name"}</div>
+                  <div className="ss-name">{name.trim() || t("Add your name")}</div>
                   <div className="ss-mail">{user?.email}</div>
                 </div>
               </div>
 
               <label className="ss-field">
-                <span className="ss-label">Display name</span>
+                <span className="ss-label">{t("Display name")}</span>
                 <input ref={firstField} type="text" value={name} maxLength={60}
                   onChange={e => setName(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter" && dirty) save(); }}
-                  placeholder="How your agents address you" />
-                <span className="ss-hint">Your agents use this when they talk to you.</span>
+                  placeholder={t("How your agents address you")} />
+                <span className="ss-hint">{t("Your agents use this when they talk to you.")}</span>
               </label>
 
               <label className="ss-field">
-                <span className="ss-label">Email</span>
+                <span className="ss-label">{t("Email")}</span>
                 {/* Read-only: changing it means re-verifying an address, which
                     is an account flow, not a preference. */}
                 <input type="email" value={user?.email ?? ""} readOnly disabled />
-                <span className="ss-hint">Sign-in address. Not changeable here.</span>
+                <span className="ss-hint">{t("Sign-in address. Not changeable here.")}</span>
               </label>
 
               {error && <p className="ss-error" role="alert">{error}</p>}
 
               <div className="ss-actions">
                 <button className="btn btn-hero" disabled={!dirty || saving} onClick={save}>
-                  {saving ? "Saving…" : saved ? <><IconCheck size={13} />Saved</> : "Save changes"}
+                  {saving ? t("Saving…") : saved ? <><IconCheck size={13} />{t("Saved")}</> : t("Save changes")}
                 </button>
               </div>
 
@@ -171,22 +174,35 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
                   so leaving Settings open behind it would strand this dialog
                   underneath with its focus trap still running. */}
               <div className="ss-field ss-tour">
-                <span className="ss-label">Guided tour</span>
+                <span className="ss-label">{t("Guided tour")}</span>
                 <div className="ss-tour-row">
                   <p className="ss-hint">
-                    The one-minute introduction to the two agents, the documents and the colours.
+                    {t("The one-minute introduction to the two agents, the documents and the colours.")}
                   </p>
                   <button className="btn btn-ghost" onClick={() => exitThen(() => { onClose(); replayTour(); })}>
-                    <IconSpark size={13} />Play it again
+                    <IconSpark size={13} />{t("Play it again")}
                   </button>
                 </div>
               </div>
             </>
           ) : (
             <>
+              {/* Tudor, 2026-10-30: German or English, nothing more. The
+                  app's own words only — lib/language.ts says why. */}
               <div className="ss-field">
-                <span className="ss-label">Theme</span>
-                <div className="ss-segment" role="group" aria-label="Theme">
+                <span className="ss-label">{t("Language")}</span>
+                <div className="ss-segment" role="group" aria-label={t("Language")}>
+                  {LANG_OPTIONS.map(opt => (
+                    <button key={opt.id} lang={opt.id} className={lang === opt.id ? "on" : ""}
+                      aria-pressed={lang === opt.id} onClick={() => setLang(opt.id)}>{opt.label}</button>
+                  ))}
+                </div>
+                <span className="ss-hint">{t("The app's buttons and labels. What the agents write is not changed.")}</span>
+              </div>
+
+              <div className="ss-field">
+                <span className="ss-label">{t("Theme")}</span>
+                <div className="ss-segment" role="group" aria-label={t("Theme")}>
                   {([
                     ["system", "System", <IconMonitor key="s" size={13} />],
                     ["light", "Light", <IconSun key="l" size={13} />],
@@ -194,16 +210,16 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
                   ] as const).map(([value, label, icon]) => (
                     <button key={value} className={theme === value ? "on" : ""}
                       aria-pressed={theme === value} onClick={() => setTheme(value)}>
-                      {icon}{label}
+                      {icon}{t(label)}
                     </button>
                   ))}
                 </div>
-                <span className="ss-hint">System follows whatever your computer is set to.</span>
+                <span className="ss-hint">{t("System follows whatever your computer is set to.")}</span>
               </div>
 
               <div className="ss-field">
-                <span className="ss-label">Accent</span>
-                <div className="ss-swatches" role="group" aria-label="Accent colour">
+                <span className="ss-label">{t("Accent")}</span>
+                <div className="ss-swatches" role="group" aria-label={t("Accent colour")}>
                   {ACCENTS.map(a => (
                     <button key={a.id} className={`ss-swatch${accent.id === a.id ? " on" : ""}`}
                       style={{ ["--sw" as string]: a.soft, ["--sw-deep" as string]: a.primary }}
@@ -213,34 +229,34 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
                     </button>
                   ))}
                 </div>
-                <span className="ss-hint">Changes every accent in the app, including the light in the room behind the panels. Saved on this browser.</span>
+                <span className="ss-hint">{t("Changes every accent in the app, including the light in the room behind the panels. Saved on this browser.")}</span>
               </div>
 
               {/* The room, and how much of it shows through. Both land as you
                   click — you are looking at the thing you are changing, so a
                   Save button in between would only hide the answer. */}
               <div className="ss-field">
-                <span className="ss-label">Background</span>
-                <div className="ss-segment" role="group" aria-label="Background pattern">
+                <span className="ss-label">{t("Background")}</span>
+                <div className="ss-segment" role="group" aria-label={t("Background pattern")}>
                   {BACKGROUND_OPTIONS.map(opt => (
                     <button key={opt.id} className={appearance.background === opt.id ? "on" : ""}
-                      aria-pressed={appearance.background === opt.id} data-tooltip={opt.hint}
-                      onClick={() => setAppearance({ background: opt.id })}>{opt.label}</button>
+                      aria-pressed={appearance.background === opt.id} data-tooltip={t(opt.hint)}
+                      onClick={() => setAppearance({ background: opt.id })}>{t(opt.label)}</button>
                   ))}
                 </div>
-                <span className="ss-hint">Drifting moves about a third of a pixel a second — enough to feel alive, not enough to follow.</span>
+                <span className="ss-hint">{t("Drifting moves about a third of a pixel a second — enough to feel alive, not enough to follow.")}</span>
               </div>
 
               <div className="ss-field">
-                <span className="ss-label">Glass</span>
-                <div className="ss-segment" role="group" aria-label="How much glass">
+                <span className="ss-label">{t("Glass")}</span>
+                <div className="ss-segment" role="group" aria-label={t("How much glass")}>
                   {GLASS_OPTIONS.map(opt => (
                     <button key={opt.id} className={appearance.glass === opt.id ? "on" : ""}
-                      aria-pressed={appearance.glass === opt.id} data-tooltip={opt.hint}
-                      onClick={() => setAppearance({ glass: opt.id })}>{opt.label}</button>
+                      aria-pressed={appearance.glass === opt.id} data-tooltip={t(opt.hint)}
+                      onClick={() => setAppearance({ glass: opt.id })}>{t(opt.label)}</button>
                   ))}
                 </div>
-                <span className="ss-hint">How much the bars, the sheets and the panels blur what is behind them. Solid is also the faster one.</span>
+                <span className="ss-hint">{t("How much the bars, the sheets and the panels blur what is behind them. Solid is also the faster one.")}</span>
               </div>
 
               {/* Asked for on 2026-09-26: the drag on the seam is the quick
@@ -248,23 +264,23 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
                   setting — the sides themselves are swapped in the workspace,
                   where you can see what you are swapping. */}
               <div className="ss-field">
-                <span className="ss-label">Conversation width</span>
-                <div className="ss-segment" role="group" aria-label="How the two conversations share the screen">
+                <span className="ss-label">{t("Conversation width")}</span>
+                <div className="ss-segment" role="group" aria-label={t("How the two conversations share the screen")}>
                   {SPLIT_PRESETS.map(p => {
                     const on = presetFor(split) === p.id;
                     return (
                       <button key={p.id} className={on ? "on" : ""} aria-pressed={on}
-                        data-tooltip={p.hint}
+                        data-tooltip={t(p.hint)}
                         onClick={() => broadcastSplit(p.share)}>
                         <span className="ss-split-ic" style={{ ["--lead" as string]: `${(p.share / (p.share + 1)) * 100}%` }} />
-                        {p.label}
+                        {t(p.label)}
                       </button>
                     );
                   })}
                 </div>
                 <span className="ss-hint">
-                  How much room the conversation you are in takes.
-                  {splitLocked ? " The seam between them is locked." : " You can also drag the seam between them."}
+                  {t("How much room the conversation you are in takes.")}
+                  {t(splitLocked ? " The seam between them is locked." : " You can also drag the seam between them.")}
                 </span>
               </div>
 
@@ -272,15 +288,15 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
                   for the swap button, so the width changes by accident. Locked,
                   the presets above are the only way to change it. */}
               <div className="ss-field">
-                <span className="ss-label">Dragging the seam</span>
-                <div className="ss-segment" role="group" aria-label="Whether the seam can be dragged">
+                <span className="ss-label">{t("Dragging the seam")}</span>
+                <div className="ss-segment" role="group" aria-label={t("Whether the seam can be dragged")}>
                   {([[false, "Free"], [true, "Locked"]] as const).map(([value, label]) => (
                     <button key={label} className={splitLocked === value ? "on" : ""}
                       aria-pressed={splitLocked === value}
-                      onClick={() => broadcastSplitLocked(value)}>{label}</button>
+                      onClick={() => broadcastSplitLocked(value)}>{t(label)}</button>
                   ))}
                 </div>
-                <span className="ss-hint">Locked, the width only changes here — the seam keeps its swap button.</span>
+                <span className="ss-hint">{t("Locked, the width only changes here — the seam keeps its swap button.")}</span>
               </div>
             </>
           )}
@@ -303,51 +319,52 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
  */
 function PlanTab() {
   const { plan, projects, projectsLeft, loading, canSwitch, refresh } = useEntitlement();
+  const t = useT();
   const order: Plan[] = [PLANS.free, PLANS.mid, PLANS.max];
-  const window = plan.period === "week" ? "this week" : "this month";
-  const resets = plan.period === "week" ? "Resets Monday." : "Resets on the 1st.";
+  const left = plan.period === "week" ? "{left} of {total} projects left this week" : "{left} of {total} projects left this month";
+  const resets = t(plan.period === "week" ? "Resets Monday." : "Resets on the 1st.");
   const pct = plan.projects >= 1000 ? 0 : Math.min(100, (projects / plan.projects) * 100);
 
   return (
     <>
       <div className="ss-field">
-        <span className="ss-label">Your plan</span>
+        <span className="ss-label">{t("Your plan")}</span>
         <div className="ss-plan-now">
           <b>{plan.label}</b>
           {plan.projects >= 1000
-            ? <span className="ss-plan-left">Unlimited projects</span>
+            ? <span className="ss-plan-left">{t("Unlimited projects")}</span>
             : <span className={`ss-plan-left${projectsLeft <= 1 ? " low" : ""}`}>
-                {loading ? "…" : `${projectsLeft} of ${plan.projects} projects left ${window}`}
+                {loading ? "…" : t(left, { left: projectsLeft, total: plan.projects })}
               </span>}
         </div>
         {plan.projects < 1000 && (
           <div className="ss-plan-bar" role="presentation"><span style={{ width: `${pct}%` }} /></div>
         )}
-        <span className="ss-hint">{resets} A project is one conversation — rebuilding its document as often as you like costs nothing extra.</span>
+        <span className="ss-hint">{resets} {t("A project is one conversation — rebuilding its document as often as you like costs nothing extra.")}</span>
       </div>
 
       <div className="ss-field">
-        <span className="ss-label">What each plan includes</span>
+        <span className="ss-label">{t("What each plan includes")}</span>
         <div className="ss-plans">
           {order.map(p => (
             <div key={p.id} className={`ss-plan${p.id === plan.id ? " on" : ""}`}>
               <div className="ss-plan-h">
                 <b>{p.label}</b>
-                {p.id === plan.id && <span className="ss-plan-tag">Current</span>}
+                {p.id === plan.id && <span className="ss-plan-tag">{t("Current")}</span>}
               </div>
               <ul>
-                <li><b>{projectsLabel(p)}</b> projects per {p.period}</li>
-                <li>{p.stations === null ? "Full interview" : `First ${p.stations} interview steps`}</li>
-                <li>{p.peerReading === "full"
+                <li><b>{t(projectsLabel(p))}</b> {t(`projects per ${p.period}`)}</li>
+                <li>{p.stations === null ? t("Full interview") : t("First {n} interview steps", { n: p.stations })}</li>
+                <li>{t(p.peerReading === "full"
                   ? "Coach reads the consultation"
-                  : "Coach reads it once, as a preview"}</li>
-                <li>{p.nudges ? "Coach speaks up on its own" : "Coach answers when asked"}</li>
-                <li>{agentsLabel(p)[0].toUpperCase() + agentsLabel(p).slice(1)}, all your own</li>
+                  : "Coach reads it once, as a preview")}</li>
+                <li>{t(p.nudges ? "Coach speaks up on its own" : "Coach answers when asked")}</li>
+                <li>{t(`${agentsLabel(p)[0].toUpperCase() + agentsLabel(p).slice(1)}, all your own`)}</li>
               </ul>
             </div>
           ))}
         </div>
-        <span className="ss-hint">Upgrading isn&apos;t wired up yet — get in touch and we&apos;ll move your account.</span>
+        <span className="ss-hint">{t("Upgrading isn't wired up yet — get in touch and we'll move your account.")}</span>
       </div>
 
       {canSwitch && <DevPlanTools current={plan.id} onChanged={refresh} />}
