@@ -165,7 +165,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "pair",
     tag: "The pair",
-    title: "One plans the work. One plans the people.",
+    title: "Two advisers, one project.",
     line: "The Consultant writes your Transformation Concept, the Coach writes your Change Plan — on the same project, each with a conversation of their own.",
     speaker: "consultant",
   },
@@ -179,8 +179,8 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "ask",
     tag: "Talking",
-    title: "One question at a time.",
-    line: "No forms. They interview you, and when a question has obvious answers you get them as buttons — try one.",
+    title: "It leads, you decide.",
+    line: "No forms. The consultant walks you through it step by step, and when an answer is obvious you get it as a button — try one.",
     speaker: "coach",
   },
   {

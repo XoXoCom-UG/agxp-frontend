@@ -61,7 +61,7 @@ export function HomeScreen({ onNew }: { onNew: () => void }) {
       <AgentHero
         kicker="AgentiX Projects"
         title={<h1 id="home-title" className="home-title">Two agents.<br /><span>One project.</span></h1>}
-        lede="One plans the work. The other plans the people."
+        lede="Bring an idea. A consultant works it out with you, step by step."
         team={team}
       >
         <button className="home-start" onClick={onNew}>

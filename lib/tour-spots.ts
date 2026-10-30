@@ -61,7 +61,7 @@ export const TOUR_SPOTS: Spot[] = [
   {
     anchor: "rail",
     title: "How far along you are",
-    body: "The stations of the interview, and the document as it fills in. This is also where you generate it once there is enough.",
+    body: "The steps you work through, and the document as it fills in. This is also where you generate it once there is enough.",
     prefer: "left",
   },
   {
@@ -101,7 +101,7 @@ export const CHAT_SPOTS: Spot[] = [
   {
     anchor: "panel-consultant",
     title: "Start here: this is your Consultant",
-    body: "You write to the Consultant. It interviews you, one question at a time, and builds your document from what you say. Nothing else is needed to get a result.",
+    body: "You write to the Consultant. It guides you through your project step by step and builds your document from what you work out together. Nothing else is needed to get a result.",
     prefer: "right",
   },
   {
@@ -113,13 +113,13 @@ export const CHAT_SPOTS: Spot[] = [
   {
     anchor: "panel-switch",
     title: "The Coach is the second agent",
-    body: "The Coach plans the people side — who is affected and how the rollout lands — in a conversation of its own. Open it when you want that. Methods shows the work taking shape.",
+    body: "The Coach looks after the people side — who is affected and how the rollout lands — in a conversation of its own. Open it when you want that. Methods shows the work taking shape.",
     prefer: "left",
   },
   {
     anchor: "rail",
     title: "How far along you are",
-    body: "The steps of the interview, ticked off as you go. Once there is enough, you can ask for the document from here.",
+    body: "The steps you work through, ticked off as you go. Once there is enough, you can ask for the document from here.",
     prefer: "left",
   },
 ];

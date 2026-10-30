@@ -47,7 +47,7 @@ export function Landing() {
         <AgentHero
           kicker="AgentiX Projects"
           title={<h1 className="home-title">Two agents.<br /><span>One project.</span></h1>}
-          lede="One plans the work. The other plans the people."
+          lede="Bring an idea. A consultant works it out with you, step by step."
         >
           <Link className="home-start" href="/login">Enter with your beta key <IconArrow size={16} /></Link>
         </AgentHero>
