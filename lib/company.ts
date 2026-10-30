@@ -6,9 +6,10 @@
  * § 18 Abs. 2 MStV a person responsible for the content; the DSGVO a
  * controller and an address for data-subject requests.
  *
- * They are empty on purpose and must be filled by someone who knows them —
- * not inferred from a domain or a GitHub organisation. A wrong Impressum is a
- * worse position than a missing one, because it looks deliberate.
+ * They must be filled by someone who knows them — not inferred from a domain
+ * or a GitHub organisation. A wrong Impressum is a worse position than a
+ * missing one, because it looks deliberate. Taken from XoXoCom's own published
+ * Impressum on xoxocom.net (2026-10-30); keep the two in step.
  *
  * Nothing here is secret: an Impressum is published by definition. It lives in
  * code rather than in an environment variable so that it is reviewable in a
@@ -39,19 +40,19 @@ export interface Company {
 }
 
 export const COMPANY: Company = {
-  name: "",
-  street: "",
-  postalCode: "",
-  city: "",
+  name: "XoXoCom UG (haftungsbeschränkt)",
+  street: "Hauptstraße 44",
+  postalCode: "40789",
+  city: "Monheim am Rhein",
   country: "Deutschland",
-  representedBy: "",
-  email: "",
-  phone: "",
-  registerCourt: "",
-  registerNumber: "",
-  vatId: "",
-  contentResponsible: "",
-  privacyEmail: "",
+  representedBy: "Patryk Kwitowski (Geschäftsführer)",
+  email: "info@xoxocom.net",
+  phone: "+49 15206493157",
+  registerCourt: "Amtsgericht Düsseldorf",
+  registerNumber: "HRB 110495",
+  vatId: "DE457716538",
+  contentResponsible: "Patryk Kwitowski, Hauptstraße 44, 40789 Monheim am Rhein",
+  privacyEmail: "info@xoxocom.net",
 };
 
 /**
