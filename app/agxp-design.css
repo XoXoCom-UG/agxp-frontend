@@ -7752,6 +7752,10 @@ html[data-glass="solid"] .ph-card{ backdrop-filter:none; background:var(--popove
   .ph-tools .search-box{ flex:1; width:auto; }
 }
 @media (max-width:640px){
+  /* Search gets its own row: flex:1 from 0 let sort and order take the line
+     and left a 50px box nobody could type in. */
+  .ph-tools .search-box{ flex:1 1 100%; }
+  .ph-sort-wrap{ flex:1 1 auto; }
   .ph-link{
     grid-template-columns:52px minmax(0, 1fr) 16px;
     grid-template-areas:"thumb body open" "facts facts facts";
@@ -8074,11 +8078,16 @@ html.light .hh-planet{ opacity:.55; }
      By ROLE, not by position: the markup was reordered once so the heading
      would be read first, and placement keyed to :first-of-type silently
      swapped the two of them on a phone. */
-  .hh-slot{ grid-column:1; grid-row:2; }
-  .hh-slot.consultant{ justify-self:end; margin-right:clamp(6px, 4vw, 40px); }
-  .hh-slot.coach{ justify-self:start; margin-left:clamp(6px, 4vw, 40px); }
+  /* .hh-slot.consultant / .coach, not .hh-slot: the base rules name both
+     classes, and a bare .hh-slot here lost to them — the Coach stayed in
+     column 3 and squeezed the words to the left of a phone. */
+  .hh-slot.consultant, .hh-slot.coach{ grid-column:1; grid-row:2; }
+  /* Consultant left, Coach right — the same sides as the wide layout. */
+  .hh-slot.consultant{ justify-self:start; margin-left:clamp(6px, 4vw, 40px); }
+  .hh-slot.coach{ justify-self:end; margin-right:clamp(6px, 4vw, 40px); }
   .home-hero .home-title{ max-width:none; }
-  .hh-orbit{ inset:-6% -2%; height:112%; }
+  /* Width too: the base 80% with this -2% inset left it off-centre. */
+  .hh-orbit{ inset:-6% -2%; width:104%; height:112%; }
 }
 @media (max-height:760px){
   .hh-stage .mascot{ width:112px !important; height:112px !important; }
@@ -9068,3 +9077,37 @@ html.light .ph-dir{ background:#FFFFFF; }
 }
 .msg-time{ display:block; margin-top:6px; padding-left:var(--sp-3); font-size:var(--text-3xs); color:var(--muted-foreground); font-variant-numeric:tabular-nums; }
 .msg-time.is-user{ align-self:flex-end; margin-top:calc(var(--sp-5) * -1 + 6px); padding:0 var(--sp-2) 0 0; }
+
+/* readable-font-size, everywhere: iOS zooms the page on focus into ANY field
+   under 16px, not just the composer and the login form — the settings fields,
+   the search boxes and the composer on a tablet (641–1000px) all did it. */
+@media (pointer:coarse){
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, select{ font-size:16px !important; }
+}
+
+/* A narrow panel (a phone, or a split squeezed thin): the 74% cap and 24px
+   sides left the agent ~190px of a 310px panel — five words a line. */
+@container panel (max-width:520px){
+  .chat-body{ padding-left:var(--sp-4); padding-right:var(--sp-4); }
+  .msg-agent{ max-width:100%; }
+}
+
+/* The feedback tab on a phone: slim enough to sit in the 16px gutter beside
+   the panel instead of over the conversation's last words. */
+@media (max-width:640px){
+  .fb-tab{ padding:10px 2px; font-size:var(--text-3xs); letter-spacing:0.04em; }
+}
+
+/* Stacked, there is one panel on screen and nothing to resize between —
+   the seam stayed in the row and pushed the Coach / Methods panel 32px to
+   the right, its right edge and the Open button off a phone's screen. */
+@media (max-width:1000px){
+  main.workspace > .seam{ display:none; }
+}
+
+/* The reader on a phone: the paper's 32px plus the sheet's 16px left a
+   277px column on a 375px screen, and every heading broke in three. The
+   sheet keeps its own margin; the paper around it gives way. */
+@media (max-width:640px){
+  .doc-paper{ padding:var(--sp-4) 0 var(--sp-6); }
+}

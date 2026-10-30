@@ -17,6 +17,7 @@ import { SkeletonRows } from "@/components/layout/skeleton";
 import { EmptyState } from "@/components/layout/empty-state";
 import { agoStr, menuKeyDown, focusFirstMenuItem } from "@/lib/utils";
 import { usePresence, phaseClass } from "@/lib/use-presence";
+import { useMediaQuery } from "@/lib/use-media-query";
 
 function statusClass(s: Project["status"]) { return s.toLowerCase().replace(/\s+/g, "-"); }
 /** A project that was never renamed from its first message still has the
@@ -56,13 +57,20 @@ function oneOf<T extends string>(raw: string | null, allowed: readonly T[], fall
 
 /** A titled block in the filter card that folds shut on its heading. Closed
  *  content is `inert`, so it leaves the tab order as well as the screen. */
-function FilterSection({ title, children }: { title: string; children: React.ReactNode }) {
-  const [open, setOpen] = useState(true);
+function FilterSection({ title, children, foldOnPhone = true }: { title: string; children: React.ReactNode; foldOnPhone?: boolean }) {
+  // On a phone the filter card sits above the list, and with every section
+  // open the first project was a full screen down — so there they start shut.
+  // Decided at load: clearing a filter later must not shut its section. Once
+  // the heading is tapped, that choice wins.
+  const phone = useMediaQuery("(max-width: 640px)");
+  const [foldAtLoad] = useState(foldOnPhone);
+  const [choice, setChoice] = useState<boolean | null>(null);
+  const open = choice ?? !(foldAtLoad && phone);
   const bodyId = useId();
   return (
     <section className={`ph-sec${open ? "" : " is-closed"}`}>
       <h2 className="ph-eyebrow">
-        <button type="button" className="ph-sec-btn" aria-expanded={open} aria-controls={bodyId} onClick={() => setOpen(o => !o)}>
+        <button type="button" className="ph-sec-btn" aria-expanded={open} aria-controls={bodyId} onClick={() => setChoice(!open)}>
           {title}
           <IconChevronDown size={12} />
         </button>
@@ -83,7 +91,7 @@ function FilterGroup<K extends string>({ title, items, value, onChange }: {
 }) {
   if (items.length === 0) return null;
   return (
-    <FilterSection title={title}>
+    <FilterSection title={title} foldOnPhone={value === null}>
       <div className="ph-fl">
         {items.map(it => {
           const on = value === it.key;
@@ -439,7 +447,7 @@ function ProjectHistory() {
             </section>
 
             <nav className="ph-card ph-filters" aria-label="Filter projects">
-              <FilterSection title="Filter by status">
+              <FilterSection title="Filter by status" foldOnPhone={false}>
               <div className="ph-fl">
                 {STATUS_FILTERS.filter(f => f.key === "all" || counts[f.key] > 0 || f.key === statusFilter).map(f => (
                   <button key={f.key} type="button" className="ph-f" aria-pressed={statusFilter === f.key}

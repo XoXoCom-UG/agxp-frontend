@@ -200,6 +200,33 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
     el.scrollTo({ top: el.scrollHeight, behavior: streamText ? "auto" : "smooth" });
   }, [messages, sending, streamText]);
 
+  // Stacked on a phone, the panel not on screen is display:none, and that
+  // throws its scroll position away: every switch between Consultant and
+  // Coach landed on the first message of a long conversation. So where the
+  // list was is remembered while it is visible, and put back the moment it
+  // has a height again — at the end if it was there (or never got placed,
+  // having loaded while hidden), where it was otherwise.
+  const scrollSpot = useRef<{ top: number; atEnd: boolean } | null>(null);
+  const rememberScroll = useCallback((el: HTMLDivElement) => {
+    if (el.clientHeight === 0) return;
+    scrollSpot.current = { top: el.scrollTop, atEnd: el.scrollHeight - el.scrollTop - el.clientHeight < 48 };
+  }, []);
+  useEffect(() => {
+    const el = bodyRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    let shown = el.clientHeight > 0;
+    const ro = new ResizeObserver(() => {
+      const now = el.clientHeight > 0;
+      if (now && !shown) {
+        const spot = scrollSpot.current;
+        el.scrollTop = !spot || spot.atEnd ? el.scrollHeight : spot.top;
+      }
+      shown = now;
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   // Once the answer is in, the composer gets focus back — if this is the
   // panel the keyboard belongs to, and focus is not somewhere the person
   // put it in the meantime (the other panel, the document that just opened).
@@ -349,7 +376,7 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
         onRestoreVersion={v => setRestore({ version: v, atCount: latest })}
       />
 
-      <div className="chat-body" ref={bodyRef} onScroll={e => setStuck(e.currentTarget.scrollTop > STUCK_AFTER_PX)}
+      <div className="chat-body" ref={bodyRef} onScroll={e => { setStuck(e.currentTarget.scrollTop > STUCK_AFTER_PX); rememberScroll(e.currentTarget); }}
         onClick={handleCodeCopyClick}>
         {!loaded && !loadError && (
           <div className="chat-loading" role="status">
