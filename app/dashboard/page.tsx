@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { NewTaskScreen } from "@/components/layout/new-task-screen";
 import { HomeScreen } from "@/components/layout/home-screen";
 import { AgentNav } from "@/components/layout/agent-nav";
@@ -23,26 +23,48 @@ import { listProjects } from "@/lib/projects";
  * as it is: the two-panel workspace has one job and this is not it.
  */
 export default function DashboardPage() {
+  const router = useRouter();
   const params = useSearchParams();
+  const pathname = usePathname();
   const wantsNew = params.get("new") === "1";
   const { token, loading: authLoading } = useAuth();
 
-  /** null while unknown — neither screen is shown until we know which. */
-  const [hasWork, setHasWork] = useState<boolean | null>(null);
-  const [dismissed, setDismissed] = useState(false);
+  /*
+   * The logo links to /dashboard from everywhere, and it has to land on Home
+   * every time. Two things got in the way: the workspace moves the address to
+   * /dashboard/project/<id> with history.replaceState once a project exists
+   * (so this page stays mounted under a project URL), and "Start" on Home was
+   * a state flag here that nothing ever cleared. So "Start" is now ?new=1 in
+   * the address, and every arrival back on a bare /dashboard counts as a new
+   * visit: the projects are asked for again and the workspace starts fresh.
+   */
+  const atHome = pathname === "/dashboard" && !wantsNew;
+  const [visit, setVisit] = useState(0);
+  const [wasHome, setWasHome] = useState(atHome);
+  if (atHome !== wasHome) {
+    setWasHome(atHome);
+    if (atHome) setVisit(v => v + 1);
+  }
+
+  /** Known only for the visit it was read in — null shows neither screen. */
+  const [work, setWork] = useState<{ visit: number; has: boolean } | null>(null);
+  const hasWork = work?.visit === visit ? work.has : null;
 
   useEffect(() => {
-    if (authLoading || !token || wantsNew) return;
+    if (authLoading || !token || !atHome) return;
     let alive = true;
     listProjects()
-      .then(all => { if (alive) setHasWork(all.some(p => p.status !== "Archived")); })
+      .then(all => { if (alive) setWork({ visit, has: all.some(p => p.status !== "Archived") }); })
       // Unreadable projects must not strand you on a blank screen: fall
       // through to the workspace, which is what this always used to do.
-      .catch(() => { if (alive) setHasWork(false); });
+      .catch(() => { if (alive) setWork({ visit, has: false }); });
     return () => { alive = false; };
-  }, [token, authLoading, wantsNew]);
+  }, [token, authLoading, atHome, visit]);
 
-  if (wantsNew || dismissed || hasWork === false) return <NewTaskScreen />;
+  // Not at home means ?new=1, or a project this screen has just created —
+  // either way the workspace, and the same one: the key only changes on a
+  // new visit, so a live stream is never thrown away mid-answer.
+  if (!atHome || hasWork === false) return <NewTaskScreen key={visit} />;
 
   if (hasWork === null) {
     // The bar is drawn straight away so the page does not jump when the
@@ -66,7 +88,7 @@ export default function DashboardPage() {
           too short for the content would otherwise lose its bottom rather
           than scrolling. The workspace still manages its own panes. */}
       <main className="view-root view-enter home-root" id="main-content" tabIndex={-1}>
-        <HomeScreen onNew={() => setDismissed(true)} />
+        <HomeScreen onNew={() => router.push("/dashboard?new=1")} />
       </main>
     </div>
   );

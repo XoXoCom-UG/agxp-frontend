@@ -87,7 +87,9 @@ with expected(kind, name, detail, migration) as (values
   ('column',   'agxp_feedback',         'notified_at',     '0026'),
   ('function', 'team_feedback_conversation', null,         '0026'),
   ('column',   'agxp_feedback',         'severity',        '0027'),
-  ('method',   'Idea Check',            null,              '0028')
+  ('method',   'Idea Check',            null,              '0028'),
+  ('function', 'agxp_require_invite',   null,              '0029'),
+  ('trigger',  'agxp_projects_invited_only', 'agxp_projects', '0029')
 )
 select * from (
 select
