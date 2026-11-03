@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase";
 import { readEntitlement, QuotaError } from "@/lib/entitlement";
 import type { AgentType } from "@/lib/agents";
 import { worthNaming } from "@/lib/project-title";
+import { removeProjectFolder } from "@/lib/project-files";
 
 export type ProjectStatus = "Not Started" | "In Progress" | "Completed" | "Archived";
 
@@ -174,6 +175,12 @@ export async function discardEmptyProjects(keep?: string | null): Promise<number
   const supabase = createClient();
   const { data, error } = await supabase.rpc("discard_empty_projects", { keep: keep ?? null });
   if (error) throw error;
+  // Since 0030 the ids that went, so their unsent attachments can follow
+  // through the Storage API; before it, a count.
+  if (Array.isArray(data)) {
+    await Promise.all((data as string[]).map(id => removeProjectFolder(id).catch(() => {})));
+    return data.length;
+  }
   return typeof data === "number" ? data : 0;
 }
 
@@ -182,6 +189,7 @@ export async function discardEmptyProject(projectId: string): Promise<boolean> {
   const supabase = createClient();
   const { data, error } = await supabase.rpc("discard_empty_project", { target: projectId });
   if (error) throw error;
+  if (data === true) await removeProjectFolder(projectId).catch(() => {});
   return data === true;
 }
 

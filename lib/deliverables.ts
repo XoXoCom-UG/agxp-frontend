@@ -553,6 +553,12 @@ export function deliverableFor(role: AgentType, kind?: string | null): Deliverab
   return DELIVERABLES[role];
 }
 
+/** The consultants' document titles, one per type, in the catalog's order —
+ *  for the legal pages, so they name what the app actually writes. */
+export function consultantDocumentTitles(): string[] {
+  return [...new Set(Object.values(CONSULTANT_DELIVERABLES).map(d => d.title))];
+}
+
 /** Every document the app can produce — for recognising the buttons that ask for one. */
 export const ALL_DELIVERABLES: Deliverable[] = [...Object.values(CONSULTANT_DELIVERABLES), COACH];
 

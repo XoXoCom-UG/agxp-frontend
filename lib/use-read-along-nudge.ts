@@ -8,7 +8,7 @@ import { READ_ALONG_PROMPT, REVIEW_PROMPT, NUDGE_EVERY, NUDGE_AFTER } from "@/li
  * Guarded by refs rather than state: this fires a paid model call, and a
  * re-render must never be able to fire a second one.
  */
-export function useReadAlongNudge({ enabled, loaded, hasHistory, peerTurns, peerDocs, sending, sendRef }: {
+export function useReadAlongNudge({ enabled, loaded, hasHistory, peerTurns, peerDocs, userTurns, spokeUnanswered, sending, sendRef }: {
   /** Only the Coach reads along. */
   enabled: boolean;
   loaded: boolean;
@@ -18,6 +18,10 @@ export function useReadAlongNudge({ enabled, loaded, hasHistory, peerTurns, peer
   peerTurns: number;
   /** Finished documents the other agent has produced. */
   peerDocs: number;
+  /** How often the user has written to this agent themselves. */
+  userTurns: number;
+  /** It already spoke up by itself and the user has not written since. */
+  spokeUnanswered: boolean;
   sending: boolean;
   sendRef: React.RefObject<(text: string) => unknown>;
 }) {
@@ -52,11 +56,23 @@ export function useReadAlongNudge({ enabled, loaded, hasHistory, peerTurns, peer
     sendRef.current(REVIEW_PROMPT);
   }, [peerDocs, peerTurns, sending, sendRef]);
 
+  // The count restarts when the user writes here: the Coach just answered
+  // them, so a nudge on the heels of that answer would be two in a row.
+  const userAt = useRef(userTurns);
   useEffect(() => {
-    if (!armed.current || sending) return;
+    if (userTurns <= userAt.current) return;
+    userAt.current = userTurns;
+    nudgedAt.current = peerTurns;
+  }, [userTurns, peerTurns]);
+
+  // Once, then wait. A nudge ends in a question; a second one before the user
+  // has answered the first piles question on question (six in a row in one
+  // live project), each of them a paid call nobody asked for.
+  useEffect(() => {
+    if (!armed.current || sending || spokeUnanswered) return;
     if (peerTurns < NUDGE_AFTER) return;
     if (peerTurns - nudgedAt.current < NUDGE_EVERY) return;
     nudgedAt.current = peerTurns;
     sendRef.current(READ_ALONG_PROMPT);
-  }, [peerTurns, sending, sendRef]);
+  }, [peerTurns, sending, spokeUnanswered, sendRef]);
 }

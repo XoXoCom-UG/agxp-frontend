@@ -6,13 +6,14 @@ import type { Project } from "@/lib/projects";
 import { type MemoryNote } from "@/lib/message-markers";
 import { loadAgentMemory, memoryLines, EMPTY_MEMORY, type AgentMemory } from "@/lib/agent-memory";
 import { useAuth } from "@/lib/auth-context";
+import { useEntitlement } from "@/lib/entitlement";
 import { memoryAllowed } from "@/lib/memory-pref";
-import { deliverableFor } from "@/lib/deliverables";
+import { deliverableFor, isDeliverableCommand } from "@/lib/deliverables";
 import { kindFor } from "@/lib/agent-types";
 import { levelFor } from "@/lib/agent-progress";
 import { recordReply, syncReplies, useMascotLevel, MAX_MASCOT_LEVEL } from "@/lib/mascot-level";
 import { handleCodeCopyClick } from "@/lib/markdown";
-import { peerTranscript, previewLine, type PeerContext, type PanelSnapshot, type RailControls } from "@/lib/peer-context";
+import { peerTranscript, previewLine, isReadAlongCommand, isReviewCommand, type PeerContext, type PanelSnapshot, type RailControls } from "@/lib/peer-context";
 import { parseEntries, deriveConversation } from "@/lib/conversation-state";
 import { useAgentConversation, type ReplyInfo } from "@/lib/use-agent-conversation";
 import { useMascotChoreography } from "@/lib/use-mascot-choreography";
@@ -167,6 +168,7 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
     onError: mascot.playError,
   });
   const { messages, loaded, loadError, sending, streamText, leavingId } = chat;
+  const { plan, loading: planLoading } = useEntitlement();
 
   // Every message parsed once per change of the list, not once per use per render.
   const entries = useMemo(() => parseEntries(messages, deliverable.title), [messages, deliverable.title]);
@@ -259,9 +261,21 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
   useLayoutEffect(() => { pickRef.current = pick; });
 
   useChoiceKeys({ choices: convo.choices, active: keyboardActive, sending, panelRef, onPick: pickRef });
+  // Where this agent stands with the user: how often they wrote to it, and
+  // whether it spoke up by itself (a read-along or review) since they last did.
+  const { userTurns, spokeUnanswered } = useMemo(() => {
+    let turns = 0, lastUser = -1, lastUnprompted = -1;
+    messages.forEach((m, i) => {
+      if (m.role !== "user") return;
+      if (isReadAlongCommand(m.content) || isReviewCommand(m.content)) lastUnprompted = i;
+      else if (!isDeliverableCommand(m.content)) { turns++; lastUser = i; }
+    });
+    return { userTurns: turns, spokeUnanswered: lastUnprompted > lastUser };
+  }, [messages]);
   useReadAlongNudge({
     enabled: role === "coach", loaded, hasHistory: messages.length > 0,
-    peerTurns: peer?.turns ?? 0, peerDocs: peer?.docs ?? 0, sending, sendRef: chat.sendRef,
+    peerTurns: peer?.turns ?? 0, peerDocs: peer?.docs ?? 0, userTurns, spokeUnanswered,
+    sending, sendRef: chat.sendRef,
   });
 
   // A conversation opened from history already holds that many answers; the
@@ -293,14 +307,23 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
     if (doc) onOpenDoc?.(doc);
   }
 
-  const stationIdx = station ? station.index - 1 : (messages.length > 0 ? 0 : -1);
-  const stationLabel = station?.label || deliverable.stations[Math.max(0, stationIdx)]?.label || "";
-  // How many stations this conversation actually has, from the agent rather
-  // than from the full agenda. A capped plan is told it has three of eight,
-  // so a rail built from deliverable.stations.length would draw five ticks
-  // the interview never reaches and read "Step 3 of 8" at 100%. The marker is
-  // the one place that knows which agenda the agent was given.
-  const totalStations = station?.total ?? deliverable.stations.length;
+  // The station by its label first, then by number: the agenda grows (the
+  // method sheet added four stations on 2026-10-23), and a [[TOPIC: 6/12]]
+  // written before that counts against the old one — "Step 6 of 12 · Target
+  // state" over a rail whose sixth station is Pain points.
+  const byLabel = station
+    ? deliverable.stations.findIndex(s => s.label.trim().toLowerCase() === station.label.trim().toLowerCase())
+    : -1;
+  const stationIdx = byLabel >= 0 ? byLabel : station ? station.index - 1 : (messages.length > 0 ? 0 : -1);
+  const stationLabel = deliverable.stations[Math.max(0, stationIdx)]?.label || station?.label || "";
+  // How many stations this conversation has: the plan's cap on the agenda,
+  // the same cap the chat route gives the agent. A capped plan is told it has
+  // three of eight, so the rail draws three and locks the rest. Not the
+  // marker's total: an old marker would lock stations the plan includes and
+  // tell a Max account to upgrade. While the plan loads, nothing is locked.
+  const totalStations = planLoading || plan.stations === null
+    ? deliverable.stations.length
+    : Math.min(plan.stations, deliverable.stations.length);
 
   // The document rail, handed to the screen so the Methods panel can draw it.
   const versions = useMemo(

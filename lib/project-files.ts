@@ -105,6 +105,28 @@ export async function removeProjectFile(path: string): Promise<void> {
   await createClient().storage.from(BUCKET).remove([path]);
 }
 
+/**
+ * Removes everything under "<user id>/<project id>/" — for a project the
+ * database has just deleted. Only through the Storage API: a delete on
+ * storage.objects from SQL is refused (and would leave the bytes in S3), see
+ * migration 0030. Call it only after the row is gone, never on a project that
+ * still has messages: their markers point at these files.
+ */
+export async function removeProjectFolder(projectId: string): Promise<void> {
+  const supabase = createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  const userId = auth.user?.id;
+  if (!userId) return;
+  const bucket = supabase.storage.from(BUCKET);
+  const prefix = `${userId}/${projectId}`;
+  for (;;) {
+    const { data: files, error } = await bucket.list(prefix, { limit: 1000 });
+    if (error || !files?.length) return;
+    const { error: rm } = await bucket.remove(files.map(f => `${prefix}/${f.name}`));
+    if (rm || files.length < 1000) return;
+  }
+}
+
 /** The marker the composer appends to the message text. */
 export function fileMarker(ref: FileRef): string {
   // Pipes would break the three-field split, and a file name is the one part

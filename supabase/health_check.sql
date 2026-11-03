@@ -89,13 +89,17 @@ with expected(kind, name, detail, migration) as (values
   ('column',   'agxp_feedback',         'severity',        '0027'),
   ('method',   'Idea Check',            null,              '0028'),
   ('function', 'agxp_require_invite',   null,              '0029'),
-  ('trigger',  'agxp_projects_invited_only', 'agxp_projects', '0029')
+  ('trigger',  'agxp_projects_invited_only', 'agxp_projects', '0029'),
+  -- Must NOT exist: it deletes from storage.objects, which Supabase refuses,
+  -- so with it in place no project can be deleted at all.
+  ('gone',     'agxp_projects_files_cleanup', 'agxp_projects', '0030')
 )
 select * from (
 select
   e.migration,
   e.kind,
-  e.name || case when e.kind = 'column' then '.' || e.detail else '' end as object,
+  case when e.kind = 'gone' then 'no trigger ' else '' end
+    || e.name || case when e.kind = 'column' then '.' || e.detail else '' end as object,
   case when exists (
     select 1 from pg_class c
      join pg_namespace n on n.oid = c.relnamespace
@@ -115,6 +119,11 @@ select
      join pg_class c on c.oid = t.tgrelid
     where not t.tgisinternal and t.tgname = e.name and c.relname = e.detail
       and e.kind = 'trigger'
+    union all
+    select 1 where e.kind = 'gone' and not exists (
+      select 1 from pg_trigger t
+       join pg_class c on c.oid = t.tgrelid
+      where not t.tgisinternal and t.tgname = e.name and c.relname = e.detail)
     union all
     -- Seed rows, not schema: the picker cannot create a type whose methods
     -- are missing here, and nothing else would say so.

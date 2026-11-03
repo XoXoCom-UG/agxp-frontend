@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { LegalShell, LegalSection, TodoNotice, MissingDataNotice } from "@/components/layout/legal";
 import { COMPANY, postalAddress } from "@/lib/company";
 import { ConsentLink } from "@/components/layout/cookie-banner";
+import { consultantDocumentTitles, deliverableFor } from "@/lib/deliverables";
 
 export const metadata: Metadata = { title: "Datenschutzerklärung" };
 
@@ -55,7 +56,7 @@ export default function DatenschutzPage() {
       <LegalSection heading="2. Welche Daten wir verarbeiten">
         <p>• Kontodaten: E-Mail-Adresse und Anzeigename (bei Registrierung oder Login).</p>
         <p>• Nutzungsinhalte: deine Chat-Nachrichten und die daraus erzeugten Dokumente
-          (Transformation Concept, Architecture Blueprint, Adoption Plan, Change Plan) samt Projektnamen. Diese Inhalte enthalten
+          ({[...consultantDocumentTitles(), deliverableFor("coach").title].join(", ")}) samt Projektnamen. Diese Inhalte enthalten
           typischerweise Angaben über dein Unternehmen, die du selbst eingibst.</p>
         <p>• Angehängte Dateien: PDFs, Bilder und Textdateien, die du selbst an eine
           Nachricht anhängst. Sie werden in einem privaten Speicher abgelegt, der nur deinem
@@ -135,7 +136,7 @@ export default function DatenschutzPage() {
           Sentry (Functional Software, Inc., USA). Tritt ein Fehler auf, werden technische Angaben
           übermittelt: Fehlermeldung und Programmablauf, die betroffene Seite, Browser und
           Betriebssystem sowie der Zeitpunkt.</p>
-        <p>In deinem Browser läuft Sentry <b>nur, wenn du im Cookie-Hinweis zustimmst</b>
+        <p>In deinem Browser läuft Sentry <b>nur, wenn du im Cookie-Hinweis zustimmst</b>{" "}
           (Art. 6 Abs. 1 lit. a DSGVO, § 25 Abs. 1 TDDDG). Lehnst du ab, werden aus deinem Browser
           keine Fehlerberichte gesendet. Fehler, die auf unseren Servern auftreten, melden wir
           unabhängig davon.</p>

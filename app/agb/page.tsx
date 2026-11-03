@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { LegalShell, LegalSection, TodoNotice, MissingDataNotice } from "@/components/layout/legal";
 import { COMPANY } from "@/lib/company";
 import { PLANS, INVITE_ONLY, type PlanId } from "@/lib/plans";
+import { consultantDocumentTitles, deliverableFor } from "@/lib/deliverables";
 
 export const metadata: Metadata = { title: "AGB" };
 
@@ -42,7 +43,7 @@ export default function AGBPage() {
       <LegalSection heading="2. Leistungsbeschreibung">
         <p>AgentiX Projects ist ein KI-gestützter Beratungsassistent. Auf Grundlage deiner
           Eingaben führen zwei Agenten ein strukturiertes Interview und erstellen daraus zwei
-          Dokumente: je nach gewähltem Consultant ein Transformation Concept, einen Architecture Blueprint oder einen Adoption Plan, und einen Change Plan.</p>
+          Dokumente: je nach gewähltem Consultant ein eigenes Dokument (derzeit {consultantDocumentTitles().join(", ")}) und einen {deliverableFor("coach").title}.</p>
         <p>Die Ergebnisse werden von einem Sprachmodell erzeugt. Sie sind Vorschläge, können
           sachlich falsch sein und ersetzen keine individuelle fachliche, steuerliche oder
           rechtliche Beratung. Die Prüfung der Ergebnisse obliegt dir.</p>

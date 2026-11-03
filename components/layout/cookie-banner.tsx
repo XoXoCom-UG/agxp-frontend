@@ -11,6 +11,12 @@ import {
 } from "@/lib/consent";
 import { memoryAllowed } from "@/lib/memory-pref";
 import { IconX } from "@/components/layout/agxp-icons";
+import { TURNSTILE_SITE_KEY } from "@/components/layout/turnstile";
+
+/** Sentry runs only when this build has a DSN (next.config.ts, instrumentation-client.ts).
+ *  Without one there is nothing to consent to, so the switch is not offered:
+ *  asking for consent to a service that never runs is a promise the app breaks. */
+const SENTRY_ON = !!process.env.NEXT_PUBLIC_SENTRY_DSN;
 
 /**
  * Datenschutz-Einstellungen: the cookie banner, and the settings behind it.
@@ -34,6 +40,10 @@ import { IconX } from "@/components/layout/agxp-icons";
  *   - Lernnotizen der Agenten: whether agents may carry what they learned
  *     into your later projects. Stored on the account, so it applies on every
  *     device; only shown when signed in.
+ *
+ * Fehlerberichte and the Turnstile line exist only in a build that has
+ * the DSN / site key. With nothing optional to choose (signed out, no Sentry)
+ * the banner does not open by itself; the settings link still shows it.
  *
  * The text stays German: it is legal copy that points at the German
  * Datenschutzerklärung.
@@ -66,12 +76,12 @@ export function CookieBanner() {
     window.addEventListener(OPEN_CONSENT_EVENT, reopen);
     // Asked once per device. The old "Verstanden" acknowledgement was not
     // consent to anything optional, so it does not count as an answer.
-    const t = readConsent() ? null : setTimeout(() => setShow(true), 700);
+    const t = readConsent() || !(SENTRY_ON || signedIn) ? null : setTimeout(() => setShow(true), 700);
     return () => {
       window.removeEventListener(OPEN_CONSENT_EVENT, reopen);
       if (t) clearTimeout(t);
     };
-  }, [meta]);
+  }, [meta, signedIn]);
 
   // Whoever opened this is here to choose: the keyboard goes to the first
   // control instead of staying on the link behind.
@@ -118,8 +128,9 @@ export function CookieBanner() {
         {closeBtn}
         <h2 className="cookie-title">Datenschutz-Einstellungen</h2>
         <p>
-          Notwendige Cookies für Login und Sicherheit sind immer aktiv. Optional sind Fehlerberichte
-          an Sentry (USA){signedIn ? " und die Lernnotizen deiner Agenten" : ""}. Kein Tracking, keine
+          Notwendige Cookies für Login und Sicherheit sind immer aktiv. Optional sind{" "}
+          {[SENTRY_ON && "Fehlerberichte an Sentry (USA)", signedIn && "die Lernnotizen deiner Agenten"]
+            .filter(Boolean).join(" und ")}. Kein Tracking, keine
           Werbung, kein Verkauf deiner Daten. Mehr in der <Link href="/datenschutz">Datenschutzerklärung</Link>.
         </p>
         <div className="cookie-choices is-three">
@@ -147,20 +158,21 @@ export function CookieBanner() {
           title="Notwendig"
           locked
           on
-          text="Login-Sitzung, die Sicherheitsprüfung bei der Anmeldung (Cloudflare Turnstile), deine Einstellungen wie Farbschema und Fensteraufteilung, und diese Auswahl selbst. Ohne sie funktioniert AgentiX nicht."
+          text={`Login-Sitzung, ${TURNSTILE_SITE_KEY ? "die Sicherheitsprüfung bei der Anmeldung (Cloudflare Turnstile), " : ""}deine Einstellungen wie Farbschema und Fensteraufteilung, und diese Auswahl selbst. Ohne sie funktioniert AgentiX nicht.`}
         />
-        <Category
+        {SENTRY_ON && <Category
           title="Fehlerberichte"
           on={errors}
           onChange={setErrors}
           buttonRef={firstControl}
           text="Stürzt etwas in deinem Browser ab, senden wir technische Angaben dazu an Sentry (Functional Software, Inc., USA): Fehlermeldung, Seite, Browser. Wir hängen weder deine IP-Adresse noch Inhalte deiner Projekte an."
-        />
+        />}
         {signedIn && (
           <Category
             title="Lernnotizen der Agenten"
             on={memory}
             onChange={setMemory}
+            buttonRef={SENTRY_ON ? undefined : firstControl}
             text="Deine Agenten merken sich kurze Notizen aus deinen Projekten (etwa Branche oder Arbeitsweise) und nutzen sie in späteren Projekten wieder. Gilt für dein Konto auf allen Geräten. Ausgeschaltet beginnt jedes Projekt ohne Vorwissen."
           />
         )}
