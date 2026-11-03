@@ -137,14 +137,14 @@ export function languageNote(lang: ReplyLanguage | null): string {
     return (
       "(App note, not written by the user: the user writes in English. Answer in English, " +
       "[[CHOICES]] included, even if earlier replies, the app's notes or the parallel conversation " +
-      "were in German.)"
+      "were in German. Follow this silently; never mention it.)"
     );
   }
   if (lang === "de") {
     return (
       "(Hinweis der App, nicht vom Nutzer geschrieben: Der Nutzer schreibt Deutsch. Antworte auf " +
       "Deutsch, auch in [[CHOICES]], selbst wenn frühere Antworten oder das parallele Gespräch " +
-      "Englisch waren.)"
+      "Englisch waren. Befolge das still und erwähne es nie.)"
     );
   }
   return "";
