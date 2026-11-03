@@ -12,6 +12,8 @@ import { BrandLogo } from "@/components/layout/brand-logo";
 import { captureBetaKeyFromUrl } from "@/lib/beta-key-handoff";
 import { Turnstile, TURNSTILE_SITE_KEY, type TurnstileHandle } from "@/components/layout/turnstile";
 import { ConsentLink } from "@/components/layout/cookie-banner";
+import { nextFromLocation } from "@/lib/safe-next";
+import { INVITE_ONLY } from "@/lib/plans";
 
 type Mode = "signin" | "signup";
 const MODES: Mode[] = ["signin", "signup"];
@@ -92,7 +94,7 @@ export default function LoginPage() {
   useEffect(() => { captureBetaKeyFromUrl(); }, []);
 
   // Already signed in (came back to /login by hand or by an old bookmark).
-  useEffect(() => { if (!authLoading && token) router.replace("/dashboard"); }, [token, authLoading, router]);
+  useEffect(() => { if (!authLoading && token) router.replace(nextFromLocation()); }, [token, authLoading, router]);
 
   function switchMode(next: Mode) {
     setMode(next);
@@ -169,7 +171,7 @@ export default function LoginPage() {
           email: email.trim(), password, options: { captchaToken: token },
         });
         if (error) setNote({ text: friendlyError(error.message), ok: false });
-        else router.replace("/dashboard");
+        else router.replace(nextFromLocation());
         return;
       }
 
@@ -185,7 +187,7 @@ export default function LoginPage() {
       if (error) { setNote({ text: friendlyError(error.message), ok: false }); return; }
       // With email confirmation switched off, sign-up returns a session and the
       // user should just be let in instead of waiting for a mail that never comes.
-      if (data.session) { router.replace("/dashboard"); return; }
+      if (data.session) { router.replace(nextFromLocation()); return; }
       setNote({ text: "Almost there. Confirm your email with the link we just sent you.", ok: true });
       setMode("signin");
     } finally {
@@ -322,6 +324,15 @@ export default function LoginPage() {
                 ? <><span className="spinner" aria-hidden="true" /><span className="visually-hidden">{signup ? "Creating your account…" : "Signing in…"}</span></>
                 : <>{signup ? "Create account" : "Sign in"}<IconArrow /></>}
             </button>
+            {/* Before the click, not after: the key comes next (closed beta),
+                and the terms are named where the account is made. */}
+            {signup && (
+              <p className="auth-terms">
+                {INVITE_ONLY && <>Closed beta: after this you enter the key from your invitation. </>}
+                By creating an account you accept the <Link href="/agb">AGB</Link> and
+                acknowledge the <Link href="/datenschutz">Datenschutzerklärung</Link>.
+              </p>
+            )}
           </form>
 
           <div className="auth-sep"><span>or</span></div>

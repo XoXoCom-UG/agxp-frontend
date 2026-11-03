@@ -7,6 +7,7 @@ import { introFor, type Deliverable } from "@/lib/deliverables";
 import { md, handleCodeCopyClick } from "@/lib/markdown";
 import { ArtifactActions, versionLine } from "@/components/layout/deliverable-rail";
 import { IconCheck, IconLock, IconMinimise, IconSpark } from "@/components/layout/agxp-icons";
+import { useT } from "@/lib/language";
 
 /** How far the interview has to be before the document can be asked for. */
 const GENERATE_FROM_PCT = 60;
@@ -41,6 +42,7 @@ export function MethodsPanel({ tabs, deliverable, snap, onOpenDoc, onMinimise }:
   onOpenDoc: (doc: DeliverableDoc) => void;
   onMinimise?: () => void;
 }) {
+  const tr = useT();
   const d = deliverable;
   const rail = snap?.rail;
   const controls = snap?.controls;
@@ -63,7 +65,7 @@ export function MethodsPanel({ tabs, deliverable, snap, onOpenDoc, onMinimise }:
           {tabs}
           {onMinimise && (
             <button className="head-min mp-tool" onClick={onMinimise}
-              data-tooltip="Fold away" aria-label="Fold this panel away">
+              data-tooltip={tr("Fold away")} aria-label={tr("Fold this panel away")}>
               <IconMinimise size={14} />
             </button>
           )}
@@ -97,8 +99,8 @@ export function MethodsPanel({ tabs, deliverable, snap, onOpenDoc, onMinimise }:
             <div className="mp-progress-row">
               <span className="mp-progress-step">
                 {rail.stationIdx < 0
-                  ? `${rail.totalStations} steps · not started`
-                  : `Step ${rail.stationIdx + 1} of ${rail.totalStations} · ${rail.stationLabel}`}
+                  ? tr("{n} steps · not started", { n: rail.totalStations })
+                  : `${tr("Step {n} of {total}", { n: rail.stationIdx + 1, total: rail.totalStations })} · ${rail.stationLabel}`}
               </span>
               <span className="mp-progress-pct">{Math.round(snap?.pct ?? 0)}%</span>
             </div>
@@ -109,7 +111,7 @@ export function MethodsPanel({ tabs, deliverable, snap, onOpenDoc, onMinimise }:
                 asks for a document out of nothing. */}
             {(snap?.pct ?? 0) >= GENERATE_FROM_PCT && (
               <button className="artf-cta mp-generate" disabled={snap?.busy ?? false} onClick={controls.generate}>
-                <IconSpark size={12} />Generate
+                <IconSpark size={12} />{tr("Generate")}
               </button>
             )}
           </div>
@@ -128,7 +130,7 @@ export function MethodsPanel({ tabs, deliverable, snap, onOpenDoc, onMinimise }:
                     <span className="mp-step-l">{s.label}</span>
                     {s.note && <span className="mp-step-n">{s.note}</span>}
                   </span>
-                  <span className="visually-hidden">{state === "done" ? ", done" : state === "now" ? ", in progress" : ", not yet"}</span>
+                  <span className="visually-hidden">{tr(state === "done" ? ", done" : state === "now" ? ", in progress" : ", not yet")}</span>
                 </li>
               );
             })}
@@ -139,7 +141,7 @@ export function MethodsPanel({ tabs, deliverable, snap, onOpenDoc, onMinimise }:
                   <span className="mp-step-l">{s.label}</span>
                   {s.note && <span className="mp-step-n">{s.note}</span>}
                 </span>
-                <span className="visually-hidden">, locked on this plan</span>
+                <span className="visually-hidden">{tr(", locked on this plan")}</span>
               </li>
             ))}
           </ol>
@@ -157,8 +159,8 @@ export function MethodsPanel({ tabs, deliverable, snap, onOpenDoc, onMinimise }:
           <p className="mp-unlock">
             <IconLock size={12} />
             {finished
-              ? `This is the short version. Unlock the other ${locked.length} ${locked.length === 1 ? "step" : "steps"} and the full document by upgrading.`
-              : `${locked.length} more ${locked.length === 1 ? "step" : "steps"} unlock by upgrading.`}
+              ? tr(locked.length === 1 ? "This is the short version. Unlock the other step and the full document by upgrading." : "This is the short version. Unlock the other {n} steps and the full document by upgrading.", { n: locked.length })
+              : tr(locked.length === 1 ? "1 more step unlocks by upgrading." : "{n} more steps unlock by upgrading.", { n: locked.length })}
           </p>
         )}
       </div>

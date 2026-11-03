@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { listAgents, setAgentArchived, type Agent, type AgentType } from "@/lib/agents";
-import { typesFor, groupByType } from "@/lib/agent-types";
+import { typesFor, groupByType, holdsSlot } from "@/lib/agent-types";
+import { useT } from "@/lib/language";
 import { useEntitlement } from "@/lib/entitlement";
 import { loadTeamStats, compactNumber, EMPTY_STATS, type TeamStats } from "@/lib/team-stats";
 import { syncReplies } from "@/lib/mascot-level";
@@ -22,6 +23,7 @@ const ROLES: { id: AgentType; label: string }[] = [
 ];
 
 export default function AgentDashboardPage() {
+  const tr = useT();
   const { token, loading: authLoading } = useAuth();
   const router = useRouter();
   const { plan } = useEntitlement();
@@ -56,8 +58,9 @@ export default function AgentDashboardPage() {
 
   // Every slot of every type, across both roles: how much of the team is hired.
   const slots = ROLES.reduce((n, r) => n + typesFor(r.id, plan).length * plan.agentsPerType, 0);
-  // Archived agents keep their history but hold no slot and are not "on the team".
-  const active = agents.filter(a => !a.archived_at);
+  // Archived agents keep their history but hold no slot and are not "on the team";
+  // agents from before the current types hold none either (their own tab).
+  const active = agents.filter(a => !a.archived_at && holdsSlot(a));
   const filled = ROLES.reduce((n, r) => n + groupByType(active, r.id, plan).columns
     .reduce((m, c) => m + Math.min(plan.agentsPerType, c.agents.length), 0), 0);
 
@@ -76,7 +79,7 @@ export default function AgentDashboardPage() {
   if (authLoading || !token) return (
     <main className="app app-wait">
       <span className="spinner spinner-lg" aria-hidden="true" />
-      <span className="visually-hidden" role="status">Loading…</span>
+      <span className="visually-hidden" role="status">{tr("Loading…")}</span>
     </main>
   );
 
@@ -88,14 +91,14 @@ export default function AgentDashboardPage() {
             visible title (Ana, 2026-10-01 mockup). The h1 stays for screen
             readers — the page still needs a name. */}
         <header className="agx-head">
-          <h1 className="visually-hidden">Your AI team</h1>
-          <ul className="agx-stats" aria-label="Your team at a glance">
-            <Stat label="Projects in progress" value={String(stats.projectsInProgress)} />
-            <Stat label="Tokens used, est." value={compactNumber(stats.tokens)}
-              hint="Estimated from the length of your conversations. The bars are the last 8 days.">
+          <h1 className="visually-hidden">{tr("Your AI team")}</h1>
+          <ul className="agx-stats" aria-label={tr("Your team at a glance")}>
+            <Stat label={tr("Projects in progress")} value={String(stats.projectsInProgress)} />
+            <Stat label={tr("Tokens used, est.")} value={compactNumber(stats.tokens)}
+              hint={tr("Estimated from the length of your conversations. The bars are the last 8 days.")}>
               <Bars values={stats.tokensByDay} />
             </Stat>
-            <Stat label="Slots filled" value={`${filled}/${slots}`}>
+            <Stat label={tr("Slots filled")} value={`${filled}/${slots}`}>
               <Meter value={filled} max={slots} />
             </Stat>
           </ul>
@@ -106,22 +109,22 @@ export default function AgentDashboardPage() {
             <div className="load-error" role="alert">
               <IconAlert size={14} />
               <span className="le-text">{actionError}</span>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setActionError(null)}>Dismiss</button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setActionError(null)}>{tr("Dismiss")}</button>
             </div>
           )}
           {loadError && (
             <div className="load-error" role="alert">
               <IconAlert size={14} />
-              <span className="le-text">Your agents couldn&apos;t be loaded. Check your connection and try again.</span>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={retry}><IconRefresh size={12} />Retry</button>
+              <span className="le-text">{tr("Your agents couldn't be loaded. Check your connection and try again.")}</span>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={retry}><IconRefresh size={12} />{tr("Retry")}</button>
             </div>
           )}
-          {loading && <div className="ag-loading" role="status"><span className="spinner" aria-hidden="true" />Loading your team…</div>}
+          {loading && <div className="ag-loading" role="status"><span className="spinner" aria-hidden="true" />{tr("Loading your team…")}</div>}
 
           {!loading && !loadError && agents.length === 0 && (
-            <EmptyState title="No agents yet"
-              body="Agents appear here once you create one. Start a task and pick “Create new agent”, and this is where you will watch them grow."
-              action={<button className="btn btn-hero" onClick={() => router.push("/dashboard")}><IconPlus />New task</button>} />
+            <EmptyState title={tr("No agents yet")}
+              body={tr("Agents appear here once you create one. Start a task and pick “Create new agent”, and this is where you will watch them grow.")}
+              action={<button className="btn btn-hero" onClick={() => router.push("/dashboard")}><IconPlus />{tr("New task")}</button>} />
           )}
 
           {!loading && !loadError && agents.length > 0 && (
@@ -129,7 +132,7 @@ export default function AgentDashboardPage() {
             // its own (Ana, 2026-10-01): the team stays in view behind it.
             <div className="agx-split">
               {ROLES.map(r => (
-                <RoleSection key={r.id} role={r.id} label={r.label} agents={agents} usage={stats.byAgent} plan={plan}
+                <RoleSection key={r.id} role={r.id} label={tr(r.label)} agents={agents} usage={stats.byAgent} plan={plan}
                   onArchive={a => setArchived(a, true)} onRestore={a => setArchived(a, false)}
                   onAdd={() => router.push("/dashboard")} />
               ))}

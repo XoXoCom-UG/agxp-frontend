@@ -30,6 +30,11 @@ export function proxy(req: NextRequest) {
   if (!authed && PROTECTED_PREFIXES.some(p => pathname.startsWith(p))) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
+    url.search = "";
+    // Back to this page after signing in (lib/safe-next.ts checks it there):
+    // a shared link to a project used to end on the dashboard home.
+    const back = pathname + req.nextUrl.search;
+    if (back !== "/dashboard") url.searchParams.set("next", back);
     return NextResponse.redirect(url);
   }
 

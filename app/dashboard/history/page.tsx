@@ -340,16 +340,23 @@ function ProjectHistory() {
    *  messages have been read. */
   const isEmpty = (p: Project) => statsLoaded && !stats[p.id] && p.name === PLACEHOLDER_PROJECT_NAME;
 
+  /** Nothing writes "Completed": a project whose Consultant document exists
+   *  is finished in every sense the list can show, so it reads as such. */
+  const statusOf = (p: Project): Project["status"] =>
+    p.status !== "Archived" && stats[p.id]?.docsBy.consultant ? "Completed" : p.status;
+  // The numbers beside the filters are what clicking them shows: no empty
+  // starts, and "All" without the archived ones, like the list under it.
+  const real = projects.filter(p => !isEmpty(p));
   const counts: Record<StatusFilter, number> = {
-    all: projects.length,
-    "In Progress": projects.filter(p => p.status === "In Progress").length,
-    "Not Started": projects.filter(p => p.status === "Not Started").length,
-    Completed: projects.filter(p => p.status === "Completed").length,
-    Archived: projects.filter(p => p.status === "Archived").length,
+    all: real.filter(p => statusOf(p) !== "Archived").length,
+    "In Progress": real.filter(p => statusOf(p) === "In Progress").length,
+    "Not Started": real.filter(p => statusOf(p) === "Not Started").length,
+    Completed: real.filter(p => statusOf(p) === "Completed").length,
+    Archived: real.filter(p => statusOf(p) === "Archived").length,
   };
   // Every other filter counts within the status you are looking at, so the
   // numbers beside them are what you would actually get by clicking.
-  const inStatus = projects.filter(p => !isEmpty(p)).filter(p => statusFilter === "all" ? p.status !== "Archived" : p.status === statusFilter);
+  const inStatus = real.filter(p => statusFilter === "all" ? statusOf(p) !== "Archived" : statusOf(p) === statusFilter);
   const countBy = <T,>(keyOf: (p: Project) => T | T[] | null) => {
     const m = new Map<T, number>();
     for (const p of inStatus) {
@@ -440,7 +447,7 @@ function ProjectHistory() {
             <section className="ph-card ph-overview">
               <h2 className="ph-eyebrow">{tr("Project overview")}</h2>
               <div className="ph-ov-total">
-                <b>{counts.all}</b>
+                <b>{real.length}</b>
                 <span>{tr("Total projects")}</span>
               </div>
               <ul className="ph-ov-list">
@@ -611,7 +618,7 @@ function ProjectHistory() {
                       </span>
                     </span>
                     <span className="ph-facts">
-                      <span className={`status-pill ${statusClass(p.status)}`}><span className="sd" />{tr(p.status)}</span>
+                      <span className={`status-pill ${statusClass(statusOf(p))}`}><span className="sd" />{tr(statusOf(p))}</span>
                       <span>{st ? tr(st.messages === 1 ? "1 message" : "{n} messages", { n: st.messages }) : ""}{st?.docs ? ` · ${tr(st.docs === 1 ? "1 document" : "{n} documents", { n: st.docs })}` : ""}</span>
                       <span>{tr("Updated {when}", { when: tr(agoStr(p.last_activity_at)) })}</span>
                     </span>

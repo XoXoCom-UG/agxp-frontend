@@ -22,6 +22,7 @@ import { kindFor } from "@/lib/agent-types";
 import { DeliverableView, type DeliverableDoc } from "@/components/layout/deliverable-view";
 import { AgentMascot } from "@/components/layout/agent-mascot";
 import { TeamRail, TeamReady, TeamHeading, TeamStep } from "@/components/layout/team-setup";
+import { useT } from "@/lib/language";
 import { IconSwap, IconAlert, IconX, IconDoc } from "@/components/layout/agxp-icons";
 
 /** Where the Coach is right now: beside the Consultant, or folded into the pill.
@@ -62,6 +63,7 @@ const STACKED_QUERY = "(max-width:1000px)";
  * still streaming when you fold it away is still there when you open it.
  */
 export function NewTaskScreen({ projectId }: { projectId?: string }) {
+  const tr = useT();
   const { token, loading: authLoading } = useAuth();
   const router = useRouter();
   const [project, setProject] = useState<Project | null>(null);
@@ -464,16 +466,16 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
    * conversation or the answer buttons.
    */
   function sidePills(floating = false) {
-    const name = coachAgent?.name ?? "the Coach";
+    const name = coachAgent?.name ?? tr("the Coach");
     return (
       <div className={`side-pills${floating ? " is-floating" : ""}`}>
         <button className="side-pill" onClick={() => openSide("methods")}
-          aria-label="Open Methods beside the Consultant">
-          <IconDoc size={13} />Methods
+          aria-label={tr("Open Methods beside the Consultant")}>
+          <IconDoc size={13} />{tr("Methods")}
         </button>
         {coachAgent && (
           <button className={`side-pill${unseen.coach ? " raised" : ""}`} onClick={() => focusPanel("coach")}
-            aria-label={`${unseen.coach ? `${name} has something to add. ` : ""}Open ${name} beside the Consultant`}>
+            aria-label={`${unseen.coach ? tr("{name} has something to add.", { name }) + " " : ""}${tr("Open {name} beside the Consultant", { name })}`}>
             <AgentMascot role="coach" state={coachSnap?.busy ? "thinking" : "idle"} size={20} agentId={coachAgent.id} />
             Coach
             {unseen.coach && <span className="cp-dot" aria-hidden="true" />}
@@ -486,7 +488,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
   if (authLoading || !token || loadingData) return (
     <div className="app is-loading" role="status">
       <span className="spinner spinner-lg" aria-hidden="true" />
-      <span className="visually-hidden">Loading…</span>
+      <span className="visually-hidden">{tr("Loading…")}</span>
     </div>
   );
 
@@ -494,14 +496,14 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
     <div className="app">
       <AgentNav />
       <main className="view-root view-enter" id="main-content" tabIndex={-1}>
-        <h1 className="visually-hidden">New task</h1>
+        <h1 className="visually-hidden">{tr("New task")}</h1>
         <div className="inline-error is-page" role="alert">
           <IconAlert size={16} />
           <div className="ie-text">
-            <p className="ie-title">This task could not be loaded.</p>
+            <p className="ie-title">{tr("This task could not be loaded.")}</p>
             <p className="ie-detail">{loadError}</p>
           </div>
-          <button className="btn btn-ghost" onClick={retryLoad}>Retry</button>
+          <button className="btn btn-ghost" onClick={retryLoad}>{tr("Retry")}</button>
         </div>
       </main>
     </div>
@@ -537,7 +539,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
         {/* Only shown once the layout stacks (CSS) — both panels stay mounted,
             so switching never loses a conversation or a half-typed message.
             Roving tabindex: Tab lands on the selected tab, arrows move. */}
-        {started && <div className="pane-switch" role="tablist" aria-label="Choose panel" onKeyDown={onTabKey}>
+        {started && <div className="pane-switch" role="tablist" aria-label={tr("Choose panel")} onKeyDown={onTabKey}>
           {ROLES.map(role => {
             const id = role === "coach" ? project?.coach_agent_id : project?.consultant_agent_id;
             const name = agents.find(a => a.id === id)?.name;
@@ -547,9 +549,9 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
                 ref={el => { tabRefs.current[role] = el; }}
                 className={`ps-tab ${pane === role ? "on" : ""}`} onClick={() => showPane(role)}>
                 <span className={`role-dot ${role}`} aria-hidden="true" />
-                {role === "coach" && rightView === "methods" ? "Methods" : ROLE_NAME[role]}
+                {role === "coach" && rightView === "methods" ? tr("Methods") : ROLE_NAME[role]}
                 {name && !(role === "coach" && rightView === "methods") && <span className="who">{name}</span>}
-                {unseen[role] && <><span className="ps-dot" aria-hidden="true" /><span className="visually-hidden">, new reply</span></>}
+                {unseen[role] && <><span className="ps-dot" aria-hidden="true" /><span className="visually-hidden">{tr(", new reply")}</span></>}
               </button>
             );
           })}
@@ -559,8 +561,8 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
           <div className="inline-error" role="alert">
             <IconAlert size={14} />
             <p className="ie-detail">{changeError.message}</p>
-            <button className="btn btn-ghost" onClick={() => changeAgent(changeError.role)}>Retry</button>
-            <button className="icon-btn" aria-label="Dismiss" onClick={() => setChangeError(null)}><IconX size={12} /></button>
+            <button className="btn btn-ghost" onClick={() => changeAgent(changeError.role)}>{tr("Retry")}</button>
+            <button className="icon-btn" aria-label={tr("Dismiss")} onClick={() => setChangeError(null)}><IconX size={12} /></button>
           </div>
         )}
 
@@ -570,7 +572,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
             live chat yet, so trading the split for this costs no state. */}
         {!started ? (
           <main id="main-content" tabIndex={-1} className="workspace setup">
-            <h1 className="visually-hidden">{project?.name && project.name !== "New Project" ? project.name : "New task"}</h1>
+            <h1 className="visually-hidden">{project?.name && project.name !== "New Project" ? project.name : tr("New task")}</h1>
             <div className="slot setup-slot">
               {setupConsultant && setupCoach ? (
                 <TeamReady consultant={setupConsultant} coach={setupCoach} projectCounts={projectCounts} onStart={() => setStarted(true)} />
@@ -583,7 +585,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
                   intro={<>
                     <TeamStep role={setupRole} />
                     <TeamHeading />
-                    <p className="team-sub">{SEAT_LINE[setupRole]}</p>
+                    <p className="team-sub">{tr(SEAT_LINE[setupRole])}</p>
                   </>} />
               )}
             </div>
@@ -600,7 +602,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
           data-pill={foldedSide && coachMode === "min" && !consultantChatting ? "float" : undefined}>
           {/* The screen has no visible title — Patryk wanted it clean — but a
               screen reader still needs to know where it is. */}
-          <h1 className="visually-hidden">{project?.name && project.name !== "New Project" ? project.name : "New task"}</h1>
+          <h1 className="visually-hidden">{project?.name && project.name !== "New Project" ? project.name : tr("New task")}</h1>
           <div className="slot" data-role="consultant" data-tour="panel-consultant" style={{ flexGrow: share("consultant") }} {...slotProps("consultant")}>
             {panelFor("consultant")}
           </div>
@@ -619,7 +621,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
               <div className="seam-handle"
                 role="separator" aria-orientation="vertical" tabIndex={splitLocked ? -1 : 0}
                 aria-disabled={splitLocked || undefined}
-                aria-label={splitLocked ? "Conversation width, locked in Settings" : "Resize the conversations"}
+                aria-label={splitLocked ? tr("Conversation width, locked in Settings") : tr("Resize the conversations")}
                 aria-valuenow={pctNow}
                 aria-valuemin={Math.min(...pctEdges)} aria-valuemax={Math.max(...pctEdges)}
                 aria-valuetext={`Consultant ${pctNow}%, Coach ${100 - pctNow}%`}
@@ -632,8 +634,8 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
               <span className="seam-rail" aria-hidden="true" />
               <button className={`swap-panels${swapped ? " flipped" : ""}`}
                 onPointerDown={e => e.stopPropagation()} onClick={swapSides}
-                data-tooltip={swapped ? "Give the Consultant more room" : `Give the ${rightView === "coach" ? "Coach" : "Methods"} more room`}
-                aria-label={swapped ? "Give the Consultant more room" : `Give the ${rightView === "coach" ? "Coach" : "Methods"} more room`}>
+                data-tooltip={swapped ? tr("Give the Consultant more room") : rightView === "coach" ? tr("Give the Coach more room") : tr("Give Methods more room")}
+                aria-label={swapped ? tr("Give the Consultant more room") : rightView === "coach" ? tr("Give the Coach more room") : tr("Give Methods more room")}>
                 <IconSwap size={13} />
               </button>
               <span className="seam-rail" aria-hidden="true" />

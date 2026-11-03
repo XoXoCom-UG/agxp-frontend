@@ -9,6 +9,7 @@ import { streamingText, streamIsDocument } from "@/lib/message-markers";
 import { ThinkingOrb } from "@/components/layout/thinking-orb";
 import { MessageActions } from "@/components/layout/message-actions";
 import { IconArrow, IconDoc, IconRefresh } from "@/components/layout/agxp-icons";
+import { useT } from "@/lib/language";
 
 /** "10:24" — shown under each message in the Coach's conversation. */
 function clock(iso: string): string {
@@ -23,8 +24,9 @@ function wordCount(text: string): number {
 /** The suggested answers under the newest reply. Keys 1-3 pick them too
  *  (lib/use-choice-keys.ts), so the order here is the order of the keys. */
 function Choices({ choices, disabled, onPick }: { choices: string[]; disabled: boolean; onPick: (c: string) => void }) {
+  const tr = useT();
   return (
-    <div className="sugg-list" role="group" aria-label="Suggested answers">
+    <div className="sugg-list" role="group" aria-label={tr("Suggested answers")}>
       {choices.map((c, ci) => (
         <button key={c} className="sugg-item" disabled={disabled} onClick={() => onPick(c)}
           style={{ ["--i" as string]: ci }}>
@@ -61,6 +63,7 @@ export function ChatMessage({ entry, agentName, docTitle, isNew, isLeaving, isLa
   onPick: (choice: string) => void;
   onOpenDoc: (title: string) => void;
 }) {
+  const tr = useT();
   const { m, p } = entry;
   // Rendered once per message text, not on every keystroke in the composer.
   const html = useMemo(
@@ -76,7 +79,7 @@ export function ChatMessage({ entry, agentName, docTitle, isNew, isLeaving, isLa
       return (
         <div className="msg-command">
           <IconRefresh size={11} />
-          <span>You asked for the {docTitle}</span>
+          <span>{tr("You asked for the {title}", { title: docTitle })}</span>
         </div>
       );
     }
@@ -110,7 +113,7 @@ export function ChatMessage({ entry, agentName, docTitle, isNew, isLeaving, isLa
         <div className="me-detail">{errorText(m.content)}</div>
         {isLast && (
           <button className="me-retry" onClick={onRetry} disabled={busy}>
-            <IconRefresh size={13} />Try again
+            <IconRefresh size={13} />{tr("Try again")}
           </button>
         )}
       </div>
@@ -137,7 +140,7 @@ export function ChatMessage({ entry, agentName, docTitle, isNew, isLeaving, isLa
           <span className="dc-txt">
             <span className="dc-t">{title}</span>
             <span className="dc-s">
-              {version > 1 && `Version ${version} · `}{sections} sections · {wordCount(p.text).toLocaleString()} words · open to read
+              {version > 1 && `${tr("Version {n}", { n: version })} · `}{tr("{n} sections · {words} words · open to read", { n: sections, words: wordCount(p.text).toLocaleString() })}
             </span>
           </span>
           <IconArrow />
@@ -172,11 +175,12 @@ export function ChatStreaming({ streamText, agentName, docTitle, waitingLong }: 
   docTitle: string;
   waitingLong: boolean;
 }) {
+  const tr = useT();
   if (!streamText) {
     return (
       <div className="msg-typing"><ThinkingOrb size={26} />
         <span className="shimmer-text">
-          {waitingLong ? "Still writing. Long answers take a moment." : `${agentName} is reading what you wrote…`}
+          {waitingLong ? tr("Still writing. Long answers take a moment.") : tr("{name} is reading what you wrote…", { name: agentName })}
         </span>
       </div>
     );
@@ -187,8 +191,8 @@ export function ChatStreaming({ streamText, agentName, docTitle, waitingLong }: 
         <div className="doc-card writing">
           <span className="dc-ic"><IconDoc size={17} /></span>
           <span className="dc-txt">
-            <span className="dc-t">Writing your {docTitle}…</span>
-            <span className="dc-s">{wordCount(streamText).toLocaleString()} words so far</span>
+            <span className="dc-t">{tr("Writing your {title}…", { title: docTitle })}</span>
+            <span className="dc-s">{tr("{n} words so far", { n: wordCount(streamText).toLocaleString() })}</span>
           </span>
         </div>
       </div>

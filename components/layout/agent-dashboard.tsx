@@ -4,7 +4,9 @@ import { Fragment, useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import type { Agent, AgentType } from "@/lib/agents";
 import { levelFor, LEVEL_ORDER } from "@/lib/agent-progress";
-import { groupByType, templateFor } from "@/lib/agent-types";
+import { groupByType, templateFor, kindFor, holdsSlot } from "@/lib/agent-types";
+import { deliverableFor } from "@/lib/deliverables";
+import { useT } from "@/lib/language";
 import type { Plan } from "@/lib/plans";
 import { compactNumber, type AgentUsage } from "@/lib/team-stats";
 import { loadAgentDocuments, type AgentDocument } from "@/lib/agent-documents";
@@ -70,6 +72,7 @@ export function Bars({ values }: { values: number[] }) {
 function CardMenu({ name, archived, onOpen, onToggleArchive }: {
   name: string; archived: boolean; onOpen: () => void; onToggleArchive: () => void;
 }) {
+  const tr = useT();
   const [open, setOpen] = useState(false);
   const phase = usePresence(open);
   const wrap = useRef<HTMLDivElement>(null);
@@ -83,15 +86,15 @@ function CardMenu({ name, archived, onOpen, onToggleArchive }: {
   }, [open]);
   return (
     <div className="agx-menu" ref={wrap}>
-      <button className="agx-menu-btn" aria-label={`More for ${name}`} aria-haspopup="menu" aria-expanded={open}
+      <button className="agx-menu-btn" aria-label={tr("More for {name}", { name })} aria-haspopup="menu" aria-expanded={open}
         onClick={() => setOpen(o => !o)}>
         <IconMoreV size={15} />
       </button>
       {phase !== "closed" && (
         <div className={`agx-menu-pop t-dropdown${phaseClass(phase)}`} data-origin="top-right" role="menu">
-          <button role="menuitem" onClick={() => { setOpen(false); onOpen(); }}><IconArrow size={12} />Open</button>
+          <button role="menuitem" onClick={() => { setOpen(false); onOpen(); }}><IconArrow size={12} />{tr("Open")}</button>
           <button role="menuitem" onClick={() => { setOpen(false); onToggleArchive(); }}>
-            {archived ? <><IconRestore size={12} />Restore</> : <><IconArchive size={12} />Archive</>}
+            {archived ? <><IconRestore size={12} />{tr("Restore")}</> : <><IconArchive size={12} />{tr("Archive")}</>}
           </button>
         </div>
       )}
@@ -99,13 +102,13 @@ function CardMenu({ name, archived, onOpen, onToggleArchive }: {
   );
 }
 
-/** What a role's deliverable is called: the Consultant writes a Transformation
- *  Concept, the Coach a Change Plan (lib/deliverables.ts). */
-function docsLabel(role: AgentType): string {
-  return role === "coach" ? "Change plans" : "Transformation concepts";
+/** What this agent's document is called — its type's (lib/deliverables.ts):
+ *  an Idea Plan, a Product Brief, a Change Plan. Every title takes a plain -s. */
+function docLabel(agent: Agent): string {
+  return deliverableFor(agent.type, kindFor(agent)).title;
 }
-function docLabel(role: AgentType): string {
-  return role === "coach" ? "Change plan" : "Transformation concept";
+function docsLabel(agent: Agent): string {
+  return `${docLabel(agent)}s`;
 }
 
 /**
@@ -132,6 +135,7 @@ function AgentCard({ agent, usage, onOpen, onDocs, onToggleArchive }: {
   agent: Agent; usage: AgentUsage | undefined;
   onOpen: (from: HTMLElement) => void; onDocs: (from: HTMLElement) => void; onToggleArchive: () => void;
 }) {
+  const tr = useT();
   const ref = useRef<HTMLElement>(null);
   const from = () => ref.current!;
   const projects = projectTotal(agent, usage);
@@ -139,7 +143,7 @@ function AgentCard({ agent, usage, onOpen, onDocs, onToggleArchive }: {
   const level = mascotLevel(projects);
   return (
     <article className={`agx-card${agent.archived_at ? " is-archived" : ""}`} ref={ref}>
-      <button className="agx-card-hit" onClick={() => onOpen(from())} aria-label={`Show details for ${agent.name}`}
+      <button className="agx-card-hit" onClick={() => onOpen(from())} aria-label={tr("Show details for {name}", { name: agent.name })}
         data-agent={agent.id} />
 
       <header className="agx-card-head">
@@ -147,7 +151,7 @@ function AgentCard({ agent, usage, onOpen, onDocs, onToggleArchive }: {
         <div className="agx-card-text">
           <h3 className="agx-name">{agent.name}</h3>
           <p className="agx-meta">
-            Level {level} · {levelFor(projects)} experience
+            {tr("Level {n} · {level} experience", { n: level, level: tr(levelFor(projects)) })}
             {templateFor(agent) ? ` · ${templateFor(agent)!.type}` : ""}
           </p>
         </div>
@@ -156,17 +160,17 @@ function AgentCard({ agent, usage, onOpen, onDocs, onToggleArchive }: {
       </header>
 
       <div className="agx-card-stats">
-        <div><span>Projects</span><b>{projects}</b></div>
-        <div><span>Tokens</span><b>{compactNumber(usage?.tokens ?? 0)}</b></div>
+        <div><span>{tr("Projects")}</span><b>{projects}</b></div>
+        <div><span>{tr("Tokens")}</span><b>{compactNumber(usage?.tokens ?? 0)}</b></div>
         {/* Which industries its projects were in (Patryk: "Branche, also z.B. Bank oder Software"). */}
         <div className="agx-stat-industry" title={usage?.industries.join(", ") || undefined}>
-          <span>Industry</span>
+          <span>{tr("Industry")}</span>
           <b>{usage?.industries.length ? usage.industries.slice(0, 2).join(", ") : "–"}</b>
         </div>
         {/* The third number is also the way to every document it wrote. */}
         <button className="agx-docs-btn" onClick={() => onDocs(from())} disabled={docs === 0}
-          aria-label={`${docsLabel(agent.type)} by ${agent.name}: ${docs}`}>
-          <span>{docsLabel(agent.type)}</span>
+          aria-label={tr("{docs} by {name}: {n}", { docs: docsLabel(agent), name: agent.name, n: docs })}>
+          <span>{docsLabel(agent)}</span>
           <b>{docs}</b>
           <IconArrow size={11} />
         </button>
@@ -276,12 +280,13 @@ function useDocViewer(agent: Agent, projects: number) {
 }
 
 /** The list of documents; each opens in the viewer. */
-function DocList({ role, docs, failed, onOpen }: {
-  role: AgentType; docs: AgentDocument[] | null; failed: boolean; onOpen: (d: AgentDocument) => void;
+function DocList({ agent, docs, failed, onOpen }: {
+  agent: Agent; docs: AgentDocument[] | null; failed: boolean; onOpen: (d: AgentDocument) => void;
 }) {
-  if (failed) return <p className="agx-info-none">These couldn&apos;t be loaded. Close and reopen to try again.</p>;
-  if (docs === null) return <p className="agx-info-none">Loading…</p>;
-  if (docs.length === 0) return <p className="agx-info-none">No {docsLabel(role).toLowerCase()} finished yet.</p>;
+  const tr = useT();
+  if (failed) return <p className="agx-info-none">{tr("These couldn't be loaded. Close and reopen to try again.")}</p>;
+  if (docs === null) return <p className="agx-info-none">{tr("Loading…")}</p>;
+  if (docs.length === 0) return <p className="agx-info-none">{tr("No {docs} finished yet.", { docs: docsLabel(agent) })}</p>;
   return (
     <ul>
       {docs.map(d => (
@@ -302,6 +307,7 @@ function DocList({ role, docs, failed, onOpen }: {
 function AgentDocs({ agent, usage, motion, onClose, onClosed }: {
   agent: Agent; usage: AgentUsage | undefined; motion: OverlayMotion; onClose: () => void; onClosed: () => void;
 }) {
+  const tr = useT();
   const { docs, failed } = useAgentDocs(agent);
   const viewer = useDocViewer(agent, projectTotal(agent, usage));
   const closeRef = useOverlayKeys(onClose, viewer.isOpen);
@@ -312,15 +318,15 @@ function AgentDocs({ agent, usage, motion, onClose, onClosed }: {
       <header className="agx-info-head">
         <AgentMascot role={agent.type} size={40} level={mascotLevel(projectTotal(agent, usage))} />
         <div className="agx-info-id">
-          <h3 id={titleId}>{docsLabel(agent.type)}</h3>
+          <h3 id={titleId}>{docsLabel(agent)}</h3>
           <p>{agent.name}{docs && docs.length > 0 ? ` · ${docs.length}` : ""}</p>
         </div>
-        <button ref={closeRef} className="agx-info-close" onClick={onClose} aria-label="Close list">
+        <button ref={closeRef} className="agx-info-close" onClick={onClose} aria-label={tr("Close list")}>
           <IconX size={14} />
         </button>
       </header>
       <div className="agx-info-body" ref={bodyRef}>
-        <DocList role={agent.type} docs={docs} failed={failed} onOpen={viewer.open} />
+        <DocList agent={agent} docs={docs} failed={failed} onOpen={viewer.open} />
       </div>
       {viewer.view}
     </div>
@@ -336,6 +342,7 @@ function AgentInfo({ agent, usage, motion, onClose, onClosed, onToggleArchive }:
   agent: Agent; usage: AgentUsage | undefined; motion: OverlayMotion;
   onClose: () => void; onClosed: () => void; onToggleArchive: () => void;
 }) {
+  const tr = useT();
   const { docs, failed } = useAgentDocs(agent);
   const projects = projectTotal(agent, usage);
   const viewer = useDocViewer(agent, projects);
@@ -357,7 +364,7 @@ function AgentInfo({ agent, usage, motion, onClose, onClosed, onToggleArchive }:
           <h3 id={titleId}>{agent.name}</h3>
           <p>{templateFor(agent)?.type ?? agent.tagline ?? (agent.type === "coach" ? "Coach" : "Consultant")}</p>
         </div>
-        <button ref={closeRef} className="agx-info-close" onClick={onClose} aria-label="Close details">
+        <button ref={closeRef} className="agx-info-close" onClick={onClose} aria-label={tr("Close details")}>
           <IconX size={14} />
         </button>
       </header>
@@ -366,11 +373,11 @@ function AgentInfo({ agent, usage, motion, onClose, onClosed, onToggleArchive }:
         {agent.description && <p className="agx-info-desc">{agent.description}</p>}
 
         <dl className="agx-info-stats">
-          <div><dt>Projects</dt><dd>{projects}</dd></div>
+          <div><dt>{tr("Projects")}</dt><dd>{projects}</dd></div>
           <div>
-            <dt>Experience</dt>
+            <dt>{tr("Experience")}</dt>
             <dd className="agx-info-level">
-              {level}
+              {tr(level)}
               <span className="level-bar" aria-hidden="true">
                 {LEVEL_ORDER.map((l, i) => (
                   <span key={l} className={`level-seg${i <= LEVEL_ORDER.indexOf(level) ? " on" : ""}`} />
@@ -378,13 +385,13 @@ function AgentInfo({ agent, usage, motion, onClose, onClosed, onToggleArchive }:
               </span>
             </dd>
           </div>
-          <div><dt>Tokens, est.</dt><dd>{compactNumber(usage?.tokens ?? 0)}</dd></div>
-          <div><dt>Documents</dt><dd>{docs === null ? "–" : docs.length}</dd></div>
+          <div><dt>{tr("Tokens, est.")}</dt><dd>{compactNumber(usage?.tokens ?? 0)}</dd></div>
+          <div><dt>{tr("Documents")}</dt><dd>{docs === null ? "–" : docs.length}</dd></div>
         </dl>
 
         {methods.length > 0 && (
           <section className="agx-info-block">
-            <h4>Can help with</h4>
+            <h4>{tr("Can help with")}</h4>
             <div className="ag-skills">
               {methods.map(m => <span key={m.id} className="ag-skill">{methodLabel(m.name)}</span>)}
             </div>
@@ -392,20 +399,20 @@ function AgentInfo({ agent, usage, motion, onClose, onClosed, onToggleArchive }:
         )}
 
         <section className="agx-info-block">
-          <h4>{docsLabel(agent.type)}</h4>
-          <DocList role={agent.type} docs={docs} failed={failed} onOpen={viewer.open} />
+          <h4>{docsLabel(agent)}</h4>
+          <DocList agent={agent} docs={docs} failed={failed} onOpen={viewer.open} />
         </section>
 
         {(list.length > 0 || catalog.length > 0) && (
           <section className="agx-info-block">
-            <h4>Projects</h4>
+            <h4>{tr("Projects")}</h4>
             <ul>
               {list.map(p => (
                 <li key={p.id}>
                   <Link className="agx-info-row agx-info-proj" href={`/dashboard/project/${p.id}`}>
                     <span className="agx-info-t">{p.name}</span>
                     {p.industry && <span className="agx-info-ind">{p.industry}</span>}
-                    {p.doc && <span className="agx-info-tag"><IconDoc size={11} />{docLabel(agent.type)}</span>}
+                    {p.doc && <span className="agx-info-tag"><IconDoc size={11} />{docLabel(agent)}</span>}
                     <span className="agx-info-d">{dateStr(p.date)}</span>
                     {p.summary && <span className="agx-info-s">{p.summary}</span>}
                   </Link>
@@ -426,7 +433,7 @@ function AgentInfo({ agent, usage, motion, onClose, onClosed, onToggleArchive }:
 
       <footer className="agx-info-foot">
         <button className="btn btn-ghost btn-sm" onClick={onToggleArchive}>
-          {agent.archived_at ? <><IconRestore size={12} />Restore agent</> : <><IconArchive size={12} />Archive agent</>}
+          {agent.archived_at ? <><IconRestore size={12} />{tr("Restore agent")}</> : <><IconArchive size={12} />{tr("Archive agent")}</>}
         </button>
       </footer>
       {viewer.view}
@@ -437,9 +444,10 @@ function AgentInfo({ agent, usage, motion, onClose, onClosed, onToggleArchive }:
 /** A slot nobody is in yet, greyed out ("ausgegraut", Patryk). New agents are
  *  made from the picker, in a task. */
 function FreeSlot({ onAdd }: { onAdd: () => void }) {
+  const tr = useT();
   return (
     <button className="agx-free" onClick={onAdd}>
-      <IconPlus size={14} />Add agent
+      <IconPlus size={14} />{tr("Add agent")}
     </button>
   );
 }
@@ -451,10 +459,15 @@ export function RoleSection({ role, label, agents, usage, plan, onArchive, onRes
   plan: Plan;
   onArchive: (a: Agent) => void; onRestore: (a: Agent) => void; onAdd: () => void;
 }) {
+  const tr = useT();
   // Archived agents hold no slot: they get a tab of their own, last.
   const active = agents.filter(a => !a.archived_at);
   const archived = agents.filter(a => a.type === role && a.archived_at);
-  const { columns } = groupByType(active, role, plan);
+  // Agents made before the current types hold no slot (holdsSlot): counted
+  // under a type they read "12/4" beside a type the picker and the database
+  // call 1 of 4. They keep working as before, in a tab of their own, uncapped.
+  const earlier = active.filter(a => a.type === role && !holdsSlot(a));
+  const { columns } = groupByType(active.filter(holdsSlot), role, plan);
   // Most finished work first, then most projects: the agents you rely on lead
   // each row, the newest and emptiest trail it.
   const ranked = (list: Agent[]) => [...list].sort((a, b) =>
@@ -463,7 +476,8 @@ export function RoleSection({ role, label, agents, usage, plan, onArchive, onRes
     || a.name.localeCompare(b.name));
   const tabs = [
     ...columns.map(c => ({ key: c.template.type, label: c.template.type, title: c.template.sub, agents: ranked(c.agents), cap: plan.agentsPerType })),
-    ...(archived.length ? [{ key: "archived", label: "Archived", title: "Archived agents — restore one to put it back on the team", agents: ranked(archived), cap: archived.length }] : []),
+    ...(earlier.length ? [{ key: "earlier", label: tr("Earlier agents"), title: tr("Made before the current types. They work as before and take no slot."), agents: ranked(earlier), cap: earlier.length }] : []),
+    ...(archived.length ? [{ key: "archived", label: tr("Archived"), title: tr("Archived agents — restore one to put it back on the team"), agents: ranked(archived), cap: archived.length }] : []),
   ];
   // Open on the first type that has someone in it.
   const [sel, setSel] = useState(() => Math.max(0, tabs.findIndex(t => t.agents.length > 0)));
@@ -592,10 +606,10 @@ export function RoleSection({ role, label, agents, usage, plan, onArchive, onRes
         {/* Arrows only where there is more to see (Ana, 2026-10-01, after
             YouTube's chip bar): a blurred fade with a round button in it. */}
         <button type="button" className="agx-tabs-more is-left" tabIndex={-1}
-          aria-label={`Scroll ${label} types left`} onClick={() => nudgeTabs(-1)}>
+          aria-label={tr("Scroll {role} types left", { role: label })} onClick={() => nudgeTabs(-1)}>
           <span><IconBack size={14} /></span>
         </button>
-        <div className="agx-tabs-scroll" ref={tabsRef} role="tablist" aria-label={`${label} types`} onKeyDown={onKey}>
+        <div className="agx-tabs-scroll" ref={tabsRef} role="tablist" aria-label={tr("{role} types", { role: label })} onKeyDown={onKey}>
           {tabs.map((t, i) => (
             <Fragment key={t.key}>
               {i > 0 && <span className="nb-rule" aria-hidden="true" />}
@@ -603,16 +617,16 @@ export function RoleSection({ role, label, agents, usage, plan, onArchive, onRes
                 aria-controls={`${tablistId}-panel`} tabIndex={i === sel ? 0 : -1} title={t.title}
                 className={`nb-item${i === sel ? " active" : ""}`} onClick={() => pick(i)}>
                 {t.label}
-                {/* "3/4" where there is a cap; Archived has none, just a count. */}
+                {/* "3/4" where there is a cap; Archived and the earlier agents have none, just a count. */}
                 <span className="agx-tab-n">
-                  {t.key === "archived" ? t.agents.length : `${t.agents.length}/${t.cap}`}
+                  {t.key === "archived" || t.key === "earlier" ? t.agents.length : `${t.agents.length}/${t.cap}`}
                 </span>
               </button>
             </Fragment>
           ))}
         </div>
         <button type="button" className="agx-tabs-more is-right" tabIndex={-1}
-          aria-label={`Scroll ${label} types right`} onClick={() => nudgeTabs(1)}>
+          aria-label={tr("Scroll {role} types right", { role: label })} onClick={() => nudgeTabs(1)}>
           <span><IconArrow size={14} /></span>
         </button>
       </div>

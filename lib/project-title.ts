@@ -16,6 +16,16 @@ export function worthNaming(text: string): boolean {
   return !(t.length < 20 && words <= 3);
 }
 
+/** The stopgap name from the first message: whole words only, with "…" when
+ *  it had to stop — a plain slice left titles like "wie einbaue i". */
+export function firstMessageName(text: string, max = 55): string {
+  const t = text.replace(/\s+/g, " ").trim();
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max - 1);
+  const atWord = cut.lastIndexOf(" ");
+  return `${(atWord > max / 2 ? cut.slice(0, atWord) : cut).replace(/[\s.,;:!?–-]+$/, "")}…`;
+}
+
 /* ---------------------------------------------------------------------------
    NAMING THE PROJECT AFTER A FEW MESSAGES
 

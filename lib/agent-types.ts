@@ -186,6 +186,16 @@ export function templateFor(agent: Pick<Agent, "type" | "tagline">): TypeTemplat
 }
 
 /**
+ * Whether an agent takes one of its type's slots: its tagline is exactly the
+ * type's, the comparison the database cap (enforce_agent_limit, 0014) and the
+ * picker's "1 of 4" make. An older agent whose tagline differs, even only in
+ * case, still works as a type (templateFor, kindFor) but holds no slot.
+ */
+export function holdsSlot(agent: Pick<Agent, "type" | "tagline">): boolean {
+  return TYPE_CATALOG[agent.type].some(t => t.sub === agent.tagline);
+}
+
+/**
  * Which type an agent works as — the key the chat route and the deliverables
  * use. An agent that matches no template works as the role's first type, the
  * same way groupByType() files it, so what is shown and what runs agree.

@@ -5,6 +5,7 @@ import type { Agent, AgentType } from "@/lib/agents";
 import { levelFor } from "@/lib/agent-progress";
 import { methodLabel } from "@/lib/method-labels";
 import { useMediaQuery } from "@/lib/use-media-query";
+import { useT } from "@/lib/language";
 import { AgentMascot } from "@/components/layout/agent-mascot";
 import { IconArrow, IconBack, IconCheck, IconLock } from "@/components/layout/agxp-icons";
 
@@ -12,23 +13,25 @@ const ROLES: AgentType[] = ["consultant", "coach"];
 const ROLE_NAME: Record<AgentType, string> = { consultant: "Consultant", coach: "Coach" };
 
 /** "Build your AI team", with the accent on the part you are building. */
-export function TeamHeading({ suffix }: { suffix?: string }) {
+export function TeamHeading({ ready }: { ready?: boolean }) {
+  const tr = useT();
   return (
     <h2 className="team-title">
-      {suffix ? <span className="team-grad-all">Your AI team {suffix}</span> : <>Build your <span className="team-grad">AI team</span></>}
+      {ready ? <span className="team-grad-all">{tr("Your AI team is ready")}</span> : <>{tr("Build your")} <span className="team-grad">{tr("AI team")}</span></>}
     </h2>
   );
 }
 
 /** The step chip above the heading: which seat you are filling right now. */
 export function TeamStep({ role }: { role: AgentType }) {
+  const tr = useT();
   const n = ROLES.indexOf(role) + 1;
   return (
     <span className="team-step">
       <span className="ts-pips" aria-hidden="true">
         {ROLES.map((r, i) => <span key={r} className={`ts-pip${i < n ? " on" : ""}`} />)}
       </span>
-      Step {n} of {ROLES.length} · {ROLE_NAME[role]}
+      {tr("Step {n} of {total}", { n, total: ROLES.length })} · {ROLE_NAME[role]}
     </span>
   );
 }
@@ -46,16 +49,17 @@ export function TeamRail({ agents, onChange, onStart }: {
    *  on the "ready" screen, which needs both, so this is the way in without a Coach. */
   onStart?: () => void;
 }) {
+  const tr = useT();
   const filled = ROLES.filter(r => agents[r]).length;
   const active = ROLES.find(r => !agents[r]) ?? null;
 
   return (
-    <aside className={`team-rail${filled === ROLES.length ? " is-full" : ""}`} aria-label="Your AI team">
+    <aside className={`team-rail${filled === ROLES.length ? " is-full" : ""}`} aria-label={tr("Your AI team")}>
       <div className="tr-head">
-        <h2 className="tr-title">Your AI team</h2>
+        <h2 className="tr-title">{tr("Your AI team")}</h2>
         {/* Keyed on the count so the bump replays every time a seat fills. */}
         <span key={filled} className={`tr-count${filled ? " bump" : ""}`}>
-          {filled}/{ROLES.length}<span className="visually-hidden"> chosen</span>
+          {filled}/{ROLES.length}<span className="visually-hidden"> {tr("chosen")}</span>
         </span>
       </div>
 
@@ -77,13 +81,13 @@ export function TeamRail({ agents, onChange, onStart }: {
                 <span className="ts-role">{ROLE_NAME[role]}</span>
                 <span className="ts-sub">
                   {agent ? agent.name
-                    : state === "active" ? "Choose on the left"
-                    : locked ? `Select a ${ROLE_NAME[ROLES[i - 1]]} first`
-                    : "Not selected yet"}
+                    : state === "active" ? tr("Choose on the left")
+                    : locked ? tr("Select a {role} first", { role: ROLE_NAME[ROLES[i - 1]] })
+                    : tr("Not selected yet")}
                 </span>
               </span>
               {agent && agent.methods.length > 0 && (
-                <ul className="ts-methods" aria-label={`What ${agent.name} works with`}>
+                <ul className="ts-methods" aria-label={tr("What {name} works with", { name: agent.name })}>
                   {[...agent.primaryMethods, ...agent.secondaryMethods].map(m => (
                     <li key={m.id}>{methodLabel(m.name)}</li>
                   ))}
@@ -92,8 +96,8 @@ export function TeamRail({ agents, onChange, onStart }: {
               <span className="ts-end">
                 {agent ? (
                   <button className="ts-change" onClick={() => onChange(role)}
-                    aria-label={`Change the ${ROLE_NAME[role].toLowerCase()}, ${agent.name}`}>
-                    Change
+                    aria-label={tr("Change the {role}, {name}", { role: ROLE_NAME[role], name: agent.name })}>
+                    {tr("Change")}
                   </button>
                 ) : state === "active" ? <IconBack size={14} />
                   : locked ? <IconLock size={14} /> : null}
@@ -104,7 +108,7 @@ export function TeamRail({ agents, onChange, onStart }: {
       </ol>
       {onStart && agents.consultant && !agents.coach && (
         <button type="button" className="tr-skip" onClick={onStart}>
-          Start with the Consultant only<IconArrow size={12} />
+          {tr("Start with the Consultant only")}<IconArrow size={12} />
         </button>
       )}
     </aside>
@@ -176,13 +180,14 @@ export function TeamReady({ consultant, coach, projectCounts, onStart }: {
   // SMIL ignores prefers-reduced-motion, so the orbiting dots are left out.
   const still = useMediaQuery("(prefers-reduced-motion: reduce)");
   const uid = useId().replace(/:/g, "");
+  const tr = useT();
   const name = (role: AgentType, a: Agent) => {
     const total = a.last_projects.length + (projectCounts[a.id] ?? 0);
     return (
       <div className={`orbit-name ${role}`}>
         <span className="on-role">{ROLE_NAME[role]}</span>
         <span className="on-name">{a.name}</span>
-        <span className="on-lvl">{levelFor(total)} · {total} {total === 1 ? "project" : "projects"} together</span>
+        <span className="on-lvl">{tr(levelFor(total))} · {tr(total === 1 ? "1 project together" : "{n} projects together", { n: total })}</span>
       </div>
     );
   };
@@ -195,7 +200,7 @@ export function TeamReady({ consultant, coach, projectCounts, onStart }: {
             title is part of it, so it stays with the loops at every size. */}
         <div className="orbit-wrap">
         <div className="orbit">
-          <TeamHeading suffix="is ready" />
+          <TeamHeading ready />
           {/* Both drawings are always there; the stylesheet shows the one
               that fits the room — side by side, or one above the other. */}
           <Loops id={`${uid}h`} vertical={false} still={still} />
@@ -220,7 +225,7 @@ export function TeamReady({ consultant, coach, projectCounts, onStart }: {
               it used to sit in the bar, away from what it starts. Inside the
               stage, so it keeps its place under the names at any size. */}
           <button type="button" className="tready-start is-ready" onClick={onStart}>
-            Start<IconArrow size={14} />
+            {tr("Start")}<IconArrow size={14} />
           </button>
         </div>
         </div>

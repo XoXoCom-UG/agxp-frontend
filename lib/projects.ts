@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase";
 import { readEntitlement, QuotaError } from "@/lib/entitlement";
 import type { AgentType } from "@/lib/agents";
-import { worthNaming } from "@/lib/project-title";
+import { worthNaming, firstMessageName } from "@/lib/project-title";
 import { removeProjectFolder } from "@/lib/project-files";
 
 export type ProjectStatus = "Not Started" | "In Progress" | "Completed" | "Archived";
@@ -57,7 +57,7 @@ export async function renameFromFirstMessage(project: Project, text: string): Pr
   if (project.name !== PLACEHOLDER_PROJECT_NAME) return null;
   // A greeting is no name; the agent titles the project once it is clear.
   if (!worthNaming(text)) return null;
-  const name = text.trim().slice(0, 55);
+  const name = firstMessageName(text);
   await renameProject(project.id, name);
   return name;
 }

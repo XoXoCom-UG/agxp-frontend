@@ -1301,6 +1301,8 @@ html.light .m-antenna{ stroke:color-mix(in srgb, var(--primary) 45%, transparent
   .btn-google:hover:not(:disabled, [aria-disabled="true"]){ border-color:var(--border-strong); background:var(--popover); }
 }
 
+.auth-terms{ margin:var(--sp-3) 0 0; font-size:var(--text-2xs); line-height:1.55; color:var(--muted-foreground); }
+.auth-terms a{ color:var(--secondary-foreground); }
 .auth-legal{ display:flex; gap:var(--sp-5); margin-top:var(--sp-6); }
 .auth-legal a{ font-size:var(--text-2xs); color:var(--muted-foreground); text-decoration:none; transition:color 150ms var(--ease-out); }
 @media (hover:hover) and (pointer:fine){
@@ -3137,8 +3139,10 @@ html.light .coach-pill, html.light .coach-slot.sheet > .panel{
 .chat-head::after{
   content:""; position:absolute; inset:0; z-index:-1; pointer-events:none;
   background:var(--head-bg);
-  -webkit-mask-image:linear-gradient(to bottom, #000 0, #000 58%, rgba(0,0,0,0.35) 88%, transparent 100%);
-  mask-image:linear-gradient(to bottom, #000 0, #000 58%, rgba(0,0,0,0.35) 88%, transparent 100%);
+  /* Solid to 80%: at 58% the text scrolling beneath read straight through the
+     agent's name and role, on a phone above all where the head is tallest. */
+  -webkit-mask-image:linear-gradient(to bottom, #000 0, #000 80%, rgba(0,0,0,0.55) 92%, transparent 100%);
+  mask-image:linear-gradient(to bottom, #000 0, #000 80%, rgba(0,0,0,0.55) 92%, transparent 100%);
 }
 /* The same colour the panel is at its top edge: its base plus the bloom. */
 .chat-head.is-stuck{ background:none; border-bottom-color:transparent; }
