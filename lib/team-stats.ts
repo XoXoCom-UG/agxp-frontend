@@ -170,7 +170,10 @@ export async function loadTeamStats(): Promise<TeamStats> {
   }
 
   return {
-    projectsInProgress: projects.filter(p => p.status !== "Completed" && p.status !== "Archived").length,
+    // A project whose Consultant document exists reads as Completed, as in
+    // Project History (app/dashboard/history/page.tsx, statusOf).
+    projectsInProgress: projects.filter(p => p.status !== "Completed" && p.status !== "Archived"
+      && !countedDoc.has(`${p.id}:consultant`)).length,
     tokens,
     tokensByDay,
     byAgent,
