@@ -1,0 +1,61 @@
+<!--
+  Variant 5 of 5. Supabase > Authentication > Emails > Templates > "Confirm signup".
+  Subject: Confirm your AgentiX Projects account
+  Variables used: {{ .ConfirmationURL }}, {{ .Email }}, {{ .SiteURL }} (images load from {{ .SiteURL }}/brand/,
+  so Authentication > URL Configuration > Site URL must be the public app address).
+  The Supabase project is shared with the older app: pasting this changes the email for every account in it.
+-->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>Confirm your AgentiX Projects account</title>
+<style>
+  :root{color-scheme:light dark;supported-color-schemes:light dark}
+  a[x-apple-data-detectors]{color:inherit!important;text-decoration:none!important}
+  @media (max-width:600px){
+    .px{padding-left:24px!important;padding-right:24px!important}
+    .h1{font-size:26px!important}
+    .gutter{padding-left:12px!important;padding-right:12px!important}
+  }
+  @media (prefers-color-scheme:dark){.c-canvas{background:#060607!important}.c-card{background:#141416!important}.c-soft{background:#1B2430!important}.c-tint{background:#1C1C20!important}.c-band{background:#0F3A5F!important}.c-btn{background:#4D94DB!important}.c-btnText{color:#061018!important}.c-ink{color:#ECECEE!important}.c-body{color:#B8B8C0!important}.c-muted{color:#8F8F97!important}.c-link{color:#7DB4EC!important}.c-onband{color:#FFFFFF!important}.c-rule{border-top:1px solid #2A2A30!important}.c-box{border:1px solid #2A2A30!important}}
+</style>
+</head>
+<body class="c-canvas" style="background:#ECEEF2;margin:0;padding:0;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;font-size:1px;line-height:1px;">Confirm your email address to finish setting up your account.</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#ECEEF2" class="c-canvas" style="background:#ECEEF2;">
+  <tr><td align="center" class="gutter" style="padding:40px 16px;">
+    
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#FFFFFF" class="c-card" style="background:#FFFFFF;max-width:560px;border-collapse:separate;border-radius:16px;overflow:hidden;">
+  <tr><td bgcolor="#154E80" class="px c-band" style="background:#154E80;padding:28px 40px 40px;">
+    
+<table role="presentation" cellpadding="0" cellspacing="0"><tr>
+  <td style="padding-right:10px;" valign="middle"><img src="{{ .SiteURL }}/brand/mark.png" width="32" height="32" alt="" style="display:block;border:0;width:32px;height:32px;"></td>
+  <td valign="middle" class="c-onband" style="color:#FFFFFF;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1;font-weight:700;letter-spacing:-0.01em;">AgentiX Projects</td>
+</tr></table>
+    <div class="h1 c-onband" style="color:#FFFFFF;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;padding-top:44px;font-size:32px;line-height:1.12;font-weight:700;letter-spacing:-0.03em;">Confirm your email address</div>
+  </td></tr>
+  <tr><td class="px c-body" style="color:#3D414A;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;padding:32px 40px 0;font-size:16px;line-height:1.65;">Thanks for signing up. Confirm this address and your account is ready. Then enter the key from your invitation to start your first project.</td></tr>
+  <tr><td class="px" style="padding:28px 40px 0;">
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:separate;">
+  <tr><td bgcolor="#154E80" class="c-btn" style="background:#154E80;border-radius:10px;text-align:center;">
+    <a href="{{ .ConfirmationURL }}" class="c-btnText" style="color:#FFFFFF;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;display:block;padding:17px 28px;font-size:15px;line-height:1;font-weight:600;text-decoration:none;border-radius:10px;white-space:nowrap;">Confirm email</a>
+  </td></tr>
+</table></td></tr>
+  <tr><td class="px" style="padding:28px 40px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;"><tr><td class="c-tint c-box" style="background:#F1F2F5;border:1px solid #E1E4EA;border-radius:10px;padding:14px 16px;text-align:left;">
+    <div class="c-muted" style="color:#5A5F6B;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;">Button not working? Paste this link into your browser.</div>
+    <div style="padding-top:6px;"><a href="{{ .ConfirmationURL }}" class="c-link" style="color:#154E80;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;line-height:1.5;word-break:break-all;text-decoration:underline;">{{ .ConfirmationURL }}</a></div>
+  </td></tr></table></td></tr>
+  <tr><td class="px" style="padding:28px 40px 36px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td class="c-rule c-muted" style="border-top:1px solid #E1E4EA;color:#5A5F6B;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;padding-top:24px;font-size:13px;line-height:1.6;">Didn't create an account? Ignore this email. Nothing happens until the link is used.<div style="padding-top:14px;font-size:12px;">XoXoCom UG (haftungsbeschränkt), Hauptstraße 44, 40789 Monheim&nbsp;am&nbsp;Rhein</div></td></tr></table>
+  </td></tr>
+</table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;"><tr><td align="center" class="c-muted" style="color:#5A5F6B;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.6;padding-top:20px;">Sent to {{ .Email }}</td></tr></table>
+  </td></tr>
+</table>
+</body>
+</html>
