@@ -122,7 +122,6 @@ export function ChatHead({
 
   return (
     <div className={`chat-head${stuck ? " is-stuck" : ""}${topRow ? " has-top" : ""}`} ref={headRef}>
-      <span className="head-rule" aria-hidden="true" />
       {topRow && (
         <div className="head-top">
           {topRow}

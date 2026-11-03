@@ -3,10 +3,11 @@ import { NextRequest, NextResponse, after } from "next/server";
 import { caller } from "@/lib/caller-id";
 import { memoryAllowed } from "@/lib/memory-pref";
 import type { AgentType } from "@/lib/agents";
-import { DELIVERABLES } from "@/lib/deliverables";
+import { DELIVERABLES, isDeliverableCommand } from "@/lib/deliverables";
 import { systemPrompt, peerPrompt } from "@/lib/agent-prompt";
 import { withAttachments } from "@/lib/message-files";
-import { peerTranscript, type PeerContext } from "@/lib/peer-context";
+import { peerTranscript, isReadAlongCommand, isReviewCommand, type PeerContext } from "@/lib/peer-context";
+import { replyLanguage, languagePrompt } from "@/lib/reply-language";
 import { allowanceFor, blocked, beginAiCall, settleAiCall, peerReadingAllowed } from "@/lib/entitlement-server";
 import { estimateInputTokens, reserveMicroUsd } from "@/lib/cost";
 import { validateMessages, cleanLabel, cleanMemory, cleanKind, AGENT_NAME_MAX } from "@/lib/chat-input";
@@ -192,6 +193,17 @@ export async function POST(req: NextRequest) {
     { type: "text", text: sys, cache_control: { type: "ephemeral" } },
   ];
   if (peerBlock) system.push({ type: "text", text: peerBlock });
+
+  // The language, named last — after the German peer transcript, which used
+  // to pull an English conversation into German (lib/reply-language.ts). From
+  // what the person wrote, without the app's own commands, which are English
+  // whatever language the person speaks. It changes only when they switch,
+  // so it costs the cache nothing in between.
+  const written = (turns: StoredTurn[]) => turns
+    .filter(t => t.role === "user" && !isDeliverableCommand(t.content) && !isReadAlongCommand(t.content) && !isReviewCommand(t.content))
+    .map(t => t.content);
+  const langBlock = languagePrompt(replyLanguage(written(loaded.conversation.own), written(loaded.conversation.other)));
+  if (langBlock) system.push({ type: "text", text: langBlock });
 
   /*
    * Attachments are resolved here, not sent by the client: the message only

@@ -228,7 +228,7 @@ main.workspace{ flex:1; display:flex; gap:var(--sp-4); padding:0 var(--sp-6) var
   /* A query container, so the entry cards lay themselves out against the
      panel's width rather than the window's; and the share of the row is
      animated, because it changes when the Coach is invited in. */
-  container-type:inline-size; container-name:panel; --chat-head-h:88px; }
+  container-type:inline-size; container-name:panel; --chat-head-h:72px; }
 .panel.primary{ flex:1.6; }
 html.light .panel{
   --bloom-top:color-mix(in srgb, var(--primary-soft) 5%, transparent);
@@ -2914,13 +2914,16 @@ main.workspace::after{ width:min(38vw, 520px); height:min(38vw, 520px); }
    its content: a flex item defaults to min-height:auto, which makes it grow
    past the panel instead. */
 /* The top of the fade sits under the head, not at the panel's edge: the head
-   is glass over this list, and where the blur does not render (or the glass
-   is thin) the messages read straight through the agent's name — a tester's
-   screenshot, 2026-11-01. Hidden under the head, fading in along its lower
-   edge, so what scrolls up still slides away under the glass. */
+   is glass over this list, and where the blur does not render — Chrome drops
+   it over this scroller now and then, and Solid glass has none — the messages
+   read straight through the agent's name (a tester's screenshot, 2026-11-01;
+   seen again 2026-11-03). So they are gone behind the name and fade in across
+   the head's lower band, which is all blur: what scrolls up turns to frost
+   there, and that band is the only thing between head and conversation (Ana,
+   2026-11-03: no line, only blur). */
 .chat-body{ min-height:0;
-  -webkit-mask-image:linear-gradient(to bottom, transparent 0, transparent calc(var(--chat-head-h) - 28px), #000 calc(var(--chat-head-h) - 2px), #000 calc(100% - 26px), transparent 100%);
-  mask-image:linear-gradient(to bottom, transparent 0, transparent calc(var(--chat-head-h) - 28px), #000 calc(var(--chat-head-h) - 2px), #000 calc(100% - 26px), transparent 100%); }
+  -webkit-mask-image:linear-gradient(to bottom, transparent 0, transparent calc(var(--chat-head-h) - 20px), #000 var(--chat-head-h), #000 calc(100% - 26px), transparent 100%);
+  mask-image:linear-gradient(to bottom, transparent 0, transparent calc(var(--chat-head-h) - 20px), #000 var(--chat-head-h), #000 calc(100% - 26px), transparent 100%); }
 
 /* The seam is focusable now, so it needs to show focus. */
 .seam:focus-visible{ outline:none; }
@@ -3129,25 +3132,23 @@ html.light .coach-pill, html.light .coach-slot.sheet > .panel{
   background:none;
   backdrop-filter:none;  border-bottom:none;
 }
-/* Two layers behind the head's children: the blur (::before) and the panel's
-   own colour (::after), solid at the top and fading out along the bottom
-   edge — so the head reads as part of the chat, and only its lower strip is
-   frosted glass over the messages scrolling beneath it. */
+/* Two layers behind the head's children: the blur (::before), over the whole
+   head, and the panel's own colour (::after) on top of it, solid behind the
+   name and thinning out across the lower band, so the edge is a soft frost
+   and never a line (Ana, 2026-11-03). */
 .chat-head::before{
   display:block; content:""; position:absolute; inset:0; z-index:-1; pointer-events:none;
   padding:0; border-radius:0; background:none;
   -webkit-mask:none; mask:none;
-  backdrop-filter:blur(var(--blur-surface)) saturate(150%);
-  -webkit-mask-image:linear-gradient(to bottom, #000 calc(100% - 8px), transparent);
-  mask-image:linear-gradient(to bottom, #000 calc(100% - 8px), transparent);
+  backdrop-filter:blur(calc(var(--blur-surface) + 8px)) saturate(150%);
+  -webkit-mask-image:linear-gradient(to bottom, #000 calc(100% - 10px), transparent);
+  mask-image:linear-gradient(to bottom, #000 calc(100% - 10px), transparent);
 }
 .chat-head::after{
   content:""; position:absolute; inset:0; z-index:-1; pointer-events:none;
   background:var(--head-bg);
-  /* Solid to 80%: at 58% the text scrolling beneath read straight through the
-     agent's name and role, on a phone above all where the head is tallest. */
-  -webkit-mask-image:linear-gradient(to bottom, #000 0, #000 80%, rgba(0,0,0,0.55) 92%, transparent 100%);
-  mask-image:linear-gradient(to bottom, #000 0, #000 80%, rgba(0,0,0,0.55) 92%, transparent 100%);
+  -webkit-mask-image:linear-gradient(to bottom, #000 0, #000 calc(100% - 20px), rgba(0,0,0,0.45) calc(100% - 8px), transparent 100%);
+  mask-image:linear-gradient(to bottom, #000 0, #000 calc(100% - 20px), rgba(0,0,0,0.45) calc(100% - 8px), transparent 100%);
 }
 /* The same colour the panel is at its top edge: its base plus the bloom. */
 .chat-head.is-stuck{ background:none; border-bottom-color:transparent; }
@@ -3181,7 +3182,7 @@ html.light .coach-pill, html.light .coach-slot.sheet > .panel{
   width:auto; height:auto; background:none; box-shadow:none; border-radius:0;
 }
 html.light .who-face{ background:none; box-shadow:none; }
-.who-face .mascot{ width:63px !important; height:63px !important; }
+.who-face .mascot{ width:54px !important; height:54px !important; }
 .cp-face .mascot{ width:33px !important; height:33px !important; }
 
 /* --- 8. The head popovers: anchored to their buttons, not smeared across
@@ -5365,7 +5366,11 @@ html.light .agx-card{
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 
-.agx-menu{ flex:none; align-self:flex-start; position:relative; z-index:2; }
+/* Above the documents button, which comes later in the card and also sits at
+   z-index 2 — it painted over the open menu. And the card with the open menu
+   rises above the cards after it, each its own stacking context (the blur). */
+.agx-menu{ flex:none; align-self:flex-start; position:relative; z-index:3; }
+.agx-card:has(.agx-menu-btn[aria-expanded="true"]){ z-index:4; }
 .agx-menu-btn{
   width:28px; height:28px; display:flex; align-items:center; justify-content:center;
   border:none; background:none; border-radius:var(--radius-xs); color:var(--muted-foreground);
@@ -5404,23 +5409,42 @@ html.light .agx-card{
   font-family:var(--font-display); font-size:var(--text-base); font-weight:600; line-height:1.15;
   color:var(--foreground); font-variant-numeric:tabular-nums;
 }
+/* A button that looks like one (Ana, 2026-11-03: the hairline box read as a
+   field): a tinted fill in the accent, a lit top edge, the count in its own
+   badge and the arrow in the text colour. */
 .agx-docs-btn{
   position:relative; z-index:2; margin-left:auto; flex:none; min-width:0;
-  display:flex; align-items:center; gap:var(--sp-2); padding:0 var(--sp-2) 0 var(--sp-3);
-  height:32px; border:1px solid var(--glass-hairline); border-radius:var(--radius-sm);
-  background:rgba(255,255,255,0.04);
-  font-size:var(--text-xs); font-weight:500; color:var(--secondary-foreground); text-align:left;
-  transition:background-color 150ms var(--ease-out), color 150ms var(--ease-out), border-color 150ms var(--ease-out);
+  display:flex; align-items:center; gap:var(--sp-2); padding:0 var(--sp-3) 0 var(--sp-4);
+  height:36px; border-radius:var(--radius-pill);
+  border:1px solid color-mix(in srgb, var(--primary-soft) 30%, transparent);
+  background:color-mix(in srgb, var(--primary-soft) 14%, transparent);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), 0 6px 16px -10px rgba(0,0,0,0.7);
+  font-size:var(--text-xs); font-weight:600; color:var(--foreground); text-align:left; cursor:pointer;
+  transition:background-color 150ms var(--ease-out), border-color 150ms var(--ease-out), transform 120ms var(--ease-out);
 }
-html.light .agx-docs-btn{ background:rgba(255,255,255,0.7); }
-.agx-docs-btn > span{ font-size:var(--text-xs); color:inherit; overflow:hidden; text-overflow:ellipsis; }
-.agx-docs-btn > b{ font-size:var(--text-sm); }
-.agx-docs-btn svg{ flex:none; color:var(--muted-foreground); }
+.agx-docs-btn > span{ font-size:var(--text-xs); color:inherit; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.agx-card-stats .agx-docs-btn > b{
+  flex:none; min-width:22px; height:22px; padding:0 7px; border-radius:var(--radius-pill);
+  display:inline-flex; align-items:center; justify-content:center;
+  background:color-mix(in srgb, var(--primary-soft) 26%, transparent);
+  font-family:inherit; font-size:var(--text-2xs); font-weight:600; line-height:1; color:var(--foreground);
+}
+.agx-docs-btn svg{ flex:none; color:currentColor; transition:transform 150ms var(--ease-out); }
 @media (hover:hover) and (pointer:fine){
-  .agx-docs-btn:hover:not(:disabled){ background:var(--tint-3); border-color:var(--border-strong); color:var(--foreground); }
+  .agx-docs-btn:hover:not(:disabled){
+    background:color-mix(in srgb, var(--primary-soft) 22%, transparent);
+    border-color:color-mix(in srgb, var(--primary-soft) 45%, transparent);
+  }
+  .agx-docs-btn:hover:not(:disabled) svg{ transform:translateX(2px); }
 }
-.agx-docs-btn:active:not(:disabled){ transform:scale(0.98); }
-.agx-docs-btn:disabled{ opacity:.5; pointer-events:none; }
+.agx-docs-btn:active:not(:disabled){ transform:scale(0.97); }
+.agx-docs-btn:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
+/* Nothing written yet: the same shape, quiet, so the row does not jump. */
+.agx-docs-btn:disabled{
+  background:transparent; border-color:var(--border); box-shadow:none;
+  color:var(--muted-foreground); pointer-events:none;
+}
+.agx-card-stats .agx-docs-btn:disabled > b{ background:var(--tint-2); color:var(--muted-foreground); }
 
 /* An empty slot, greyed out ("ausgegraut", Patryk): a thin dashed line with
    room to say what it is for — the four-per-type cap reads at a glance. */
@@ -5845,7 +5869,15 @@ html.light .agx-card::after{ background:none; }
 @media (hover:hover) and (pointer:fine){
   html.light .agx-card:hover{ background:#FFFFFF; border-color:var(--border-strong); box-shadow:var(--shadow-float); }
 }
-html.light .agx-docs-btn{ background:#FFFFFF; border-color:var(--border); }
+html.light .agx-docs-btn:not(:disabled){
+  background:color-mix(in srgb, var(--primary) 9%, #FFFFFF);
+  border-color:color-mix(in srgb, var(--primary) 26%, transparent);
+  box-shadow:0 1px 2px rgba(var(--shadow-rgb),0.08);
+}
+@media (hover:hover) and (pointer:fine){
+  html.light .agx-docs-btn:hover:not(:disabled){ background:color-mix(in srgb, var(--primary) 15%, #FFFFFF); }
+}
+html.light .agx-card-stats .agx-docs-btn:not(:disabled) > b{ background:color-mix(in srgb, var(--primary) 18%, #FFFFFF); }
 html.light .agx-free{ opacity:1; color:var(--muted-foreground); border-color:var(--border-strong); background:rgba(255,255,255,0.5); }
 @media (hover:hover) and (pointer:fine){
   html.light .agx-free:hover{ color:var(--foreground); background:#FFFFFF; border-color:color-mix(in srgb, var(--primary-soft) 45%, transparent); }
@@ -9039,12 +9071,8 @@ html.light .ph-dir{ background:#FFFFFF; }
 
 /* --- The head, per Ana's mockup (2026-10-15) ------------------------------
    The name and its role, the Methods / Coach tabs, the document's progress as
-   a figure over a thin bar instead of a filled pill, and a hairline closing the
-   head off from the conversation. */
-.head-rule{
-  position:absolute; left:var(--sp-5); right:var(--sp-5); bottom:0; height:1px; z-index:1;
-  background:var(--border); pointer-events:none;
-}
+   a figure over a thin bar instead of a filled pill. No hairline under it any
+   more (Ana, 2026-11-03): the blur alone tells the head from the conversation. */
 .chat-head .who-btn > svg{ display:none; }
 .chat-head .doc-pill{
   --track:color-mix(in srgb, var(--foreground) 14%, transparent);
@@ -9067,7 +9095,7 @@ html.light .ph-dir{ background:#FFFFFF; }
    the agent beneath it with the document's progress at the far end, a hairline
    under each; the agent's words in a soft bubble with the time under it, like
    the person's own. The Consultant keeps its bare text. */
-.panel.has-top{ --chat-head-h:140px; }
+.panel.has-top{ --chat-head-h:124px; }
 .chat-head.has-top{ display:grid; grid-template-rows:52px 1fr; align-items:stretch; padding:0 var(--sp-5); }
 .chat-head .head-top{
   display:flex; align-items:flex-end; justify-content:space-between; gap:var(--sp-3);
