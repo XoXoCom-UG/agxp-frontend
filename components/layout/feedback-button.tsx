@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { IconCheck, IconX } from "@/components/layout/agxp-icons";
 import { sendFeedback, projectIdFromPath } from "@/lib/send-feedback";
+import { useAuth } from "@/lib/auth-context";
 import { FEEDBACK_MAX } from "@/lib/feedback-text";
 import { useDialogFocus } from "@/lib/use-dialog-focus";
 import { useExit } from "@/lib/use-exit";
@@ -32,6 +33,7 @@ export function FeedbackButton() {
  */
 function FeedbackDialog({ onClose }: { onClose: () => void }) {
   const pathname = usePathname();
+  const { user } = useAuth();
   const projectId = projectIdFromPath(pathname);
   const ref = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLTextAreaElement>(null);
@@ -43,6 +45,12 @@ function FeedbackDialog({ onClose }: { onClose: () => void }) {
   const [serious, setSerious] = useState(false);
   const [state, setState] = useState<"idle" | "sending" | "sent">("idle");
   const [error, setError] = useState("");
+  const doneButton = useRef<HTMLButtonElement>(null);
+
+  // The form's own field is gone once it was sent: put focus on what is left.
+  useEffect(() => {
+    if (state === "sent") doneButton.current?.focus();
+  }, [state]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === "Escape") exitThen(onClose); }
@@ -72,7 +80,22 @@ function FeedbackDialog({ onClose }: { onClose: () => void }) {
           <button className="share-close" onClick={close} aria-label="Close"><IconX size={14} /></button>
         </div>
         {state === "sent" ? (
-          <p className="report-done"><IconCheck size={14} /> Thank you. The team reads every message.</p>
+          <div className="fb-done" role="status">
+            <p className="fb-done-title"><IconCheck size={16} /> Thank you, we got it.</p>
+            <p className="fb-done-lead">Here is what happens next:</p>
+            <ul className="fb-next">
+              <li>The team reads feedback in order of how serious it is, the most serious first.</li>
+              {serious && <li>You marked it as a serious problem, so we alert the team straight away.</li>}
+              {withChat && projectId && <li>The conversation of this project went with it. Only the team can read it.</li>}
+              <li>
+                If we have a question, we may write to {user?.email ?? "the email of your account"}.
+                We cannot answer every message, but we read all of them and use them to improve AgentiX.
+              </li>
+            </ul>
+            <div className="report-actions">
+              <button ref={doneButton} className="btn btn-hero" onClick={close}>Close</button>
+            </div>
+          </div>
         ) : (
           <>
             <textarea ref={field} className="report-note fb-note" value={message} maxLength={FEEDBACK_MAX} rows={5}

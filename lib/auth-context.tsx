@@ -119,7 +119,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => { subscription.unsubscribe(); clearTimeout(failsafe); };
-  }, []);
+    // The shared browser client (lib/supabase.ts): the same object on every render.
+  }, [supabase.auth]);
 
   const signOut = async () => {
     await supabase.auth.signOut();

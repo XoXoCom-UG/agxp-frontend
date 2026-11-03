@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { exportMyData, downloadJson, deleteMyAccount, signOutEverywhere } from "@/lib/account-data";
 import { openConsentSettings } from "@/lib/consent";
@@ -18,6 +19,7 @@ import { openConsentSettings } from "@/lib/consent";
  */
 export function PrivacyTab({ closeThen }: { closeThen: (next: () => void) => void }) {
   const { user } = useAuth();
+  const router = useRouter();
   const [busy, setBusy] = useState<"export" | "signout" | "delete" | null>(null);
   const [error, setError] = useState("");
   const [confirming, setConfirming] = useState(false);
@@ -59,7 +61,7 @@ export function PrivacyTab({ closeThen }: { closeThen: (next: () => void) => voi
           <button className="btn btn-ghost" disabled={!!busy}
             onClick={() => run("signout", async () => {
               await signOutEverywhere();
-              window.location.assign("/login");
+              router.replace("/login");
             })}>
             {busy === "signout" ? "Signing out…" : "Sign out everywhere"}
           </button>
@@ -104,7 +106,7 @@ export function PrivacyTab({ closeThen }: { closeThen: (next: () => void) => voi
                   await deleteMyAccount(typed);
                   // The session belongs to an account that no longer exists.
                   await signOutEverywhere().catch(() => {});
-                  window.location.assign("/");
+                  router.replace("/");
                 })}>
                 {busy === "delete" ? "Deleting…" : "Delete everything"}
               </button>

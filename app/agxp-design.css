@@ -8675,6 +8675,9 @@ html.light .tour-art{ mix-blend-mode:multiply; opacity:.15; }
   box-shadow:var(--shadow-float); transition:color 160ms var(--ease-out), padding 160ms var(--ease-out); }
 @media (hover:hover) and (pointer:fine){ .fb-tab:hover{ color:var(--foreground); padding-right:10px; } }
 .fb-tab:focus-visible{ outline:2px solid var(--ring); outline-offset:-2px; color:var(--foreground); }
+.fb-done-title{ display:flex; align-items:center; gap:var(--sp-2); margin:0 0 var(--sp-3); font-size:var(--text-sm); font-weight:600; color:var(--foreground); }
+.fb-done-lead{ margin:0 0 var(--sp-2); font-size:var(--text-xs); color:var(--secondary-foreground); }
+.fb-next{ margin:0; padding-left:var(--sp-5); display:flex; flex-direction:column; gap:var(--sp-2); font-size:var(--text-xs); line-height:1.55; color:var(--secondary-foreground); }
 .fb-note{ margin-top:0; min-height:110px; }
 .fb-check{ display:flex; align-items:flex-start; gap:var(--sp-3); margin-top:var(--sp-3); cursor:pointer; }
 .fb-check.is-off{ cursor:default; opacity:.6; }
