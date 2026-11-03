@@ -156,7 +156,10 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
     project, role, agent, deliverable,
     // Lernnotizen switched off in the privacy settings: the agent starts every
     // project without what it learned in earlier ones (lib/memory-pref.ts).
-    context: () => ({ memory: memoryOn ? memoryLines(memory, learned) : [], experience: { level, projects: totalProjects }, peer }),
+    // Projects BEFORE this one: the count includes the project on screen, so
+    // a brand-new account's first project told the agent they had worked
+    // together once already ("Willkommen zurück!", tester 2026-11-01).
+    context: () => ({ memory: memoryOn ? memoryLines(memory, learned) : [], experience: { level, projects: Math.max(0, totalProjects - 1) }, peer }),
     onProjectNamed,
     onStart: isGenerating => {
       composerHadFocus.current = !!inputRef.current && document.activeElement === inputRef.current;

@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { callerId } from "@/lib/caller-id";
 import { ipGate } from "@/lib/ip-gate";
 import { allowanceFor, blocked, beginAiCall, settleAiCall, takeRateSlot, type SpentTokens } from "@/lib/entitlement-server";
@@ -138,7 +138,9 @@ export async function POST(req: NextRequest) {
     await unclaim();
     return fail(502, "server", "Rating the feedback failed.");
   } finally {
-    settleAiCall(admitted.lease, spent)
-      .catch(err => console.error("[feedback/triage] usage not recorded:", err));
+    // Through after(): a fire-and-forget settle dies with the function, and
+    // this is a "title" lease — left unsettled it blocked naming projects.
+    after(() => settleAiCall(admitted.lease, spent)
+      .catch(err => console.error("[feedback/triage] usage not recorded:", err)));
   }
 }

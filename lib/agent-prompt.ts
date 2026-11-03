@@ -89,6 +89,16 @@ const CONVERSATIONAL_STYLE =
   `schreibe den Dateinamen direkt hinter die Sprache in den Fence, z.B. \`\`\`tsx:SongSearch.tsx — ` +
   `die Oberfläche zeigt ihn als Kopfzeile des Code-Blocks.`;
 
+// A tester (2026-11-01) opened in English and got German back: everything
+// around the conversation is German, and the rule in ROLE_PROMPTS sat at the
+// top of a long prompt. Said again last, where it weighs most, and with the
+// reason the model went wrong spelled out.
+export const LANGUAGE_RULE =
+  `\n\nSprache: Antworte in der Sprache, in der der Nutzer schreibt — auch die Antwortoptionen in ` +
+  `[[CHOICES]]. Dass dieser Systemtext, die Agenda und deine Notizen auf Deutsch sind, sagt NICHTS ` +
+  `über die Sprache des Nutzers. Schreibt er Englisch, antwortest du Englisch, schon in der ersten ` +
+  `Antwort; wechselt er die Sprache, wechselst du mit.`;
+
 // The user, 2026-10-03: "coachul vorbeste cam mult, as fi vrut jumate din
 // cat vorbeste acum". The Coach is the second voice on a screen that is
 // already carrying a full consultation — length is what makes it read as
@@ -400,6 +410,7 @@ export function systemPrompt(
     TITLE_INSTRUCTION +
     memoryPrompt(memory) +
     experiencePrompt(experience) +
-    todayPrompt()
+    todayPrompt() +
+    LANGUAGE_RULE
   );
 }

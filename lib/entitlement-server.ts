@@ -191,10 +191,12 @@ export type SpentTokens = UsageTokens;
 const IN_FLIGHT: Record<AiCallKind, number> = { chat: 2, title: 1 };
 
 /**
- * How long a lease outlives a server that died mid-stream. A full document
- * streams in a few minutes; this only has to be longer than that.
+ * How long a lease outlives a server that died mid-stream. Just above the chat
+ * route's maxDuration (300 s): no call can still be running after that, and a
+ * lease that was never given back blocks the account for minutes, not a
+ * quarter of an hour.
  */
-const LEASE_TTL_SECONDS = 15 * 60;
+const LEASE_TTL_SECONDS = 6 * 60;
 
 export type AiCallKind = "chat" | "title";
 

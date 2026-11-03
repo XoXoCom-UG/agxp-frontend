@@ -1,0 +1,42 @@
+<!--
+  Supabase → Authentication → Emails → Templates → "Confirm signup".
+  Subject: Confirm your AgentiX Projects account
+
+  The template lives in the Supabase project, not in this app, and the project
+  is shared with the older app (MatFit): pasting this changes the email for
+  every account in the project. Same look as the invitation (lib/send-mail.ts).
+-->
+<!doctype html>
+<html><body style="margin:0;padding:0;background:#f4f5f7;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+             style="max-width:480px;background:#ffffff;border-radius:14px;padding:32px;
+                    font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+        <tr><td style="font-size:13px;font-weight:700;letter-spacing:0.4px;color:#154E80;padding-bottom:18px;">
+          AgentiX Projects
+        </td></tr>
+        <tr><td style="font-size:19px;font-weight:600;color:#101828;padding-bottom:10px;">
+          Confirm your email address
+        </td></tr>
+        <tr><td style="font-size:14px;line-height:1.6;color:#475467;padding-bottom:22px;">
+          Thanks for signing up. Confirm this address and your account is ready —
+          then enter the key from your invitation to start your first project.
+        </td></tr>
+        <tr><td align="center" style="padding-bottom:20px;">
+          <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#154E80;color:#ffffff;
+             text-decoration:none;font-size:14px;font-weight:600;padding:12px 22px;border-radius:9px;">
+            Confirm email
+          </a>
+        </td></tr>
+        <tr><td style="font-size:12px;line-height:1.6;color:#667085;">
+          If you didn't create an account, you can ignore this email — nothing happens
+          until the link is used.
+        </td></tr>
+        <tr><td style="font-size:11px;line-height:1.6;color:#667085;padding-top:22px;border-top:1px solid #e4e7ec;">
+          XoXoCom UG (haftungsbeschränkt) · Hauptstraße 44 · 40789 Monheim am Rhein
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>

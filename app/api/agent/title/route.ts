@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { callerId } from "@/lib/caller-id";
 import { ipGate } from "@/lib/ip-gate";
 import { allowanceFor, blocked, beginAiCall, settleAiCall, takeRateSlot, type SpentTokens } from "@/lib/entitlement-server";
@@ -101,8 +101,10 @@ export async function POST(req: NextRequest) {
     return fail(502, "server", "Naming the project failed.");
   } finally {
     // After the answer is in hand, and never allowed to fail it. The same
-    // call gives the lease back.
-    settleAiCall(admitted.lease, spent)
-      .catch(err => console.error("[agent/title] usage not recorded:", err));
+    // call gives the lease back — through after(), because a fire-and-forget
+    // promise dies with the function once the response is sent, and an
+    // unsettled title lease blocks the next naming until it expires.
+    after(() => settleAiCall(admitted.lease, spent)
+      .catch(err => console.error("[agent/title] usage not recorded:", err)));
   }
 }

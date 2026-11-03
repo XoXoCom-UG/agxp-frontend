@@ -2913,9 +2913,14 @@ main.workspace::after{ width:min(38vw, 520px); height:min(38vw, 520px); }
 /* And the list can only scroll itself if it is allowed to be shorter than
    its content: a flex item defaults to min-height:auto, which makes it grow
    past the panel instead. */
+/* The top of the fade sits under the head, not at the panel's edge: the head
+   is glass over this list, and where the blur does not render (or the glass
+   is thin) the messages read straight through the agent's name — a tester's
+   screenshot, 2026-11-01. Hidden under the head, fading in along its lower
+   edge, so what scrolls up still slides away under the glass. */
 .chat-body{ min-height:0;
-  -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 18px, #000 calc(100% - 26px), transparent 100%);
-  mask-image:linear-gradient(to bottom, transparent 0, #000 18px, #000 calc(100% - 26px), transparent 100%); }
+  -webkit-mask-image:linear-gradient(to bottom, transparent 0, transparent calc(var(--chat-head-h) - 28px), #000 calc(var(--chat-head-h) - 2px), #000 calc(100% - 26px), transparent 100%);
+  mask-image:linear-gradient(to bottom, transparent 0, transparent calc(var(--chat-head-h) - 28px), #000 calc(var(--chat-head-h) - 2px), #000 calc(100% - 26px), transparent 100%); }
 
 /* The seam is focusable now, so it needs to show focus. */
 .seam:focus-visible{ outline:none; }

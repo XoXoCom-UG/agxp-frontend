@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { caller } from "@/lib/caller-id";
 import { memoryAllowed } from "@/lib/memory-pref";
 import type { AgentType } from "@/lib/agents";
@@ -14,6 +14,10 @@ import { loadConversation, peerTurns, saveReply, isProjectId, type StoredTurn } 
 import { cutUnfinishedMarker } from "@/lib/conversation-state";
 import { bearerOf } from "@/lib/server-db";
 import { ipGate } from "@/lib/ip-gate";
+
+// The longest answer (a full document) streams in about two minutes. Pinned
+// so the lease TTL in lib/entitlement-server.ts can be set just above it.
+export const maxDuration = 300;
 
 const MODEL = "claude-sonnet-5";
 
@@ -258,6 +262,15 @@ export async function POST(req: NextRequest) {
   const projectId = body.projectId;
   const column = body.agentType;
   let cancelled = false;
+  // Settling runs after the stream has closed, and a serverless function may
+  // be frozen the moment its response ends: the settle was then lost, the
+  // lease stayed "in flight" until it expired, and after two of those the
+  // account read as busy — "An answer is still being written" on a message
+  // sent half a minute after the last answer (tester, 2026-11-01). after()
+  // keeps the function alive until this promise is done.
+  let settled!: () => void;
+  const finished = new Promise<void>(resolve => { settled = resolve; });
+  after(() => finished);
 
   const out = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -337,6 +350,8 @@ export async function POST(req: NextRequest) {
           await settleAiCall(lease, usage);
         } catch (err) {
           console.error("[agent/chat] usage not recorded:", err);
+        } finally {
+          settled();
         }
       }
     },

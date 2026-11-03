@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { systemPrompt } from "./agent-prompt.ts";
+import { systemPrompt, experiencePrompt, LANGUAGE_RULE } from "./agent-prompt.ts";
 
 const prompt = (kind?: string | null, role: "consultant" | "coach" = "consultant") =>
   systemPrompt(role, "Kara", [], undefined, null, kind);
@@ -95,4 +95,16 @@ test("the Consultant-Coach Debate: the Coach argues against, once, and never dec
   assert.match(coach, /genau drei Argumente/);
   assert.match(coach, /Du entscheidest nicht für den Nutzer/);
   assert.doesNotMatch(prompt("strategy", "consultant"), /STREITGESPRÄCH MIT DEM CONSULTANT/);
+});
+
+test("the language rule closes every prompt, for every role", () => {
+  for (const role of ["consultant", "coach"] as const) {
+    assert.ok(systemPrompt(role, "Kara", [], { projects: 0 }, null, "agentics").endsWith(LANGUAGE_RULE), role);
+  }
+  assert.match(LANGUAGE_RULE, /CHOICES/);
+});
+
+test("no shared projects yet reads as a first meeting", () => {
+  assert.match(experiencePrompt({ projects: 0 }), /ERSTEN MAL/);
+  assert.doesNotMatch(experiencePrompt({ projects: 0 }), /schon/);
 });
