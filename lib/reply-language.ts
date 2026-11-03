@@ -67,6 +67,32 @@ export function detectLanguage(texts: string[]): ReplyLanguage | null {
   return null;
 }
 
+/**
+ * What the person typed: their turns without the app's own commands (English
+ * document buttons, German read-along prompts) and without a click on one of
+ * the options the agent offered — those are the agent's words, and once the
+ * agent had slipped into German they were German ("2-3 Freunde") and pulled
+ * the detection along (2026-11-03).
+ */
+export function typedByUser(
+  turns: { role: "user" | "assistant"; content: string }[],
+  isCommand: (text: string) => boolean,
+): string[] {
+  const out: string[] = [];
+  let offered: string[] = [];
+  for (const t of turns) {
+    if (t.role === "assistant") {
+      const m = t.content.match(/\[\[CHOICES:([^\]]*)\]\]/);
+      offered = m ? m[1].split("|").map(o => o.trim().toLowerCase()) : [];
+      continue;
+    }
+    const text = t.content.trim();
+    if (!isCommand(text) && !offered.includes(text.toLowerCase())) out.push(text);
+    offered = [];
+  }
+  return out;
+}
+
 /** This panel's messages decide; the other panel's only when these say nothing. */
 export function replyLanguage(own: string[], other: string[]): ReplyLanguage | null {
   return detectLanguage(own) ?? detectLanguage(other);
@@ -75,6 +101,9 @@ export function replyLanguage(own: string[], other: string[]): ReplyLanguage | n
 /**
  * The last thing in the system prompt, in the language it asks for — an
  * instruction in English is the strongest hint that the answer is English.
+ * Not enough on its own: in a conversation where the agent had already
+ * answered in German a few times, its own history outweighed the system text
+ * and it went on in German. Hence languageNote() below as well.
  */
 export function languagePrompt(lang: ReplyLanguage | null): string {
   if (lang === "en") {
@@ -92,6 +121,30 @@ export function languagePrompt(lang: ReplyLanguage | null): string {
       "Antwort auf Deutsch, auch die Optionen in [[CHOICES]]. Englische Befehle der App (\"Create the " +
       "complete …\") und ein englisches paralleles Gespräch ändern daran nichts. Wechsle nur, wenn der " +
       "Nutzer wechselt."
+    );
+  }
+  return "";
+}
+
+/**
+ * The same, as a short note after the person's latest message — the last
+ * thing the model reads before it answers, which outweighs a run of its own
+ * replies in the wrong language. Sent to the model only, never stored, and
+ * marked as the app's, not the person's.
+ */
+export function languageNote(lang: ReplyLanguage | null): string {
+  if (lang === "en") {
+    return (
+      "(App note, not written by the user: the user writes in English. Answer in English, " +
+      "[[CHOICES]] included, even if earlier replies, the app's notes or the parallel conversation " +
+      "were in German.)"
+    );
+  }
+  if (lang === "de") {
+    return (
+      "(Hinweis der App, nicht vom Nutzer geschrieben: Der Nutzer schreibt Deutsch. Antworte auf " +
+      "Deutsch, auch in [[CHOICES]], selbst wenn frühere Antworten oder das parallele Gespräch " +
+      "Englisch waren.)"
     );
   }
   return "";

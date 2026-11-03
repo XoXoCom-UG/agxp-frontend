@@ -2365,7 +2365,7 @@ html.light .methods-panel{ border-color:rgba(0,0,0,0.07); }
    once it is answered its line lights up and the next one starts to breathe. */
 .mp-steps{ list-style:none; margin:0 0 var(--sp-5); padding:0 0 0 var(--sp-1); display:flex; flex-direction:column; }
 .mp-step{
-  position:relative; display:flex; align-items:center; gap:var(--sp-3);
+  position:relative; display:flex; align-items:flex-start; gap:var(--sp-3);
   min-height:54px; font-size:var(--text-sm); color:var(--muted-foreground);
 }
 /* The step's name, and under it — beside the line — what happens there. */
@@ -2378,15 +2378,20 @@ html.light .methods-panel{ border-color:rgba(0,0,0,0.07); }
 .mp-node{
   position:relative; z-index:1; flex-shrink:0; width:26px; height:26px; border-radius:50%;
   display:flex; align-items:center; justify-content:center;
+  /* Level with the step's name, not the middle of name and note: centred, a
+     note that wrapped moved its circle down and the line ran into it. */
+  margin-top:3px;
   border:1.5px dashed color-mix(in srgb, var(--foreground) 24%, transparent);
   background:color-mix(in srgb, var(--foreground) 3%, transparent);
   color:#fff;
 }
-/* The line runs from the bottom edge of this node to the top edge of the next,
-   measured from the row's own height, so it meets both circles however tall
-   the row grows (a label that wraps). 26px is the node, 13px its radius. */
+/* The line runs from just under this node to just above the next. Every node
+   sits 3px below its row's top, so the next one is exactly one row-height
+   further down whatever either row's height (Ana, 2026-11-03: with centred
+   nodes it ran into the see-through circles). 29px is the node's bottom, and
+   4px is left free at each end. */
 .mp-step::before, .mp-step::after{
-  content:""; position:absolute; left:12px; top:calc(50% + 13px); height:calc(100% - 26px); width:2px; border-radius:1px;
+  content:""; position:absolute; left:12px; top:calc(29px + 4px); height:calc(100% - 26px - 8px); width:2px; border-radius:1px;
 }
 .mp-step:last-child::before, .mp-step:last-child::after{ display:none; }
 .mp-step::before{ background:color-mix(in srgb, var(--foreground) 20%, transparent); }

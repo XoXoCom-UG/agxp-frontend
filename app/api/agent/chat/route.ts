@@ -7,7 +7,7 @@ import { DELIVERABLES, isDeliverableCommand } from "@/lib/deliverables";
 import { systemPrompt, peerPrompt } from "@/lib/agent-prompt";
 import { withAttachments } from "@/lib/message-files";
 import { peerTranscript, isReadAlongCommand, isReviewCommand, type PeerContext } from "@/lib/peer-context";
-import { replyLanguage, languagePrompt } from "@/lib/reply-language";
+import { replyLanguage, languagePrompt, languageNote, typedByUser } from "@/lib/reply-language";
 import { allowanceFor, blocked, beginAiCall, settleAiCall, peerReadingAllowed } from "@/lib/entitlement-server";
 import { estimateInputTokens, reserveMicroUsd } from "@/lib/cost";
 import { validateMessages, cleanLabel, cleanMemory, cleanKind, AGENT_NAME_MAX } from "@/lib/chat-input";
@@ -196,13 +196,12 @@ export async function POST(req: NextRequest) {
 
   // The language, named last — after the German peer transcript, which used
   // to pull an English conversation into German (lib/reply-language.ts). From
-  // what the person wrote, without the app's own commands, which are English
-  // whatever language the person speaks. It changes only when they switch,
-  // so it costs the cache nothing in between.
-  const written = (turns: StoredTurn[]) => turns
-    .filter(t => t.role === "user" && !isDeliverableCommand(t.content) && !isReadAlongCommand(t.content) && !isReviewCommand(t.content))
-    .map(t => t.content);
-  const langBlock = languagePrompt(replyLanguage(written(loaded.conversation.own), written(loaded.conversation.other)));
+  // what the person typed: not the app's own commands, not a click on an
+  // option the agent wrote. It changes only when they switch, so it costs the
+  // cache nothing in between.
+  const isCommand = (t: string) => isDeliverableCommand(t) || isReadAlongCommand(t) || isReviewCommand(t);
+  const lang = replyLanguage(typedByUser(loaded.conversation.own, isCommand), typedByUser(loaded.conversation.other, isCommand));
+  const langBlock = languagePrompt(lang);
   if (langBlock) system.push({ type: "text", text: langBlock });
 
   /*
@@ -227,6 +226,19 @@ export async function POST(req: NextRequest) {
       blocks[blocks.length - 1] = { ...tail, cache_control: { type: "ephemeral" } } as Anthropic.ContentBlockParam;
       msgs[last] = { role: m.role, content: blocks };
     }
+  }
+
+  // And once more after the latest message, the last thing read before the
+  // answer: the system block alone lost to the agent's own German replies
+  // (2026-11-03). AFTER the breakpoint and never stored, so the next turn's
+  // history still matches the cached prefix up to the person's own words.
+  const note = languageNote(lang);
+  if (note && last >= 0) {
+    const m = msgs[last];
+    const blocks: Anthropic.ContentBlockParam[] = typeof m.content === "string"
+      ? [{ type: "text", text: m.content }]
+      : [...m.content];
+    msgs[last] = { role: m.role, content: [...blocks, { type: "text", text: note }] };
   }
 
   /*
