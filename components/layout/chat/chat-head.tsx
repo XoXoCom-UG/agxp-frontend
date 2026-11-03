@@ -6,7 +6,8 @@ import type { AgentMemory } from "@/lib/agent-memory";
 import type { MemoryNote } from "@/lib/message-markers";
 import type { Deliverable } from "@/lib/deliverables";
 import { methodLabel } from "@/lib/method-labels";
-import { levelFor, nextLevel, LEVEL_ORDER } from "@/lib/agent-progress";
+import { experienceFor, nextStepFor, LEVELS, type NextStep } from "@/lib/agent-level";
+import { useMascotLevel } from "@/lib/mascot-level";
 import { usePresence, phaseClass } from "@/lib/use-presence";
 import { AgentMascot, type MascotState, type MascotMood, type LookTarget } from "@/components/layout/agent-mascot";
 import type { DeliverableDoc } from "@/components/layout/deliverable-view";
@@ -54,6 +55,14 @@ export interface HeadDocState {
  * The panel's head. Everything about the agent and the document lives behind
  * two small buttons — the panel itself is the conversation and nothing else.
  */
+/** What earns the next level — the keys of the German dictionary. */
+const NEXT_STEP_TEXT: Record<NextStep, string> = {
+  "conversation": "Next level: a first real conversation",
+  "first-document": "Next level: finish a first document",
+  "second-document": "Next level: finish a document in a second project",
+  "third-document": "Next level: finish a document in a third project",
+};
+
 export function ChatHead({
   role, agent, deliverable, mascot, attentive, stuck, headExtra, unread, sending,
   totalProjects, memory, learned, doc, hideRail = false, topRow,
@@ -110,12 +119,11 @@ export function ChatHead({
   const agentPopPhase = usePresence(pop === "agent");
   const docPopPhase = usePresence(pop === "doc");
 
-  // The agent levels up on the work it has actually done for this user; this
-  // project is one of them, so compare against the count without it to know
-  // whether joining here is what pushed it up a level.
-  const level = levelFor(totalProjects);
-  const leveledUp = levelFor(Math.max(0, totalProjects - 1)) !== level;
-  const { next, remaining } = nextLevel(totalProjects);
+  // The agent levels up on milestones of real work (lib/agent-level.ts); the
+  // badge shows while the level-up is playing on the mascot.
+  const level = useMascotLevel(agent.id);
+  const leveledUp = mascot.mood === "levelUp";
+  const nextStep = nextStepFor(level);
   const lessons = shownLessons(learned, memory);
   const { pct, currentDoc } = doc;
   const ready = pct >= 100;
@@ -196,15 +204,15 @@ export function ChatHead({
             <div>
               <span className="lbl">{t("Experience")}</span>
               <div className="level">
-                <b>{t(level)}</b>
+                <b>{t(experienceFor(level))}</b>
                 <span className="level-bar">
-                  {LEVEL_ORDER.map((l, i) => (
-                    <span key={l} className={`level-seg ${i <= LEVEL_ORDER.indexOf(level) ? "on" : ""}`} />
+                  {LEVELS.map(n => (
+                    <span key={n} className={`level-seg ${n <= level ? "on" : ""}`} />
                   ))}
                 </span>
                 {leveledUp && <span className="level-up">{t("Level up")}</span>}
               </div>
-              {next && <div className="level-hint">{t(remaining === 1 ? "1 more project to {next}" : "{n} more projects to {next}", { n: remaining, next: t(next) })}</div>}
+              {nextStep && <div className="level-hint">{t(NEXT_STEP_TEXT[nextStep])}</div>}
             </div>
             <div><span className="lbl">{t("Projects together")}</span><b>{totalProjects}</b></div>
             {onChangeAgent && (

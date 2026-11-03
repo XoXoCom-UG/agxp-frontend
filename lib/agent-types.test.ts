@@ -6,7 +6,7 @@ import type { Agent } from "./agents.ts";
 
 const agent = (id: string, type: "consultant" | "coach", tagline: string | null): Agent => ({
   id, type, name: id, tagline, avatar_placeholder: null, description: null, expertise: null,
-  knowledge_level: "New", created_by: "u", archived_at: null, created_at: "",
+  knowledge_level: "New", level_reached: 1, created_by: "u", archived_at: null, created_at: "",
   methods: [], primaryMethods: [], secondaryMethods: [], last_projects: [],
 });
 

@@ -10,8 +10,8 @@ import { useEntitlement } from "@/lib/entitlement";
 import { memoryAllowed } from "@/lib/memory-pref";
 import { deliverableFor, isDeliverableCommand } from "@/lib/deliverables";
 import { kindFor } from "@/lib/agent-types";
-import { levelFor } from "@/lib/agent-progress";
-import { recordReply, syncReplies, useMascotLevel, MAX_MASCOT_LEVEL } from "@/lib/mascot-level";
+import { experienceFor } from "@/lib/agent-level";
+import { refreshLevel, useMascotLevel } from "@/lib/mascot-level";
 import { handleCodeCopyClick } from "@/lib/markdown";
 import { peerTranscript, previewLine, isReadAlongCommand, isReviewCommand, type PeerContext, type PanelSnapshot, type RailControls } from "@/lib/peer-context";
 import { parseEntries, deriveConversation } from "@/lib/conversation-state";
@@ -85,7 +85,7 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
   // The document depends on the agent's TYPE, not only on its role: a Solution
   // Architect writes an Architecture Blueprint, a Change Manager an Adoption Plan.
   const deliverable = deliverableFor(role, kindFor(agent));
-  /** The mascot's earned look, 1-5: one level per answer (lib/mascot-level.ts). */
+  /** The mascot's earned look, 1-5: milestones of real work (lib/agent-level.ts). */
   const mascotLevel = useMascotLevel(agent.id);
   const mascot = useMascotChoreography(mascotLevel);
 
@@ -114,15 +114,13 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
   const composerHadFocus = useRef(false);
 
   const totalProjects = agent.last_projects.length + projectCount;
-  const level = levelFor(totalProjects);
+  const level = experienceFor(mascotLevel);
 
   function buildDoc(content: string, title: string, createdAt: string, version: number): DeliverableDoc {
     return { title, role, agentId: agent.id, agentName: agent.name, agentProjects: totalProjects, projectName: project.name, content, createdAt, version };
   }
 
   function onReply({ parsed, isDoc, stopped, createdAt, version, progressBefore }: ReplyInfo) {
-    // No real upgrade system yet: every answer is one level (up to 5).
-    recordReply(agent.id);
     onActivity?.();
     const preview = previewLine(parsed.text);
     setAnnounce(stopped ? `${agent.name} stopped. ${preview}`
@@ -140,16 +138,20 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
       onOpenDoc?.(buildDoc(parsed.text, parsed.doc || deliverable.title, createdAt, version));
       mascot.glanceAt("result");
     }
-    // One reaction per answer, never several fighting over the same
-    // animation: a level-up (played by useMascotChoreography when the level
-    // rises) outranks a finished document, which outranks real progress. A
-    // question back or suggested answers only move the eyes — that happens
-    // on most replies, so it gets no head motion at all.
-    if (mascotLevel < MAX_MASCOT_LEVEL) return;
-    if (isDoc) mascot.react("proud", PROUD_MS);
-    else if (parsed.progress !== null && parsed.progress - progressBefore >= PLEASED_STEP) mascot.react("pleased", PLEASED_MS);
-    else if (/[?？]\s*$/.test(parsed.text)) mascot.glanceAt("up", GLANCE_UP_MS);
-    else if (parsed.choices.length > 0) mascot.glanceAt("card");
+    // The reply is stored before the stream closes, so counting the agent's
+    // work now includes it. A reply that earns a level plays the level-up
+    // (useMascotChoreography, when the level rises) and nothing else: one
+    // reaction per answer, never several fighting over the same animation.
+    // Otherwise a finished document outranks real progress, and a question
+    // back or suggested answers only move the eyes — that happens on most
+    // replies, so it gets no head motion at all.
+    void refreshLevel(agent.id).then(rose => {
+      if (rose) return;
+      if (isDoc) mascot.react("proud", PROUD_MS);
+      else if (parsed.progress !== null && parsed.progress - progressBefore >= PLEASED_STEP) mascot.react("pleased", PLEASED_MS);
+      else if (/[?？]\s*$/.test(parsed.text)) mascot.glanceAt("up", GLANCE_UP_MS);
+      else if (parsed.choices.length > 0) mascot.glanceAt("card");
+    });
   }
 
   const chat = useAgentConversation({
@@ -177,7 +179,6 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
   const entries = useMemo(() => parseEntries(messages, deliverable.title), [messages, deliverable.title]);
   const convo = useMemo(() => deriveConversation(entries), [entries]);
   const { pct, station, docs, versionOf, lastAssistantIdx } = convo;
-  const answered = useMemo(() => entries.filter(e => e.m.role === "assistant" && !e.isError).length, [entries]);
 
   // Memory is read from the user's other projects with this agent, so the
   // current one is excluded — an agent should not "remember" today's answers.
@@ -280,14 +281,6 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
     peerTurns: peer?.turns ?? 0, peerDocs: peer?.docs ?? 0, userTurns, spokeUnanswered,
     sending, sendRef: chat.sendRef,
   });
-
-  // A conversation opened from history already holds that many answers; the
-  // mascot is at least that far along, even in a browser that never saw
-  // them. syncReplies only ever raises the count, so running it again as
-  // answers land is a no-op — recordReply has already counted them.
-  useEffect(() => {
-    if (loaded) syncReplies(agent.id, answered);
-  }, [loaded, agent.id, answered]);
 
   // What this panel tells the screen about itself: the transcript the other
   // agent gets to read, and the last line its pill/idle preview shows. Held

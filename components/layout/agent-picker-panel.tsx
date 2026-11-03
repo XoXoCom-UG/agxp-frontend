@@ -4,14 +4,14 @@ import { useEffect, useId, useState, type ReactNode } from "react";
 import type { Agent, AgentType, Method } from "@/lib/agents";
 import { listAllMethods, createAgent } from "@/lib/agents";
 import { assignAgent, type Project } from "@/lib/projects";
-import { levelFor, LEVEL_ORDER } from "@/lib/agent-progress";
+import { experienceFor, LEVELS } from "@/lib/agent-level";
 import { TYPE_CATALOG, typesFor, groupByType, type TypeTemplate } from "@/lib/agent-types";
 import { useEntitlement } from "@/lib/entitlement";
 import { methodLabel } from "@/lib/method-labels";
 import { dateStr } from "@/lib/utils";
 import { describeDbError } from "@/lib/db-error";
 import { AgentMascot } from "@/components/layout/agent-mascot";
-import { useMascotReplies, levelFromReplies } from "@/lib/mascot-level";
+import { useMascotLevels } from "@/lib/mascot-level";
 import {
   IconBack, IconArrow, IconSearch, IconCheck, IconAlert, IconRefresh, IconPlus,
   IconUsers, IconSpark, IconChevronDown,
@@ -76,7 +76,7 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   /** Picking failed — which agent, so Retry can pick it again. */
   const [selectError, setSelectError] = useState<{ agentId: string; message: string } | null>(null);
-  const replies = useMascotReplies();
+  const levels = useMascotLevels();
   const searchId = useId();
   const lockedHintId = useId();
 
@@ -123,9 +123,7 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   // The "train existing" head wears whichever agent this user has grown the
   // furthest in this role, so the two cards differ at a glance. No agents
   // yet — plain head, nothing to brag about.
-  const trainedLevel = levelFromReplies(
-    roleAgents.reduce((most, a) => Math.max(most, replies[a.id] ?? 0), 0),
-  );
+  const trainedLevel = roleAgents.reduce((most, a) => Math.max(most, levels[a.id] ?? 1), 1);
 
   // Chosen, waiting for Start. Showing who it is beats an empty panel, and
   // this is the one place changing your mind is free.
@@ -142,7 +140,7 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
         <div className="selected-summary">
           <div className="sel-name">{assignedAgent.name}</div>
           {assignedAgent.tagline && <div className="sel-type">{assignedAgent.tagline}</div>}
-          <div className="sel-type">{tr(total === 1 ? "{level} · 1 project together" : "{level} · {n} projects together", { level: tr(levelFor(total)), n: total })}</div>
+          <div className="sel-type">{tr(total === 1 ? "{level} · 1 project together" : "{level} · {n} projects together", { level: tr(experienceFor(levels[assignedAgent.id] ?? 1)), n: total })}</div>
           {assignedAgent.primaryMethods.length > 0 && (
             <div className="sel-methods">{assignedAgent.primaryMethods.map(m => methodLabel(m.name)).join(" · ")}</div>
           )}
@@ -282,9 +280,9 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
                                   <button className="ag-name" onClick={() => { setDetailId(a.id); setState("detail"); }}>{a.name}</button>
                                   <span className="ag-sub">
                                     <span className="level-bar" aria-hidden="true">
-                                      {LEVEL_ORDER.map((l, i) => <span key={l} className={`level-seg ${i <= LEVEL_ORDER.indexOf(levelFor(total)) ? "on" : ""}`} />)}
+                                      {LEVELS.map(n => <span key={n} className={`level-seg ${n <= (levels[a.id] ?? 1) ? "on" : ""}`} />)}
                                     </span>
-                                    {tr("{level} experience", { level: tr(levelFor(total)) })}
+                                    {tr("{level} experience", { level: tr(experienceFor(levels[a.id] ?? 1)) })}
                                   </span>
                                 </span>
                               </div>
@@ -399,9 +397,10 @@ function DetailView({ agent, role, busy, totalProjects, onSelect }: {
   onSelect: (agent: Agent) => void;
 }) {
   const tr = useT();
+  const levels = useMascotLevels();
   if (!agent) return null;
   const total = totalProjects(agent);
-  const level = levelFor(total);
+  const level = levels[agent.id] ?? 1;
   return (
     <div className="detail">
       <div className="role-line"><span className={`role-dot ${role}`} /><span className="role-eyebrow">{tr(ROLE_LABEL[role])}</span></div>
@@ -411,9 +410,9 @@ function DetailView({ agent, role, busy, totalProjects, onSelect }: {
         <div>
           <span className="lbl">{tr("Experience")}</span>
           <div className="level">
-            <b>{tr(level)}</b>
+            <b>{tr(experienceFor(level))}</b>
             <span className="level-bar">
-              {LEVEL_ORDER.map((l, i) => <span key={l} className={`level-seg ${i <= LEVEL_ORDER.indexOf(level) ? "on" : ""}`} />)}
+              {LEVELS.map(n => <span key={n} className={`level-seg ${n <= level ? "on" : ""}`} />)}
             </span>
           </div>
         </div>
@@ -546,7 +545,7 @@ function ConfigureView({ role, template, onCreated }: { role: AgentType; templat
           <div className="cfg-xp">
             <span className="field-label">{tr("Experience")}</span>
             <span className="level-bar" aria-hidden="true">
-              {LEVEL_ORDER.map((l, i) => <span key={l} className={`level-seg ${i === 0 ? "on" : ""}`} />)}
+              {LEVELS.map(n => <span key={n} className={`level-seg ${n === 1 ? "on" : ""}`} />)}
             </span>
             <span className="field-val">{tr("New. You two have not worked together yet.")}</span>
           </div>

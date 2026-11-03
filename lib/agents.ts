@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase";
 import { readEntitlement, QuotaError } from "@/lib/entitlement";
 import { typesFor, templateFor } from "@/lib/agent-types";
+import { seedLevels } from "@/lib/mascot-level";
 
 export type AgentType = "consultant" | "coach";
 
@@ -38,6 +39,9 @@ export interface Agent {
    */
   archived_at: string | null;
   created_at: string;
+  /** The highest level it has reached, 1-5 (lib/agent-level.ts). Missing
+   *  before migration 0031, which reads as 1. */
+  level_reached: number;
   methods: Method[];
   primaryMethods: Method[];
   secondaryMethods: Method[];
@@ -84,6 +88,9 @@ export async function listAgents(): Promise<Agent[]> {
     projectsByAgent.set(p.agent_id, list);
   }
 
+  // Every face reads its level from this store; fill it before any renders.
+  seedLevels(agents ?? []);
+
   return (agents ?? []).map(a => {
     const methods = methodsByAgent.get(a.id) ?? [];
     // A consultant leads with ITS type's primary methods, not with whatever the
@@ -95,6 +102,7 @@ export async function listAgents(): Promise<Agent[]> {
     return {
       ...a,
       archived_at: a.archived_at ?? null,
+      level_reached: a.level_reached ?? 1,
       methods,
       primaryMethods: methods.filter(isPrimary),
       secondaryMethods: methods.filter(m => !isPrimary(m)),

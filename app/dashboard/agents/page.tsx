@@ -8,7 +8,7 @@ import { typesFor, groupByType, holdsSlot } from "@/lib/agent-types";
 import { useT } from "@/lib/language";
 import { useEntitlement } from "@/lib/entitlement";
 import { loadTeamStats, compactNumber, EMPTY_STATS, type TeamStats } from "@/lib/team-stats";
-import { syncReplies } from "@/lib/mascot-level";
+import { applyWork } from "@/lib/mascot-level";
 import { describeDbError } from "@/lib/db-error";
 import { AgentNav } from "@/components/layout/agent-nav";
 import { EmptyState } from "@/components/layout/empty-state";
@@ -44,10 +44,11 @@ export default function AgentDashboardPage() {
       .then(([a, s]) => {
         if (!alive) return;
         setAgents(a); setStats(s); setLoadError(false);
-        // The mascot's level lives in this browser and only grew while a chat
-        // was open in it. The stored answers are the truth, so every face on
-        // this page (and everywhere else) catches up to them here.
-        for (const [id, u] of Object.entries(s.byAgent)) syncReplies(id, u.replies);
+        // The level is stored on the agent and raised after each answer; the
+        // stats count the work again from the messages, which also catches a
+        // document the database function does not (one the model forgot to
+        // mark). applyWork only ever raises, so it cannot undo a stored level.
+        for (const [id, u] of Object.entries(s.byAgent)) applyWork(id, { replies: u.replies, docProjects: u.docs });
       })
       .catch(() => { if (alive) setLoadError(true); })
       .finally(() => { if (alive) setLoading(false); });

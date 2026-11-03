@@ -2,7 +2,8 @@
 
 import { useId } from "react";
 import type { Agent, AgentType } from "@/lib/agents";
-import { levelFor } from "@/lib/agent-progress";
+import { experienceFor } from "@/lib/agent-level";
+import { useMascotLevels } from "@/lib/mascot-level";
 import { methodLabel } from "@/lib/method-labels";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { useT } from "@/lib/language";
@@ -181,13 +182,14 @@ export function TeamReady({ consultant, coach, projectCounts, onStart }: {
   const still = useMediaQuery("(prefers-reduced-motion: reduce)");
   const uid = useId().replace(/:/g, "");
   const tr = useT();
+  const levels = useMascotLevels();
   const name = (role: AgentType, a: Agent) => {
     const total = a.last_projects.length + (projectCounts[a.id] ?? 0);
     return (
       <div className={`orbit-name ${role}`}>
         <span className="on-role">{ROLE_NAME[role]}</span>
         <span className="on-name">{a.name}</span>
-        <span className="on-lvl">{tr(levelFor(total))} · {tr(total === 1 ? "1 project together" : "{n} projects together", { n: total })}</span>
+        <span className="on-lvl">{tr(experienceFor(levels[a.id] ?? 1))} · {tr(total === 1 ? "1 project together" : "{n} projects together", { n: total })}</span>
       </div>
     );
   };

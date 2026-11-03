@@ -3,7 +3,8 @@
 import { Fragment, useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import type { Agent, AgentType } from "@/lib/agents";
-import { levelFor, LEVEL_ORDER } from "@/lib/agent-progress";
+import { experienceFor, LEVELS } from "@/lib/agent-level";
+import { useMascotLevel } from "@/lib/mascot-level";
 import { groupByType, templateFor, kindFor, holdsSlot } from "@/lib/agent-types";
 import { deliverableFor } from "@/lib/deliverables";
 import { useT } from "@/lib/language";
@@ -111,15 +112,6 @@ function docsLabel(agent: Agent): string {
   return `${docLabel(agent)}s`;
 }
 
-/**
- * The face for an experience level, so the mascot shows what the card says
- * (Ana, 2026-10-01): New is the bare level-1 robot, Medium the middle one,
- * High the full level-5 one.
- */
-function mascotLevel(projects: number): number {
-  return [1, 3, 5][LEVEL_ORDER.indexOf(levelFor(projects))];
-}
-
 /** The user's own projects, plus any the shared catalog lists for a seeded agent. */
 function projectTotal(agent: Agent, usage: AgentUsage | undefined): number {
   return (usage?.projects ?? 0) + agent.last_projects.length;
@@ -140,18 +132,18 @@ function AgentCard({ agent, usage, onOpen, onDocs, onToggleArchive }: {
   const from = () => ref.current!;
   const projects = projectTotal(agent, usage);
   const docs = usage?.docs ?? 0;
-  const level = mascotLevel(projects);
+  const level = useMascotLevel(agent.id);
   return (
     <article className={`agx-card${agent.archived_at ? " is-archived" : ""}`} ref={ref}>
       <button className="agx-card-hit" onClick={() => onOpen(from())} aria-label={tr("Show details for {name}", { name: agent.name })}
         data-agent={agent.id} />
 
       <header className="agx-card-head">
-        <AgentMascot role={agent.type} size={50} level={level} />
+        <AgentMascot role={agent.type} size={50} agentId={agent.id} />
         <div className="agx-card-text">
           <h3 className="agx-name">{agent.name}</h3>
           <p className="agx-meta">
-            {tr("Level {n} · {level} experience", { n: level, level: tr(levelFor(projects)) })}
+            {tr("Level {n} · {level} experience", { n: level, level: tr(experienceFor(level)) })}
             {templateFor(agent) ? ` · ${templateFor(agent)!.type}` : ""}
           </p>
         </div>
@@ -316,7 +308,7 @@ function AgentDocs({ agent, usage, motion, onClose, onClosed }: {
   return (
     <div {...overlayProps(motion, onClosed, true)} role="dialog" aria-modal="false" aria-labelledby={titleId}>
       <header className="agx-info-head">
-        <AgentMascot role={agent.type} size={40} level={mascotLevel(projectTotal(agent, usage))} />
+        <AgentMascot role={agent.type} size={40} agentId={agent.id} />
         <div className="agx-info-id">
           <h3 id={titleId}>{docsLabel(agent)}</h3>
           <p>{agent.name}{docs && docs.length > 0 ? ` · ${docs.length}` : ""}</p>
@@ -348,7 +340,7 @@ function AgentInfo({ agent, usage, motion, onClose, onClosed, onToggleArchive }:
   const viewer = useDocViewer(agent, projects);
   const closeRef = useOverlayKeys(onClose, viewer.isOpen);
   const bodyRef = useScrollEdges<HTMLDivElement>();
-  const level = levelFor(projects);
+  const level = useMascotLevel(agent.id);
   const titleId = useId();
 
   const methods = [...agent.primaryMethods, ...agent.secondaryMethods];
@@ -359,7 +351,7 @@ function AgentInfo({ agent, usage, motion, onClose, onClosed, onToggleArchive }:
   return (
     <div {...overlayProps(motion, onClosed)} role="dialog" aria-modal="false" aria-labelledby={titleId}>
       <header className="agx-info-head">
-        <AgentMascot role={agent.type} size={52} level={mascotLevel(projects)} />
+        <AgentMascot role={agent.type} size={52} agentId={agent.id} />
         <div className="agx-info-id">
           <h3 id={titleId}>{agent.name}</h3>
           <p>{templateFor(agent)?.type ?? agent.tagline ?? (agent.type === "coach" ? "Coach" : "Consultant")}</p>
@@ -377,10 +369,10 @@ function AgentInfo({ agent, usage, motion, onClose, onClosed, onToggleArchive }:
           <div>
             <dt>{tr("Experience")}</dt>
             <dd className="agx-info-level">
-              {tr(level)}
+              {tr(experienceFor(level))}
               <span className="level-bar" aria-hidden="true">
-                {LEVEL_ORDER.map((l, i) => (
-                  <span key={l} className={`level-seg${i <= LEVEL_ORDER.indexOf(level) ? " on" : ""}`} />
+                {LEVELS.map(n => (
+                  <span key={n} className={`level-seg${n <= level ? " on" : ""}`} />
                 ))}
               </span>
             </dd>

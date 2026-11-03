@@ -1,82 +1,106 @@
 "use client";
 
-import { useMemo, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
+import { createClient } from "@/lib/supabase";
+import { cleanLevel, levelFromWork, MAX_LEVEL as MAX, type AgentWork } from "@/lib/agent-level";
 
 /**
- * mascot-level.ts — the mascot's 1-5 look, earned one reply at a time.
+ * mascot-level.ts — what every face on screen reads its level from.
  *
- * Ana, 2026-09-27: there is no real upgrade system yet, so an agent goes up
- * a level after every answer it gives, until it reaches 5. Counted per
- * agent across all of this browser's projects, so the Agents page, the
- * picker and the chat all show the same face for the same agent.
+ * The rule lives in lib/agent-level.ts; the highest level an agent reached is
+ * stored on the agent itself (agents.level_reached, migration 0031), so it is
+ * the same on every browser and survives deleting a project. This file is the
+ * live copy of those numbers: listAgents() fills it as it loads, and a reply
+ * that earns a level raises it, so the mascot in the chat, the card on the
+ * dashboard and the picker all change together. It is a store read through
+ * useSyncExternalStore (the pattern of lib/chat-split.ts): no effect-and-
+ * setState round trip, and a face mounted before the news arrives still
+ * catches up.
  *
- * Stored in localStorage as one map, and read through useSyncExternalStore
- * (the same pattern as lib/chat-split.ts): every mascot on screen updates
- * together the moment a reply lands, with no effect-and-setState round trip.
+ * It only ever goes up. A smaller number — a stale read, a count that lost a
+ * deleted project — is ignored.
  */
 
-const KEY = "agxp.mascot-replies";
-const EVENT = "agxp:mascot-level";
-export const MAX_MASCOT_LEVEL = 5;
+export const MAX_MASCOT_LEVEL = MAX;
 
-/** Replies given -> level: 0 replies is level 1, four or more is level 5. */
-export function levelFromReplies(replies: number): number {
-  return Math.max(1, Math.min(MAX_MASCOT_LEVEL, 1 + Math.floor(replies || 0)));
-}
+/** Replaced, never mutated, so a snapshot is stable until the data changes. */
+let levels: Record<string, number> = {};
+const listeners = new Set<() => void>();
 
-function readRaw(): string {
-  if (typeof window === "undefined") return "{}";
-  try { return window.localStorage.getItem(KEY) ?? "{}"; } catch { return "{}"; }
-}
-
-function readMap(): Record<string, number> {
-  try {
-    const m = JSON.parse(readRaw());
-    return m && typeof m === "object" ? m : {};
-  } catch { return {}; }
-}
-
-function write(map: Record<string, number>): void {
-  try { window.localStorage.setItem(KEY, JSON.stringify(map)); } catch { /* private mode — stays level 1 */ }
-  window.dispatchEvent(new Event(EVENT));
-}
-
-/** One more answer from this agent. */
-export function recordReply(agentId: string): void {
-  const map = readMap();
-  map[agentId] = (map[agentId] ?? 0) + 1;
-  write(map);
-}
-
-/** A conversation loaded from history already holds `replies` answers —
- *  the agent is at least that far along, even in a fresh browser. */
-export function syncReplies(agentId: string, replies: number): void {
-  const map = readMap();
-  if ((map[agentId] ?? 0) >= replies) return;
-  map[agentId] = replies;
-  write(map);
+function emit() {
+  for (const l of listeners) l();
 }
 
 function subscribe(onChange: () => void): () => void {
-  window.addEventListener(EVENT, onChange);
-  window.addEventListener("storage", onChange);
-  return () => {
-    window.removeEventListener(EVENT, onChange);
-    window.removeEventListener("storage", onChange);
-  };
+  listeners.add(onChange);
+  return () => { listeners.delete(onChange); };
 }
 
-/** Every agent's reply count. The snapshot is the raw string, so it only
- *  changes identity when the data does. */
-export function useMascotReplies(): Record<string, number> {
-  const raw = useSyncExternalStore(subscribe, readRaw, () => "{}");
-  return useMemo(() => {
-    try { return JSON.parse(raw) as Record<string, number>; } catch { return {}; }
-  }, [raw]);
+/** Raises the live level of agents; returns the ids that actually went up
+ *  beyond a level that was already known (a first sighting is not a rise). */
+function raise(next: Record<string, number>): string[] {
+  const merged = { ...levels };
+  const rose: string[] = [];
+  let changed = false;
+  for (const [id, raw] of Object.entries(next)) {
+    const level = cleanLevel(raw);
+    const known = merged[id];
+    if (known !== undefined && level <= known) continue;
+    if (known === undefined && level <= 1) { merged[id] = 1; changed = true; continue; }
+    if (known !== undefined) rose.push(id);
+    merged[id] = level;
+    changed = true;
+  }
+  if (changed) { levels = merged; emit(); }
+  return rose;
+}
+
+/** What the database already says — called by listAgents() with the rows it
+ *  just read. Nothing is written back; this is the stored value. */
+export function seedLevels(rows: { id: string; level_reached?: number | null }[]): void {
+  const next: Record<string, number> = {};
+  for (const r of rows) next[r.id] = cleanLevel(r.level_reached);
+  raise(next);
+}
+
+/** Stores a higher level on the agent. Fire-and-forget, like the usage count:
+ *  the screen already shows it, and a lost write is made up by the next
+ *  reply, which counts the work again. Before migration 0031 the column does
+ *  not exist, the update fails, and the level simply lives for this visit. */
+function persist(agentId: string, level: number): void {
+  createClient().from("agents").update({ level_reached: level }).eq("id", agentId).then(() => {}, () => {});
+}
+
+/** The level some counted work earns. Returns true when it is higher than
+ *  what the agent had — the moment to celebrate. */
+export function applyWork(agentId: string, work: AgentWork): boolean {
+  const level = levelFromWork(work);
+  const rose = raise({ [agentId]: level }).includes(agentId);
+  if (rose) persist(agentId, level);
+  return rose;
+}
+
+/** Counts this agent's work in the database and raises its level if it earned
+ *  one. Resolves to whether it did; a failed count is "no". */
+export async function refreshLevel(agentId: string): Promise<boolean> {
+  try {
+    const { data, error } = await createClient().rpc("agent_work", { p_agent_id: agentId });
+    if (error) return false;
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) return false;
+    return applyWork(agentId, { replies: Number(row.replies) || 0, docProjects: Number(row.doc_projects) || 0 });
+  } catch {
+    return false;
+  }
+}
+
+/** Every agent's level — for a screen that draws a face per agent. */
+export function useMascotLevels(): Record<string, number> {
+  return useSyncExternalStore(subscribe, () => levels, () => levels);
 }
 
 /** The level one agent has reached; level 1 when there is no agent yet. */
 export function useMascotLevel(agentId: string | null | undefined): number {
-  const replies = useMascotReplies();
-  return agentId ? levelFromReplies(replies[agentId] ?? 0) : 1;
+  const all = useMascotLevels();
+  return agentId ? all[agentId] ?? 1 : 1;
 }
