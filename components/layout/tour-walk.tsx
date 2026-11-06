@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { IconArrow, IconBack, IconX } from "@/components/layout/agxp-icons";
 import { useOnClient } from "@/lib/use-on-client";
+import { useT } from "@/lib/language";
 import { placeBubble, TOUR_SPOTS, type Placed, type Rect, type Spot } from "@/lib/tour-spots";
 
 /**
@@ -25,6 +26,7 @@ export function TourWalk({ onDone, spots: all = TOUR_SPOTS }: {
   /** Which walk this is. The long one by default; the chat walk passes its own. */
   spots?: Spot[];
 }) {
+  const t = useT();
   const onClient = useOnClient();
   /*
    * Which spots exist, decided once at mount.
@@ -175,19 +177,19 @@ export function TourWalk({ onDone, spots: all = TOUR_SPOTS }: {
 
       <div ref={bubble} className={`walk-bubble${pos ? ` on-${pos.side}` : " measuring"}`}
         style={pos ? { left: pos.left, top: pos.top, ["--arrow" as string]: `${arrow}px` } : undefined}>
-        <span className="walk-count">{i + 1} of {spots.length}</span>
-        <h2 id={`${uid}-t`}>{spot.title}</h2>
-        <p>{spot.body}</p>
+        <span className="walk-count">{t("{i} of {n}", { i: i + 1, n: spots.length })}</span>
+        <h2 id={`${uid}-t`}>{t(spot.title)}</h2>
+        <p>{t(spot.body)}</p>
         <div className="walk-nav">
           <button className="walk-skip" onClick={finish}>
-            Skip <IconX size={12} />
+            {t("Skip")} <IconX size={12} />
           </button>
           <span className="walk-spacer" />
           <button className="walk-back" onClick={() => go(-1)} disabled={i === 0}>
-            <IconBack size={13} /> Back
+            <IconBack size={13} /> {t("Back")}
           </button>
           <button className="walk-next" ref={nextBtn} onClick={() => go(1)}>
-            {last ? "Done" : "Next"} <IconArrow size={13} />
+            {last ? t("Done") : t("Next")} <IconArrow size={13} />
           </button>
         </div>
       </div>

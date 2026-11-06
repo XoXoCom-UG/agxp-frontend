@@ -73,7 +73,7 @@ export function MethodsPanel({ tabs, deliverable, snap, onOpenDoc, onMinimise }:
         <div className="mp-head-txt">
           <h2 id="mp-title" className="mp-title">{d.title}</h2>
           {/* Only the version, once there is one. Before that the title stands alone. */}
-          {doc && rail && <p className="mp-sub">{versionLine(rail.version, doc.createdAt, rail.restored)}</p>}
+          {doc && rail && <p className="mp-sub">{versionLine(rail.version, doc.createdAt, rail.restored, tr)}</p>}
           {/* Before there is a document: what is happening here, and why. */}
           {!doc && <p className="mp-intro">{introFor(d)}</p>}
         </div>

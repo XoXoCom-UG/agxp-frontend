@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { exportMyData, downloadJson, deleteMyAccount, signOutEverywhere } from "@/lib/account-data";
 import { openConsentSettings } from "@/lib/consent";
+import { useT } from "@/lib/language";
 
 /**
  * Settings → Your data. The rights the Datenschutzerklärung promises, as
@@ -18,6 +19,7 @@ import { openConsentSettings } from "@/lib/consent";
  * it: the same reason the guided tour closes Settings first.
  */
 export function PrivacyTab({ closeThen }: { closeThen: (next: () => void) => void }) {
+  const t = useT();
   const { user } = useAuth();
   const router = useRouter();
   const [busy, setBusy] = useState<"export" | "signout" | "delete" | null>(null);
@@ -26,80 +28,81 @@ export function PrivacyTab({ closeThen }: { closeThen: (next: () => void) => voi
   const [typed, setTyped] = useState("");
 
   const email = user?.email ?? "";
+  // The address sits inside the sentence, and German puts it elsewhere than English does.
+  const [confirmBefore, confirmAfter] = t("Type {email} to confirm.", { email: "\u0001" }).split("\u0001");
   const matches = typed.trim().toLowerCase() === email.toLowerCase() && !!email;
 
   async function run(kind: "export" | "signout" | "delete", fn: () => Promise<void>) {
     setError("");
     setBusy(kind);
     try { await fn(); }
-    catch (e) { setError((e as Error).message || "That didn't work. Try again."); }
+    catch (e) { setError((e as Error).message || t("That didn't work. Try again.")); }
     finally { setBusy(null); }
   }
 
   return (
     <>
       <div className="ss-field ss-tour">
-        <span className="ss-label">Download your data</span>
+        <span className="ss-label">{t("Download your data")}</span>
         <div className="ss-tour-row">
           <p className="ss-hint">
-            Your account, projects, conversations, documents, agents and usage, as one JSON file.
+            {t("Your account, projects, conversations, documents, agents and usage, as one JSON file.")}
           </p>
           <button className="btn btn-ghost" disabled={!!busy}
             onClick={() => run("export", async () => {
               const data = await exportMyData();
               downloadJson(data, `agentix-export-${new Date().toISOString().slice(0, 10)}.json`);
             })}>
-            {busy === "export" ? "Preparing…" : "Download"}
+            {busy === "export" ? t("Preparing…") : t("Download")}
           </button>
         </div>
       </div>
 
       <div className="ss-field ss-tour">
-        <span className="ss-label">Sign out everywhere</span>
+        <span className="ss-label">{t("Sign out everywhere")}</span>
         <div className="ss-tour-row">
-          <p className="ss-hint">Ends your session on every device and browser, including this one.</p>
+          <p className="ss-hint">{t("Ends your session on every device and browser, including this one.")}</p>
           <button className="btn btn-ghost" disabled={!!busy}
             onClick={() => run("signout", async () => {
               await signOutEverywhere();
               router.replace("/login");
             })}>
-            {busy === "signout" ? "Signing out…" : "Sign out everywhere"}
+            {busy === "signout" ? t("Signing out…") : t("Sign out everywhere")}
           </button>
         </div>
       </div>
 
       <div className="ss-field ss-tour">
-        <span className="ss-label">Cookies</span>
+        <span className="ss-label">{t("Cookies")}</span>
         <div className="ss-tour-row">
-          <p className="ss-hint">Change whether we may send error reports from your browser.</p>
+          <p className="ss-hint">{t("Change whether we may send error reports from your browser.")}</p>
           <button className="btn btn-ghost" onClick={() => closeThen(openConsentSettings)}>
-            Cookie-Einstellungen
+            {t("Cookie settings")}
           </button>
         </div>
       </div>
 
       <div className="ss-field ss-danger">
-        <span className="ss-label">Delete account</span>
+        <span className="ss-label">{t("Delete account")}</span>
         <p className="ss-hint">
-          Deletes your account, every project and conversation, your documents, attached files and
-          the agents you built. This can&apos;t be undone — download your data first if you want a copy.
+          {t("Deletes your account, every project and conversation, your documents, attached files and the agents you built. This can’t be undone — download your data first if you want a copy.")}
         </p>
         {!confirming ? (
           <div className="ss-actions">
             <button className="btn btn-ghost ss-danger-btn" disabled={!!busy} onClick={() => setConfirming(true)}>
-              Delete my account…
+              {t("Delete my account…")}
             </button>
           </div>
         ) : (
           <>
             <label className="ss-field">
-              <span className="ss-hint">Type <b>{email}</b> to confirm.</span>
+              <span className="ss-hint">{confirmBefore}<b>{email}</b>{confirmAfter}</span>
               <input type="email" value={typed} autoComplete="off" spellCheck={false}
-                onChange={e => setTyped(e.target.value)} aria-label="Your email address, to confirm" />
+                onChange={e => setTyped(e.target.value)} aria-label={t("Your email address, to confirm")} />
             </label>
             <div className="ss-actions ss-danger-row">
               <button className="btn btn-ghost" disabled={!!busy} onClick={() => { setConfirming(false); setTyped(""); }}>
-                Cancel
+                {t("Cancel")}
               </button>
               <button className="btn btn-ghost ss-danger-btn" disabled={!matches || !!busy}
                 onClick={() => run("delete", async () => {
@@ -108,7 +111,7 @@ export function PrivacyTab({ closeThen }: { closeThen: (next: () => void) => voi
                   await signOutEverywhere().catch(() => {});
                   router.replace("/");
                 })}>
-                {busy === "delete" ? "Deleting…" : "Delete everything"}
+                {busy === "delete" ? t("Deleting…") : t("Delete everything")}
               </button>
             </div>
           </>
@@ -118,7 +121,7 @@ export function PrivacyTab({ closeThen }: { closeThen: (next: () => void) => voi
       {error && <p className="ss-error" role="alert">{error}</p>}
 
       <p className="ss-hint">
-        How we handle your data: <Link href="/datenschutz" target="_blank">Datenschutzerklärung</Link>.
+        {t("How we handle your data:")} <Link href="/datenschutz" target="_blank">{t("Privacy policy")}</Link>.
       </p>
     </>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useT } from "@/lib/language";
 import { createPortal } from "react-dom";
 import type { AgentType } from "@/lib/agents";
 import { md, handleCodeCopyClick } from "@/lib/markdown";
@@ -90,6 +91,7 @@ function slug(s: string): string {
  * Portaled to <body> so it escapes the panel's overflow + stacking context.
  */
 export function DeliverableView({ doc, onClose }: { doc: DeliverableDoc; onClose: () => void }) {
+  const t = useT();
   const [copied, setCopied] = useState(false);
   /** After the first copy, the icon swap animates both ways. */
   const [copyUsed, setCopyUsed] = useState(false);
@@ -245,9 +247,9 @@ export function DeliverableView({ doc, onClose }: { doc: DeliverableDoc; onClose
     <div className="doc-portal">
       <div className={`doc-overlay${closing ? " is-closing" : ""}`} onClick={close} />
       <div ref={modalRef} className={`doc-modal${tocOpen ? "" : " toc-closed"}${closing ? " is-closing" : ""}`} role="dialog" aria-modal="true" aria-label={doc.title}>
-        <button className="doc-close" onClick={close} data-tooltip="Close (Esc)" aria-label="Close"><IconX size={15} /></button>
+        <button className="doc-close" onClick={close} data-tooltip={t("Close (Esc)")} aria-label={t("Close")}><IconX size={15} /></button>
         <button className="doc-toc-toggle" onClick={() => setTocOpen(v => !v)} aria-expanded={tocOpen}
-          data-tooltip={tocOpen ? "Hide contents" : "Show contents"} aria-label="Toggle contents">
+          data-tooltip={tocOpen ? t("Hide contents") : t("Show contents")} aria-label={t("Toggle contents")}>
           <IconList size={15} />
         </button>
         <div className="doc-main">
@@ -257,28 +259,28 @@ export function DeliverableView({ doc, onClose }: { doc: DeliverableDoc; onClose
             </div>
             <div className="doc-side-actions">
               <button className="doc-side-btn" onClick={copy}>
-                {copied ? <IconCheck size={14} className="icon-swap" /> : <IconCopy size={14} className={copyUsed ? "icon-swap" : undefined} />}<span className="t">{copied ? "Copied" : "Copy"}</span>
+                {copied ? <IconCheck size={14} className="icon-swap" /> : <IconCopy size={14} className={copyUsed ? "icon-swap" : undefined} />}<span className="t">{copied ? t("Copied") : t("Copy")}</span>
               </button>
               <button className="doc-side-btn" onClick={downloadWord} disabled={wordState === "busy"}
-                data-tooltip="Download as a Word file" aria-label="Download as a Word file">
-                <IconDoc size={14} /><span className="t">{wordState === "busy" ? "Making…" : wordState === "failed" ? "Failed, retry" : "Word"}</span>
+                data-tooltip={t("Download as a Word file")} aria-label={t("Download as a Word file")}>
+                <IconDoc size={14} /><span className="t">{wordState === "busy" ? t("Making…") : wordState === "failed" ? t("Failed, retry") : "Word"}</span>
               </button>
               <button className="doc-side-btn" onClick={() => window.print()}
-                data-tooltip="Opens the print window: choose Save as PDF" aria-label="Save as PDF, through the print window">
+                data-tooltip={t("Opens the print window: choose Save as PDF")} aria-label={t("Save as PDF, through the print window")}>
                 <IconPrint size={14} /><span className="t">PDF</span>
               </button>
               <button className="doc-side-btn" onClick={download}
-                data-tooltip="Download the text as Markdown" aria-label="Download as Markdown"><IconDownload size={14} /><span className="t">.md</span></button>
+                data-tooltip={t("Download the text as Markdown")} aria-label={t("Download as Markdown")}><IconDownload size={14} /><span className="t">.md</span></button>
             </div>
-            <span className="lbl">Contents</span>
-            <div className="toc-nav" role="navigation" aria-label="Contents">
+            <span className="lbl">{t("Contents")}</span>
+            <div className="toc-nav" role="navigation" aria-label={t("Contents")}>
               {toc.map((h, i) => (
                 <button key={`${h.domIndex}-${h.text}`} className={`toc-item lvl${h.level} ${i === active ? "on" : ""}`}
                   onClick={() => jumpTo(h)}>
                   <span className="tick" />{h.text}
                 </button>
               ))}
-              {toc.length === 0 && <span className="toc-empty">No sections</span>}
+              {toc.length === 0 && <span className="toc-empty">{t("No sections")}</span>}
             </div>
           </aside>
 
@@ -287,7 +289,7 @@ export function DeliverableView({ doc, onClose }: { doc: DeliverableDoc; onClose
               <div className="doc-body" ref={bodyRef} onClick={handleCodeCopyClick} dangerouslySetInnerHTML={{ __html: html }} />
               <div className="doc-foot">
                 <span>{doc.title} · {doc.projectName}</span>
-                <span>Generated with AgentiX · {doc.agentName} · {date}</span>
+                <span>{t("Generated with AgentiX · {agent} · {date}", { agent: doc.agentName, date })}</span>
               </div>
             </div>
           </div>

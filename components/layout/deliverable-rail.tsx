@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import type { DeliverableDoc } from "@/components/layout/deliverable-view";
 import { IconDoc, IconRefresh, IconArrow, IconSpark, IconHistory, IconRestore } from "@/components/layout/agxp-icons";
+import { useT } from "@/lib/language";
+
+type Tr = (en: string, vars?: Record<string, string | number>) => string;
 
 /**
  * The artifact card behind the header's doc pill: what the deliverable looks
@@ -30,11 +33,12 @@ export function DeliverableRail({
   onOpenVersion: (version: number) => void;
   onRestoreVersion: (version: number) => void;
 }) {
+  const t = useT();
   if (currentDoc) {
     return (
       <div className="artf-card is-ready">
         <ArtifactHeader title={title} state="ready" restored={restored}
-          subtitle={metaLine(version, currentDoc.createdAt, restored)} />
+          subtitle={metaLine(version, currentDoc.createdAt, restored, t)} />
         <ArtifactActions
           sending={sending} versions={versions} current={version} onOpen={onOpen} onRegenerate={onRegenerate}
           onOpenVersion={onOpenVersion} onRestoreVersion={onRestoreVersion}
@@ -50,11 +54,11 @@ export function DeliverableRail({
       <div className="artf-bottom">
         <span className="artf-step">
           {stationIdx < 0
-            ? `${totalStations} steps · not started`
-            : `Step ${stationIdx + 1} of ${totalStations} · ${stationLabel}`}
+            ? t("{n} steps · not started", { n: totalStations })
+            : t("Step {i} of {n} · {label}", { i: stationIdx + 1, n: totalStations, label: stationLabel })}
         </span>
         <button className="artf-cta" disabled={sending} onClick={onGenerate}>
-          <IconSpark size={12} />Generate
+          <IconSpark size={12} />{t("Generate")}
         </button>
       </div>
     </div>
@@ -86,15 +90,16 @@ export function ArtifactActions({ sending, versions, current, onOpen, onRegenera
   onOpenVersion: (version: number) => void;
   onRestoreVersion: (version: number) => void;
 }) {
+  const t = useT();
   return (
     <div className="artf-actions">
       <VersionHistory versions={versions} current={current} onOpenVersion={onOpenVersion} onRestoreVersion={onRestoreVersion} />
       <div className="artf-actions-right">
         <button className="artf-ghost artf-regen" disabled={sending} onClick={onRegenerate}>
-          <IconRefresh size={13} />Regenerate
+          <IconRefresh size={13} />{t("Regenerate")}
         </button>
         <button className="artf-cta" onClick={onOpen}>
-          Open<IconArrow />
+          {t("Open")}<IconArrow />
         </button>
       </div>
     </div>
@@ -112,6 +117,7 @@ function VersionHistory({ versions, current, onOpenVersion, onRestoreVersion }: 
   onOpenVersion: (version: number) => void;
   onRestoreVersion: (version: number) => void;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   /** Read out once a restore has happened; the menu itself closes. */
   const [announce, setAnnounce] = useState("");
@@ -132,7 +138,7 @@ function VersionHistory({ versions, current, onOpenVersion, onRestoreVersion }: 
   function restore(v: number) {
     setOpen(false);
     onRestoreVersion(v);
-    setAnnounce(`Version ${v} restored. Open now shows it.`);
+    setAnnounce(t("Version {v} restored. Open now shows it.", { v }));
     // The button that was clicked is gone with the menu; focus goes back to
     // the toggle instead of falling to the page.
     toggleRef.current?.focus();
@@ -141,7 +147,7 @@ function VersionHistory({ versions, current, onOpenVersion, onRestoreVersion }: 
   return (
     <div className="ver-wrap" ref={ref}>
       <button ref={toggleRef} className="artf-ghost" aria-expanded={open} onClick={() => setOpen(o => !o)}>
-        <IconHistory size={13} />History
+        <IconHistory size={13} />{t("History")}
       </button>
       {open && (
         <div className="ver-menu">
@@ -150,12 +156,12 @@ function VersionHistory({ versions, current, onOpenVersion, onRestoreVersion }: 
               <button className="ver-open" aria-current={v.version === current ? "true" : undefined}
                 onClick={() => { setOpen(false); onOpenVersion(v.version); }}>
                 <span className="ver-num">v{v.version}</span>
-                <span className="ver-time">{timeAgo(v.createdAt)}</span>
+                <span className="ver-time">{timeAgo(v.createdAt, t)}</span>
               </button>
               {v.version === current ? (
-                <span className="ver-current">In use</span>
+                <span className="ver-current">{t("In use")}</span>
               ) : (
-                <button className="ver-restore" aria-label={`Restore version ${v.version}`} data-tooltip="Restore"
+                <button className="ver-restore" aria-label={t("Restore version {v}", { v: v.version })} data-tooltip={t("Restore")}
                   onClick={() => restore(v.version)}>
                   <IconRestore size={12} />
                 </button>
@@ -170,26 +176,26 @@ function VersionHistory({ versions, current, onOpenVersion, onRestoreVersion }: 
 }
 
 /** "Version 7 · Updated 5d ago" — the same facts as metaLine, in the Methods panel's plainer words. */
-export function versionLine(version: number, createdAt: string, restored: boolean): string {
-  if (restored) return `Version ${version} · Restored`;
-  return `Version ${version} · ${version > 1 ? "Updated" : "Created"} ${timeAgo(createdAt)}`;
+export function versionLine(version: number, createdAt: string, restored: boolean, t: Tr = en => en): string {
+  if (restored) return t("Version {v} · Restored", { v: version });
+  return t(version > 1 ? "Version {v} · Updated {ago}" : "Version {v} · Created {ago}", { v: version, ago: timeAgo(createdAt, t) });
 }
 
-export function metaLine(version: number, createdAt: string, restored: boolean): string {
+export function metaLine(version: number, createdAt: string, restored: boolean, t: Tr = en => en): string {
   const parts = [`v${version}`];
-  if (restored) parts.push("Restored");
-  else if (version > 1) parts.push(`Updated from v${version - 1}`);
-  parts.push(timeAgo(createdAt));
+  if (restored) parts.push(t("Restored"));
+  else if (version > 1) parts.push(t("Updated from v{v}", { v: version - 1 }));
+  parts.push(timeAgo(createdAt, t));
   return parts.join(" · ");
 }
 
-function timeAgo(iso: string): string {
+function timeAgo(iso: string, t: Tr = en => en): string {
   const ms = Date.now() - new Date(iso).getTime();
   const min = Math.floor(ms / 60000);
-  if (min < 1) return "just now";
-  if (min < 60) return `${min}m ago`;
+  if (min < 1) return t("just now");
+  if (min < 60) return t(`${min}m ago`);
   const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h ago`;
+  if (hr < 24) return t(`${hr}h ago`);
   const day = Math.floor(hr / 24);
-  return `${day}d ago`;
+  return t(`${day}d ago`);
 }

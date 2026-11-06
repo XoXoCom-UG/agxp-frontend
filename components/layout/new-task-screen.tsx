@@ -301,7 +301,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
     setSnaps(prev => {
       const old = prev[role];
         if (old && old.name === s.name && old.transcript === s.transcript
-        && old.lastLine === s.lastLine && old.busy === s.busy
+        && old.lastLine === s.lastLine && old.busy === s.busy && old.loaded === s.loaded
         && old.agentTurns === s.agentTurns && old.docCount === s.docCount
         && old.pct === s.pct && old.station?.index === s.station?.index
         && old.station?.total === s.station?.total && old.station?.label === s.station?.label
@@ -401,6 +401,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
         <ProjectChatPanel key={role} project={project} role={role} agent={assigned}
           projectCount={projectCounts[assigned.id] ?? 0}
           peer={peerFor(role)}
+          peerLoaded={snaps[OTHER[role]]?.loaded === true}
           idle={role !== viewedRole}
           keyboardActive={role === keyboardRole}
           unread={unseen[role]}

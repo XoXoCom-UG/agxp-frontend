@@ -9,6 +9,7 @@ import { IconArrow, IconChart, IconUsers } from "@/components/layout/agxp-icons"
 import { useAuth } from "@/lib/auth-context";
 import { COMPANY } from "@/lib/company";
 import { ConsentLink } from "@/components/layout/cookie-banner";
+import { useT } from "@/lib/language";
 
 /**
  * The public page at "/".
@@ -29,6 +30,7 @@ import { ConsentLink } from "@/components/layout/cookie-banner";
  * — it is a real page, so there is nothing to flash.
  */
 export function Landing() {
+  const t = useT();
   const { session, loading } = useAuth();
   const router = useRouter();
 
@@ -40,48 +42,48 @@ export function Landing() {
     <div className="lp">
       <header className="lp-bar">
         <BrandLogo size={26} />
-        <Link className="lp-signin" href="/login">Sign in <IconArrow size={14} /></Link>
+        <Link className="lp-signin" href="/login">{t("Sign in")} <IconArrow size={14} /></Link>
       </header>
 
       <main className="lp-main" id="main-content">
         <AgentHero
           kicker="AgentiX Projects"
-          title={<h1 className="home-title">Two agents.<br /><span>One project.</span></h1>}
-          lede="Bring an idea. A consultant works it out with you, step by step."
+          title={<h1 className="home-title">{t("Two agents.")}<br /><span>{t("One project.")}</span></h1>}
+          lede={t("Bring an idea. A consultant works it out with you, step by step.")}
         >
-          <Link className="home-start" href="/login">Enter with your beta key <IconArrow size={16} /></Link>
+          <Link className="home-start" href="/login">{t("Enter with your beta key")} <IconArrow size={16} /></Link>
         </AgentHero>
 
         {/* What the two of them actually hand you. The same two deliverables
             lib/deliverables.ts defines, named the same way, because a landing
             page that promises something the product does not produce is the
             easiest way to lose the first customer. */}
-        <section className="lp-pair" aria-label="What you get">
+        <section className="lp-pair" aria-label={t("What you get")}>
           <article>
             <div className="lp-card-top">
               <span className="lp-ic consultant" aria-hidden="true"><IconChart size={15} /></span>
-              <span className="lp-eyebrow">Consultant</span>
+              <span className="lp-eyebrow">{t("Consultant")}</span>
             </div>
             <h2>Transformation Concept</h2>
-            <p>Where you are, what it costs, where you are going, as charts.</p>
+            <p>{t("Where you are, what it costs, where you are going, as charts.")}</p>
           </article>
           <article>
             <div className="lp-card-top">
               <span className="lp-ic coach" aria-hidden="true"><IconUsers size={15} /></span>
-              <span className="lp-eyebrow">Coach</span>
+              <span className="lp-eyebrow">{t("Coach")}</span>
             </div>
             <h2>Change Plan</h2>
-            <p>Who is affected, what they fear, and how the rollout lands.</p>
+            <p>{t("Who is affected, what they fear, and how the rollout lands.")}</p>
           </article>
         </section>
 
         {/* Required, and placed where it is read rather than buried in the
             terms: the agents write documents people take into real meetings. */}
         <p className="lp-ai" role="note">
-          AgentiX Projects is powered by AI and can get things wrong. Check anything you rely on.
+          {t("AgentiX Projects is powered by AI and can get things wrong. Check anything you rely on.")}
         </p>
 
-        <p className="lp-beta">Closed beta. You need an invitation to sign in.</p>
+        <p className="lp-beta">{t("Closed beta. You need an invitation to sign in.")}</p>
       </main>
 
       <footer className="lp-foot">

@@ -45,7 +45,7 @@ function hasFinePointer(): boolean {
   return typeof window !== "undefined" && window.matchMedia?.("(pointer: fine)").matches;
 }
 
-export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer, idle = false, unread = false, keyboardActive = true, headExtra, hideRail = false, topRow, onProjectNamed, onActivity, onOpenDoc, onChangeAgent, onSnapshot, onFocusPanel, onMinimise }: {
+export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer, peerLoaded = false, idle = false, unread = false, keyboardActive = true, headExtra, hideRail = false, topRow, onProjectNamed, onActivity, onOpenDoc, onChangeAgent, onSnapshot, onFocusPanel, onMinimise }: {
   project: Project; role: AgentType; agent: Agent;
   /** How many of the user's projects this agent has worked on, this one included. */
   projectCount?: number;
@@ -60,6 +60,8 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
   onChangeAgent?: () => void;
   /** The other agent's conversation on this project, handed down by the screen. */
   peer?: PeerContext;
+  /** The other panel has read its stored conversation (see PanelSnapshot.loaded). */
+  peerLoaded?: boolean;
   /** True when this is the narrow panel — it waits rather than leads. */
   idle?: boolean;
   /** An answer landed here while the user was looking at the other panel. */
@@ -277,7 +279,11 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
     return { userTurns: turns, spokeUnanswered: lastUnprompted > lastUser };
   }, [messages]);
   useReadAlongNudge({
-    enabled: role === "coach", loaded, hasHistory: messages.length > 0,
+    // Armed only once the OTHER panel has read its own history too: the
+    // Coach's loads first, and a Consultant that still reads as "0 answers,
+    // 0 documents" would make everything it then loads look new — one paid
+    // review of a document written weeks ago on every page load.
+    enabled: role === "coach" && peerLoaded, loaded, hasHistory: messages.length > 0,
     peerTurns: peer?.turns ?? 0, peerDocs: peer?.docs ?? 0, userTurns, spokeUnanswered,
     sending, sendRef: chat.sendRef,
   });
@@ -360,7 +366,7 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
     const last = answers[answers.length - 1];
     const lastLine = (last && previewLine(last.p.text)) || OPENING[role];
     snapCb.current?.({
-      name: agent.name, transcript: peerTranscript(turns, agent.name), lastLine,
+      name: agent.name, transcript: peerTranscript(turns, agent.name), lastLine, loaded,
       agentTurns: answers.length, docCount: docs.length, pct, station,
       rail: {
         title: deliverable.title, totalStations, stationIdx, stationLabel, currentDoc,
@@ -368,7 +374,7 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
       },
       controls, busy: sending,
     });
-  }, [entries, sending, agent.name, role, docs.length, pct, station, deliverable.title, totalStations,
+  }, [entries, loaded, sending, agent.name, role, docs.length, pct, station, deliverable.title, totalStations,
       stationIdx, stationLabel, currentDoc, currentVersion, restoredVersion, versions, controls]);
 
   const busy = sending || !!leavingId;

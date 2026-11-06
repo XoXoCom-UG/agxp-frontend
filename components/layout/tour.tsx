@@ -14,6 +14,7 @@ import { GLASS_OPTIONS, useAppearance, setAppearance } from "@/lib/appearance";
 import { useAuth } from "@/lib/auth-context";
 import { useDialogFocus } from "@/lib/use-dialog-focus";
 import { useExit } from "@/lib/use-exit";
+import { useT } from "@/lib/language";
 import {
   TOUR_STEPS, TOUR_CHOICES, TOUR_QUESTION, TOUR_REPLIES, type Scene,
 } from "@/lib/tour";
@@ -43,6 +44,7 @@ import {
  * tutorial is telling us they do not want the second one either.
  */
 export function Tour({ onDone }: { onDone: (completed: boolean) => void }) {
+  const t = useT();
   const [i, setI] = useState(0);
   const [dir, setDir] = useState<1 | -1>(1);
   const stage = useRef<HTMLDivElement>(null);
@@ -112,7 +114,7 @@ export function Tour({ onDone }: { onDone: (completed: boolean) => void }) {
         <header className="tour-top">
           <BrandLogo size={26} />
           <button className="tour-skip" onClick={() => finish(last)}>
-            {last ? "Close" : "Skip the tour"} <IconX size={13} />
+            {last ? t("Close") : t("Skip the tour")} <IconX size={13} />
           </button>
         </header>
 
@@ -121,8 +123,8 @@ export function Tour({ onDone }: { onDone: (completed: boolean) => void }) {
             <span className="tour-count">
               {String(i + 1).padStart(2, "0")}<i>/</i>{String(TOUR_STEPS.length).padStart(2, "0")}
             </span>
-            <h2 id={`${uid}-title`} className="tour-title">{step.title}</h2>
-            <p className="tour-line">{step.line}</p>
+            <h2 id={`${uid}-title`} className="tour-title">{t(step.title)}</h2>
+            <p className="tour-line">{t(step.line)}</p>
             <Guides scene={step.id} speaker={step.speaker} />
           </div>
 
@@ -134,14 +136,14 @@ export function Tour({ onDone }: { onDone: (completed: boolean) => void }) {
         <footer className="tour-foot">
           {/* The rail is also the navigation: on a seven-step tour, going
               back two is a click, not two clicks. */}
-          <ol className="tour-rail" aria-label="Tour progress">
+          <ol className="tour-rail" aria-label={t("Tour progress")}>
             {TOUR_STEPS.map((s, n) => (
               <li key={s.id} className={n === i ? "on" : n < i ? "done" : ""}>
                 <button onClick={() => { setDir(n > i ? 1 : -1); setI(n); }}
                   aria-current={n === i ? "step" : undefined}
-                  aria-label={`Step ${n + 1}: ${s.tag}`}>
+                  aria-label={t("Step {n}: {tag}", { n: n + 1, tag: t(s.tag) })}>
                   <span className="tour-dot" aria-hidden="true" />
-                  <span className="tour-tag">{s.tag}</span>
+                  <span className="tour-tag">{t(s.tag)}</span>
                 </button>
               </li>
             ))}
@@ -149,10 +151,10 @@ export function Tour({ onDone }: { onDone: (completed: boolean) => void }) {
 
           <div className="tour-nav">
             <button className="tour-back" onClick={() => go(-1)} disabled={i === 0}>
-              <IconBack size={14} /> Back
+              <IconBack size={14} /> {t("Back")}
             </button>
             <button className="tour-next" ref={nextBtn} onClick={() => go(1)}>
-              {last ? "Start working" : "Next"} <IconArrow size={15} />
+              {last ? t("Start working") : t("Next")} <IconArrow size={15} />
             </button>
           </div>
         </footer>
@@ -218,12 +220,13 @@ function SceneFor({ scene }: { scene: Scene }) {
 }
 
 function HelloScene() {
+  const t = useT();
   return (
     <div className="ts-hello">
       <span className="ts-orbit" aria-hidden="true">
         <i /><i /><i />
       </span>
-      <p className="ts-hello-k">A transformation, worked by two.</p>
+      <p className="ts-hello-k">{t("A transformation, worked by two.")}</p>
     </div>
   );
 }
@@ -241,8 +244,13 @@ function HelloScene() {
  * happens on blur, which is what pressing Next does anyway.
  */
 function NameScene() {
+  const t = useT();
   const { user, profileName, setProfileName, saveProfileName } = useAuth();
   const [state, setState] = useState<"idle" | "saving" | "saved" | "failed">("idle");
+
+  // The name sits inside the sentence, and German puts it elsewhere than English does.
+  const [meetBefore, meetAfter] = t("Good to meet you, {name}.", { name: "\u0001" }).split("\u0001");
+  const [youBefore, youAfter] = t("Right — we will just say {you}.", { you: "\u0001" }).split("\u0001");
 
   async function save() {
     const clean = profileName.trim();
@@ -260,9 +268,9 @@ function NameScene() {
   return (
     <div className="ts-name">
       <label className="ts-set">
-        <span className="ts-set-l">Your name</span>
+        <span className="ts-set-l">{t("Your name")}</span>
         <input className="ts-input" type="text" value={profileName} maxLength={60}
-          placeholder="How your agents address you" autoComplete="name"
+          placeholder={t("How your agents address you")} autoComplete="name"
           onChange={e => { setProfileName(e.target.value); setState("idle"); }}
           onBlur={save}
           onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } }} />
@@ -272,16 +280,16 @@ function NameScene() {
         <AgentMascot role="consultant" size={32} level={3} />
         <span>
           {profileName.trim()
-            ? <>Good to meet you, <b>{profileName.trim()}</b>.</>
-            : <>Right — we will just say <b>you</b>.</>}
+            ? <>{meetBefore}<b>{profileName.trim()}</b>{meetAfter}</>
+            : <>{youBefore}<b>{t("you")}</b>{youAfter}</>}
         </span>
       </p>
 
       <p className="ts-note">
-        {state === "saving" ? "Saving…"
-          : state === "saved" ? "Saved to your account."
-          : state === "failed" ? "Could not save that just now — Settings → Profile will take it."
-          : `Signed in as ${user?.email ?? "this account"}. The email is not changeable here.`}
+        {state === "saving" ? t("Saving…")
+          : state === "saved" ? t("Saved to your account.")
+          : state === "failed" ? t("Could not save that just now — Settings → Profile will take it.")
+          : t("Signed in as {email}. The email is not changeable here.", { email: user?.email ?? t("this account") })}
       </p>
     </div>
   );
@@ -299,6 +307,7 @@ const PAIR = [
 ];
 
 function PairScene() {
+  const t = useT();
   return (
     <div className="ts-pair">
       {PAIR.map(p => (
@@ -307,7 +316,7 @@ function PairScene() {
             <AgentMascot role={p.role} size={46} level={3} />
           </span>
           <h3>{p.who}</h3>
-          <p>{p.what}</p>
+          <p>{t(p.what)}</p>
           <span className="ts-doc"><IconDoc size={12} />{p.doc}</span>
         </article>
       ))}
@@ -322,24 +331,25 @@ function PairScene() {
  * Methods first, because that is what a new account opens on.
  */
 function SwitchScene() {
+  const t = useT();
   const reduced = usePrefersReducedMotion();
   const [view, setView] = useState<"methods" | "coach">("methods");
   useEffect(() => {
     if (reduced) return;
-    const t = setInterval(() => setView(v => (v === "methods" ? "coach" : "methods")), 2600);
-    return () => clearInterval(t);
+    const id = setInterval(() => setView(v => (v === "methods" ? "coach" : "methods")), 2600);
+    return () => clearInterval(id);
   }, [reduced]);
 
   return (
     <div className="ts-switch" aria-hidden="true">
       <div className="ts-sw-left">
-        <span className="ts-sw-who"><AgentMascot role="consultant" size={26} level={3} />Consultant</span>
+        <span className="ts-sw-who"><AgentMascot role="consultant" size={26} level={3} />{t("Consultant")}</span>
         <i className="ts-sw-line w80" /><i className="ts-sw-line w60" /><i className="ts-sw-line w70" />
       </div>
       <div className="ts-sw-right">
         <div className="ts-sw-tabs">
-          <span className={`ts-sw-tab${view === "methods" ? " on" : ""}`}>Methods</span>
-          <span className={`ts-sw-tab${view === "coach" ? " on" : ""}`}>Coach</span>
+          <span className={`ts-sw-tab${view === "methods" ? " on" : ""}`}>{t("Methods")}</span>
+          <span className={`ts-sw-tab${view === "coach" ? " on" : ""}`}>{t("Coach")}</span>
         </div>
         {view === "methods" ? (
           <ul className="ts-sw-body">
@@ -407,32 +417,33 @@ function Typed({ text }: { text: string }) {
  * reads as a lookup, not as someone thinking.
  */
 function AskScene() {
+  const t = useT();
   const [picked, setPicked] = useState<string | null>(null);
 
   return (
     <div className="ts-chat">
       <div className="ts-bubble agent">
-        <span className="ts-who"><AgentMascot role="coach" size={22} level={3} /> Coach</span>
-        {TOUR_QUESTION}
+        <span className="ts-who"><AgentMascot role="coach" size={22} level={3} /> {t("Coach")}</span>
+        {t(TOUR_QUESTION)}
       </div>
 
       {picked ? (
         <>
-          <div className="ts-bubble you">{picked}</div>
+          <div className="ts-bubble you">{t(picked)}</div>
           <div className="ts-bubble agent">
-            <span className="ts-who"><AgentMascot role="coach" size={22} level={3} /> Coach</span>
-            <Typed key={picked} text={TOUR_REPLIES[picked] ?? ""} />
+            <span className="ts-who"><AgentMascot role="coach" size={22} level={3} /> {t("Coach")}</span>
+            <Typed key={picked} text={t(TOUR_REPLIES[picked] ?? "")} />
           </div>
-          <button className="ts-again" onClick={() => setPicked(null)}>Try another answer</button>
+          <button className="ts-again" onClick={() => setPicked(null)}>{t("Try another answer")}</button>
         </>
       ) : (
         <div className="ts-choices">
           {TOUR_CHOICES.map(c => (
-            <button key={c} onClick={() => setPicked(c)}>{c}</button>
+            <button key={c} onClick={() => setPicked(c)}>{t(c)}</button>
           ))}
         </div>
       )}
-      <p className="ts-note">You can always type instead — the buttons are a shortcut, never the only way.</p>
+      <p className="ts-note">{t("You can always type instead — the buttons are a shortcut, never the only way.")}</p>
     </div>
   );
 }
@@ -489,10 +500,11 @@ function BuildScene() {
 }
 
 function MemoryScene() {
+  const t = useT();
   return (
     <div className="ts-memory">
       <div className="ts-proj past">
-        <span className="ts-proj-h">Last project</span>
+        <span className="ts-proj-h">{t("Last project")}</span>
         <b>Warehouse rollout</b>
       </div>
 
@@ -505,10 +517,10 @@ function MemoryScene() {
       </div>
 
       <div className="ts-proj next">
-        <span className="ts-proj-h">This project</span>
+        <span className="ts-proj-h">{t("This project")}</span>
         <b>Supplier portal</b>
       </div>
-      <p className="ts-note">Nothing is shared between accounts — an agent only remembers what it learned with you.</p>
+      <p className="ts-note">{t("Nothing is shared between accounts — an agent only remembers what it learned with you.")}</p>
     </div>
   );
 }
@@ -521,6 +533,7 @@ function MemoryScene() {
  * want it.
  */
 function PaintScene() {
+  const t = useT();
   const [accent, setAccent] = useState<Accent>(() => readAccent());
   const { theme, setTheme } = useTheme();
   const appearance = useAppearance();
@@ -533,7 +546,7 @@ function PaintScene() {
   return (
     <div className="ts-paint">
       <div className="ts-set">
-        <span className="ts-set-l">Accent</span>
+        <span className="ts-set-l">{t("Accent")}</span>
         <div className="ts-swatches">
           {ACCENTS.map(a => (
             <button key={a.id} className={`ts-sw${accent.id === a.id ? " on" : ""}`}
@@ -547,45 +560,46 @@ function PaintScene() {
       </div>
 
       <div className="ts-set">
-        <span className="ts-set-l">Light or dark</span>
-        <div className="ts-seg" role="group" aria-label="Theme">
+        <span className="ts-set-l">{t("Light or dark")}</span>
+        <div className="ts-seg" role="group" aria-label={t("Theme")}>
           {([["light", "Light", IconSun], ["dark", "Dark", IconMoon], ["system", "System", IconMonitor]] as const)
             .map(([id, label, Ic]) => (
               <button key={id} className={theme === id ? "on" : ""} aria-pressed={theme === id}
-                onClick={() => setTheme(id)}><Ic size={13} />{label}</button>
+                onClick={() => setTheme(id)}><Ic size={13} />{t(label)}</button>
             ))}
         </div>
       </div>
 
       <div className="ts-set">
-        <span className="ts-set-l">Glass</span>
-        <div className="ts-seg" role="group" aria-label="How much glass">
+        <span className="ts-set-l">{t("Glass")}</span>
+        <div className="ts-seg" role="group" aria-label={t("How much glass")}>
           {GLASS_OPTIONS.map(o => (
             <button key={o.id} className={appearance.glass === o.id ? "on" : ""}
-              aria-pressed={appearance.glass === o.id} data-tooltip={o.hint}
-              onClick={() => setAppearance({ glass: o.id })}>{o.label}</button>
+              aria-pressed={appearance.glass === o.id} data-tooltip={t(o.hint)}
+              onClick={() => setAppearance({ glass: o.id })}>{t(o.label)}</button>
           ))}
         </div>
       </div>
 
-      <p className="ts-note">Saved on this browser. Settings has the rest — your name, the plan, how wide each conversation sits.</p>
+      <p className="ts-note">{t("Saved on this browser. Settings has the rest — your name, the plan, how wide each conversation sits.")}</p>
     </div>
   );
 }
 
 const RECAP = [
-  { Ic: IconUsers, t: "Pick two agents", d: "One Consultant, one Coach. You can change either later." },
-  { Ic: IconNodes, t: "Answer as you go", d: "They ask, you answer, the rail shows how far along you are." },
-  { Ic: IconDoc, t: "Take the documents", d: "Both export when they are done. Nothing to assemble by hand." },
+  { Ic: IconUsers, head: "Pick two agents", d: "One Consultant, one Coach. You can change either later." },
+  { Ic: IconNodes, head: "Answer as you go", d: "They ask, you answer, the rail shows how far along you are." },
+  { Ic: IconDoc, head: "Take the documents", d: "Both export when they are done. Nothing to assemble by hand." },
 ];
 
 function GoScene() {
+  const t = useT();
   return (
     <ul className="ts-go">
-      {RECAP.map(({ Ic, t, d }) => (
-        <li key={t}>
+      {RECAP.map(({ Ic, head, d }) => (
+        <li key={head}>
           <span className="ts-go-ic" aria-hidden="true"><Ic size={15} /></span>
-          <b>{t}</b><span>{d}</span>
+          <b>{t(head)}</b><span>{t(d)}</span>
         </li>
       ))}
     </ul>

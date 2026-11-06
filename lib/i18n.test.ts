@@ -22,6 +22,12 @@ const FILES = [
   "components/layout/message-actions.tsx",
   "components/layout/chat/chat-message.tsx",
   "components/layout/agent-dashboard.tsx",
+  "components/layout/feedback-button.tsx",
+  "components/layout/deliverable-rail.tsx",
+  "components/layout/deliverable-view.tsx",
+  "components/layout/privacy-tab.tsx",
+  "components/layout/landing.tsx",
+  "app/(auth)/login/page.tsx",
 ];
 
 test("every literal passed to t() / tr() has its German", () => {

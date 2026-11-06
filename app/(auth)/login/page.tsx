@@ -14,6 +14,7 @@ import { Turnstile, TURNSTILE_SITE_KEY, type TurnstileHandle } from "@/component
 import { ConsentLink } from "@/components/layout/cookie-banner";
 import { nextFromLocation } from "@/lib/safe-next";
 import { INVITE_ONLY } from "@/lib/plans";
+import { useT } from "@/lib/language";
 
 type Mode = "signin" | "signup";
 const MODES: Mode[] = ["signin", "signup"];
@@ -29,16 +30,16 @@ type FieldErrors = { email?: string; password?: string };
  * strings are developer-facing ("Invalid login credentials"), and this is the
  * first screen anyone sees — it has to be plain and calm.
  */
-function friendlyError(raw: string): string {
+function friendlyError(raw: string, t: (en: string) => string): string {
   const m = raw.toLowerCase();
-  if (m.includes("invalid login credentials")) return "That email and password don't match.";
-  if (m.includes("email not confirmed")) return "Confirm your email first. The link is in your inbox.";
-  if (m.includes("already registered") || m.includes("already exists")) return "That email may already have an account. Try signing in.";
-  if (m.includes("rate limit") || m.includes("too many")) return "Too many attempts. Wait a minute, then try again.";
-  if (m.includes("captcha")) return "The security check didn't go through. Wait for the check box to tick, then try again.";
-  if (m.includes("password should be at least")) return "Use at least 8 characters.";
-  if (m.includes("invalid email") || m.includes("unable to validate email")) return "That email address doesn't look right.";
-  if (m.includes("network") || m.includes("failed to fetch")) return "No connection to the server. Check your internet.";
+  if (m.includes("invalid login credentials")) return t("That email and password don't match.");
+  if (m.includes("email not confirmed")) return t("Confirm your email first. The link is in your inbox.");
+  if (m.includes("already registered") || m.includes("already exists")) return t("That email may already have an account. Try signing in.");
+  if (m.includes("rate limit") || m.includes("too many")) return t("Too many attempts. Wait a minute, then try again.");
+  if (m.includes("captcha")) return t("The security check didn't go through. Wait for the check box to tick, then try again.");
+  if (m.includes("password should be at least")) return t("Use at least 8 characters.");
+  if (m.includes("invalid email") || m.includes("unable to validate email")) return t("That email address doesn't look right.");
+  if (m.includes("network") || m.includes("failed to fetch")) return t("No connection to the server. Check your internet.");
   return raw;
 }
 
@@ -50,6 +51,7 @@ const HERO_POINTS = [
 ];
 
 export default function LoginPage() {
+  const t = useT();
   const router = useRouter();
   const supabase = createClient();
   const { token, loading: authLoading } = useAuth();
@@ -123,11 +125,11 @@ export default function LoginPage() {
   function validate(checkPassword: boolean): FieldErrors {
     const next: FieldErrors = {};
     const mail = email.trim();
-    if (!mail) next.email = "Enter your email address.";
-    else if (!EMAIL_RE.test(mail)) next.email = "That email address doesn't look right.";
+    if (!mail) next.email = t("Enter your email address.");
+    else if (!EMAIL_RE.test(mail)) next.email = t("That email address doesn't look right.");
     if (checkPassword) {
-      if (!password) next.password = "Enter your password.";
-      else if (mode === "signup" && password.length < 8) next.password = "Use at least 8 characters.";
+      if (!password) next.password = t("Enter your password.");
+      else if (mode === "signup" && password.length < 8) next.password = t("Use at least 8 characters.");
     }
     return next;
   }
@@ -149,8 +151,8 @@ export default function LoginPage() {
     if (captchaToken) return captchaToken;
     setNote({
       text: captchaFailed
-        ? "The security check couldn't load. Turn off any content blocker for this page and reload."
-        : "One moment — the security check is still running.",
+        ? t("The security check couldn't load. Turn off any content blocker for this page and reload.")
+        : t("One moment — the security check is still running."),
       ok: false,
     });
     return null;
@@ -170,7 +172,7 @@ export default function LoginPage() {
         const { error } = await supabase.auth.signInWithPassword({
           email: email.trim(), password, options: { captchaToken: token },
         });
-        if (error) setNote({ text: friendlyError(error.message), ok: false });
+        if (error) setNote({ text: friendlyError(error.message, t), ok: false });
         else router.replace(nextFromLocation());
         return;
       }
@@ -184,11 +186,11 @@ export default function LoginPage() {
           captchaToken: token,
         },
       });
-      if (error) { setNote({ text: friendlyError(error.message), ok: false }); return; }
+      if (error) { setNote({ text: friendlyError(error.message, t), ok: false }); return; }
       // With email confirmation switched off, sign-up returns a session and the
       // user should just be let in instead of waiting for a mail that never comes.
       if (data.session) { router.replace(nextFromLocation()); return; }
-      setNote({ text: "Almost there. Confirm your email with the link we just sent you.", ok: true });
+      setNote({ text: t("Almost there. Confirm your email with the link we just sent you."), ok: true });
       setMode("signin");
     } finally {
       setBusy(null);
@@ -213,8 +215,8 @@ export default function LoginPage() {
     // Deliberately the same answer either way — it must not reveal whether an
     // account with that address exists.
     setNote(error
-      ? { text: friendlyError(error.message), ok: false }
-      : { text: "If that address has an account, a reset link is on its way.", ok: true });
+      ? { text: friendlyError(error.message, t), ok: false }
+      : { text: t("If that address has an account, a reset link is on its way."), ok: true });
   }
 
   async function googleSignIn() {
@@ -225,14 +227,16 @@ export default function LoginPage() {
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
     // On success the browser leaves for Google, so only the failure path returns.
-    if (error) { setNote({ text: friendlyError(error.message), ok: false }); setBusy(null); }
+    if (error) { setNote({ text: friendlyError(error.message, t), ok: false }); setBusy(null); }
   }
 
   const signup = mode === "signup";
+  // The two links sit inside one sentence; German orders it differently.
+  const [termsBefore, termsMiddle, termsAfter] = t("By creating an account you accept the {agb} and acknowledge the {privacy}.", { agb: "\u0001", privacy: "\u0001" }).split("\u0001");
 
   return (
     <main className="auth">
-      <button className="auth-theme icon-btn" type="button" aria-label="Switch light or dark theme"
+      <button className="auth-theme icon-btn" type="button" aria-label={t("Switch light or dark theme")}
         onClick={toggleTheme}>
         <IconSun className="ico-when-dark" />
         <IconMoon className="ico-when-light" />
@@ -244,14 +248,14 @@ export default function LoginPage() {
             <BrandLogo size={32} />
           </div>
 
-          <h1>{signup ? "Create your account" : "Welcome back"}</h1>
+          <h1>{signup ? t("Create your account") : t("Welcome back")}</h1>
           <p className="auth-sub">
             {signup
-              ? "Two agents, one project. It takes a minute to set up."
-              : "Sign in to pick up where you left off."}
+              ? t("Two agents, one project. It takes a minute to set up.")
+              : t("Sign in to pick up where you left off.")}
           </p>
 
-          <div className="auth-tabs" role="tablist" aria-label="Sign in or create an account">
+          <div className="auth-tabs" role="tablist" aria-label={t("Sign in or create an account")}>
             {MODES.map(m => {
               const on = mode === m;
               return (
@@ -259,7 +263,7 @@ export default function LoginPage() {
                   role="tab" type="button" id={ids.tab(m)} aria-selected={on} aria-controls={ids.panel}
                   tabIndex={on ? 0 : -1} className={on ? "on" : ""}
                   onClick={() => switchMode(m)} onKeyDown={onTabKey}>
-                  {m === "signin" ? "Sign in" : "Create account"}
+                  {m === "signin" ? t("Sign in") : t("Create account")}
                 </button>
               );
             })}
@@ -268,14 +272,14 @@ export default function LoginPage() {
           <form onSubmit={submit} noValidate role="tabpanel" id={ids.panel} aria-labelledby={ids.tab(mode)}>
             {signup && (
               <div className="field">
-                <label htmlFor={ids.name}>Your name</label>
+                <label htmlFor={ids.name}>{t("Your name")}</label>
                 <input id={ids.name} type="text" value={name} autoComplete="name"
                   placeholder="Alex" onChange={e => setName(e.target.value)} />
               </div>
             )}
 
             <div className="field">
-              <label htmlFor={ids.email}>Email</label>
+              <label htmlFor={ids.email}>{t("Email")}</label>
               <input id={ids.email} ref={emailRef} type="email" required value={email} autoComplete="email"
                 inputMode="email" placeholder="name@company.com"
                 aria-invalid={errors.email ? true : undefined}
@@ -286,10 +290,10 @@ export default function LoginPage() {
 
             <div className="field">
               <div className="auth-label-row">
-                <label htmlFor={ids.pw}>Password</label>
+                <label htmlFor={ids.pw}>{t("Password")}</label>
                 {!signup && (
                   <button type="button" className="auth-link" onClick={forgotPassword} disabled={!!busy}>
-                    Forgot it?
+                    {t("Forgot it?")}
                   </button>
                 )}
               </div>
@@ -302,11 +306,11 @@ export default function LoginPage() {
                 {/* A toggle, so the label stays put and aria-pressed says which
                     state it is in. */}
                 <button type="button" onClick={() => setShowPw(v => !v)}
-                  aria-label="Show password" aria-pressed={showPw}>
+                  aria-label={t("Show password")} aria-pressed={showPw}>
                   {showPw ? <IconEyeOff size={16} /> : <IconEye size={16} />}
                 </button>
               </div>
-              {signup && <p className="field-hint" id={ids.pwHint}>At least 8 characters</p>}
+              {signup && <p className="field-hint" id={ids.pwHint}>{t("At least 8 characters")}</p>}
               {errors.password && <p className="field-err" id={ids.pwErr}>{errors.password}</p>}
             </div>
 
@@ -321,21 +325,20 @@ export default function LoginPage() {
 
             <button className="btn-primary-wide" type="submit" disabled={!!busy}>
               {busy === "form"
-                ? <><span className="spinner" aria-hidden="true" /><span className="visually-hidden">{signup ? "Creating your account…" : "Signing in…"}</span></>
-                : <>{signup ? "Create account" : "Sign in"}<IconArrow /></>}
+                ? <><span className="spinner" aria-hidden="true" /><span className="visually-hidden">{signup ? t("Creating your account…") : t("Signing in…")}</span></>
+                : <>{signup ? t("Create account") : t("Sign in")}<IconArrow /></>}
             </button>
             {/* Before the click, not after: the key comes next (closed beta),
                 and the terms are named where the account is made. */}
             {signup && (
               <p className="auth-terms">
-                {INVITE_ONLY && <>Closed beta: after this you enter the key from your invitation. </>}
-                By creating an account you accept the <Link href="/agb">AGB</Link> and
-                acknowledge the <Link href="/datenschutz">Datenschutzerklärung</Link>.
+                {INVITE_ONLY && <>{t("Closed beta: after this you enter the key from your invitation.")} </>}
+                {termsBefore}<Link href="/agb">AGB</Link>{termsMiddle}<Link href="/datenschutz">{t("Privacy policy")}</Link>{termsAfter}
               </p>
             )}
           </form>
 
-          <div className="auth-sep"><span>or</span></div>
+          <div className="auth-sep"><span>{t("or")}</span></div>
 
           <button type="button" className="btn-google" onClick={googleSignIn} disabled={!!busy}>
             {busy === "google" ? <span className="spinner" aria-hidden="true" /> : (
@@ -346,7 +349,7 @@ export default function LoginPage() {
                 <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.96l3 2.33C4.67 5.16 6.66 3.58 9 3.58z" />
               </svg>
             )}
-            Continue with Google
+            {t("Continue with Google")}
           </button>
 
           <div className="auth-legal">
@@ -364,17 +367,17 @@ export default function LoginPage() {
           <div className="auth-mascots">
             <div className="am">
               <AgentMascot role="coach" size={68} enter />
-              <span>Coach</span>
+              <span>{t("Coach")}</span>
             </div>
             <div className="am">
               <AgentMascot role="consultant" size={68} enter />
-              <span>Consultant</span>
+              <span>{t("Consultant")}</span>
             </div>
           </div>
-          <span className="eyebrow">Train your AI project agents</span>
-          <h2>Your project, thought through by two agents who ask the right questions.</h2>
+          <span className="eyebrow">{t("Train your AI project agents")}</span>
+          <h2>{t("Your project, thought through by two agents who ask the right questions.")}</h2>
           <ul className="plist">
-            {HERO_POINTS.map(p => <li key={p}>{p}</li>)}
+            {HERO_POINTS.map(p => <li key={p}>{t(p)}</li>)}
           </ul>
         </div>
       </div>

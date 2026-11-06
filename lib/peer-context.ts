@@ -1,6 +1,6 @@
 import type { AgentType } from "@/lib/agents";
-import { parseMarkers, type TopicMarker } from "@/lib/message-markers";
-import { stripMarkerSyntax } from "@/lib/chat-input";
+import { parseMarkers, type TopicMarker } from "./message-markers.ts";
+import { stripMarkerSyntax } from "./chat-input.ts";
 import type { DeliverableDoc } from "@/components/layout/deliverable-view";
 
 /**
@@ -34,9 +34,19 @@ const MAX_TURNS = 24;
 /** One rambling answer must not eat the whole budget on its own. */
 const MAX_PER_TURN = 420;
 
-function shorten(text: string): string {
+/** The newest answer is the one the other agent most often has to react to
+ *  (the debate: three arguments and a question), so it is not cut at the
+ *  length that older turns are. */
+const MAX_NEWEST_TURN = 1600;
+
+function shorten(text: string, max = MAX_PER_TURN): string {
   const t = text.replace(/\s+/g, " ").trim();
-  return t.length <= MAX_PER_TURN ? t : `${t.slice(0, MAX_PER_TURN - 1).trimEnd()}…`;
+  if (t.length <= max) return t;
+  // Cut at a word, not in the middle of one, and say it was cut: a sentence
+  // that just stops reads to the model as a transcript that broke off.
+  const cut = t.slice(0, max - 1);
+  const at = cut.lastIndexOf(" ");
+  return `${(at > max * 0.6 ? cut.slice(0, at) : cut).trimEnd()}…`;
 }
 
 /**
@@ -53,6 +63,7 @@ export function peerTranscript(
 ): string {
   const lines: string[] = [];
   let budget = MAX_CHARS;
+  let newestAnswer = true;
 
   // Walk backwards so that when the budget runs out it is the oldest turns
   // that are dropped, then flip once at the end.
@@ -60,8 +71,13 @@ export function peerTranscript(
     const m = messages[i];
     // User turns lose marker syntax as well: a user can type "[[DOC: …]]",
     // and this text goes into the OTHER agent's system prompt.
-    const body = shorten(m.role === "assistant" ? parseMarkers(m.content).text : stripMarkerSyntax(m.content));
+    const isAnswer = m.role === "assistant";
+    const body = shorten(
+      isAnswer ? parseMarkers(m.content).text : stripMarkerSyntax(m.content),
+      isAnswer && newestAnswer ? MAX_NEWEST_TURN : MAX_PER_TURN,
+    );
     if (!body) continue;
+    if (isAnswer) newestAnswer = false;
     const line = `${m.role === "assistant" ? agentName : "Nutzer"}: ${body}`;
     if (line.length > budget) break;
     budget -= line.length + 1;
@@ -106,6 +122,9 @@ export interface PanelSnapshot {
   transcript: string;
   /** The last thing the agent said here, trimmed for a one-line preview. */
   lastLine: string;
+  /** Its stored conversation has been read. Until then the counts below are
+   *  zero because nothing was read yet, not because nothing was said. */
+  loaded: boolean;
   /** Replies this agent has given — the other panel counts them to decide
    *  when enough has happened to be worth speaking up about. */
   agentTurns: number;

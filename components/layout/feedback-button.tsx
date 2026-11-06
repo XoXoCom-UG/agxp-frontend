@@ -9,17 +9,19 @@ import { useAuth } from "@/lib/auth-context";
 import { FEEDBACK_MAX } from "@/lib/feedback-text";
 import { useDialogFocus } from "@/lib/use-dialog-focus";
 import { useExit } from "@/lib/use-exit";
+import { useT } from "@/lib/language";
 
 /**
  * The tester's way to tell us what is good or broken (sedinta 2026-10-23).
  * A tab on the edge of every signed-in screen; it opens the dialog below.
  */
 export function FeedbackButton() {
+  const t = useT();
   const [open, setOpen] = useState(false);
   return (
     <>
       <button className="fb-tab" onClick={() => setOpen(true)} aria-haspopup="dialog">
-        Feedback
+        {t("Feedback")}
       </button>
       {open && <FeedbackDialog onClose={() => setOpen(false)} />}
     </>
@@ -32,6 +34,7 @@ export function FeedbackButton() {
  * project open there is nothing to attach and the box is not offered.
  */
 function FeedbackDialog({ onClose }: { onClose: () => void }) {
+  const t = useT();
   const pathname = usePathname();
   const { user } = useAuth();
   const projectId = projectIdFromPath(pathname);
@@ -67,45 +70,45 @@ function FeedbackDialog({ onClose }: { onClose: () => void }) {
       setState("sent");
     } catch (e) {
       setState("idle");
-      setError((e as Error).message || "The feedback couldn't be sent. Try again.");
+      setError((e as Error).message || t("The feedback couldn't be sent. Try again."));
     }
   }
 
   return createPortal(
     <div className={`modal-overlay${closing ? " is-closing" : ""}`}
       onClick={e => { if (e.target === e.currentTarget) close(); }}>
-      <div ref={ref} className="modal share-modal" role="dialog" aria-modal="true" aria-label="Send feedback">
+      <div ref={ref} className="modal share-modal" role="dialog" aria-modal="true" aria-label={t("Send feedback")}>
         <div className="share-head">
-          <h2>Send feedback</h2>
-          <button className="share-close" onClick={close} aria-label="Close"><IconX size={14} /></button>
+          <h2>{t("Send feedback")}</h2>
+          <button className="share-close" onClick={close} aria-label={t("Close")}><IconX size={14} /></button>
         </div>
         {state === "sent" ? (
           <div className="fb-done" role="status">
-            <p className="fb-done-title"><IconCheck size={16} /> Thank you, we got it.</p>
-            <p className="fb-done-lead">Here is what happens next:</p>
+            <p className="fb-done-title"><IconCheck size={16} /> {t("Thank you, we got it.")}</p>
+            <p className="fb-done-lead">{t("Here is what happens next:")}</p>
             <ul className="fb-next">
-              <li>The team reads feedback in order of how serious it is, the most serious first.</li>
-              {serious && <li>You marked it as a serious problem, so we alert the team straight away.</li>}
-              {withChat && projectId && <li>The conversation of this project went with it. Only the team can read it.</li>}
+              <li>{t("The team reads feedback in order of how serious it is, the most serious first.")}</li>
+              {serious && <li>{t("You marked it as a serious problem, so we alert the team straight away.")}</li>}
+              {withChat && projectId && <li>{t("The conversation of this project went with it. Only the team can read it.")}</li>}
               <li>
-                If we have a question, we may write to {user?.email ?? "the email of your account"}.
-                We cannot answer every message, but we read all of them and use them to improve AgentiX.
+                {t("If we have a question, we may write to {email}. We cannot answer every message, but we read all of them and use them to improve AgentiX.",
+                  { email: user?.email ?? t("the email of your account") })}
               </li>
             </ul>
             <div className="report-actions">
-              <button ref={doneButton} className="btn btn-hero" onClick={close}>Close</button>
+              <button ref={doneButton} className="btn btn-hero" onClick={close}>{t("Close")}</button>
             </div>
           </div>
         ) : (
           <>
             <textarea ref={field} className="report-note fb-note" value={message} maxLength={FEEDBACK_MAX} rows={5}
-              aria-label="What worked, what didn't, what is missing?"
-              placeholder="What worked, what didn't, what is missing?" onChange={e => setMessage(e.target.value)} />
+              aria-label={t("What worked, what didn't, what is missing?")}
+              placeholder={t("What worked, what didn't, what is missing?")} onChange={e => setMessage(e.target.value)} />
             <label className="fb-check">
               <input type="checkbox" checked={serious} onChange={e => setSerious(e.target.checked)} />
               <span>
-                <strong>This is a serious problem</strong>
-                <small>Something is broken or blocks you. The team gets an email right away.</small>
+                <strong>{t("This is a serious problem")}</strong>
+                <small>{t("Something is broken or blocks you. The team gets an email right away.")}</small>
               </span>
             </label>
             {/* Always drawn, so it is clear the choice exists; with no project open
@@ -114,24 +117,24 @@ function FeedbackDialog({ onClose }: { onClose: () => void }) {
               <input type="checkbox" checked={projectId ? withChat : false} disabled={!projectId}
                 onChange={e => setWithChat(e.target.checked)} />
               <span>
-                <strong>Send this project&rsquo;s conversation too</strong>
+                <strong>{t("Send this project’s conversation too")}</strong>
                 <small>
                   {projectId
-                    ? "Both chats, so the team can see what happened. They may contain business details."
-                    : "Open a project first: there is no conversation to send from here."}
+                    ? t("Both chats, so the team can see what happened. They may contain business details.")
+                    : t("Open a project first: there is no conversation to send from here.")}
                 </small>
               </span>
             </label>
             <p className="report-hint">
               {withChat
-                ? "Sent to the AgentiX team: your message and both conversations of this project."
-                : "Sent to the AgentiX team: only your message. Nothing from your chats."}
-              {serious && " The email carries your message, never the conversation."}
+                ? t("Sent to the AgentiX team: your message and both conversations of this project.")
+                : t("Sent to the AgentiX team: only your message. Nothing from your chats.")}
+              {serious && ` ${t("The email carries your message, never the conversation.")}`}
             </p>
             {error && <p className="ss-error" role="alert">{error}</p>}
             <div className="report-actions">
               <button className="btn btn-hero" disabled={!message.trim() || state === "sending"} onClick={send}>
-                {state === "sending" ? "Sending…" : "Send feedback"}
+                {state === "sending" ? t("Sending…") : t("Send feedback")}
               </button>
             </div>
           </>
