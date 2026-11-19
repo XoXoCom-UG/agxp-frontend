@@ -11,7 +11,8 @@
 export function safeNext(raw: string | null | undefined): string {
   const fallback = "/dashboard";
   if (!raw) return fallback;
-  if (!/^\/dashboard(?:[/?#]|$)/.test(raw)) return fallback;
+  // /metrics too: the metrics dashboard (migration 0033) sits outside /dashboard.
+  if (!/^\/(?:dashboard|metrics)(?:[/?#]|$)/.test(raw)) return fallback;
   if (/[\\\s]|\/\//.test(raw)) return fallback;
   return raw;
 }

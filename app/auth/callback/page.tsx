@@ -1,5 +1,6 @@
 "use client";
 
+import { afterLogin } from "@/lib/after-login";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -24,20 +25,20 @@ export default function AuthCallbackPage() {
 
     (async () => {
       const { data: s0 } = await supabase.auth.getSession();
-      if (s0.session) { router.replace("/dashboard"); return; }
+      if (s0.session) { router.replace(afterLogin()); return; }
 
       const code = new URLSearchParams(window.location.search).get("code");
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (cancelled) return;
-        if (!error) { router.replace("/dashboard"); return; }
+        if (!error) { router.replace(afterLogin()); return; }
       }
 
       let tries = 0;
       iv = setInterval(async () => {
         tries++;
         const { data } = await supabase.auth.getSession();
-        if (data.session) { clearInterval(iv); router.replace("/dashboard"); }
+        if (data.session) { clearInterval(iv); router.replace(afterLogin()); }
         else if (tries > 12) { clearInterval(iv); setFailed(true); }
       }, 400);
     })();

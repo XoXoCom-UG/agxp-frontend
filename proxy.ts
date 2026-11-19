@@ -11,7 +11,7 @@ import type { NextRequest } from "next/server";
  * This is defense-in-depth / UX only. Real authorization happens on the
  * backend: every API call is validated against the Bearer token server-side.
  */
-const PROTECTED_PREFIXES = ["/dashboard"];
+const PROTECTED_PREFIXES = ["/dashboard", "/metrics"];
 
 function hasSupabaseSession(req: NextRequest): boolean {
   return req.cookies
@@ -59,5 +59,5 @@ export function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/dashboard/:path*", "/login"],
+  matcher: ["/", "/dashboard/:path*", "/metrics/:path*", "/metrics", "/login"],
 };
