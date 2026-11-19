@@ -8749,17 +8749,25 @@ html.light .tour-art{ mix-blend-mode:multiply; opacity:.15; }
      would think to drag. The order here follows the DOM — the guides live
      inside .tour-words, so an `order` on them was never going to move them
      past a sibling of their parent. */
-  .tour-main{ grid-template-columns:minmax(0,1fr); align-content:start; gap:var(--sp-5); min-height:0; }
+  /* `flex:0 0 auto`, not the desktop `1 1 auto`: with shrink allowed the grid
+     was squeezed below its own content, the scene spilled out of it and sat
+     on top of the footer. Sized by its content, the stage is what scrolls. */
+  .tour-main{ flex:0 0 auto; grid-template-columns:minmax(0,1fr); align-content:start; gap:var(--sp-5); min-height:0; }
   .tour-title{ max-width:none; }
   .tour-guides{ margin-top:var(--sp-4); }
-  .tour-foot{ gap:var(--sp-3); }
+  /* The footer stays at the bottom of the screen however long the step is, so
+     Next is never something you scroll to find. */
+  .tour-stage{ padding-bottom:0; }
+  .tour-foot{
+    position:sticky; bottom:0; z-index:2; margin-top:auto;
+    flex-direction:column; align-items:stretch; flex-wrap:nowrap; gap:var(--sp-2);
+    padding:var(--sp-3) 0 calc(var(--sp-3) + env(safe-area-inset-bottom, 0px));
+    background:linear-gradient(to bottom, transparent, var(--background) 22%);
+  }
   .tour-nav{ width:100%; }
   .tour-next{ flex:1; justify-content:center; }
 }
-@media (max-width:560px){
-  .tour-rail li + li::before{ width:8px; }
-  .tour-rail li.on .tour-tag{ max-width:72px; }
-}
+
 
 
 /* ===========================================================================
@@ -8912,6 +8920,55 @@ html.light .walk-hole{ box-shadow:0 0 0 9999px rgba(12,18,32,0.5),
    `inset:0` on a fixed element measures past the browser chrome, which put
    the Next button under the URL bar. */
 .tour{ height:100dvh; }
+
+/* --- Phone ---------------------------------------------------------------- */
+@media (max-width:560px){
+  .tour-stage{
+    padding-left:max(16px, env(safe-area-inset-left, 0px));
+    padding-right:max(16px, env(safe-area-inset-right, 0px));
+    padding-top:max(10px, env(safe-area-inset-top, 0px));
+    gap:var(--sp-3);
+  }
+  .tour-main{ gap:var(--sp-4); padding-bottom:var(--sp-3); }
+  .tour-title{ font-size:clamp(24px, 7vw, 30px); }
+  .tour-line{ font-size:var(--text-sm); line-height:1.55; }
+  .tour-guides{ margin-top:var(--sp-3); }
+  .tour-scene > *{ padding:var(--sp-4); border-radius:18px; }
+  .ts-orbit{ width:min(190px, 56%); }
+  .ts-hello{ gap:var(--sp-4); }
+
+  /* Nine steps as a progress bar you can tap, not nine dots you cannot: the
+     dot is a 4px stripe, the button around it a comfortable thumb target,
+     and the current step's name is already in the heading. */
+  .tour-rail{ width:100%; gap:5px; }
+  .tour-rail li{ flex:1 1 0; }
+  .tour-rail li + li::before{ display:none; }
+  .tour-rail button{ width:100%; justify-content:center; padding:12px 0; }
+  .tour-tag{ display:none; }
+  .tour-dot{ width:100%; height:4px; border-radius:2px; background:var(--border); border:none; }
+  .tour-rail li.done .tour-dot{ background:color-mix(in srgb, var(--acc) 55%, transparent); }
+  .tour-rail li.on .tour-dot{ background:var(--acc); box-shadow:none; }
+
+  .tour-back{ height:46px; padding:0 18px; }
+  .tour-next{ height:46px; }
+
+  /* 16px or iOS zooms the page when the name field takes focus. */
+  .ts-input{ font-size:16px; }
+  .ts-seg button{ height:40px; }
+  .ts-choices button{ padding:10px 14px; }
+  .ts-choices{ align-self:stretch; }
+  .ts-sw{ width:40px; height:40px; }
+  .ts-swatches{ gap:10px; }
+
+  /* The walk-through note: thumb-sized buttons, and a little less padding so
+     the note covers less of the control it is describing. */
+  .walk-bubble{ padding:var(--sp-4); }
+  .walk-nav{ margin-top:var(--sp-4); gap:8px; }
+  .walk-back, .walk-next{ height:40px; }
+  .walk-back{ padding:0 14px; }
+  .walk-next{ padding:0 18px; }
+  .walk-skip{ min-height:40px; padding:0 4px; }
+}
 
 
 /* ===========================================================================

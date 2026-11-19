@@ -14,6 +14,7 @@ import { GLASS_OPTIONS, useAppearance, setAppearance } from "@/lib/appearance";
 import { useAuth } from "@/lib/auth-context";
 import { useDialogFocus } from "@/lib/use-dialog-focus";
 import { useExit } from "@/lib/use-exit";
+import { useMediaQuery } from "@/lib/use-media-query";
 import { useT } from "@/lib/language";
 import {
   TOUR_STEPS, TOUR_CHOICES, TOUR_QUESTION, TOUR_REPLIES, type Scene,
@@ -88,6 +89,10 @@ export function Tour({ onDone }: { onDone: (completed: boolean) => void }) {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [go, finish]);
+
+  // On a phone the stage scrolls, and a new step should open at its top
+  // rather than wherever the last one was left.
+  useEffect(() => { stage.current?.scrollTo({ top: 0 }); }, [i]);
 
   // The page behind must not scroll under the stage.
   useEffect(() => {
@@ -188,7 +193,10 @@ function Guides({ scene, speaker }: { scene: Scene; speaker?: "consultant" | "co
     return () => window.clearTimeout(t);
   }, []);
 
-  const size = big ? 110 : 76;
+  // On a phone the pair shares the screen with a title, a sentence and the
+  // scene itself, so they shrink rather than push the scene below the fold.
+  const phone = useMediaQuery("(max-width:560px)");
+  const size = phone ? (big ? 84 : 52) : (big ? 110 : 76);
   return (
     <div className={`tour-guides${big ? " big" : ""}`} aria-hidden="true">
       {(["consultant", "coach"] as const).map(role => (
