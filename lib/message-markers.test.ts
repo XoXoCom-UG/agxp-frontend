@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseMarkers, streamingText, streamIsDocument, looksLikeDocument } from "./message-markers.ts";
+import { parseMarkers, streamingText, streamIsDocument, looksLikeDocument, isYesNoChoice } from "./message-markers.ts";
 
 /** A realistic reply: prose, a question, and every marker the prompt asks for. */
 const REPLY = [
@@ -139,10 +139,38 @@ test("[[CHOICES+]] marks a question that takes several answers", () => {
   assert.equal(p.text.trim(), "Welche Begriffe kennst du?");
 });
 
-test("a plain [[CHOICES]] still picks exactly one", () => {
-  const p = parseMarkers("Wie lange?\n[[CHOICES: Unter 5 Minuten|6-8 Minuten]]");
-  assert.equal(p.multi, false);
-  assert.deepEqual(p.choices, ["Unter 5 Minuten", "6-8 Minuten"]);
+test("a plain [[CHOICES]] lets several be ticked too (Ana, 2026-11-20)", () => {
+  // The question from the screenshot: the agent left the + off, and it was
+  // one tap per answer.
+  const p = parseMarkers("Wie viele E-Mails pro Tag?\n[[CHOICES: Unter 10 pro Tag|10-30 pro Tag|Mehr als 30 pro Tag|Weiß ich nicht genau]]");
+  assert.equal(p.multi, true);
+  assert.deepEqual(p.choices, ["Unter 10 pro Tag", "10-30 pro Tag", "Mehr als 30 pro Tag", "Weiß ich nicht genau"]);
+});
+
+test("a yes/no question keeps its one-tap buttons, in every language", () => {
+  for (const list of [
+    "Ja|Nein",
+    "Ja, erstelle es|Nein, erst noch etwas klären",
+    "Ja, gerne|Noch nicht|Weiß nicht",
+    "Yes, write it now|Not yet",
+    "Yes|No|Not sure",
+    "Da|Nu",
+    "Da, te rog|Nu încă|Nu știu",
+    "„Ja“|– Nein",
+  ]) {
+    const p = parseMarkers(`Frage?\n[[CHOICES: ${list}]]`);
+    assert.equal(p.multi, false, list);
+  }
+  // A + does not turn a yes/no question into ticks.
+  assert.equal(parseMarkers("[[CHOICES+: Ja|Nein]]").multi, false);
+});
+
+test("options that only look like yes/no are still a multiple choice", () => {
+  assert.equal(isYesNoChoice(["Nur intern", "Daten fehlen", "Notizen"]), false);
+  assert.equal(isYesNoChoice(["Ja", "Vertrieb", "Marketing"]), false);
+  // Only "I don't know" is not a yes/no question either.
+  assert.equal(isYesNoChoice(["Weiß nicht", "Keine Ahnung"]), false);
+  assert.equal(isYesNoChoice(["Nopal", "Okapi"]), false);
 });
 
 test("the + is never read as part of the first option", () => {

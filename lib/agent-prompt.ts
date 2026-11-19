@@ -28,13 +28,16 @@ const CHOICES_INSTRUCTION =
   `nur ein Vorschlag). Nur wenn deine Antwort mit GAR KEINER Frage endet, lässt du den Marker weg. ` +
   `Der Marker erscheint nie im sichtbaren Text — er wird vom Frontend herausgefiltert und als Buttons ` +
   `dargestellt.` +
-  `\n\nWenn auf deine Frage MEHRERE der Optionen gleichzeitig zutreffen können — "Welche dieser ` +
-  `Begriffe kennst du?", "Welche Abteilungen sind betroffen?", "Was bremst euch?", "Welche Ziele ` +
-  `habt ihr?" — schreibst du stattdessen ein PLUS hinter CHOICES: ` +
-  `[[CHOICES+: Option A|Option B|Option C|Keinen davon]]. Der Nutzer kann dann mehrere ankreuzen ` +
-  `und sie zusammen abschicken. Das ist der Normalfall, sobald sich die Optionen nicht gegenseitig ` +
-  `ausschließen: im Zweifel mit Plus. Ohne Plus nur, wenn es wirklich genau EINE Antwort gibt — ` +
-  `ja/nein, entweder/oder, "Soll ich das Dokument erstellen?", eine Zahl oder Größe, eine Rangfolge.`;
+  `\n\nDie App lässt den Nutzer bei JEDER Optionsliste MEHRERE Optionen ankreuzen und zusammen ` +
+  `abschicken — außer bei einer Ja/Nein-Frage, dort antwortet ein Klick. Schreib deine Fragen und ` +
+  `Optionen deshalb so, dass auch zwei oder drei Kreuze zusammen Sinn ergeben ("Welche Abteilungen ` +
+  `sind betroffen?", "Was bremst euch?"), und biete, wo es passt, eine Option wie "Keinen davon" an. ` +
+  `Bekommst du mehrere Optionen zurück (durch Komma getrennt), gilt jede davon als Antwort. ` +
+  `Eine Ja/Nein-Frage — auch "Soll ich das Dokument jetzt erstellen?" — erkennt die App daran, dass ` +
+  `JEDE Option mit Ja oder Nein beginnt (in der Sprache des Gesprächs: Ja/Nein, Yes/No, Da/Nu; ` +
+  `"Noch nicht" und "Weiß nicht" zählen mit): [[CHOICES: Ja, erstelle es|Nein, erst noch etwas klären]]. ` +
+  `Schreib Ja/Nein-Optionen immer so, alle anderen nie. Das Plus aus [[CHOICES+: …]] ist nicht mehr ` +
+  `nötig.`;
 
 // Patryk's review (2026-09-02): the point of this app is the conversation
 // itself feeling like talking to a real consultant/coach — not an AI dumping

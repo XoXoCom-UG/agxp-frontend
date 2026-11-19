@@ -31,13 +31,17 @@ export interface ParsedMessage {
   text: string;
   choices: string[];
   /**
-   * The question takes more than one answer ([[CHOICES+: ...]]).
+   * The options are ticked and sent together instead of answering on one tap.
    *
    * Some questions are not a fork in the road. "Which of these terms do you
    * already know?" is true of several at once, and offering it as one-tap
    * buttons forced a wrong answer — whichever was tapped, the rest were
-   * silently "no". The agent marks those with a +, and the UI then lets the
-   * options be toggled and sent together.
+   * silently "no". At first the agent marked those with a + ([[CHOICES+]]),
+   * but it left the + off whenever the options looked exclusive, and people
+   * still could not pick two (Ana, 2026-11-20: "vreau la majoritatea în afară
+   * de cele cu yes or no să pot selecta mai multe"). So the app decides now:
+   * every list is a multiple choice except a yes/no one (isYesNoChoice). The
+   * + is still read, and no longer needed.
    */
   multi: boolean;
   progress: number | null;
@@ -53,6 +57,33 @@ export interface ParsedMessage {
   title: ProjectTitle | null;
   /** Files attached to this message ([[FILE: path | name | mime]]). */
   files: FileRef[];
+}
+
+/*
+ * What a yes/no answer starts with, in the languages people write here
+ * (German, English, Romanian). Matched at the start of the option and as a
+ * whole word, so "Ja, erstelle das Dokument" is a yes and "Nur intern" is not
+ * a "nu".
+ */
+const YES = /^(ja|jawohl|klar|na klar|gern|gerne|genau|yes|yeah|yep|sure|ok|okay|da|sigur)(?![\p{L}\d])/iu;
+const NO = /^(nein|nee|noch nicht|lieber nicht|nicht jetzt|später|no|nope|not yet|not now|later|nu|încă nu|inca nu|mai târziu|mai tarziu)(?![\p{L}\d])/iu;
+/** The "I can't say" option a yes/no question often carries. */
+const UNSURE = /^(weiß nicht|weiss nicht|keine ahnung|unsicher|nicht sicher|vielleicht|i don'?t know|don'?t know|not sure|unsure|maybe|nu știu|nu stiu|poate)(?![\p{L}\d])/iu;
+
+/**
+ * Is this list the answers to a yes/no question? Every option is a yes, a no
+ * or an "I don't know", and at least one is a yes or a no. Those keep the
+ * one-tap buttons; every other list lets several options be ticked.
+ */
+export function isYesNoChoice(choices: string[]): boolean {
+  let decisive = 0;
+  for (const raw of choices) {
+    // Leading quotes, dashes or an emoji the model put in front.
+    const c = raw.replace(/^[^\p{L}\d]+/u, "").trim();
+    if (YES.test(c) || NO.test(c)) decisive++;
+    else if (!UNSURE.test(c)) return false;
+  }
+  return decisive > 0;
 }
 
 /**
@@ -74,10 +105,10 @@ export function parseMarkers(raw: string): ParsedMessage {
   // option: [[CHOICES: a|b]] picks one, [[CHOICES+: a|b]] picks several.
   const choicesMatch = text.match(/\[\[CHOICES\s*(\+?)\s*:\s*([\s\S]*?)\]\]/i);
   if (choicesMatch) {
-    multi = choicesMatch[1] === "+";
     choices = choicesMatch[2].split("|").map(s => s.trim()).filter(Boolean);
     // One option is not a choice, it is a button that answers for the user.
-    if (multi && choices.length < 2) multi = false;
+    // A yes/no question has one answer; everything else may have several.
+    multi = choices.length >= 2 && !isYesNoChoice(choices);
     text = text.replace(choicesMatch[0], "");
   }
 
