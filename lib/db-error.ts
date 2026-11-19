@@ -17,10 +17,38 @@ interface PgError {
 
 const FIX_SCRIPT = "supabase/fix_create_agent.sql";
 
+/**
+ * What the person reads when the request never reached the database. It is
+ * the English key of a German translation (lib/i18n.ts), so the screens put
+ * it through tr() like their own words.
+ */
+export const NETWORK_ERROR = "The connection to the server dropped. Check your internet connection and try again.";
+
+/** The browser could not send the request at all: offline, a dropped
+ *  connection, a blocked request. Chrome, Safari and Firefox each word it
+ *  differently, and supabase-js passes their text on as the message. */
+export function isNetworkError(e: unknown): boolean {
+  const msg = String((e as { message?: unknown } | null)?.message ?? "");
+  return /failed to fetch|load failed|networkerror|network request failed|fetch failed/i.test(msg);
+}
+
+/** A stack trace is for the console, never for the screen. supabase-js puts
+ *  the browser's whole stack in `details` when a request fails. */
+function looksLikeStack(s: string): boolean {
+  return /\n\s*at |\bat .+\(.+:\d+:\d+\)/.test(s);
+}
+
 export function describeDbError(e: unknown, what = "The write"): string {
   const err = (e ?? {}) as PgError;
+  // Tested with a dropped request (2026-11-19): the screen showed
+  // "TypeError: Failed to fetch at window.fetch (<anonymous>:9:11) at …",
+  // the whole stack, and nothing a person could do with it.
+  if (isNetworkError(e)) {
+    console.warn(`[db] ${what} failed:`, e);
+    return NETWORK_ERROR;
+  }
   const base = err.message || "Unknown database error.";
-  const extra = [err.details, err.hint].filter(Boolean).join(" — ");
+  const extra = [err.details, err.hint].filter(s => s && !looksLikeStack(s)).join(" — ");
 
   // A plan limit is not a fault, and it already carries a sentence written
   // for the person who hit it. Passing it through here means every call site

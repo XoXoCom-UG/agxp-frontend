@@ -361,6 +361,12 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
         setProject(p);
         window.history.replaceState(null, "", `/dashboard/project/${p.id}`);
         return p;
+      }, e => {
+        // A failed attempt must not be the answer forever: kept, every Retry
+        // and every later pick got the same rejection back without asking
+        // the database again, and the buttons simply did nothing.
+        creating.current = null;
+        throw e;
       });
     }
     return creating.current;
@@ -502,7 +508,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
           <IconAlert size={16} />
           <div className="ie-text">
             <p className="ie-title">{tr("This task could not be loaded.")}</p>
-            <p className="ie-detail">{loadError}</p>
+            <p className="ie-detail">{tr(loadError)}</p>
           </div>
           <button className="btn btn-ghost" onClick={retryLoad}>{tr("Retry")}</button>
         </div>
@@ -561,7 +567,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
         {changeError && (
           <div className="inline-error" role="alert">
             <IconAlert size={14} />
-            <p className="ie-detail">{changeError.message}</p>
+            <p className="ie-detail">{tr(changeError.message)}</p>
             <button className="btn btn-ghost" onClick={() => changeAgent(changeError.role)}>{tr("Retry")}</button>
             <button className="icon-btn" aria-label={tr("Dismiss")} onClick={() => setChangeError(null)}><IconX size={12} /></button>
           </div>

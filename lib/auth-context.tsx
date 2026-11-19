@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { Session, User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase";
 import { scopeToUser } from "@/lib/user-scope";
+import { forgetEntitlement } from "@/lib/entitlement";
 
 interface AuthContextType {
   session: Session | null;
@@ -61,6 +62,16 @@ function clearStaleAuthCookies(): number {
   return names.length;
 }
 
+/** The same token for the same account, with nothing about the account changed. */
+function sameSession(a: Session | null, b: Session | null): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return a.access_token === b.access_token
+    && a.user?.id === b.user?.id
+    && a.user?.updated_at === b.user?.updated_at
+    && JSON.stringify(a.user?.user_metadata) === JSON.stringify(b.user?.user_metadata);
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -89,25 +100,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    /*
+     * Supabase announces the session again when the tab comes back into view,
+     * as a fresh object holding the same token. Taking it as new re-rendered
+     * every screen under this provider — both chats with every message — each
+     * time someone switched back to the tab. Only a real change goes in.
+     */
+    let lastUid: string | null | undefined;
+    const take = (s: Session | null) => {
+      const uid = s?.user?.id ?? null;
+      // A different account: the plan read for the last one is not this one's.
+      if (lastUid !== undefined && uid !== lastUid) forgetEntitlement();
+      lastUid = uid;
+      setSession(prev => (sameSession(prev, s) ? prev : s));
+    };
+
     // Always resolve loading — even on error — so the app never hangs on the
     // skeleton (a corrupt session cookie used to strand it forever).
     supabase.auth.getSession()
       .then(({ data }) => {
-        setSession(data.session);
+        take(data.session);
         scopeToUser(data.session?.user?.id ?? null);
         // No session, but the proxy's gate cookie is still around: stale. Clear it
         // before any page acts on the missing token, or the redirect it triggers
         // bounces straight back here.
         if (!data.session) clearStaleAuthCookies();
       })
-      .catch(() => { setSession(null); clearStaleAuthCookies(); })
+      .catch(() => { take(null); clearStaleAuthCookies(); })
       .finally(() => setLoading(false));
 
     // Safety net: if getSession never settles (network stall), stop loading.
     const failsafe = setTimeout(() => setLoading(false), 5000);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
-      setSession(s);
+      take(s);
       // What the browser remembers about one account's work goes when the
       // account does (lib/user-scope.ts) — a shared computer must not show the
       // next person the last one's project name.

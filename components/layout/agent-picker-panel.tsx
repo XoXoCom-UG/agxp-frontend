@@ -70,7 +70,11 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   const [state, setState] = useState<PanelState>("empty");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [busy, setBusy] = useState(false);
+  /** The agent being brought in right now. Its Select shows a spinner, so the
+   *  click visibly landed: a button that only went grey for the second it took
+   *  read as a click that did nothing, and got pressed again. */
+  const [selecting, setSelecting] = useState<string | null>(null);
+  const busy = selecting !== null;
   const [draft, setDraft] = useState<TypeTemplate | null>(null);
   /** Which type bands are open in "train existing"; unset means the default. */
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
@@ -104,16 +108,17 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
   /** Picking is the action — no "are you sure?" in between. If it was the
    *  wrong one you simply pick again (Patryk, 2026-09-11). */
   async function select(agentId: string) {
-    setBusy(true);
+    if (selecting) return;
+    setSelecting(agentId);
     setSelectError(null);
     try {
       const p = project ?? await ensureProject();
-      onAssigned(await assignAgent(p.id, role, agentId, `${ROLE_LABEL[role]} selected`));
+      onAssigned(await assignAgent(p.id, role, agentId, `${ROLE_LABEL[role]} selected`, p));
     } catch (e) {
       // Without this the button just stops spinning and nothing happens —
       // indistinguishable from a click that didn't register.
       setSelectError({ agentId, message: describeDbError(e, `Choosing the ${ROLE_LABEL[role].toLowerCase()}`) });
-    } finally { setBusy(false); }
+    } finally { setSelecting(null); }
   }
 
   const showBack = state !== "empty";
@@ -167,7 +172,7 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
       {selectError && (
         <div className="inline-error" role="alert">
           <IconAlert size={14} />
-          <p className="ie-detail">{selectError.message}</p>
+          <p className="ie-detail">{tr(selectError.message)}</p>
           <button className="btn btn-ghost" disabled={busy} onClick={() => select(selectError.agentId)}>
             <IconRefresh size={12} />{tr("Retry")}
           </button>
@@ -294,8 +299,8 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
                               <div className="ag-foot">
                                 <span className="ag-proj"><IconUsers size={15} />{tr(total === 1 ? "1 project" : "{n} projects", { n: total })}</span>
                                 <button className="ag-select" disabled={busy} onClick={() => select(a.id)}
-                                  aria-label={tr("Select {name}", { name: a.name })}>
-                                  {tr("Select")} <IconArrow />
+                                  aria-label={tr("Select {name}", { name: a.name })} aria-busy={selecting === a.id || undefined}>
+                                  {tr("Select")} {selecting === a.id ? <span className="spinner" aria-hidden="true" /> : <IconArrow />}
                                 </button>
                               </div>
                             </div>
@@ -373,7 +378,7 @@ export function AgentPickerPanel({ role, project, agents, ensureProject, onAssig
         </>
 
       ) : (
-        <ConfigureView role={role} template={draft} onCreated={agent => { onAgentCreated(agent); select(agent.id); }} />
+        <ConfigureView role={role} template={draft} bringing={busy} onCreated={agent => { onAgentCreated(agent); select(agent.id); }} />
       )}
     </section>
   );
@@ -436,14 +441,19 @@ function DetailView({ agent, role, busy, totalProjects, onSelect }: {
           ))}</div>
         </div>
       )}
-      <button className="detail-select-btn" disabled={busy} onClick={() => onSelect(agent)}>
-        {tr(`Select ${ROLE_LABEL[role]}`)} <IconArrow />
+      <button className="detail-select-btn" disabled={busy} aria-busy={busy || undefined} onClick={() => onSelect(agent)}>
+        {tr(`Select ${ROLE_LABEL[role]}`)} {busy ? <span className="spinner" aria-hidden="true" /> : <IconArrow />}
       </button>
     </div>
   );
 }
 
-function ConfigureView({ role, template, onCreated }: { role: AgentType; template: TypeTemplate | null; onCreated: (a: Agent) => void }) {
+function ConfigureView({ role, template, bringing, onCreated }: {
+  role: AgentType; template: TypeTemplate | null;
+  /** The panel is bringing an agent into the project (its Select is running). */
+  bringing: boolean;
+  onCreated: (a: Agent) => void;
+}) {
   const tr = useT();
   const t = template ?? TYPE_CATALOG[role][0];
   const [name, setName] = useState(t.type);
@@ -455,6 +465,9 @@ function ConfigureView({ role, template, onCreated }: { role: AgentType; templat
   const [methodsAttempt, setMethodsAttempt] = useState(0);
   const [touched, setTouched] = useState(false);
   const [saving, setSaving] = useState(false);
+  /** The agent was made; only bringing it into the project is left. */
+  const [created, setCreated] = useState(false);
+  const working = saving || (created && bringing);
   const [error, setError] = useState<string | null>(null);
   const nameId = useId();
   const descId = useId();
@@ -487,12 +500,19 @@ function ConfigureView({ role, template, onCreated }: { role: AgentType; templat
     : null;
 
   async function submit() {
+    if (created) return;
     setTouched(true);
     setError(null);
     if (!valid || saving) return;
     setSaving(true);
     try {
       const agent = await createAgent({ type: role, name: name.trim(), description: description.trim(), tagline: t.sub, methodIds });
+      // From here the agent exists and is being brought into the project,
+      // which takes another moment. Create used to come back to life in
+      // between: it looked done-but-ignored, and a second press made a second
+      // agent with the same name. If bringing it in fails, the panel's own
+      // error has the Retry; this button has nothing left to do.
+      setCreated(true);
       onCreated(agent);
     } catch (e) {
       // The Postgres error code goes on screen — the bare RLS message alone
@@ -553,19 +573,20 @@ function ConfigureView({ role, template, onCreated }: { role: AgentType; templat
         {methodsError && (
           <div className="inline-error" role="alert">
             <IconAlert size={14} />
-            <p className="ie-detail">{methodsError}</p>
+            <p className="ie-detail">{tr(methodsError)}</p>
             <button className="btn btn-ghost" onClick={retryMethods}><IconRefresh size={12} />{tr("Retry")}</button>
           </div>
         )}
-        {error && <div className="field-err" role="alert">{error}</div>}
+        {error && <div className="field-err" role="alert">{tr(error)}</div>}
         <div className="configure-actions">
           {/* aria-disabled rather than disabled: it stays focusable, and the
               reason below is tied to it, so nobody meets a silent grey button. */}
-          <button className="btn btn-solid cfg-create" aria-disabled={!valid || saving || undefined}
+          <button className="btn btn-solid cfg-create" aria-disabled={!valid || saving || created || undefined}
+            aria-busy={working || undefined}
             aria-describedby={blockReason ? reasonId : undefined}
             data-tooltip={blockReason ?? undefined}
             onClick={submit}>
-            {saving
+            {working
               ? <><span className="spinner" aria-hidden="true" /><span className="visually-hidden">{tr("Creating…")}</span></>
               : (<><IconCheck size={13} />{tr("Create")}</>)}
           </button>

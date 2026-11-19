@@ -493,6 +493,9 @@ export const DE: Record<string, string> = {
   "Use at least 8 characters.": "Verwende mindestens 8 Zeichen.",
   "That email address doesn't look right.": "Diese E-Mail-Adresse sieht nicht richtig aus.",
   "No connection to the server. Check your internet.": "Keine Verbindung zum Server. Prüfe dein Internet.",
+  // lib/db-error.ts NETWORK_ERROR: a request that never reached the database
+  "The connection to the server dropped. Check your internet connection and try again.":
+    "Die Verbindung zum Server ist abgebrochen. Prüfe deine Internetverbindung und versuch es erneut.",
   "A consultant works out what to change, and how.": "Ein Consultant erarbeitet, was sich ändern soll und wie.",
   "A coach takes care of the people side of it.": "Ein Coach kümmert sich um die menschliche Seite.",
   "You end up with a document you can hand over, not a chat log.": "Am Ende hast du ein Dokument zum Weitergeben, kein Chatprotokoll.",

@@ -4805,7 +4805,14 @@ html.light{
      bottom edge competes with the composer sitting on it. */
   -webkit-mask-image:radial-gradient(124% 116% at 4% -8%, #000 30%, rgba(0,0,0,0.5) 62%, transparent 92%);
   mask-image:radial-gradient(124% 116% at 4% -8%, #000 30%, rgba(0,0,0,0.5) 62%, transparent 92%);
-  animation:dustFar 517s linear infinite, dustFarLight 70s var(--ease-in-out) infinite alternate;
+  /* In steps, not smoothly (2026-11-19). Every frosted panel above this blurs
+     whatever is behind it, and behind it this moved a fraction of a pixel on
+     every frame — so the browser re-blurred the navbar, both panels and the
+     composer sixty times a second, forever, which is what made the whole app
+     feel heavy on an ordinary laptop. At 0.7px a second nobody can tell a
+     glide from one sub-pixel step a second, and the blur is redone once a
+     second instead. The light breathes in steps for the same reason. */
+  animation:dustFar 517s steps(517) infinite, dustFarLight 70s steps(70) infinite alternate;
 }
 
 /* The near plane: 9 motes in a 520px tile, each a bright core in a tight
@@ -4826,7 +4833,8 @@ html.light{
   background-size:520px 520px;
   -webkit-mask-image:radial-gradient(96% 90% at 1% -4%, #000 24%, rgba(0,0,0,0.48) 56%, transparent 84%);
   mask-image:radial-gradient(96% 90% at 1% -4%, #000 24%, rgba(0,0,0,0.48) 56%, transparent 84%);
-  animation:dustNear 383s linear infinite, dustNearLight 46s var(--ease-in-out) infinite alternate;
+  /* Stepped like the far plane: two steps a second, each under a pixel. */
+  animation:dustNear 383s steps(766) infinite, dustNearLight 46s steps(46) infinite alternate;
 }
 
 @keyframes dustFar{

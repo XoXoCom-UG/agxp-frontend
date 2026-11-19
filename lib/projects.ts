@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase";
-import { readEntitlement, QuotaError } from "@/lib/entitlement";
+import { loadEntitlement, QuotaError } from "@/lib/entitlement";
 import type { AgentType } from "@/lib/agents";
 import { worthNaming, firstMessageName } from "@/lib/project-title";
 import { removeProjectFolder } from "@/lib/project-files";
@@ -69,6 +69,16 @@ export async function listProjects(): Promise<Project[]> {
   return (data ?? []) as Project[];
 }
 
+/** Is there any project that is not archived? A count, not every row with
+ *  its activity log — the start screen only needs yes or no. */
+export async function hasOpenProjects(): Promise<boolean> {
+  const supabase = createClient();
+  const { count, error } = await supabase.from("agxp_projects")
+    .select("id", { count: "exact", head: true }).neq("status", "Archived");
+  if (error) throw error;
+  return (count ?? 0) > 0;
+}
+
 export async function getProject(id: string): Promise<Project | null> {
   const supabase = createClient();
   const { data, error } = await supabase.from("agxp_projects").select("*").eq("id", id).maybeSingle();
@@ -78,14 +88,17 @@ export async function getProject(id: string): Promise<Project | null> {
 
 export async function createProject(input: { name: string; description?: string; type?: string }): Promise<Project> {
   const supabase = createClient();
-  const { data: userData } = await supabase.auth.getUser();
-  const ownerId = userData.user?.id;
+  // The session this browser already holds, not a round trip to the auth
+  // server: the insert policy checks owner_id against the verified token anyway.
+  const { data: sessionData } = await supabase.auth.getSession();
+  const ownerId = sessionData.session?.user?.id;
   if (!ownerId) throw new Error("Nicht angemeldet.");
 
   // The visible allowance. This stops the action early and explains why; it
   // is not the cost control — that is the token ceiling in the chat route,
-  // which runs server-side and cannot be edited from the browser.
-  const left = await readEntitlement();
+  // which runs server-side and cannot be edited from the browser. Read fresh:
+  // a count from half a minute ago may not include the last project.
+  const left = await loadEntitlement(true);
   if (left.projectsLeft <= 0) {
     throw new QuotaError(
       left.plan.period === "week"
@@ -107,12 +120,19 @@ export async function createProject(input: { name: string; description?: string;
     .select("*")
     .single();
   if (error) throw error;
+  // The badge and the next check count this one; nobody waits for it.
+  loadEntitlement(true).catch(() => {});
   return data as Project;
 }
 
-export async function assignAgent(projectId: string, column: AgentType, agentId: string, agentActionLabel: string): Promise<Project> {
+/**
+ * `known` is the project as the screen already holds it. Reading it again
+ * first only fetched the activity log to prepend one line, and put a whole
+ * round trip between the click on Select and the panel changing.
+ */
+export async function assignAgent(projectId: string, column: AgentType, agentId: string, agentActionLabel: string, known?: Project): Promise<Project> {
   const supabase = createClient();
-  const project = await getProject(projectId);
+  const project = known?.id === projectId ? known : await getProject(projectId);
   if (!project) throw new Error("Projekt nicht gefunden.");
 
   const patch: Record<string, unknown> = {

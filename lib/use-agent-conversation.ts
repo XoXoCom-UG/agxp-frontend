@@ -134,6 +134,33 @@ export function useAgentConversation(opts: ConversationOptions) {
   const savedCategory = useRef<string | null>(opts.project.category ?? null);
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /*
+   * The answer on screen follows the stream at most once a frame. The network
+   * hands over several chunks per frame, and each one re-rendered the whole
+   * panel — every message, the head, the streaming markdown parsed again from
+   * the top — so a long answer kept the main thread busy and a click on Stop
+   * or a tab waited its turn behind it. Nothing is lost: the frame draws the
+   * latest text, and the finished reply is taken from the stream itself.
+   */
+  const streamFrame = useRef(0);
+  const pendingStream = useRef<string | null>(null);
+  function showStream(soFar: string) {
+    pendingStream.current = soFar;
+    if (streamFrame.current) return;
+    streamFrame.current = requestAnimationFrame(() => {
+      streamFrame.current = 0;
+      const next = pendingStream.current;
+      pendingStream.current = null;
+      if (next !== null) setStreamText(next);
+    });
+  }
+  function clearStream() {
+    if (streamFrame.current) cancelAnimationFrame(streamFrame.current);
+    streamFrame.current = 0;
+    pendingStream.current = null;
+    setStreamText("");
+  }
+
   // Leaving the panel stops the answer. What had arrived is still saved
   // (respond() below), it just is not drawn anywhere.
   useEffect(() => {
@@ -142,6 +169,7 @@ export function useAgentConversation(opts: ConversationOptions) {
       mounted.current = false;
       abortRef.current?.abort();
       if (leaveTimer.current) clearTimeout(leaveTimer.current);
+      if (streamFrame.current) cancelAnimationFrame(streamFrame.current);
     };
   }, []);
 
@@ -243,9 +271,9 @@ export function useAgentConversation(opts: ConversationOptions) {
         experience,
         peer,
         signal: controller.signal,
-        onDelta: soFar => { setStreamText(soFar); optsRef.current.onDelta?.(); },
+        onDelta: soFar => { showStream(soFar); optsRef.current.onDelta?.(); },
       });
-      setStreamText("");
+      clearStream();
       // Stopped: what arrived is the reply, saved like any other — minus a
       // marker cut off halfway, which would otherwise stay on screen.
       const reply = stopped ? cutUnfinishedMarker(text) : text;
@@ -350,7 +378,7 @@ export function useAgentConversation(opts: ConversationOptions) {
       touchProjectActivity(project.id, `${role === "coach" ? "Coach" : "Consultant"} replied`)
         .catch(e => console.warn("[chat] recording activity failed:", e));
     } catch (e) {
-      setStreamText("");
+      clearStream();
       if (mounted.current) pushError(userFacingError(e, "reply"));
     } finally {
       if (abortRef.current === controller) abortRef.current = null;

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase";
-import { readEntitlement, QuotaError } from "@/lib/entitlement";
+import { loadEntitlement, QuotaError } from "@/lib/entitlement";
 import { typesFor, templateFor } from "@/lib/agent-types";
 import { seedLevels } from "@/lib/mascot-level";
 
@@ -71,6 +71,14 @@ export async function listAgents(): Promise<Agent[]> {
   if (amErr) throw amErr;
   if (projErr) throw projErr;
 
+  return assemble(agents ?? [], agentMethods ?? [], projects ?? []);
+}
+
+type AgentRow = Omit<Agent, "methods" | "primaryMethods" | "secondaryMethods" | "last_projects">;
+type MethodLink = { agent_id: string; methods: unknown };
+
+/** The rows of the three queries, stitched into agents. */
+function assemble(agents: AgentRow[], agentMethods: MethodLink[], projects: AgentProject[]): Agent[] {
   const methodsByAgent = new Map<string, Method[]>();
   for (const row of agentMethods ?? []) {
     const m = row.methods as unknown as Method | Method[] | null;
@@ -89,9 +97,9 @@ export async function listAgents(): Promise<Agent[]> {
   }
 
   // Every face reads its level from this store; fill it before any renders.
-  seedLevels(agents ?? []);
+  seedLevels(agents);
 
-  return (agents ?? []).map(a => {
+  return agents.map(a => {
     const methods = methodsByAgent.get(a.id) ?? [];
     // A consultant leads with ITS type's primary methods, not with whatever the
     // shared row says: the method sheet has the same method primary for one
@@ -111,9 +119,20 @@ export async function listAgents(): Promise<Agent[]> {
   });
 }
 
+/** One agent, read on its own — not the whole list to pick one out of it. */
 export async function getAgent(id: string): Promise<Agent | null> {
-  const agents = await listAgents();
-  return agents.find(a => a.id === id) ?? null;
+  const supabase = createClient();
+  const [{ data: rows, error: agentErr }, { data: links, error: amErr }, { data: projects, error: projErr }] =
+    await Promise.all([
+      supabase.from("agents").select("*").eq("id", id),
+      supabase.from("agent_methods").select("agent_id, methods(id, skill_id, name, is_primary, description)").eq("agent_id", id),
+      supabase.from("agent_projects").select("id, agent_id, name, summary, created_at").eq("agent_id", id)
+        .order("created_at", { ascending: false }).limit(3),
+    ]);
+  if (agentErr) throw agentErr;
+  if (amErr) throw amErr;
+  if (projErr) throw projErr;
+  return assemble(rows ?? [], links ?? [], projects ?? [])[0] ?? null;
 }
 
 /**
@@ -158,7 +177,21 @@ export async function createAgent(input: {
   // Every agent is the user's own, and what a plan allows is a number of
   // TYPES and a number of agents per type. This is the clear message; the
   // database trigger from migration 0014 is what actually enforces it.
-  const { plan } = await readEntitlement();
+  //
+  // The plan, the count of this type and the session go out together. They
+  // used to go one after another — the plan as four queries in a row, then
+  // every agent with all its methods just to count one type, then the auth
+  // server — and Create sat on its spinner for all of it.
+  const supabase = createClient();
+  let mineQuery = supabase.from("agents").select("id", { count: "exact", head: true })
+    .eq("type", input.type).is("archived_at", null);
+  mineQuery = input.tagline ? mineQuery.eq("tagline", input.tagline) : mineQuery.is("tagline", null);
+  const [{ plan }, { count: mine, error: countErr }, { data: sessionData }] = await Promise.all([
+    loadEntitlement(),
+    mineQuery,
+    supabase.auth.getSession(),
+  ]);
+  if (countErr) throw countErr;
   const types = typesFor(input.type, plan);
   if (input.tagline && !types.some(t => t.sub === input.tagline)) {
     throw new QuotaError(
@@ -166,17 +199,16 @@ export async function createAgent(input: {
       `A bigger plan opens the other types.`,
     );
   }
-  const mine = (await listAgents()).filter(a => a.type === input.type && !a.archived_at && a.tagline === (input.tagline ?? null));
-  if (mine.length >= plan.agentsPerType) {
+  if ((mine ?? 0) >= plan.agentsPerType) {
     throw new QuotaError(
-      `You already have ${mine.length} of this type, which is what the ${plan.label} plan allows. ` +
+      `You already have ${mine} of this type, which is what the ${plan.label} plan allows. ` +
       `Archive one to free the place${plan.id === "free" ? ", or move to a bigger plan" : ""}.`,
     );
   }
 
-  const supabase = createClient();
-  const { data: userData } = await supabase.auth.getUser();
-  const createdBy = userData.user?.id;
+  // The session this browser holds; the insert policy checks created_by
+  // against the verified token, so a round trip to the auth server adds nothing.
+  const createdBy = sessionData.session?.user?.id;
   if (!createdBy) throw new Error("Nicht angemeldet.");
 
   const { data: agent, error } = await supabase

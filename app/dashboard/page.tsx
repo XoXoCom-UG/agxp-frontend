@@ -6,7 +6,7 @@ import { NewTaskScreen } from "@/components/layout/new-task-screen";
 import { HomeScreen } from "@/components/layout/home-screen";
 import { AgentNav } from "@/components/layout/agent-nav";
 import { useAuth } from "@/lib/auth-context";
-import { listProjects } from "@/lib/projects";
+import { hasOpenProjects } from "@/lib/projects";
 
 /*
  * The start screen was New Task itself (Patryk, 2026-09-02) — no project
@@ -53,8 +53,8 @@ export default function DashboardPage() {
   useEffect(() => {
     if (authLoading || !token || !atHome) return;
     let alive = true;
-    listProjects()
-      .then(all => { if (alive) setWork({ visit, has: all.some(p => p.status !== "Archived") }); })
+    hasOpenProjects()
+      .then(has => { if (alive) setWork({ visit, has }); })
       // Unreadable projects must not strand you on a blank screen: fall
       // through to the workspace, which is what this always used to do.
       .catch(() => { if (alive) setWork({ visit, has: false }); });

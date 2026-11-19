@@ -109,7 +109,7 @@ export default function AgentDashboardPage() {
           {actionError && (
             <div className="load-error" role="alert">
               <IconAlert size={14} />
-              <span className="le-text">{actionError}</span>
+              <span className="le-text">{tr(actionError)}</span>
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => setActionError(null)}>{tr("Dismiss")}</button>
             </div>
           )}
