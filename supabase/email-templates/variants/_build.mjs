@@ -77,13 +77,25 @@ const css = {
 const addr = (c, cls = "") =>
   `<span class="${cls}" style="color:${c};font-weight:600;word-break:break-word;overflow-wrap:anywhere;">${EMAIL}</span>`;
 
-/** Mark + "AgentiX / PROJECTS", the header lockup of the app. */
+/**
+ * The app's logo (components/layout/brand-logo.tsx). Only the mark is a
+ * picture — it carries its own dark tile, so it sits on either theme. The name
+ * is text, dark on a light page and light on a dark one (the cls classes). The
+ * X leans (italic: email can't skew), and PROJECTS is spread to the name's
+ * width by eight cells in a 100% table, the email form of the app's
+ * space-between, so it fits whatever font the client falls back to.
+ */
 function lockup(p, { size = 32, cls = {}, align = "" } = {}) {
+  const name = Math.round(size * 0.6);
+  const sub = Math.max(9, Math.round(size * 0.33));
+  const letter = (c, i, all) => `<td class="${cls.muted ?? ""}" align="${i === 0 ? "left" : i === all.length - 1 ? "right" : "center"}" style="font-family:${SANS};font-size:${sub}px;line-height:${sub}px;font-weight:600;color:${p.muted};">${c}</td>`;
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0"${align ? ` align="${align}"` : ""}><tr>
-<td valign="middle" style="padding-right:10px;"><img src="${IMG}/email/mark.png" width="${size}" height="${size}" alt="" style="display:block;border:0;outline:none;width:${size}px;height:${size}px;"></td>
-<td valign="middle" style="font-family:${SANS};">
-<div class="${cls.ink ?? ""}" style="font-size:17px;line-height:17px;font-weight:700;letter-spacing:-0.3px;color:${p.name ?? p.ink};">Agenti<span class="${cls.x ?? ""}" style="color:${p.x};">X</span></div>
-<div class="${cls.muted ?? ""}" style="font-size:8px;line-height:8px;font-weight:700;letter-spacing:2.75px;color:${p.muted};padding-top:5px;">PROJECTS</div>
+<td valign="middle" style="padding-right:${Math.round(size * 0.3)}px;"><img src="${IMG}/email/mark.png" width="${size}" height="${size}" alt="" style="display:block;border:0;outline:none;width:${size}px;height:${size}px;"></td>
+<td valign="middle" style="text-align:left;">
+<div class="${cls.ink ?? ""}" style="font-family:${SANS};font-size:${name}px;line-height:${name}px;font-weight:600;letter-spacing:-0.3px;color:${p.name ?? p.ink};white-space:nowrap;">Agenti<span class="${cls.x ?? ""}" style="color:${p.x};font-style:italic;padding-right:1px;">X</span></div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:${Math.round(size * 0.15)}px;"><tr>
+${[..."PROJECTS"].map(letter).join("\n")}
+</tr></table>
 </td></tr></table>`;
 }
 
@@ -478,7 +490,7 @@ ${rule(p.line, "dm-line")}
 </td></tr>
 </table>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-<tr><td align="center" style="padding:28px 24px 12px;">${lockup(p, { size: 24, align: "center", cls: { ink: "dm-ink", x: "dm-x", muted: "dm-muted" } })}</td></tr>
+<tr><td align="center" style="padding:28px 24px 12px;">${lockup(p, { size: 30, align: "center", cls: { ink: "dm-ink", x: "dm-x", muted: "dm-muted" } })}</td></tr>
 <tr><td class="px" style="padding:0 24px;">${legal(p, "dm-muted", "center")}</td></tr>
 </table>`,
   });

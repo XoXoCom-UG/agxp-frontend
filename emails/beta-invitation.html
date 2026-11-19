@@ -33,8 +33,7 @@
       .lead  { font-size:15px !important; }
       .key   { font-size:20px !important; letter-spacing:3px !important; }
       .btnw  { width:100% !important; }
-      .chipm { font-size:11px !important; padding:4px 9px !important; }
-      .br    { display:none !important; }
+      .br   { display:none !important; }
     }
 
     @media (prefers-color-scheme: dark) {
@@ -59,10 +58,6 @@
       .n1     { color:#8CCBFF !important; }
       .n2     { color:#9DB6FF !important; }
       .n3     { color:#B9A6FF !important; }
-      /* Agents panel */
-      .ap     { background-color:#080C14 !important; border-color:#1E2836 !important; }
-      .chip1  { background-color:#0F1B2A !important; border-color:#2A5C93 !important; color:#DCE8F6 !important; }
-      .chip2  { background-color:#1A1430 !important; border-color:#5A46A6 !important; color:#E6DEFA !important; }
     }
   </style>
   <!-- Gradient headline, in its own block and behind @supports: a client that
@@ -92,7 +87,6 @@
     [data-ogsb] .tk    { background-color:#0A0E16 !important; }
     [data-ogsb] .notch { background-color:#0D0E11 !important; }
     [data-ogsb] .num   { background-color:#0A1019 !important; }
-    [data-ogsb] .ap    { background-color:#080C14 !important; }
   </style>
 </head>
 <body class="room" style="margin:0;padding:0;background-color:#ECEEF2;">
@@ -110,34 +104,43 @@
         <!-- ================= Card ================= -->
         <table role="presentation" class="card" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background-color:#FFFFFF;border:1px solid #E1E4EA;border-radius:22px;">
 
-          <!-- Brand -->
+          <!-- Brand: the app's logo (components/layout/brand-logo.tsx). Only the
+               mark is a picture — it carries its own dark tile, so it sits on
+               either theme. The name is text: dark on the light card, light on
+               the dark one. The X leans (italic: email can't skew), and
+               PROJECTS is spread to the name's width by eight cells in a 100%
+               table, the email form of the app's space-between, so it fits
+               whatever font the client falls back to. -->
           <tr>
-            <td align="center" style="padding:28px 24px 22px;">
+            <td align="center" style="padding:28px 24px 6px;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                   <td style="vertical-align:middle;padding-right:12px;">
-                    <img src="https://resend-attachments.s3.amazonaws.com/NG6t5kQNNKWwnDPxZNRSwG/7f81793a-03f6-4c18-ac12-ced0c049b8e5" width="40" height="40" alt="AgentiX" style="display:block;border:0;outline:none;width:40px;height:40px;">
+                    <img src="{{{APP_URL}}}/brand/email/mark.png" width="40" height="40" alt="" style="display:block;border:0;outline:none;width:40px;height:40px;">
                   </td>
                   <td style="vertical-align:middle;text-align:left;">
-                    <div class="ink" style="font-family:'Familjen Grotesk','Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:22px;line-height:24px;font-weight:600;letter-spacing:-0.5px;color:#111318;">Agenti<span style="color:#2E7BC4;">X</span></div>
-                    <div class="muted" style="font-family:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:10px;line-height:12px;letter-spacing:3.5px;color:#5A5F6B;padding-top:4px;">PROJECTS</div>
+                    <div class="ink" style="font-family:'Familjen Grotesk','Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:24px;line-height:24px;font-weight:600;letter-spacing:-0.4px;color:#0B1B3F;white-space:nowrap;">Agenti<span style="color:#2E7BC4;font-style:italic;padding-right:1px;">X</span></div>
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:5px;">
+                      <tr>
+                        <td class="muted" align="left" style="font-family:'Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;line-height:13px;font-weight:600;color:#5A5F6B;">P</td>
+                        <td class="muted" align="center" style="font-family:'Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;line-height:13px;font-weight:600;color:#5A5F6B;">R</td>
+                        <td class="muted" align="center" style="font-family:'Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;line-height:13px;font-weight:600;color:#5A5F6B;">O</td>
+                        <td class="muted" align="center" style="font-family:'Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;line-height:13px;font-weight:600;color:#5A5F6B;">J</td>
+                        <td class="muted" align="center" style="font-family:'Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;line-height:13px;font-weight:600;color:#5A5F6B;">E</td>
+                        <td class="muted" align="center" style="font-family:'Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;line-height:13px;font-weight:600;color:#5A5F6B;">C</td>
+                        <td class="muted" align="center" style="font-family:'Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;line-height:13px;font-weight:600;color:#5A5F6B;">T</td>
+                        <td class="muted" align="right" style="font-family:'Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;line-height:13px;font-weight:600;color:#5A5F6B;">S</td>
+                      </tr>
+                    </table>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
 
-          <!-- Hero image, framed: a picture is never inverted, so it reads the
-               same on a light card, a dark card and a Gmail-inverted one. -->
-          <tr>
-            <td class="px" style="padding:0 20px;">
-              <img src="https://landing-page-agxp.vercel.app/email/core.jpg" width="558" alt="Two agents orbiting one project" style="display:block;border:0;outline:none;width:100%;max-width:558px;height:auto;border-radius:16px;">
-            </td>
-          </tr>
-
           <!-- Headline -->
           <tr>
-            <td class="px" align="center" style="padding:30px 28px 0;font-family:'Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;">
+            <td class="px" align="center" style="padding:24px 28px 0;font-family:'Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;">
               <div class="blue" style="font-family:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:12px;line-height:14px;letter-spacing:4px;color:#1F64A8;">
                 CLOSED BETA
               </div>
@@ -295,54 +298,9 @@
             </td>
           </tr>
 
-          <!-- The two agents. Light by default like the pass; the picture is
-               framed so it reads as a picture on either theme. -->
-          <tr>
-            <td class="px" style="padding:26px 20px 0;">
-              <table role="presentation" class="ap" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F7F8FA;border:1px solid #E6E8ED;border-radius:18px;">
-                <tr>
-                  <td class="ink2 lead" align="center" style="padding:24px 16px 16px;font-family:'Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:25px;color:#454A55;">
-                    One plans the change.<br>The other brings your people with it.
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:0 12px;">
-                    <img src="https://resend-attachments.s3.amazonaws.com/NG6t5kQNNKWwnDPxZNRSwG/2075d288-da87-4c03-aa90-184169e2a8e1" width="534" alt="The Consultant and the Coach, two AI agents on one project" style="display:block;border:0;outline:none;width:100%;max-width:534px;height:auto;border-radius:12px;">
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:16px 0 24px;font-family:'Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-                      <tr>
-                        <td width="50%" align="center" style="vertical-align:top;padding:0 4px;">
-                          <div class="ink" style="font-family:'Familjen Grotesk','Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:19px;line-height:24px;font-weight:600;color:#111318;">Consultant</div>
-                          <div class="muted" style="margin-top:3px;font-size:14px;line-height:20px;color:#5A5F6B;">Process, tools &amp; roadmap</div>
-                          <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:12px auto 0;">
-                            <tr>
-                              <td class="chip1 chipm" style="padding:5px 12px;border:1px solid #BCD3EE;border-radius:999px;background-color:#EAF2FB;font-size:12px;line-height:16px;color:#154E80;white-space:nowrap;">Transformation Concept</td>
-                            </tr>
-                          </table>
-                        </td>
-                        <td width="50%" align="center" style="vertical-align:top;padding:0 4px;">
-                          <div class="ink" style="font-family:'Familjen Grotesk','Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:19px;line-height:24px;font-weight:600;color:#111318;">Coach</div>
-                          <div class="muted" style="margin-top:3px;font-size:14px;line-height:20px;color:#5A5F6B;">People, resistance &amp; rollout</div>
-                          <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:12px auto 0;">
-                            <tr>
-                              <td class="chip2 chipm" style="padding:5px 12px;border:1px solid #D5C8FA;border-radius:999px;background-color:#F1ECFE;font-size:12px;line-height:16px;color:#5B3FD0;white-space:nowrap;">Change Plan</td>
-                            </tr>
-                          </table>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
           <!-- Signature + footer -->
           <tr>
-            <td class="px" style="padding:24px 20px 0;">
+            <td class="px" style="padding:30px 20px 0;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="rule" style="border-top:1px solid #E6E8ED;">
                 <tr>
                   <td class="ink2" align="center" style="padding:24px 0 0;font-family:'Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:22px;color:#454A55;">
@@ -354,10 +312,10 @@
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                       <tr>
                         <td style="vertical-align:middle;padding-right:10px;">
-                          <img src="https://resend-attachments.s3.amazonaws.com/NG6t5kQNNKWwnDPxZNRSwG/7f81793a-03f6-4c18-ac12-ced0c049b8e5" width="28" height="28" alt="" style="display:block;border:0;outline:none;width:28px;height:28px;">
+                          <img src="{{{APP_URL}}}/brand/email/mark.png" width="28" height="28" alt="" style="display:block;border:0;outline:none;width:28px;height:28px;">
                         </td>
-                        <td class="ink" style="vertical-align:middle;font-family:'Familjen Grotesk','Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:17px;line-height:22px;font-weight:600;letter-spacing:-0.3px;color:#111318;">
-                          The Agenti<span style="color:#2E7BC4;">X</span> team
+                        <td class="ink" style="vertical-align:middle;font-family:'Familjen Grotesk','Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:17px;line-height:22px;font-weight:600;letter-spacing:-0.3px;color:#0B1B3F;">
+                          The Agenti<span style="color:#2E7BC4;font-style:italic;padding-right:1px;">X</span> team
                         </td>
                       </tr>
                     </table>
