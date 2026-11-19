@@ -8,7 +8,7 @@ import { loadAgentMemory, memoryLines, EMPTY_MEMORY, type AgentMemory } from "@/
 import { useAuth } from "@/lib/auth-context";
 import { useEntitlement } from "@/lib/entitlement";
 import { memoryAllowed } from "@/lib/memory-pref";
-import { deliverableFor, isDeliverableCommand } from "@/lib/deliverables";
+import { deliverableFor, isDeliverableCommand, skipStationPrompt } from "@/lib/deliverables";
 import { kindFor } from "@/lib/agent-types";
 import { experienceFor } from "@/lib/agent-level";
 import { refreshLevel, useMascotLevel } from "@/lib/mascot-level";
@@ -21,7 +21,8 @@ import { useReadAlongNudge } from "@/lib/use-read-along-nudge";
 import { useChoiceKeys } from "@/lib/use-choice-keys";
 import type { DeliverableDoc } from "@/components/layout/deliverable-view";
 import { ConfirmDialog } from "@/components/layout/confirm-dialog";
-import { IconRefresh } from "@/components/layout/agxp-icons";
+import { IconArrow, IconRefresh } from "@/components/layout/agxp-icons";
+import { useT } from "@/lib/language";
 import { ChatHead } from "@/components/layout/chat/chat-head";
 import { ChatComposer } from "@/components/layout/chat/chat-composer";
 import { ChatMessage, ChatStreaming } from "@/components/layout/chat/chat-message";
@@ -93,6 +94,7 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
 
   // What the agent brings from this user's earlier projects, plus what it
   // picked up during this session.
+  const tr = useT();
   const [memory, setMemory] = useState<AgentMemory>(EMPTY_MEMORY);
   const [learned, setLearned] = useState<MemoryNote[]>([]);
   const { user } = useAuth();
@@ -255,18 +257,34 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
    * than one answer at a time — "which of these terms do you already know?"
    * is true of several at once, and sending on the first tap quietly answered
    * "no" for all the rest. When the agent marks the question with a plus
-   * ([[CHOICES+]]), a tap writes the option into the composer instead, so
-   * taps add up and Enter sends them as one ordinary sentence.
+   * ([[CHOICES+]]), a tap ticks the option instead, and "Send" answers with
+   * every ticked one at once, in the order the agent offered them. (It used
+   * to write the option into the composer and wait for Enter; nobody saw that
+   * as a multiple choice, Ana 2026-11-19: "I can only select one".)
    */
-  const appendRef = useRef<((text: string) => void) | null>(null);
+  const lastAssistantId = lastAssistantIdx >= 0 ? entries[lastAssistantIdx]?.m.id : undefined;
+  const [picked, setPicked] = useState<{ for?: string; set: string[] }>({ set: [] });
+  // Ticks belong to one question: a new answer starts with none.
+  const ticked = useMemo(() => (picked.for === lastAssistantId ? picked.set : []), [picked, lastAssistantId]);
   const pick = useCallback((choice: string) => {
-    if (convo.multi && appendRef.current) appendRef.current(choice);
-    else chat.send(choice);
-  }, [convo.multi, chat]);
+    if (!convo.multi) { chat.send(choice); return; }
+    setPicked(prev => {
+      const cur = prev.for === lastAssistantId ? prev.set : [];
+      return { for: lastAssistantId, set: cur.includes(choice) ? cur.filter(c => c !== choice) : [...cur, choice] };
+    });
+  }, [convo.multi, chat, lastAssistantId]);
+  const sendTicked = useCallback(() => {
+    const answer = convo.choices.filter(c => ticked.includes(c));
+    if (!answer.length) return;
+    setPicked({ set: [] });
+    chat.send(answer.join(", "));
+  }, [convo.choices, ticked, chat]);
   const pickRef = useRef(pick);
-  useLayoutEffect(() => { pickRef.current = pick; });
+  const submitRef = useRef(sendTicked);
+  useLayoutEffect(() => { pickRef.current = pick; submitRef.current = sendTicked; });
 
-  useChoiceKeys({ choices: convo.choices, active: keyboardActive, sending, panelRef, onPick: pickRef });
+  useChoiceKeys({ choices: convo.choices, active: keyboardActive, sending, panelRef, onPick: pickRef,
+    onSubmit: convo.multi ? submitRef : undefined });
   // Where this agent stands with the user: how often they wrote to it, and
   // whether it spoke up by itself (a read-along or review) since they last did.
   const { userTurns, spokeUnanswered } = useMemo(() => {
@@ -327,6 +345,15 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
     ? deliverable.stations.length
     : Math.min(plan.stations, deliverable.stations.length);
 
+  // "Skip this step" — for the station the interview is on now, at any time
+  // (Ana 2026-11-19). Drawn on that station in the Methods panel, and in a bar
+  // above the composer; on a wide screen the Consultant's bar is hidden,
+  // because the Methods panel beside it already offers it. Not on the last station: skipping
+  // that one means "write the document", which has its own button. Not once
+  // a document exists: the interview is over.
+  const canSkip = !!station && stationIdx >= 0 && stationIdx < totalStations - 1 && pct < 100 && docs.length === 0;
+  const skipStation = () => chat.send(skipStationPrompt(stationLabel));
+
   // The document rail, handed to the screen so the Methods panel can draw it.
   const versions = useMemo(
     () => docs.map((d, i) => ({ version: i + 1, createdAt: d.m.created_at })), [docs]);
@@ -340,7 +367,7 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
   }, [docs, currentVersion, deliverable.title, role, agent.id, agent.name, totalProjects, project.name]);
   // One object whose identity never changes; what it calls is read at call time.
   const fns = useRef<RailControls>({
-    generate: () => {}, regenerate: () => {}, openVersion: () => {}, restoreVersion: () => {},
+    generate: () => {}, regenerate: () => {}, openVersion: () => {}, restoreVersion: () => {}, skip: () => {},
   });
   useEffect(() => {
     fns.current = {
@@ -348,6 +375,7 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
       regenerate: () => chat.send(deliverable.regeneratePrompt),
       openVersion,
       restoreVersion: v => setRestore({ version: v, atCount: latest }),
+      skip: skipStation,
     };
   });
   const controls = useMemo<RailControls>(() => ({
@@ -355,6 +383,7 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
     regenerate: () => fns.current.regenerate(),
     openVersion: v => fns.current.openVersion(v),
     restoreVersion: v => fns.current.restoreVersion(v),
+    skip: () => fns.current.skip(),
   }), []);
 
   useEffect(() => {
@@ -370,12 +399,12 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
       agentTurns: answers.length, docCount: docs.length, pct, station,
       rail: {
         title: deliverable.title, totalStations, stationIdx, stationLabel, currentDoc,
-        version: currentVersion, restored: restoredVersion !== null, versions,
+        version: currentVersion, restored: restoredVersion !== null, versions, canSkip,
       },
       controls, busy: sending,
     });
   }, [entries, loaded, sending, agent.name, role, docs.length, pct, station, deliverable.title, totalStations,
-      stationIdx, stationLabel, currentDoc, currentVersion, restoredVersion, versions, controls]);
+      stationIdx, stationLabel, currentDoc, currentVersion, restoredVersion, versions, controls, canSkip]);
 
   const busy = sending || !!leavingId;
 
@@ -440,6 +469,7 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
             sending={sending} busy={busy}
             onRetry={chat.retry}
             onPick={pick}
+            ticked={ticked} onSendTicked={sendTicked}
             onOpenDoc={title => onOpenDoc?.(buildDoc(entry.p.text, title, entry.m.created_at, versionOf.get(entry.m.id) ?? 1))}
           />
         ))}
@@ -450,8 +480,18 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
         )}
       </div>
 
+      {canSkip && (
+        <div className="step-skip">
+          <span className="step-skip-where">
+            {tr("Step {i} of {n} · {label}", { i: stationIdx + 1, n: totalStations, label: stationLabel })}
+          </span>
+          <button className="step-skip-btn" disabled={sending} onClick={skipStation}>
+            {tr("Skip this step")}<IconArrow size={12} />
+          </button>
+        </div>
+      )}
       <ChatComposer role={role} sending={sending} canSend={loaded} projectId={project.id}
-        inputRef={inputRef} appendRef={appendRef}
+        inputRef={inputRef}
         onSend={chat.send} onStop={chat.stop} onAttentiveChange={setAttentive} />
       <div className="visually-hidden" role="status" aria-live="polite">{announce}</div>
       {confirmChange && onChangeAgent && (

@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: "Sign in again." }, { status: 401 });
 
   const body = (await req.json().catch(() => null)) as
-    | { action?: "plan" | "key"; plan?: string; uses?: number; note?: string; email?: string }
+    | { action?: "plan" | "key" | "resend"; plan?: string; uses?: number; note?: string; email?: string; code?: string }
     | null;
 
   const db = admin();
@@ -179,6 +179,7 @@ export async function POST(req: NextRequest) {
     const mail = email
       ? await sendInvite(email, code, siteUrl(req))
       : { sent: false, reason: null, via: undefined };
+    if (mail.sent) await recordEmail(db, userId, code, email);
 
     return NextResponse.json({
       code,
@@ -189,5 +190,39 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  /*
+   * Sending an existing invitation again — to the address it went to, or to
+   * a corrected one. Only a key that exists and has a seat left: resending a
+   * used-up key would hand someone a code the gate then refuses.
+   */
+  if (body?.action === "resend") {
+    if (!(await callerIsTeam(req))) {
+      return NextResponse.json({ error: "Not for this account." }, { status: 403 });
+    }
+    const code = (body.code ?? "").trim().toUpperCase();
+    const email = (body.email ?? "").trim();
+    if (!code || !email) return NextResponse.json({ error: "Which key, to which address?" }, { status: 400 });
+    const { data: key, error } = await db.from("agxp_beta_keys")
+      .select("code, used_count, max_uses").eq("code", code).maybeSingle();
+    if (error) return fail(error, "resend");
+    if (!key) return NextResponse.json({ error: "No such key." }, { status: 404 });
+    if (key.used_count >= key.max_uses) {
+      return NextResponse.json({ error: "This key is used up. Make a new one." }, { status: 409 });
+    }
+    const mail = await sendInvite(email, code, siteUrl(req));
+    if (mail.sent) await recordEmail(db, userId, code, email);
+    return NextResponse.json({ code, emailed: mail.sent, emailError: mail.reason, via: mail.via, template: inviteTemplate() });
+  }
+
   return NextResponse.json({ error: "Unknown action." }, { status: 400 });
+}
+
+/**
+ * Who the key went to, written on the key (0032). Best effort: the mail has
+ * already gone, and a database without 0032 should not turn a sent
+ * invitation into an error.
+ */
+async function recordEmail(db: SupabaseClient, userId: string, code: string, email: string) {
+  const { error } = await db.rpc("record_invite_email", { p_user: userId, p_code: code, p_email: email });
+  if (error) console.warn("[dev] record_invite_email:", error.code, error.message, "— run 0032_invite_email.sql");
 }

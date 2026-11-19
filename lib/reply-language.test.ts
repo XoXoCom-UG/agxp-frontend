@@ -77,3 +77,13 @@ test("the note after the latest message is marked as the app's, in the language 
   assert.match(languageNote("de"), /Antworte auf Deutsch/);
   assert.equal(languageNote(null), "");
 });
+
+test("ticked options of a [[CHOICES+]] question are the agent's words, not typed", () => {
+  const turns = [
+    { role: "assistant" as const, content: "Welche kennst du?\n[[CHOICES+: Gap-Analyse|SWOT, kurz|Keinen davon]]" },
+    { role: "user" as const, content: "Gap-Analyse, SWOT, kurz" },
+    { role: "assistant" as const, content: "Gut.\n[[CHOICES+: A|B]]" },
+    { role: "user" as const, content: "A, and we also tried OKRs" },
+  ];
+  assert.deepEqual(typedByUser(turns, () => false), ["A, and we also tried OKRs"]);
+});

@@ -106,6 +106,8 @@ export interface RailState {
   version: number;
   restored: boolean;
   versions: { version: number; createdAt: string }[];
+  /** The current station can be skipped: an interview under way, not on its last station. */
+  canSkip: boolean;
 }
 
 /** What the rail can do. One object per panel, with a stable identity: the
@@ -115,6 +117,8 @@ export interface RailControls {
   regenerate: () => void;
   openVersion: (version: number) => void;
   restoreVersion: (version: number) => void;
+  /** Skip the station the interview is on now. */
+  skip: () => void;
 }
 
 export interface PanelSnapshot {

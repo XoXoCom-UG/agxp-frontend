@@ -92,7 +92,10 @@ with expected(kind, name, detail, migration) as (values
   ('trigger',  'agxp_projects_invited_only', 'agxp_projects', '0029'),
   -- Must NOT exist: it deletes from storage.objects, which Supabase refuses,
   -- so with it in place no project can be deleted at all.
-  ('gone',     'agxp_projects_files_cleanup', 'agxp_projects', '0030')
+  ('gone',     'agxp_projects_files_cleanup', 'agxp_projects', '0030'),
+  ('column',   'agxp_beta_keys',        'email',           '0032'),
+  ('column',   'agxp_beta_keys',        'emailed_at',      '0032'),
+  ('function', 'record_invite_email',   null,              '0032')
 )
 select * from (
 select

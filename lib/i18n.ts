@@ -385,6 +385,11 @@ export const DE: Record<string, string> = {
 
   // In the conversation
   "Suggested answers": "Vorgeschlagene Antworten",
+  "Pick one or more": "Wähle eine oder mehrere",
+  "Skip this step": "Diesen Schritt überspringen",
+  "You skipped: {label}": "Übersprungen: {label}",
+  "Send": "Senden",
+  "Send ({n})": "Senden ({n})",
   "You asked for the {title}": "Du hast das Dokument „{title}“ angefordert",
   "Version {n}": "Version {n}",
   "{n} sections · {words} words · open to read": "{n} Abschnitte · {words} Wörter · zum Lesen öffnen",

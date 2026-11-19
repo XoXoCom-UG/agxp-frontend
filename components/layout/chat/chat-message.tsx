@@ -3,12 +3,12 @@
 import { useMemo } from "react";
 import type { Entry } from "@/lib/conversation-state";
 import { errorText } from "@/lib/conversation-state";
-import { isDeliverableCommand } from "@/lib/deliverables";
+import { isDeliverableCommand, isSkipCommand, skippedStation } from "@/lib/deliverables";
 import { md } from "@/lib/markdown";
 import { streamingText, streamIsDocument } from "@/lib/message-markers";
 import { ThinkingOrb } from "@/components/layout/thinking-orb";
 import { MessageActions } from "@/components/layout/message-actions";
-import { IconArrow, IconDoc, IconRefresh } from "@/components/layout/agxp-icons";
+import { IconArrow, IconCheck, IconDoc, IconRefresh } from "@/components/layout/agxp-icons";
 import { useT } from "@/lib/language";
 
 /** "10:24" — shown under each message in the Coach's conversation. */
@@ -22,19 +22,37 @@ function wordCount(text: string): number {
 }
 
 /** The suggested answers under the newest reply. Keys 1-3 pick them too
- *  (lib/use-choice-keys.ts), so the order here is the order of the keys. */
-function Choices({ choices, disabled, onPick }: { choices: string[]; disabled: boolean; onPick: (c: string) => void }) {
+ *  (lib/use-choice-keys.ts), so the order here is the order of the keys.
+ *  When more than one answer can be true (multi), a tap ticks instead of
+ *  answering, and "Send" answers with every ticked option at once. */
+function Choices({ choices, multi, ticked, disabled, onPick, onSendTicked }: {
+  choices: string[]; multi: boolean; ticked: string[]; disabled: boolean;
+  onPick: (c: string) => void; onSendTicked: () => void;
+}) {
   const tr = useT();
+  const count = choices.filter(c => ticked.includes(c)).length;
   return (
-    <div className="sugg-list" role="group" aria-label={tr("Suggested answers")}>
-      {choices.map((c, ci) => (
-        <button key={c} className="sugg-item" disabled={disabled} onClick={() => onPick(c)}
-          style={{ ["--i" as string]: ci }}>
-          {/* No printed number — the keys still pick. */}
-          <span className="s">{c}</span>
+    <div className={`sugg-list${multi ? " is-multi" : ""}`} role="group" aria-label={tr("Suggested answers")}>
+      {multi && <div className="sugg-hint">{tr("Pick one or more")}</div>}
+      {choices.map((c, ci) => {
+        const on = multi && ticked.includes(c);
+        return (
+          <button key={`${ci}-${c}`} className={`sugg-item${on ? " is-on" : ""}`} disabled={disabled}
+            onClick={() => onPick(c)} aria-pressed={multi ? on : undefined}
+            style={{ ["--i" as string]: ci }}>
+            {/* No printed number — the keys still pick. */}
+            {multi && <span className="sugg-box" aria-hidden="true">{on && <IconCheck size={12} />}</span>}
+            <span className="s">{c}</span>
+            {!multi && <IconArrow />}
+          </button>
+        );
+      })}
+      {multi && (
+        <button className="sugg-send" disabled={disabled || count === 0} onClick={onSendTicked}>
+          {count > 0 ? tr("Send ({n})", { n: count }) : tr("Send")}
           <IconArrow />
         </button>
-      ))}
+      )}
     </div>
   );
 }
@@ -44,7 +62,7 @@ function Choices({ choices, disabled, onPick }: { choices: string[]; disabled: b
  * the person wrote, a document command, a failed answer, the finished
  * document as a card, or an ordinary answer.
  */
-export function ChatMessage({ entry, agentName, docTitle, isNew, isLeaving, isLast, version, sending, busy, onRetry, onPick, onOpenDoc }: {
+export function ChatMessage({ entry, agentName, docTitle, isNew, isLeaving, isLast, version, sending, busy, onRetry, onPick, ticked = [], onSendTicked, onOpenDoc }: {
   entry: Entry;
   agentName: string;
   docTitle: string;
@@ -61,6 +79,9 @@ export function ChatMessage({ entry, agentName, docTitle, isNew, isLeaving, isLa
   busy: boolean;
   onRetry: () => void;
   onPick: (choice: string) => void;
+  /** The options ticked so far, when the question takes several answers. */
+  ticked?: string[];
+  onSendTicked?: () => void;
   onOpenDoc: (title: string) => void;
 }) {
   const tr = useT();
@@ -75,6 +96,14 @@ export function ChatMessage({ entry, agentName, docTitle, isNew, isLeaving, isLa
     // The document buttons send their prompt as a user turn so the model
     // has it. It is a command, not something the person wrote, so it shows
     // as a single line instead of a wall of prompt text in the conversation.
+    if (isSkipCommand(m.content)) {
+      return (
+        <div className="msg-command">
+          <IconArrow size={11} />
+          <span>{tr("You skipped: {label}", { label: skippedStation(m.content) })}</span>
+        </div>
+      );
+    }
     if (isDeliverableCommand(m.content)) {
       return (
         <div className="msg-command">
@@ -122,7 +151,8 @@ export function ChatMessage({ entry, agentName, docTitle, isNew, isLeaving, isLa
 
   const cls = `${isNew ? " is-new" : ""}${isLeaving ? " is-leaving" : ""}`;
   const choices = isLast && p.choices.length > 0 && !sending
-    ? <Choices choices={p.choices} disabled={sending} onPick={onPick} />
+    ? <Choices choices={p.choices} multi={p.multi} ticked={ticked} disabled={sending}
+        onPick={onPick} onSendTicked={onSendTicked ?? (() => {})} />
     : null;
   const actions = (
     <MessageActions text={p.text} agentName={agentName} messageId={m.id}

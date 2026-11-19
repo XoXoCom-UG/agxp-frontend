@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   DELIVERABLES, CONSULTANT_DELIVERABLES, ALL_DELIVERABLES, deliverableFor, isDeliverableCommand, agendaPrompt, introFor,
+  skipStationPrompt, isSkipCommand, skippedStation,
 } from "./deliverables.ts";
 import { TYPE_CATALOG } from "./agent-types.ts";
 import { VISUAL_BLOCKS } from "./doc-visuals.ts";
@@ -528,4 +529,17 @@ test("the note under the Methods title names the document and says what it is fo
     assert.ok(note.toLowerCase().includes(d.subtitle.replace(/\.$/, "").toLowerCase()), id);
     assert.ok(!note.includes(".."), id);
   }
+});
+
+test("skipping a station is a command, and names the station it skipped", () => {
+  for (const d of ALL_DELIVERABLES) {
+    for (const s of d.stations) {
+      const cmd = skipStationPrompt(s.label);
+      assert.ok(isSkipCommand(cmd), s.label);
+      assert.ok(isDeliverableCommand(cmd), "counted as a button press, not typed: " + s.label);
+      assert.equal(skippedStation(cmd), s.label.replace(/[„“"]/g, "").trim());
+    }
+  }
+  assert.equal(isSkipCommand("Kann ich diesen Schritt überspringen?"), false);
+  assert.equal(skippedStation("hello"), "");
 });

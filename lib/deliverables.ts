@@ -107,6 +107,44 @@ const VISUAL_SPEC =
   "GENAU den genannten Spaltenüberschriften in genau dieser Reihenfolge, ohne Zusatzspalten. Eine " +
   "Skala von 1 bis 5 schreibst du als Quadrate mit Zahl, z. B. `■■□□□ 2`. Verwende keine Emojis.";
 
+/* ---------------------------------------------------------------------------
+   SKIP THIS STEP (Ana, 2026-11-19)
+
+   Some stations ask what the person finds too obvious to discuss. The button
+   under the newest answer sends this as a user turn, the same way the
+   document buttons do: the model needs it in the conversation, the UI shows
+   it as one quiet line. The station's label is in German quotes so it can be
+   read back out for that line.
+   --------------------------------------------------------------------------- */
+
+const SKIP_PREFIX =
+  "(Systemhinweis, nicht vom Nutzer getippt: Der Nutzer hat bei der Station „";
+
+export function skipStationPrompt(label: string): string {
+  const clean = label.replace(/[„“"]/g, "").trim();
+  return (
+    `${SKIP_PREFIX}${clean}“ auf „Diesen Schritt überspringen“ gedrückt — sie ist für ihn zu ` +
+    `einfach oder nicht wichtig. Stell zu dieser Station KEINE weitere Frage. Im Dokument steht bei ` +
+    `ihr nur, was schon gesagt wurde, der Rest als „übersprungen“ — nichts erfinden. Sag in höchstens ` +
+    `einem kurzen Satz, dass ihr weitergeht, und stell sofort die erste Frage der NÄCHSTEN Station, ` +
+    `mit neuem [[TOPIC]] und [[PROGRESS]] (die übersprungene Station zählt als abgeschlossen). War es ` +
+    `die letzte Station, frag mit CHOICES, ob du das Dokument jetzt erstellen sollst.)`
+  );
+}
+
+export function isSkipCommand(text: string): boolean {
+  return text.trim().startsWith(SKIP_PREFIX);
+}
+
+/** The station a skip command named, for the line the chat shows. */
+export function skippedStation(text: string): string {
+  const t = text.trim();
+  if (!t.startsWith(SKIP_PREFIX)) return "";
+  const rest = t.slice(SKIP_PREFIX.length);
+  const end = rest.indexOf("“");
+  return end >= 0 ? rest.slice(0, end) : "";
+}
+
 /**
  * Is this user message the button, rather than something the person typed?
  *
@@ -118,6 +156,10 @@ const VISUAL_SPEC =
  */
 export function isDeliverableCommand(text: string): boolean {
   const t = text.trim();
+  // "Skip this step" is a button press of the same kind: everything that
+  // must not count it as typed (the project name, the language, the turn
+  // count, the peer transcript) asks this one function.
+  if (isSkipCommand(t)) return true;
   return ALL_DELIVERABLES.some(
     d => t === d.generatePrompt.trim() || t === d.regeneratePrompt.trim(),
   );

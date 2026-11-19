@@ -82,15 +82,32 @@ export function typedByUser(
   let offered: string[] = [];
   for (const t of turns) {
     if (t.role === "assistant") {
-      const m = t.content.match(/\[\[CHOICES:([^\]]*)\]\]/);
-      offered = m ? m[1].split("|").map(o => o.trim().toLowerCase()) : [];
+      const m = t.content.match(/\[\[CHOICES\s*\+?\s*:([^\]]*)\]\]/i);
+      offered = m ? m[1].split("|").map(o => o.trim().toLowerCase()).filter(Boolean) : [];
       continue;
     }
     const text = t.content.trim();
-    if (!isCommand(text) && !offered.includes(text.toLowerCase())) out.push(text);
+    if (!isCommand(text) && !isOfferedAnswer(text, offered)) out.push(text);
     offered = [];
   }
   return out;
+}
+
+/**
+ * A click on the options: one of them, or several ticked ones the app joined
+ * with ", " (in the order offered). An option may itself contain a comma, so
+ * the joined form is matched by consuming whole options from the front, not
+ * by splitting.
+ */
+function isOfferedAnswer(text: string, offered: string[]): boolean {
+  let rest = text.toLowerCase();
+  if (!offered.length || !rest) return false;
+  if (offered.includes(rest)) return true;
+  for (const o of offered) {
+    if (rest === o) return true;
+    if (rest.startsWith(o + ", ")) rest = rest.slice(o.length + 2);
+  }
+  return false;
 }
 
 /** This panel's messages decide; the other panel's only when these say nothing. */

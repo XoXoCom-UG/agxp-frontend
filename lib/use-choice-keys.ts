@@ -27,20 +27,31 @@ function isShown(el: HTMLElement | null): boolean {
  * The listener is bound once; what it reads lives in a ref that is refreshed
  * after every render, so it never picks from a stale list.
  */
-export function useChoiceKeys({ choices, active, sending, panelRef, onPick }: {
+export function useChoiceKeys({ choices, active, sending, panelRef, onPick, onSubmit }: {
   choices: string[];
   active: boolean;
   sending: boolean;
   panelRef: React.RefObject<HTMLElement | null>;
   onPick: React.RefObject<(choice: string) => unknown>;
+  /** A question with several answers: digits tick, Enter sends the ticks. */
+  onSubmit?: React.RefObject<() => unknown>;
 }) {
-  const live = useRef({ choices, enabled: active && !sending });
-  useEffect(() => { live.current = { choices, enabled: active && !sending }; });
+  const live = useRef({ choices, enabled: active && !sending, submit: onSubmit });
+  useEffect(() => { live.current = { choices, enabled: active && !sending, submit: onSubmit }; });
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      const { choices, enabled } = live.current;
+      const { choices, enabled, submit } = live.current;
       if (!enabled || e.defaultPrevented || e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
+      // Enter only from nowhere in particular: in the composer it sends what
+      // was typed, and on a focused button it already presses that button.
+      if (e.key === "Enter" && submit) {
+        if (document.activeElement && document.activeElement !== document.body) return;
+        if (document.querySelector('[aria-modal="true"]') || !isShown(panelRef.current)) return;
+        e.preventDefault();
+        submit.current();
+        return;
+      }
       const n = Number(e.key);
       if (!Number.isInteger(n) || n < 1 || n > choices.length) return;
       if (isTypingTarget(document.activeElement)) return;

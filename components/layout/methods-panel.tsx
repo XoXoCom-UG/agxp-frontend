@@ -6,7 +6,7 @@ import type { DeliverableDoc } from "@/components/layout/deliverable-view";
 import { introFor, type Deliverable } from "@/lib/deliverables";
 import { md, handleCodeCopyClick } from "@/lib/markdown";
 import { ArtifactActions, versionLine } from "@/components/layout/deliverable-rail";
-import { IconCheck, IconLock, IconMinimise, IconSpark } from "@/components/layout/agxp-icons";
+import { IconArrow, IconCheck, IconLock, IconMinimise, IconSpark } from "@/components/layout/agxp-icons";
 import { useT } from "@/lib/language";
 
 /** How far the interview has to be before the document can be asked for. */
@@ -129,6 +129,12 @@ export function MethodsPanel({ tabs, deliverable, snap, onOpenDoc, onMinimise }:
                   <span className="mp-step-t">
                     <span className="mp-step-l">{s.label}</span>
                     {s.note && <span className="mp-step-n">{s.note}</span>}
+                    {/* Only on the step being worked on (Ana 2026-11-19). */}
+                    {state === "now" && rail?.canSkip && controls && (
+                      <button className="step-skip-btn mp-skip" disabled={snap?.busy ?? false} onClick={controls.skip}>
+                        {tr("Skip this step")}<IconArrow size={12} />
+                      </button>
+                    )}
                   </span>
                   <span className="visually-hidden">{tr(state === "done" ? ", done" : state === "now" ? ", in progress" : ", not yet")}</span>
                 </li>

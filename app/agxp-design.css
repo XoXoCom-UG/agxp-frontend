@@ -9170,3 +9170,51 @@ html.light .ph-dir{ background:#FFFFFF; }
   main.workspace .slot, main.workspace .panel{ min-height:0; }
   .pick-empty .pick-cards{ flex:none; }
 }
+
+/* --- Suggested answers that take several at once ([[CHOICES+]]) ------------
+   Ana 2026-11-19: the old way wrote each tap into the composer and waited for
+   Enter, which read as "I can only pick one". Now a tap ticks a box, and Send
+   answers with every ticked option. */
+.sugg-hint{ font-size:var(--text-2xs); color:var(--muted-foreground); margin-bottom:calc(var(--sp-1) * -1); }
+.sugg-box{
+  flex-shrink:0; display:inline-flex; align-items:center; justify-content:center;
+  width:16px; height:16px; border-radius:4px; border:1.5px solid var(--border-strong);
+  background:var(--background); color:var(--background);
+  transition:background-color 140ms var(--ease-out), border-color 140ms var(--ease-out);
+}
+.sugg-list.is-multi .sugg-item:first-child:not(.is-on){ color:var(--secondary-foreground); border-color:var(--border); background:var(--tint-1); }
+.sugg-item.is-on, .sugg-item.is-on:first-child{ color:var(--foreground); border-color:var(--foreground); background:var(--tint-2); }
+.sugg-item.is-on .sugg-box{ background:var(--foreground); border-color:var(--foreground); }
+.sugg-send{
+  align-self:flex-start; display:inline-flex; align-items:center; gap:var(--sp-2);
+  padding:var(--sp-2) var(--sp-4); border-radius:var(--radius, 8px);
+  background:var(--foreground); color:var(--background); font-size:var(--text-sm); font-weight:500;
+  transition:opacity 140ms var(--ease-out), transform 120ms var(--ease-out);
+}
+.sugg-send:disabled{ opacity:.35; cursor:default; }
+.sugg-send:active:not(:disabled){ transform:scale(0.97); }
+
+/* "Skip this step" — one bar above the composer, for the step the interview
+   is on now (Ana 2026-11-19). Quiet: it is a way out of a step, not an
+   answer, so it sits in the margin of the conversation, not in it. */
+.step-skip{
+  display:flex; align-items:center; justify-content:space-between; gap:var(--sp-3);
+  padding:6px var(--sp-4); border-top:1px solid var(--border);
+  font-size:var(--text-2xs); color:var(--muted-foreground);
+}
+.step-skip-where{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.step-skip-btn{
+  flex-shrink:0; display:inline-flex; align-items:center; gap:6px; padding:3px 10px;
+  border-radius:6px; border:1px solid var(--border); background:var(--tint-1);
+  color:var(--secondary-foreground); font-size:var(--text-2xs); cursor:pointer;
+  transition:color 140ms var(--ease-out), border-color 140ms var(--ease-out);
+}
+.step-skip-btn:disabled{ opacity:.45; cursor:default; }
+.step-skip-btn svg{ opacity:.6; }
+@media (hover:hover) and (pointer:fine){ .step-skip-btn:hover:not(:disabled){ color:var(--foreground); border-color:var(--border-strong); } }
+/* In the Methods panel: under the note of the step being worked on. */
+.mp-skip{ align-self:flex-start; margin-top:var(--sp-2); }
+/* Wide screens show the Methods panel beside the Consultant, with the skip on
+   its current step — the bar above the Consultant's composer would be the
+   same button twice. The Coach has no Methods panel, so its bar stays. */
+@media (min-width:1001px){ .panel.consultant .step-skip{ display:none; } }

@@ -35,6 +35,14 @@ interface BetaKey {
   used_count: number;
   max_uses: number;
   note: string | null;
+  /** Who it was emailed to and when (0032); absent before that migration. */
+  email?: string | null;
+  emailed_at?: string | null;
+}
+
+function sentOn(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString([], { day: "numeric", month: "short" });
 }
 
 async function call(method: "GET" | "POST", body?: unknown) {
@@ -99,7 +107,8 @@ export function DevPlanTools({ current, onChanged }: { current: PlanId; onChange
       const r = await call("POST", { action: "key", plan: "max", uses: 1, note: forNote, email: to });
       setNote(""); setEmail("");
       setKeys(k => [
-        { code: r.code, plan: "max", used_count: 0, max_uses: 1, note: forNote || to || null },
+        { code: r.code, plan: "max", used_count: 0, max_uses: 1, note: forNote || null,
+          email: r.emailed ? to : null, emailed_at: r.emailed ? new Date().toISOString() : null },
         ...(k ?? []),
       ]);
       // The key exists whatever the mail did, so this is a note beside it,
@@ -118,6 +127,24 @@ export function DevPlanTools({ current, onChanged }: { current: PlanId; onChange
             : r.template ? " using the built-in email" : "";
           setSentNote({ ok: true, text: `Sent to ${to}${which}.` });
         }
+      }
+    } catch (e) { setError((e as Error).message); }
+    finally { setBusy(null); }
+  }
+
+  /** Send an existing key again, to the address it went to or a new one. */
+  async function resend(k: BetaKey) {
+    if (busy) return;
+    const to = (window.prompt(`Send ${k.code} to:`, k.email ?? "") ?? "").trim();
+    if (!to) return;
+    setBusy(`resend:${k.code}`); setError(null); setSentNote(null);
+    try {
+      const r = await call("POST", { action: "resend", code: k.code, email: to });
+      if (r.emailed) {
+        setKeys(ks => (ks ?? []).map(x => x.code === k.code ? { ...x, email: to, emailed_at: new Date().toISOString() } : x));
+        setSentNote({ ok: true, text: `Sent ${k.code} to ${to}.` });
+      } else {
+        setSentNote({ ok: false, text: `Not sent: ${r.emailError ?? "the email didn't go out."}` });
       }
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(null); }
@@ -218,7 +245,13 @@ export function DevPlanTools({ current, onChanged }: { current: PlanId; onChange
                   <span className="ss-key-meta">
                     {k.plan} · {k.used_count}/{k.max_uses}
                     {k.note ? ` · ${k.note}` : ""}
+                    {k.email ? ` · sent to ${k.email}${k.emailed_at ? `, ${sentOn(k.emailed_at)}` : ""}` : ""}
                   </span>
+                  {!spent && mailReady && (
+                    <button className="ss-key-resend" disabled={!!busy} onClick={() => resend(k)}>
+                      {busy === `resend:${k.code}` ? "…" : k.email ? "Resend" : "Email"}
+                    </button>
+                  )}
                 </li>
               );
             })}
