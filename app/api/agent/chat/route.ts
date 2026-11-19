@@ -15,6 +15,7 @@ import { loadConversation, peerTurns, saveReply, isProjectId, type StoredTurn } 
 import { cutUnfinishedMarker } from "@/lib/conversation-state";
 import { bearerOf } from "@/lib/server-db";
 import { ipGate } from "@/lib/ip-gate";
+import { layoutMessages } from "@/lib/cache-layout";
 
 // The longest answer (a full document) streams in about two minutes. Pinned
 // so the lease TTL in lib/entitlement-server.ts can be set just above it.
@@ -173,32 +174,31 @@ export async function POST(req: NextRequest) {
    * so everything after the first byte that changes misses. That decides the
    * layout below:
    *
-   *   block 1  the stable system prompt — role, style, agenda, memory. Does
-   *            not change within a conversation, so it is the breakpoint.
-   *   block 2  the other agent's transcript. This GROWS every time the other
-   *            panel answers, so it must come after the breakpoint. Putting
-   *            it in block 1 would invalidate the cache on most turns; moving
-   *            it into the last user message would cache more, but it would
-   *            also restate the other model's output as something the user
-   *            said, which is exactly the framing peerPrompt() exists to
-   *            prevent. Safety wins; the saving is smaller and honest.
+   *   system   the stable prompt — role, style, agenda, memory — with the
+   *            first breakpoint. Does not change within a conversation.
+   *            The reply language follows it, as its own block: it changes
+   *            only when the person switches language.
+   *   messages the stored history, with the second breakpoint on the last
+   *            block of the last message.
+   *   after it the other agent's transcript and the language note, both for
+   *            the model only and never stored (lib/cache-layout.ts).
    *
-   * When there is no peer block — a single agent, or the free tier with peer
-   * reading spent — nothing volatile sits between the system prompt and the
-   * history, so the history gets a breakpoint too and the saving is much
-   * larger.
+   * The peer transcript used to be a system block. It grows whenever the other
+   * panel answers, and a system block that changes invalidates every message
+   * behind it — so in a project with both agents the history was paid for at
+   * full price on every message (2026-11-20: 56% of a month's bill). It now
+   * sits after the history breakpoint. It restates another model's words in
+   * the user's turn, so peerPrompt() frames it as the app's material and the
+   * trust boundary in the system prompt says it is never an order.
    */
-  const peerBlock = peerPrompt(body.agentType, peer);
   const system: Anthropic.TextBlockParam[] = [
     { type: "text", text: sys, cache_control: { type: "ephemeral" } },
   ];
-  if (peerBlock) system.push({ type: "text", text: peerBlock });
 
-  // The language, named last — after the German peer transcript, which used
-  // to pull an English conversation into German (lib/reply-language.ts). From
-  // what the person typed: not the app's own commands, not a click on an
-  // option the agent wrote. It changes only when they switch, so it costs the
-  // cache nothing in between.
+  // The language, from what the person typed: not the app's own commands, not
+  // a click on an option the agent wrote (lib/reply-language.ts). A system
+  // block alone lost to the agent's own earlier German replies, hence the note
+  // after the latest message as well.
   const isCommand = (t: string) => isDeliverableCommand(t) || isReadAlongCommand(t) || isReviewCommand(t);
   const lang = replyLanguage(typedByUser(loaded.conversation.own, isCommand), typedByUser(loaded.conversation.other, isCommand));
   const langBlock = languagePrompt(lang);
@@ -209,37 +209,10 @@ export async function POST(req: NextRequest) {
    * carries a [[FILE:]] path, and lib/message-files.ts reads it back under
    * the caller's own token so a forged path reaches nothing.
    */
-  const msgs: Anthropic.MessageParam[] = await withAttachments(messages, bearer, userId);
-
-  const last = msgs.length - 1;
-  if (!peerBlock && last >= 0) {
-    // The breakpoint goes on the LAST block of the last message, whatever
-    // shape it has. It used to assume a plain string, which an attachment
-    // turns into an array — and a cache_control on the wrong thing silently
-    // stops the prefix from being reused.
-    const m = msgs[last];
-    const blocks: Anthropic.ContentBlockParam[] = typeof m.content === "string"
-      ? [{ type: "text", text: m.content }]
-      : [...m.content];
-    const tail = blocks[blocks.length - 1];
-    if (tail) {
-      blocks[blocks.length - 1] = { ...tail, cache_control: { type: "ephemeral" } } as Anthropic.ContentBlockParam;
-      msgs[last] = { role: m.role, content: blocks };
-    }
-  }
-
-  // And once more after the latest message, the last thing read before the
-  // answer: the system block alone lost to the agent's own German replies
-  // (2026-11-03). AFTER the breakpoint and never stored, so the next turn's
-  // history still matches the cached prefix up to the person's own words.
-  const note = languageNote(lang);
-  if (note && last >= 0) {
-    const m = msgs[last];
-    const blocks: Anthropic.ContentBlockParam[] = typeof m.content === "string"
-      ? [{ type: "text", text: m.content }]
-      : [...m.content];
-    msgs[last] = { role: m.role, content: [...blocks, { type: "text", text: note }] };
-  }
+  const resolved: Anthropic.MessageParam[] = await withAttachments(messages, bearer, userId);
+  // Breakpoint on the history, then the per-turn extras behind it. The peer
+  // text comes first and the language note stays last, the last thing read.
+  const msgs = layoutMessages(resolved, [peerPrompt(body.agentType, peer), languageNote(lang)]);
 
   /*
    * The call is admitted here, after the request is fully built and before a
