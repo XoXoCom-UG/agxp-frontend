@@ -604,6 +604,16 @@ html.light .m-antenna{ stroke:color-mix(in srgb, var(--primary) 45%, transparent
   opacity: 1;
   pointer-events: auto;
 }
+/* The entrance: a menu mounts already open (lib/use-presence.ts) and the
+   browser animates it from here. Clickable from its first frame — waiting a
+   frame in JS before showing it was what left menus invisible on a slow page.
+   A browser without @starting-style shows it at once, unanimated. */
+@starting-style {
+  .t-dropdown.is-open {
+    transform: scale(var(--dropdown-pre-scale));
+    opacity: 0;
+  }
+}
 .t-dropdown.is-closing {
   transform: scale(var(--dropdown-closing-scale));
   opacity: 0;

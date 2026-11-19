@@ -164,7 +164,10 @@ export function forgetEntitlement(): void {
 
 export function useEntitlement(): Entitlement & { refresh: () => void } {
   const state = useSyncExternalStore(subscribe, () => snapshot, () => UNKNOWN);
-  useEffect(() => { loadEntitlement().catch(() => {}); }, []);
+  // On mount, and again whenever the read was dropped (another account signed
+  // in): a reader left holding UNKNOWN would wait for an answer nobody asks for.
+  const forgotten = state === UNKNOWN;
+  useEffect(() => { loadEntitlement().catch(() => {}); }, [forgotten]);
   // After a key is redeemed, so the gate closes behind the person without a
   // page reload — and every other reader sees the new plan with it.
   return { ...state, refresh: () => { loadEntitlement(true).catch(() => {}); } };

@@ -148,8 +148,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // The shared browser client (lib/supabase.ts): the same object on every render.
   }, [supabase.auth]);
 
+  /*
+   * Ends on the login page, always, in a fresh page load. Signing out used to
+   * leave you where you were: the signed-in screen lost its session, drew
+   * nothing while it waited for one, and stayed black until a refresh (Ana,
+   * 2026-11-19). A full load also drops everything this tab still holds in
+   * memory about the account — the plan read, agent levels, conversations —
+   * which matters on a shared computer.
+   */
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // Offline or the server refused: this browser still forgets the session.
+    }
+    clearStaleAuthCookies();
+    window.location.replace("/login");
   };
 
   return (
