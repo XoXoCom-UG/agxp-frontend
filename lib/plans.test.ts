@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { PLANS, planFor, storedPlan, periodStart, projectsLabel, agentsLabel, EVERYONE_IS_MAX, MONTHLY_BUDGET_USD, FREE_POOL_BUDGET_USD } from "./plans.ts";
+import { PLANS, planFor, storedPlan, periodStart, projectsLabel, agentsLabel, EVERYONE_IS_MAX, MONTHLY_BUDGET_USD, FREE_POOL_BUDGET_USD, upgradeTarget, isPaidPlan } from "./plans.ts";
 
 test("an unknown or missing plan falls back to free, never to a better one", () => {
   assert.equal(storedPlan(undefined).id, "free");
@@ -102,4 +102,21 @@ test("an account nobody invited is free, even while everyone is on Max", () => {
 
 test("free accounts share a pool smaller than the whole budget", () => {
   assert.ok(FREE_POOL_BUDGET_USD > 0 && FREE_POOL_BUDGET_USD < MONTHLY_BUDGET_USD);
+});
+
+test("one conversation can never cost more than the account's month", () => {
+  for (const p of Object.values(PLANS)) {
+    assert.ok(p.conversationCeilingUsd > 0, p.id);
+    assert.ok(p.conversationCeilingUsd < p.costCeilingUsd, p.id);
+  }
+});
+
+test("upgrades go one step up and stop at Max", () => {
+  assert.equal(upgradeTarget("free"), "mid");
+  assert.equal(upgradeTarget("mid"), "max");
+  assert.equal(upgradeTarget("max"), null);
+  assert.equal(isPaidPlan("mid"), true);
+  assert.equal(isPaidPlan("max"), true);
+  assert.equal(isPaidPlan("free"), false);
+  assert.equal(isPaidPlan("MAX"), false);
 });

@@ -1,6 +1,6 @@
 import "server-only";
 import { serviceClient } from "@/lib/server-db";
-import { PLANS, DEFAULT_PLAN, INVITE_ONLY, MONTHLY_BUDGET_USD, FREE_POOL_BUDGET_USD, planFor, periodStart, type Plan, type LimitHit } from "@/lib/plans";
+import { PLANS, DEFAULT_PLAN, INVITE_ONLY, MONTHLY_BUDGET_USD, FREE_POOL_BUDGET_USD, CONVERSATION_LIMIT_MESSAGE, planFor, periodStart, type Plan, type LimitHit } from "@/lib/plans";
 import { costMicroUsd, usd, type UsageTokens } from "@/lib/cost";
 
 /**
@@ -205,6 +205,8 @@ export interface AiLease {
   id: string;
   userId: string;
   period: string;
+  /** The conversation it counts against, when the call belongs to one. */
+  projectId: string | null;
 }
 
 /**
@@ -226,12 +228,20 @@ export async function beginAiCall(
   userId: string,
   kind: AiCallKind,
   reserveMicroUsd: number,
+  projectId: string | null = null,
 ): Promise<{ lease: AiLease } | { hit: LimitHit; status: number }> {
-  const lease: AiLease = { id: crypto.randomUUID(), userId, period: a.periodStart };
+  const lease: AiLease = { id: crypto.randomUUID(), userId, period: a.periodStart, projectId };
   const db = admin();
   if (!db) return FAIL_OPEN ? { lease } : { hit: unreadableHit(a), status: 402 };
 
+  // With a project, the 13-argument form from 0034, which also holds the
+  // conversation's ceiling. Without 0034 that call fails, and like any other
+  // missing migration production refuses rather than run unchecked.
+  const conversation = projectId
+    ? { p_project: projectId, p_project_ceiling: usd(a.plan.conversationCeilingUsd) }
+    : {};
   const { data, error } = await db.rpc("begin_ai_call", {
+    ...conversation,
     p_user: userId,
     p_lease: lease.id,
     p_kind: kind,
@@ -262,6 +272,8 @@ export async function beginAiCall(
     case "month":
       console.error("[lease] monthly budget reached — refusing model calls until the 1st");
       return { status: 402, hit: { kind: "budget", plan, message: "AgentiX has reached its usage limit for this month and is paused until the 1st. Sorry for the interruption." } };
+    case "conversation":
+      return { status: 402, hit: { kind: "conversation", plan, message: CONVERSATION_LIMIT_MESSAGE } };
     case "free_pool":
       console.warn("[lease] free pool spent — free accounts paused until the 1st");
       return { status: 402, hit: { kind: "budget", plan, message: "The free plan is fully booked for this month. It opens again on the 1st — or upgrade to keep going now." } };
@@ -288,6 +300,8 @@ export async function settleAiCall(lease: AiLease, t: SpentTokens): Promise<void
   const db = admin();
   if (!db) return;
   const { error } = await db.rpc("settle_ai_call", {
+    // The 9-argument form (0034) also adds to the conversation's counter.
+    ...(lease.projectId ? { p_project: lease.projectId } : {}),
     p_lease: lease.id,
     p_user: lease.userId,
     p_period: lease.period,
@@ -318,7 +332,7 @@ export function peerReadingAllowed(plan: Plan, coachTurnsSoFar: number): boolean
  */
 export async function takeRateSlot(
   userId: string,
-  bucket: "chat" | "title" | "redeem" | "account" | "report" | "feedback" | "triage",
+  bucket: "chat" | "title" | "redeem" | "account" | "report" | "feedback" | "triage" | "billing",
   max: number,
   windowSeconds = 60,
 ): Promise<boolean> {

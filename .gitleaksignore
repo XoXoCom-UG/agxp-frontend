@@ -1,0 +1,7 @@
+# Findings reviewed and accepted (gitleaks reads one fingerprint per line).
+#
+# SETUP.md:24 in the initial copy commit (2026-08-27): a truncated example of
+# NEXT_PUBLIC_SUPABASE_ANON_KEY, 39 characters, not a usable key — and an anon
+# key is public by design anyway (it ships in the browser bundle). It lives in
+# history, so it cannot be removed without rewriting main.
+93329496a03351878424e735764268b021cb8b1e:SETUP.md:generic-api-key:24
