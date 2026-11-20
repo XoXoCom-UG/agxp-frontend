@@ -29,6 +29,7 @@ export const DE: Record<string, string> = {
   "Account menu": "Kontomenü",
   "Account": "Konto",
   "Profile & settings": "Profil & Einstellungen",
+  "Team dashboard": "Team-Dashboard",
   "Sign out": "Abmelden",
   "Legal": "Rechtliches",
 

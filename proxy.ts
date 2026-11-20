@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { isTeamOnly, teamVerdict } from "./lib/team-gate";
 
 /**
  * Route protection (Next.js 16 "Proxy", formerly Middleware).
@@ -19,7 +20,7 @@ function hasSupabaseSession(req: NextRequest): boolean {
     .some(c => c.name.startsWith("sb-") && c.name.includes("-auth-token") && c.value.length > 0);
 }
 
-export function proxy(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const authed = hasSupabaseSession(req);
 
@@ -36,6 +37,30 @@ export function proxy(req: NextRequest) {
     const back = pathname + req.nextUrl.search;
     if (back !== "/dashboard") url.searchParams.set("next", back);
     return NextResponse.redirect(url);
+  }
+
+  // The team's pages are checked for real, not just for a cookie: the session
+  // is validated and the database asked whether this account is on the team
+  // (lib/team-gate.ts). Anyone else gets the ordinary 404, so the page does not
+  // even confirm that it exists. The data behind it refuses off the team too.
+  if (authed && isTeamOnly(pathname)) {
+    const { result, cookies } = await teamVerdict(req);
+    let res: NextResponse;
+    if (result === "team") {
+      res = NextResponse.next();
+    } else if (result === "no-session") {
+      const url = req.nextUrl.clone();
+      url.pathname = "/login";
+      url.search = "";
+      url.searchParams.set("next", pathname + req.nextUrl.search);
+      res = NextResponse.redirect(url);
+    } else {
+      res = NextResponse.rewrite(new URL("/_not-team", req.url), { status: 404 });
+    }
+    for (const c of cookies) res.cookies.set(c.name, c.value, c.options);
+    // Never kept by a shared cache: what it says depends on who is asking.
+    res.headers.set("Cache-Control", "private, no-store");
+    return res;
   }
 
   // NOTE: there used to be an "already logged in → skip /login" redirect here.

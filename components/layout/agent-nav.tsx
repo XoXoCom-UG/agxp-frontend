@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/lib/auth-context";
-import { IconSun, IconMoon, IconUser, IconLogout, IconPlus, IconIndustry, IconClock, IconChart } from "@/components/layout/agxp-icons";
+import { IconSun, IconMoon, IconUser, IconUsers, IconLogout, IconPlus, IconIndustry, IconClock, IconChart } from "@/components/layout/agxp-icons";
 import { industryHue } from "@/lib/industry";
 import { PLACEHOLDER_PROJECT_NAME } from "@/lib/projects";
 import { useLastProject } from "@/lib/last-project";
@@ -16,12 +16,16 @@ import { PlanBadge } from "@/components/layout/plan-badge";
 import { readAccent, applyAccent } from "@/lib/accent";
 import { readAppearance, applyAppearance } from "@/lib/appearance";
 import { readLang, applyLang, useT } from "@/lib/language";
+import { useEntitlement } from "@/lib/entitlement";
 
-type Tab = "newtask" | "history" | "agents";
+type Tab = "newtask" | "history" | "agents" | "team";
 
 function activeTab(pathname: string): Tab {
   if (pathname.startsWith("/dashboard/history")) return "history";
   if (pathname.startsWith("/dashboard/agents")) return "agents";
+  // Not in the bar — it is in the account menu — but it is not the workspace
+  // either, so "New Task" must not light up and the way back to the project must show.
+  if (pathname.startsWith("/dashboard/team") || pathname.startsWith("/dashboard/feedback")) return "team";
   return "newtask";
 }
 
@@ -84,6 +88,9 @@ export function AgentNav({ started, projectName, projectCategory }: {
    *  is open, so History and the Agent Dashboard both have a way back. */
   const lastProject = useLastProject();
   const { setTheme } = useTheme();
+  // The team's own page. Showing the entry is a courtesy: the page and every
+  // read behind it ask the database who is on the team.
+  const { canSwitch } = useEntitlement();
   const [popover, setPopover] = useState<PopoverName>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const isApple = useIsApple();
@@ -285,6 +292,14 @@ export function AgentNav({ started, projectName, projectCategory }: {
                   <IconUser size={13} />{t("Profile & settings")}
                   <span className="mi-key" aria-hidden="true">{isApple ? "⌘," : "Ctrl ,"}</span>
                 </button>
+                {canSwitch && (
+                  <button className="mi" role="menuitem" tabIndex={-1}
+                    aria-current={tab === "team" ? "page" : undefined}
+                    onClick={() => { setPopover(null); router.push("/dashboard/team"); }}>
+                    <IconUsers size={13} />{t("Team dashboard")}
+                    <span className="mi-key mi-team" aria-hidden="true">Team</span>
+                  </button>
+                )}
                 <hr />
                 <button className="mi" role="menuitem" tabIndex={-1} onClick={() => signOut()}><IconLogout size={13} />{t("Sign out")}</button>
                 {/* The legal pages have to be reachable from inside the app,
