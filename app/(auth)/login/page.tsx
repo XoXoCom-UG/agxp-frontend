@@ -1,5 +1,6 @@
 "use client";
 
+import { rememberNext } from "@/lib/after-login";
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -93,7 +94,7 @@ export default function LoginPage() {
 
   // The invitation email links here with the key in the fragment. Take it
   // before anything navigates away and drops it (see lib/beta-key-handoff.ts).
-  useEffect(() => { captureBetaKeyFromUrl(); }, []);
+  useEffect(() => { captureBetaKeyFromUrl(); rememberNext(window.location.search); }, []);
 
   // Already signed in (came back to /login by hand or by an old bookmark).
   useEffect(() => { if (!authLoading && token) router.replace(nextFromLocation()); }, [token, authLoading, router]);
