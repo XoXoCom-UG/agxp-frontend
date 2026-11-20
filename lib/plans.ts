@@ -59,6 +59,12 @@ export interface Plan {
   agentsPerType: number;
   /** The invisible ceiling. What this account may cost us per period, in USD. */
   costCeilingUsd: number;
+  /** What ONE conversation (a project, both panels together) may cost, in USD,
+   *  over its whole life. The account ceiling stops a person per month; this
+   *  stops one conversation from eating that month, since cost grows with the
+   *  square of its length. Reaching it ends the conversation with "start a new
+   *  project or upgrade" (begin_ai_call, migration 0034). Never shown as money. */
+  conversationCeilingUsd: number;
 }
 
 export const PLANS: Record<PlanId, Plan> = {
@@ -76,6 +82,8 @@ export const PLANS: Record<PlanId, Plan> = {
     agentsPerType: 1,
     // Three capped interviews at ~$0.70 each, with room to retry a document.
     costCeilingUsd: 3,
+    // Three stations is about $0.70; room for a retry or two of the document.
+    conversationCeilingUsd: 1.5,
   },
   mid: {
     id: "mid",
@@ -88,6 +96,8 @@ export const PLANS: Record<PlanId, Plan> = {
     agentTypes: null,
     agentsPerType: 4,
     costCeilingUsd: 25,
+    // A full interview is ~$1.26 before caching: room for many document rebuilds.
+    conversationCeilingUsd: 5,
   },
   max: {
     id: "max",
@@ -101,6 +111,7 @@ export const PLANS: Record<PlanId, Plan> = {
     agentTypes: null,
     agentsPerType: 4,
     costCeilingUsd: 60,
+    conversationCeilingUsd: 8,
   },
 };
 
@@ -211,7 +222,25 @@ export function periodStart(period: Plan["period"], now = new Date()): string {
 }
 
 /** What the API route sends back when a limit is hit, and the UI explains. */
-export type LimitKind = "projects" | "tokens" | "stations" | "invite" | "budget";
+export type LimitKind = "projects" | "tokens" | "stations" | "invite" | "budget" | "conversation";
+
+/**
+ * What the chat says when one conversation has reached its plan's ceiling.
+ * One constant, because the chat bubble recognises it to offer the two ways on
+ * (a new project, or a bigger plan) — see components/layout/chat/chat-message.tsx.
+ */
+export const CONVERSATION_LIMIT_MESSAGE =
+  "This conversation has reached the limit of your plan. Start a new project to keep going, or upgrade for longer conversations.";
+
+/** The plan one step up, or null when there is none to sell. */
+export function upgradeTarget(id: PlanId): Exclude<PlanId, "free"> | null {
+  return id === "free" ? "mid" : id === "mid" ? "max" : null;
+}
+
+/** The plans that can be bought. */
+export function isPaidPlan(id: unknown): id is "mid" | "max" {
+  return id === "mid" || id === "max";
+}
 
 export interface LimitHit {
   kind: LimitKind;

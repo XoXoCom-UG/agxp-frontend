@@ -134,6 +134,16 @@ export const DE: Record<string, string> = {
   "Coach answers when asked": "Der Coach antwortet, wenn du fragst",
   "Upgrading isn't wired up yet — get in touch and we'll move your account.":
     "Ein Upgrade geht noch nicht automatisch – melde dich bei uns und wir stellen dein Konto um.",
+  "Upgrade to {plan}": "Upgrade auf {plan}",
+  "Manage subscription": "Abo verwalten",
+  "Your subscription ends on {date}.": "Dein Abo endet am {date}.",
+  "The last payment didn't go through. Update your card under Manage subscription to keep your plan.":
+    "Die letzte Zahlung ist nicht durchgegangen. Aktualisiere deine Karte unter „Abo verwalten“, um deinen Tarif zu behalten.",
+  "Payments are handled by Stripe. Your plan changes as soon as the payment is confirmed.":
+    "Zahlungen laufen über Stripe. Dein Tarif ändert sich, sobald die Zahlung bestätigt ist.",
+  "Start a new project": "Neues Projekt starten",
+  "This conversation has reached the limit of your plan. Start a new project to keep going, or upgrade for longer conversations.":
+    "Diese Unterhaltung hat die Grenze deines Tarifs erreicht. Starte ein neues Projekt, um weiterzumachen – oder mach ein Upgrade für längere Unterhaltungen.",
 
   // The chat panel
   "Consultant": "Consultant",

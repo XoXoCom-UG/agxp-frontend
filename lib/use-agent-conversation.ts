@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Agent, AgentType } from "@/lib/agents";
 import { listMessages, addMessage, deleteMessage, touchProjectActivity, renameFromFirstMessage, setProjectTitle, setProjectCategory, PLACEHOLDER_PROJECT_NAME, type Project, type ProjectMessage } from "@/lib/projects";
 import { askAgent, AgentError } from "@/lib/ask-agent";
+import { CONVERSATION_LIMIT_MESSAGE } from "@/lib/plans";
 import { parseMarkers, streamIsDocument, type ParsedMessage } from "@/lib/message-markers";
 import { isDeliverableCommand, type Deliverable } from "@/lib/deliverables";
 import { normalizeIndustry } from "@/lib/industry";
@@ -41,6 +42,7 @@ function userFacingError(e: unknown, stage: "save" | "reply"): string {
     case "rate_limited": return "Too many messages in a short time. Wait a minute, then try again.";
     case "busy": return e.message || "An answer is still being written. Wait for it to finish, then try again.";
     case "limit": return e.message || "This account has reached its limit for now.";
+    case "conversation_limit": return CONVERSATION_LIMIT_MESSAGE;
     case "not_configured": return "The assistant isn't configured on the server yet. Try again later.";
     case "bad_request": return "This conversation couldn't be sent. Reload the page and try again.";
     case "network": return "Couldn't reach the assistant. Check your connection and try again.";

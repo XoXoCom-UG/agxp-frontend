@@ -13,7 +13,7 @@ export async function callerId(req: NextRequest): Promise<string | null> {
 }
 
 /** The verified user: id plus the account's own metadata (preferences). */
-export async function caller(req: NextRequest): Promise<{ id: string; meta: Record<string, unknown> } | null> {
+export async function caller(req: NextRequest): Promise<{ id: string; email: string | null; meta: Record<string, unknown> } | null> {
   const header = req.headers.get("authorization") ?? "";
   const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
   if (!token) return null;
@@ -27,5 +27,5 @@ export async function caller(req: NextRequest): Promise<{ id: string; meta: Reco
   });
   const { data, error } = await supabase.auth.getUser(token);
   if (error || !data.user) return null;
-  return { id: data.user.id, meta: (data.user.user_metadata ?? {}) as Record<string, unknown> };
+  return { id: data.user.id, email: data.user.email ?? null, meta: (data.user.user_metadata ?? {}) as Record<string, unknown> };
 }

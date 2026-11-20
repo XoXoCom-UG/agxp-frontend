@@ -4183,6 +4183,7 @@ html.light .me-retry{ background:rgba(0,0,0,0.06); }
 }
 .me-retry:active:not(:disabled, [aria-disabled="true"]){ transform:scale(0.97); }
 .me-retry:disabled{ opacity:.45; cursor:not-allowed; }
+.me-actions{ display:flex; flex-wrap:wrap; gap:var(--sp-2); }
 
 /* =============================================================================
    LESS DECORATION — 2026-09-27 (avoid-generic-ai-ui)
@@ -6473,6 +6474,7 @@ html.light .doc-body{ --doc-accent-grad:linear-gradient(90deg, var(--acc-ink), v
 @media (max-width:640px){ .plan-badge{ display:none; } }
 
 /* --- Settings → Plan ------------------------------------------------------ */
+.ss-row-btns{ display:flex; flex-wrap:wrap; gap:var(--sp-2); margin-top:var(--sp-2); }
 .ss-plan-now{ display:flex; align-items:baseline; gap:var(--sp-3); flex-wrap:wrap; }
 .ss-plan-now b{ font-family:var(--font-display); font-size:21px; font-weight:600; letter-spacing:-0.03em; }
 .ss-plan-left{ font-size:var(--text-xs); color:var(--secondary-foreground); }
