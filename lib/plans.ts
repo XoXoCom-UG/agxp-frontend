@@ -148,8 +148,14 @@ export const INVITE_ONLY = true;
  * Note what Max means for cost: the per-account ceiling is the only limit
  * left, and it is $60 a month. MONTHLY_BUDGET_USD below is what stops the
  * total, however many accounts there are.
+ *
+ * Off since 2026-11-20 (Tudor), so plans can be bought through Stripe: each
+ * account now gets the plan stored in agxp_entitlements (a beta key stores
+ * 'max' by default). Moving one account by hand is still one UPDATE on that
+ * row. Before this reaches production, set the agxp_plan_limits rows back
+ * (the statement is in 0015), or the database keeps Max's limits for Free.
  */
-export const EVERYONE_IS_MAX = true;
+export const EVERYONE_IS_MAX = false;
 
 /**
  * The most the whole app may spend on the model in one calendar month (UTC),
