@@ -86,8 +86,8 @@ test("agents are limited by type, not by a pool shared across projects", () => {
 });
 
 test("agentsLabel says it in words", () => {
-  assert.equal(agentsLabel(PLANS.free), "1 type per role, up to 1 agent of each");
-  assert.equal(agentsLabel(PLANS.mid), "every type, up to 4 agents of each");
+  assert.equal(agentsLabel(PLANS.free), "1 consultant");
+  assert.equal(agentsLabel(PLANS.mid), "up to 5 consultants");
 });
 
 test("while everyone is on Max, an invited account is Max whatever its row holds", () => {
@@ -102,4 +102,10 @@ test("an account nobody invited is free, even while everyone is on Max", () => {
 
 test("free accounts share a pool smaller than the whole budget", () => {
   assert.ok(FREE_POOL_BUDGET_USD > 0 && FREE_POOL_BUDGET_USD < MONTHLY_BUDGET_USD);
+});
+
+test("one agent on free, five on the paid plans (meeting 2026-11-20)", () => {
+  assert.equal(PLANS.free.maxAgents, 1);
+  assert.equal(PLANS.mid.maxAgents, 5);
+  assert.equal(PLANS.max.maxAgents, 5);
 });

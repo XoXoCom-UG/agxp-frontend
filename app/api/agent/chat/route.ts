@@ -16,6 +16,7 @@ import { cutUnfinishedMarker } from "@/lib/conversation-state";
 import { bearerOf } from "@/lib/server-db";
 import { ipGate } from "@/lib/ip-gate";
 import { layoutMessages } from "@/lib/cache-layout";
+import { fakeAiOn, fakeReplyFor, fakeStream } from "@/lib/dev-fake-ai";
 
 // The longest answer (a full document) streams in about two minutes. Pinned
 // so the lease TTL in lib/entitlement-server.ts can be set just above it.
@@ -107,7 +108,9 @@ export async function POST(req: NextRequest) {
   // protects the spend: the lease below (parallel calls, budget, free pool)
   // and the network limit above.
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  // The pretend assistant of `next dev` (lib/dev-fake-ai.ts): never in production.
+  const fake = fakeAiOn();
+  const apiKey = process.env.ANTHROPIC_API_KEY ?? (fake ? "dev-fake" : undefined);
   if (!apiKey) {
     // Named here, in the server log, where the person who can fix it looks.
     console.error("[agent/chat] ANTHROPIC_API_KEY is not set");
@@ -133,6 +136,17 @@ export async function POST(req: NextRequest) {
     return fail(checked.status, checked.status === 413 ? "too_large" : "bad_request", checked.error);
   }
   const messages = checked.messages;
+
+  if (fake) {
+    const replyId = crypto.randomUUID();
+    const column = body.agentType;
+    const turns = messages.filter(m => m.role === "user").map(m => (typeof m.content === "string" ? m.content : ""));
+    const text = fakeReplyFor(column === "coach" ? "coach" : "consultant", cleanKind(body.agentKind) || null, turns);
+    // Stored when a service key exists, so a reload keeps it; without one it lives for the visit.
+    return new Response(fakeStream(text, () => { void saveReply(replyId, body.projectId, column, text); }), {
+      headers: { "Content-Type": "text/plain; charset=utf-8", "X-Message-Id": replyId, "Cache-Control": "no-store", "X-Accel-Buffering": "no" },
+    });
+  }
 
   // What this account is allowed, and what it has already spent. Read before
   // the model call so a user over the ceiling is told rather than billed.

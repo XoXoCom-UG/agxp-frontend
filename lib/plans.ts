@@ -57,6 +57,11 @@ export interface Plan {
    *  own — built from a type, never shared — so this is the whole limit: free
    *  is one of one kind per role, the paid plans are four of each kind. */
   agentsPerType: number;
+  /** How many consultants the user may keep in all, whatever their types
+   *  (meeting 2026-11-20, Patryk: "nur noch eins oder fünf je nach Plan"). The
+   *  Assistant is not counted: it is made for the user, not hired. Archiving
+   *  one frees its place. */
+  maxAgents: number;
   /** The invisible ceiling. What this account may cost us per period, in USD. */
   costCeilingUsd: number;
 }
@@ -74,6 +79,7 @@ export const PLANS: Record<PlanId, Plan> = {
     nudges: false,
     agentTypes: 1,
     agentsPerType: 1,
+    maxAgents: 1,
     // Three capped interviews at ~$0.70 each, with room to retry a document.
     costCeilingUsd: 3,
   },
@@ -87,6 +93,7 @@ export const PLANS: Record<PlanId, Plan> = {
     nudges: true,
     agentTypes: null,
     agentsPerType: 4,
+    maxAgents: 5,
     costCeilingUsd: 25,
   },
   max: {
@@ -100,6 +107,7 @@ export const PLANS: Record<PlanId, Plan> = {
     nudges: true,
     agentTypes: null,
     agentsPerType: 4,
+    maxAgents: 5,
     costCeilingUsd: 60,
   },
 };
@@ -179,10 +187,9 @@ export function planFor(id: string | null | undefined): Plan {
   return EVERYONE_IS_MAX && id ? PLANS.max : storedPlan(id);
 }
 
-/** What the plan says about agents, in words: "1 type per role, 1 agent each". */
+/** What the plan says about agents, in words: "1 consultant", "up to 5 consultants". */
 export function agentsLabel(p: Plan): string {
-  const types = p.agentTypes === null ? "every type" : `${p.agentTypes} type per role`;
-  return `${types}, up to ${p.agentsPerType} ${p.agentsPerType === 1 ? "agent" : "agents"} of each`;
+  return p.maxAgents === 1 ? "1 consultant" : `up to ${p.maxAgents} consultants`;
 }
 
 /** "Unlimited" on the page, a real number in the code. */

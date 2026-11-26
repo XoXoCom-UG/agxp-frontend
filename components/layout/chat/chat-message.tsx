@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import type { Entry } from "@/lib/conversation-state";
 import { errorText } from "@/lib/conversation-state";
-import { isDeliverableCommand, isSkipCommand, skippedStation } from "@/lib/deliverables";
+import { isDeliverableCommand, isSkipCommand, skippedStation, isDiscussCommand, discussedMethod, isOptimizeCommand } from "@/lib/deliverables";
 import { md } from "@/lib/markdown";
 import { streamingText, streamIsDocument } from "@/lib/message-markers";
 import { ThinkingOrb } from "@/components/layout/thinking-orb";
@@ -101,6 +101,22 @@ export function ChatMessage({ entry, agentName, docTitle, isNew, isLeaving, isLa
         <div className="msg-command">
           <IconArrow size={11} />
           <span>{tr("You skipped: {label}", { label: skippedStation(m.content) })}</span>
+        </div>
+      );
+    }
+    if (isDiscussCommand(m.content)) {
+      return (
+        <div className="msg-command">
+          <IconArrow size={11} />
+          <span>{tr("You opened: {label}", { label: discussedMethod(m.content) })}</span>
+        </div>
+      );
+    }
+    if (isOptimizeCommand(m.content)) {
+      return (
+        <div className="msg-command">
+          <IconArrow size={11} />
+          <span>{tr("You asked to optimize all methods")}</span>
         </div>
       );
     }

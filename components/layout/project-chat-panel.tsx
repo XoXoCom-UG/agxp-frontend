@@ -8,7 +8,7 @@ import { loadAgentMemory, memoryLines, EMPTY_MEMORY, type AgentMemory } from "@/
 import { useAuth } from "@/lib/auth-context";
 import { useEntitlement } from "@/lib/entitlement";
 import { memoryAllowed } from "@/lib/memory-pref";
-import { deliverableFor, isDeliverableCommand, skipStationPrompt } from "@/lib/deliverables";
+import { deliverableFor, isDeliverableCommand, skipStationPrompt, discussMethodPrompt, optimizeMethodsPrompt } from "@/lib/deliverables";
 import { kindFor } from "@/lib/agent-types";
 import { experienceFor } from "@/lib/agent-level";
 import { refreshLevel, useMascotLevel } from "@/lib/mascot-level";
@@ -46,7 +46,7 @@ function hasFinePointer(): boolean {
   return typeof window !== "undefined" && window.matchMedia?.("(pointer: fine)").matches;
 }
 
-export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer, peerLoaded = false, idle = false, unread = false, keyboardActive = true, headExtra, hideRail = false, topRow, onProjectNamed, onActivity, onOpenDoc, onChangeAgent, onSnapshot, onFocusPanel, onMinimise }: {
+export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer, peerLoaded = false, idle = false, unread = false, keyboardActive = true, headExtra, hideRail = false, topRow, openingMessage, onOpeningSent, onProjectNamed, onActivity, onOpenDoc, onChangeAgent, onSnapshot, onFocusPanel, onMinimise }: {
   project: Project; role: AgentType; agent: Agent;
   /** How many of the user's projects this agent has worked on, this one included. */
   projectCount?: number;
@@ -84,6 +84,10 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
   hideRail?: boolean;
   /** A row above the head: the Methods / Coach tabs, when this is the right-hand side. */
   topRow?: React.ReactNode;
+  /** What the person wrote on the Prompt Pad: sent once, as the first message,
+   *  when the conversation is empty and has been read. */
+  openingMessage?: string;
+  onOpeningSent?: () => void;
 }) {
   // The document depends on the agent's TYPE, not only on its role: a Solution
   // Architect writes an Architecture Blueprint, a Change Manager an Adoption Plan.
@@ -187,13 +191,25 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
   // Memory is read from the user's other projects with this agent, so the
   // current one is excluded — an agent should not "remember" today's answers.
   // A failure only means it starts without them; the chat itself still works.
+  const [memoryRead, setMemoryRead] = useState(false);
   useEffect(() => {
     let alive = true;
     loadAgentMemory(agent.id, role, project.id)
       .then(m => { if (alive) setMemory(m); })
-      .catch(e => console.warn("[chat] loading agent memory failed:", e));
+      .catch(e => console.warn("[chat] loading agent memory failed:", e))
+      .finally(() => { if (alive) setMemoryRead(true); });
     return () => { alive = false; };
   }, [agent.id, role, project.id]);
+
+  // The Prompt Pad's text goes out as the first message — once, after the
+  // conversation and the memory are read, so it carries both.
+  const openingSent = useRef(false);
+  useEffect(() => {
+    if (!openingMessage || openingSent.current || !loaded || loadError || !memoryRead || messages.length > 0) return;
+    openingSent.current = true;
+    chat.send(openingMessage);
+    onOpeningSent?.();
+  });
 
   // Following a streaming answer smoothly fights itself on every chunk, so the
   // scroll is instant while text is arriving and smooth otherwise.
@@ -367,7 +383,7 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
   }, [docs, currentVersion, deliverable.title, role, agent.id, agent.name, totalProjects, project.name]);
   // One object whose identity never changes; what it calls is read at call time.
   const fns = useRef<RailControls>({
-    generate: () => {}, regenerate: () => {}, openVersion: () => {}, restoreVersion: () => {}, skip: () => {},
+    generate: () => {}, regenerate: () => {}, openVersion: () => {}, restoreVersion: () => {}, skip: () => {}, discuss: () => {}, optimize: () => {},
   });
   useEffect(() => {
     fns.current = {
@@ -376,6 +392,8 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
       openVersion,
       restoreVersion: v => setRestore({ version: v, atCount: latest }),
       skip: skipStation,
+      discuss: label => chat.send(discussMethodPrompt(label)),
+      optimize: () => chat.send(optimizeMethodsPrompt()),
     };
   });
   const controls = useMemo<RailControls>(() => ({
@@ -384,6 +402,8 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
     openVersion: v => fns.current.openVersion(v),
     restoreVersion: v => fns.current.restoreVersion(v),
     skip: () => fns.current.skip(),
+    discuss: label => fns.current.discuss(label),
+    optimize: () => fns.current.optimize(),
   }), []);
 
   useEffect(() => {

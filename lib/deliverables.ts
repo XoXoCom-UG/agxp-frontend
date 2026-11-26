@@ -145,6 +145,69 @@ export function skippedStation(text: string): string {
   return end >= 0 ? rest.slice(0, end) : "";
 }
 
+/* ---------------------------------------------------------------------------
+   OPEN A METHOD IN THE COCKPIT (meeting 2026-11-20, Mural 19.11.)
+
+   Every method of the consultant is one click in the Cockpit: the consultant
+   then talks that method through — what it does for this project, what it
+   already knows — instead of the person having to follow the interview in its
+   order. Sent as a user turn like the skip button, shown as one quiet line.
+   The label is in German quotes so the line can be read back out of it.
+   --------------------------------------------------------------------------- */
+
+const DISCUSS_PREFIX =
+  "(Systemhinweis, nicht vom Nutzer getippt: Der Nutzer hat im Cockpit die Methode „";
+
+export function discussMethodPrompt(label: string): string {
+  const clean = label.replace(/[„“"]/g, "").trim();
+  return (
+    `${DISCUSS_PREFIX}${clean}“ geöffnet. Erkläre in höchstens drei kurzen Sätzen, was diese Methode ` +
+    `für sein Projekt leistet und was du dafür schon aus dem Gespräch weißt — nur Gesagtes, nichts ` +
+    `erfinden; fehlt noch etwas, sag das offen. Frag dann mit CHOICES, ob er etwas darüber wissen oder ` +
+    `sie ändern möchte. Das Interview läuft nicht weiter: gib KEIN [[TOPIC]] und KEIN [[PROGRESS]] aus, ` +
+    `der Stand des Interviews bleibt, wie er ist.)`
+  );
+}
+
+export function isDiscussCommand(text: string): boolean {
+  return text.trim().startsWith(DISCUSS_PREFIX);
+}
+
+/** The method a discuss command named, for the line the chat shows. */
+export function discussedMethod(text: string): string {
+  const t = text.trim();
+  if (!t.startsWith(DISCUSS_PREFIX)) return "";
+  const rest = t.slice(DISCUSS_PREFIX.length);
+  const end = rest.indexOf("“");
+  return end >= 0 ? rest.slice(0, end) : "";
+}
+
+/* ---------------------------------------------------------------------------
+   OPTIMIZE ALL METHODS (meeting 2026-11-20: the interview is optional)
+
+   The consultant first drafts every method from what the person wrote on the
+   Prompt Pad, without asking anything. This is the button that starts the
+   interview after that, so the questions begin only when the person wants them
+   and skip what the draft already knows. Sent as a user turn like the others,
+   shown as one quiet line.
+   --------------------------------------------------------------------------- */
+
+const OPTIMIZE_PREFIX =
+  "(Systemhinweis, nicht vom Nutzer getippt: Der Nutzer hat im Cockpit „Alle Methoden optimieren“";
+
+export function optimizeMethodsPrompt(): string {
+  return (
+    `${OPTIMIZE_PREFIX} gedrückt — jetzt beginnt das Interview. Stell die erste Frage der ersten ` +
+    `Station, die der erste Entwurf noch nicht beantwortet; Stationen, deren Angaben schon vorliegen, ` +
+    `fasst du in einem Satz zusammen und überspringst sie. Genau EINE Frage, mit [[TOPIC]] und ` +
+    `[[PROGRESS]] wie in der Agenda beschrieben.)`
+  );
+}
+
+export function isOptimizeCommand(text: string): boolean {
+  return text.trim().startsWith(OPTIMIZE_PREFIX);
+}
+
 /**
  * Is this user message the button, rather than something the person typed?
  *
@@ -159,7 +222,7 @@ export function isDeliverableCommand(text: string): boolean {
   // "Skip this step" is a button press of the same kind: everything that
   // must not count it as typed (the project name, the language, the turn
   // count, the peer transcript) asks this one function.
-  if (isSkipCommand(t)) return true;
+  if (isSkipCommand(t) || isDiscussCommand(t) || isOptimizeCommand(t)) return true;
   return ALL_DELIVERABLES.some(
     d => t === d.generatePrompt.trim() || t === d.regeneratePrompt.trim(),
   );
@@ -660,6 +723,13 @@ WICHTIG — dieser Nutzer ist auf der kostenlosen Stufe: Das Interview endet nac
     `so merkt der Nutzer, dass du zuhörst.\n` +
     `- Wenn der Nutzer eine Station nicht beantworten kann ("weiß ich nicht"), notiere das als offenen ` +
     `Punkt und geh weiter.\n\n` +
+    `EINSTIEG (hart): Das Interview ist optional. Beschreibt die ERSTE Nachricht des Nutzers schon ` +
+    `sein Projekt (Rolle, Vorhaben, Ziel), beginnst du NICHT mit Fragen. Gib stattdessen einen ersten ` +
+    `Entwurf: pro Station der Agenda eine kurze Zeile „Methode — was sie für dieses Projekt leistet“, ` +
+    `nur aus dem Gesagten, nichts erfinden; was fehlt, nennst du offen. Danach fragst du mit CHOICES: ` +
+    `„Alle Methoden optimieren“ oder „Eine Methode öffnen“. Dieser Entwurf bekommt KEIN [[TOPIC]] und ` +
+    `KEIN [[PROGRESS]]; das Interview beginnt erst, wenn der Nutzer es will. Ist die erste Nachricht ` +
+    `nur ein Gruß oder zu knapp für einen Entwurf, stellst du wie unten die erste Frage.\n\n` +
     `Marker am ENDE JEDER Antwort, jeweils in einer eigenen Zeile (sie werden vom Frontend ` +
     `herausgefiltert und als UI dargestellt, sie erscheinen nie im sichtbaren Text):\n` +
     `[[TOPIC: n/${total} Label]] — n ist die Station, an der du gerade arbeitest, Label EXAKT so ` +

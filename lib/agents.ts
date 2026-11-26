@@ -186,12 +186,22 @@ export async function createAgent(input: {
   let mineQuery = supabase.from("agents").select("id", { count: "exact", head: true })
     .eq("type", input.type).is("archived_at", null);
   mineQuery = input.tagline ? mineQuery.eq("tagline", input.tagline) : mineQuery.is("tagline", null);
-  const [{ plan }, { count: mine, error: countErr }, { data: sessionData }] = await Promise.all([
+  // Consultants count against the plan's total as well (the Assistant does not).
+  const totalQuery = supabase.from("agents").select("id", { count: "exact", head: true })
+    .eq("type", "consultant").is("archived_at", null);
+  const [{ plan }, { count: mine, error: countErr }, { count: total }, { data: sessionData }] = await Promise.all([
     loadEntitlement(),
     mineQuery,
+    input.type === "consultant" ? totalQuery : Promise.resolve({ count: 0 }),
     supabase.auth.getSession(),
   ]);
   if (countErr) throw countErr;
+  if (input.type === "consultant" && (total ?? 0) >= plan.maxAgents) {
+    throw new QuotaError(
+      `The ${plan.label} plan covers ${plan.maxAgents} ${plan.maxAgents === 1 ? "consultant" : "consultants"}. ` +
+      `Archive one to free the place${plan.id === "free" ? ", or move to a bigger plan" : ""}.`,
+    );
+  }
   const types = typesFor(input.type, plan);
   if (input.tagline && !types.some(t => t.sub === input.tagline)) {
     throw new QuotaError(

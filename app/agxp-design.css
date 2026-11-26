@@ -2343,6 +2343,8 @@ html.light .methods-panel{ border-color:rgba(0,0,0,0.07); }
 .mp-progress .artf-bar{ height:6px; border-radius:3px; background-color:color-mix(in srgb, var(--foreground) 10%, transparent); }
 .mp-progress .artf-bar > span{ border-radius:3px; box-shadow:none; background:var(--primary-soft); }
 .mp-generate{ margin:var(--sp-4) 0 0 auto; }
+.mp-optimize{ display:flex; flex-direction:column; align-items:flex-start; gap:var(--sp-3); margin:0 0 var(--sp-4); padding:var(--sp-4); border:1px solid var(--border); border-radius:12px; }
+.mp-optimize-t{ margin:0; max-width:46ch; font-size:var(--text-sm); line-height:1.55; color:var(--muted-foreground); }
 /* The version's actions: text buttons, flat, with the one primary action in the
    app's own gradient. A hairline closes the header off from the document. */
 .methods-panel.is-ready .mp-head{ border-bottom:1px solid var(--border); }
@@ -2385,6 +2387,14 @@ html.light .methods-panel{ border-color:rgba(0,0,0,0.07); }
   color:var(--muted-foreground);
 }
 .mp-step.now .mp-step-n{ color:var(--secondary-foreground); }
+/* The method's name is the way into it: plain text that answers to a click. */
+.mp-step-open{
+  align-self:flex-start; padding:0; border:0; background:none; font:inherit; color:inherit;
+  text-align:left; cursor:pointer; text-decoration:underline transparent; text-underline-offset:3px;
+  transition:text-decoration-color 150ms var(--ease-out);
+}
+.mp-step-open:disabled{ cursor:default; }
+@media (hover:hover) and (pointer:fine){ .mp-step-open:hover:not(:disabled){ text-decoration-color:currentColor; } }
 .mp-node{
   position:relative; z-index:1; flex-shrink:0; width:26px; height:26px; border-radius:50%;
   display:flex; align-items:center; justify-content:center;
@@ -9411,3 +9421,196 @@ html.light .td-card{ background:linear-gradient(180deg, rgba(255,255,255,0.72), 
   .td-resend{ flex-basis:100%; order:4; }
   .td-resend input{ flex:1; width:auto; }
 }
+
+
+/* =============================================================================
+   PROMPT PAD (meeting 2026-11-20, Mural 19.11.)
+   The start screen is the normal workspace: Prompt Pad | Consultant on the
+   left, Cockpit | Assistant on the right. Patryk: very clean, "keine
+   leuchtenden Gimmicks" — so nothing here glows, gradients or breathes, and
+   nothing sits in a box inside a box: text on the panel, hairlines between
+   things, one solid button.
+   ============================================================================= */
+.panel.pp{
+  overflow:hidden; background:var(--card); border:1px solid var(--border);
+  backdrop-filter:none; -webkit-backdrop-filter:none;
+}
+html.light .panel.pp{ border-color:rgba(0,0,0,0.07); }
+.panel.pp::before, .panel.pp::after{ display:none; }
+.pp-head{ flex:none; display:flex; align-items:flex-end; padding:0 var(--sp-6); border-bottom:1px solid var(--border); }
+.pp-head .rt-tab{ height:44px; }
+.pp-head .rt-tab:disabled{ opacity:.4; cursor:default; }
+.pp-body{ flex:1 1 0; min-height:0; overflow-y:auto; display:flex; justify-content:center; }
+.pp-col{
+  width:min(640px, 100%); box-sizing:border-box; display:flex; flex-direction:column; gap:var(--sp-6);
+  padding:clamp(28px, 8vh, 88px) var(--sp-6) var(--sp-7);
+}
+.pp-back{ align-self:flex-start; }
+.pp-note{ margin:0; font-size:var(--text-sm); line-height:1.55; color:var(--muted-foreground); }
+
+/* The field: a chat box. One rounded surface holding the text and, under it,
+   the two things you can do besides typing and the one thing you do when done. */
+.pp-col[data-view="write"]{ justify-content:center; padding-top:var(--sp-6); }
+.pp-stage{ position:relative; }
+/* A soft blue light behind the box (Ana, 2026-11-24, "ca la Gemini"): a blurred
+   radial wash, static, never in front of the text. */
+.pp-stage::before{
+  content:""; position:absolute; inset:-70px -110px -90px; z-index:0; pointer-events:none;
+  background:radial-gradient(60% 70% at 50% 62%, rgba(56,104,255,.42), rgba(56,104,255,.14) 55%, transparent 78%);
+  filter:blur(34px);
+}
+html.light .pp-stage::before{ background:radial-gradient(60% 70% at 50% 62%, rgba(56,104,255,.22), rgba(56,104,255,.08) 55%, transparent 78%); }
+.pp-composer{
+  position:relative; z-index:1;
+  display:flex; flex-direction:column; gap:var(--sp-2); padding:var(--sp-4) var(--sp-4) var(--sp-3);
+  background:color-mix(in srgb, var(--foreground) 7%, var(--card)); border:1px solid var(--border); border-radius:24px;
+  transition:border-color 200ms var(--ease-out), background-color 200ms var(--ease-out);
+}
+.pp-composer:focus-within{ border-color:var(--border-strong, var(--border)); }
+.pp-area{
+  width:100%; min-height:84px; max-height:280px; box-sizing:border-box; padding:var(--sp-2) var(--sp-2) 0; resize:none;
+  font:inherit; font-size:var(--text-lg); line-height:1.5; letter-spacing:-0.005em; color:var(--foreground);
+  background:none; border:0; outline:0; box-shadow:none; overflow-y:auto;
+}
+.pp-area:focus, .pp-area:focus-visible{ outline:0; box-shadow:none; }
+.pp-area::placeholder{ color:var(--muted-foreground); opacity:.75; }
+.pp-composer-bar{ display:flex; align-items:center; gap:var(--sp-2); }
+.pp-chip{
+  display:inline-flex; align-items:center; gap:6px; height:32px; padding:0 var(--sp-3);
+  font:inherit; font-size:var(--text-xs); color:var(--secondary-foreground); white-space:nowrap;
+  background:none; border:1px solid var(--border); border-radius:999px; cursor:pointer;
+  transition:color 160ms var(--ease-out), border-color 160ms var(--ease-out), background-color 160ms var(--ease-out), transform 100ms var(--ease-out);
+}
+.pp-chip:active{ transform:scale(0.97); }
+@media (hover:hover) and (pointer:fine){ .pp-chip:hover{ color:var(--foreground); border-color:var(--border-strong, var(--border)); background:color-mix(in srgb, var(--foreground) 6%, transparent); } }
+.pp-send{
+  margin-left:auto; display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 var(--sp-4) 0 var(--sp-4);
+  font:inherit; font-size:var(--text-sm); font-weight:500; white-space:nowrap;
+  color:var(--background); background:var(--foreground); border:0; border-radius:999px; cursor:pointer;
+  transition:opacity 160ms var(--ease-out), transform 100ms var(--ease-out);
+}
+.pp-send:active:not(:disabled){ transform:scale(0.97); }
+.pp-send:disabled{ opacity:.25; cursor:default; }
+@media (hover:hover) and (pointer:fine){ .pp-send:hover:not(:disabled){ opacity:.86; } }
+@media (max-width:640px){ .pp-composer-bar{ flex-wrap:wrap; } .pp-send{ margin-left:0; width:100%; justify-content:center; } }
+
+/* Command Prompts: each template as an example, written out with the blanks
+   filled in, so you see what a good first message looks like. */
+.pp-cards{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:var(--sp-3); }
+.pp-card{
+  width:100%; display:flex; flex-direction:column; gap:var(--sp-2); text-align:left; padding:var(--sp-4) var(--sp-5);
+  font:inherit; color:var(--foreground); cursor:pointer;
+  background:color-mix(in srgb, var(--foreground) 3%, transparent); border:1px solid var(--border); border-radius:16px;
+  transition:border-color 160ms var(--ease-out), background-color 160ms var(--ease-out), transform 100ms var(--ease-out);
+}
+.pp-card:active{ transform:scale(0.995); }
+@media (hover:hover) and (pointer:fine){ .pp-card:hover{ border-color:var(--border-strong, var(--border)); background:color-mix(in srgb, var(--foreground) 6%, transparent); } }
+.pp-card-t{ margin:0; font-size:var(--text-2xs); font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--muted-foreground); }
+.pp-card-b{ font-size:var(--text-base); line-height:1.65; color:var(--secondary-foreground); }
+.pp-ph{ color:var(--foreground); }
+
+.pp-gloss{ margin:0; border-top:1px solid var(--border); }
+.pp-gloss > div{ padding:var(--sp-3) 0; border-bottom:1px solid var(--border); }
+.pp-gloss dt{ font-size:var(--text-sm); font-weight:600; color:var(--foreground); }
+.pp-gloss dd{ margin:2px 0 0; font-size:var(--text-sm); color:var(--muted-foreground); }
+
+.pp-wait{ display:flex; flex-direction:column; align-items:center; gap:var(--sp-4); padding:var(--sp-7) 0; color:var(--muted-foreground); }
+.pp-wait p{ margin:0; font-size:var(--text-sm); }
+
+/* The Consultant tab: who it is, the methods, and a Start. */
+.pp-agent{ display:flex; align-items:center; gap:var(--sp-4); padding-bottom:var(--sp-5); border-bottom:1px solid var(--border); }
+.pp-agent-face{ flex:none; display:flex; }
+.pp-agent-txt{ min-width:0; flex:1; }
+.pp-agent-name{ margin:0; font-size:var(--text-lg); font-weight:600; color:var(--foreground); }
+.pp-agent-role{ margin:2px 0 0; font-size:var(--text-2xs); letter-spacing:.12em; text-transform:uppercase; color:var(--muted-foreground); }
+.pp-agent-xp{ display:flex; flex-direction:column; align-items:flex-end; gap:4px; font-size:var(--text-xs); color:var(--muted-foreground); }
+.pp-xp{ display:flex; align-items:center; gap:var(--sp-2); }
+.pp-xp b{ font-size:var(--text-sm); font-weight:600; color:var(--foreground); }
+.pp-pips{ display:flex; gap:3px; }
+.pp-pips i{ width:12px; height:3px; border-radius:2px; background:color-mix(in srgb, var(--foreground) 18%, transparent); }
+.pp-pips i.on{ background:var(--foreground); }
+
+.pp-methods-card{ display:flex; flex-direction:column; gap:var(--sp-3); }
+.pp-sub{ margin:0; font-size:var(--text-base); line-height:1.55; color:var(--foreground); }
+.pp-sub-2{ margin:0; font-size:var(--text-sm); color:var(--muted-foreground); }
+.pp-methods{ list-style:none; margin:var(--sp-2) 0 0; padding:0; border-top:1px solid var(--border); }
+.pp-methods li{
+  display:flex; align-items:baseline; justify-content:space-between; gap:var(--sp-4);
+  padding:var(--sp-3) 0; border-bottom:1px solid var(--border); font-size:var(--text-sm); color:var(--foreground);
+}
+.pp-methods li small{ font-size:var(--text-xs); color:var(--muted-foreground); text-align:right; }
+
+.pp-choice{ display:flex; flex-wrap:wrap; gap:var(--sp-2); }
+.pp-pill{
+  padding:6px var(--sp-3); font:inherit; font-size:var(--text-xs); color:var(--muted-foreground);
+  background:none; border:1px solid var(--border); border-radius:8px; cursor:pointer;
+}
+.pp-pill[aria-pressed="true"]{ color:var(--foreground); border-color:var(--foreground); }
+.pp-start{
+  width:100%; min-height:52px; font:inherit; font-size:var(--text-base); font-weight:500;
+  color:var(--background); background:var(--foreground); border:0; border-radius:10px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:opacity 160ms var(--ease-out), transform 120ms var(--ease-out);
+}
+.pp-start:active:not(:disabled){ transform:scale(0.99); }
+.pp-start:disabled{ opacity:.3; cursor:not-allowed; }
+@media (hover:hover) and (pointer:fine){ .pp-start:hover:not(:disabled){ opacity:.86; } }
+.pp-error{ margin:0; }
+
+/* The right-hand side before there is a chat: the tabs, and one sentence. */
+.cp-idle .mp-head{ border-bottom:1px solid var(--border); }
+.cp-idle-body{ flex:1 1 0; min-height:0; display:flex; align-items:center; justify-content:center; }
+.cp-idle-body p{ max-width:30ch; margin:0; padding:var(--sp-6); text-align:center; font-size:var(--text-lg); line-height:1.5; color:var(--muted-foreground); }
+.seam.is-static{ cursor:default; }
+
+
+/* --- The agent board (meeting 2026-11-20) ----------------------------------
+   One board for the whole team: at most 1 or 5 consultants, so every agent gets
+   a big card; the filters stand in a column on the left. Flat on purpose
+   (Patryk: "ein Ticken zu bunt"): the card's own surface, a hairline, no glow.
+   Overrides the older glass of .agx-role / .agx-card above. */
+.agx-board-grid{
+  flex:1; min-height:420px;
+  display:grid; grid-template-columns:230px minmax(0, 1fr); gap:var(--sp-5);
+  background:var(--card); backdrop-filter:none; box-shadow:none;
+}
+html.light .agx-board-grid{ background:var(--card); box-shadow:none; }
+.agx-side{ display:flex; flex-direction:column; gap:var(--sp-3); min-width:0; }
+.agx-side-h{ margin:0; font-size:var(--text-xs); font-weight:600; color:var(--muted-foreground); letter-spacing:0.02em; }
+.agx-filters{ display:flex; flex-direction:column; gap:2px; }
+.agx-filter{
+  display:flex; align-items:center; justify-content:space-between; gap:var(--sp-2);
+  min-height:36px; padding:0 var(--sp-3); border:none; border-radius:var(--radius-md);
+  background:none; color:var(--muted-foreground); font-size:var(--text-sm); text-align:left;
+  transition:background-color 140ms var(--ease-out), color 140ms var(--ease-out);
+}
+.agx-filter-l{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+@media (hover:hover) and (pointer:fine){ .agx-filter:hover{ background:var(--tint-1); color:var(--foreground); } }
+.agx-filter[aria-selected="true"]{ background:var(--tint-2); color:var(--foreground); font-weight:600; }
+.agx-room{ margin:auto 0 0; padding:var(--sp-3); font-size:var(--text-xs); color:var(--muted-foreground); border-top:1px solid var(--border); }
+.agx-board-grid > .agx-cards{ position:relative; z-index:1; }
+.agx-board-grid .agx-cards-grid{
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:var(--sp-4); align-content:start;
+}
+.agx-board-grid .agx-card{
+  height:auto; min-height:210px; padding:var(--sp-5); gap:var(--sp-5);
+  background:var(--surface-elevated, var(--card)); backdrop-filter:none; border:1px solid var(--border); box-shadow:none;
+}
+html.light .agx-board-grid .agx-card{ background:#F6F7F9; }
+@media (hover:hover) and (pointer:fine){ .agx-board-grid .agx-card:hover{ border-color:var(--border-strong); background-color:var(--tint-1); } }
+.agx-board-grid .agx-name{ font-size:var(--text-lg); letter-spacing:-0.01em; }
+.agx-board-grid .agx-free{ min-height:210px; height:auto; border-radius:var(--radius-lg); font-size:var(--text-sm); }
+@media (max-width:760px){
+  .agx-board-grid{ grid-template-columns:1fr; height:auto; }
+  .agx-filters{ flex-direction:row; flex-wrap:wrap; }
+  .agx-room{ margin-top:0; border-top:none; padding:0; }
+}
+.agx-board-grid .agx-card-stats{ flex-wrap:wrap; margin-left:0; gap:var(--sp-3) var(--sp-5); }
+.agx-board-grid .agx-card-stats > .agx-docs-btn{ flex-basis:100%; margin-left:0; justify-content:space-between; }
+
+/* The first draft under a method in the Cockpit, and its placeholder while it is
+   being written in the background. Quiet: the method's name stays the line you read first. */
+.mp-step-d{ display:block; margin-top:2px; font-size:var(--text-xs); line-height:1.5; color:var(--secondary-foreground, var(--muted-foreground)); }
+.mp-step-d.is-wait{ height:10px; width:72%; margin-top:6px; border-radius:5px; background:var(--tint-2); animation:mpDraftWait 1.4s var(--ease-in-out) infinite alternate; }
+@keyframes mpDraftWait{ from{ opacity:.45; } to{ opacity:1; } }
+@media (prefers-reduced-motion:reduce){ .mp-step-d.is-wait{ animation:none; } }

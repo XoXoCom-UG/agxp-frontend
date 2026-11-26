@@ -1,8 +1,8 @@
 "use client";
 
-import { Fragment, useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
-import type { Agent, AgentType } from "@/lib/agents";
+import type { Agent } from "@/lib/agents";
 import { experienceFor, LEVELS } from "@/lib/agent-level";
 import { useMascotLevel } from "@/lib/mascot-level";
 import { groupByType, templateFor, kindFor, holdsSlot } from "@/lib/agent-types";
@@ -16,7 +16,7 @@ import { dateStr } from "@/lib/utils";
 import { AgentMascot } from "@/components/layout/agent-mascot";
 import { DeliverableView, type DeliverableDoc } from "@/components/layout/deliverable-view";
 import { usePresence, phaseClass } from "@/lib/use-presence";
-import { IconPlus, IconArrow, IconBack, IconMoreV, IconX, IconDoc, IconArchive, IconRestore } from "@/components/layout/agxp-icons";
+import { IconPlus, IconArrow, IconMoreV, IconX, IconDoc, IconArchive, IconRestore } from "@/components/layout/agxp-icons";
 
 /**
  * The pieces of the Agent Dashboard (app/dashboard/agents/page.tsx): the
@@ -139,7 +139,7 @@ function AgentCard({ agent, usage, onOpen, onDocs, onToggleArchive }: {
         data-agent={agent.id} />
 
       <header className="agx-card-head">
-        <AgentMascot role={agent.type} size={50} agentId={agent.id} />
+        <AgentMascot role={agent.type} size={68} agentId={agent.id} />
         <div className="agx-card-text">
           <h3 className="agx-name">{agent.name}</h3>
           <p className="agx-meta">
@@ -444,37 +444,46 @@ function FreeSlot({ onAdd }: { onAdd: () => void }) {
   );
 }
 
-/** One role: its types as tabs, and the selected type's four slots in a row. */
-export function RoleSection({ role, label, agents, usage, plan, onArchive, onRestore, onAdd }: {
-  role: AgentType; label: string; agents: Agent[]; usage: Record<string, AgentUsage>;
-  /** Which types get a tab, and how many agents each may hold. */
+/**
+ * The team on one board (meeting 2026-11-20): at most 1 or 5 consultants per
+ * plan, so each agent gets a big card, and the filters stand in a column on the
+ * left. "All agents" first, then the types that have someone in them, the
+ * Assistant, the earlier agents and the archive. Opening a card still grows it
+ * out of its place over the board.
+ */
+export function AgentBoard({ agents, usage, plan, onArchive, onRestore, onAdd }: {
+  agents: Agent[]; usage: Record<string, AgentUsage>;
+  /** How many consultants the team may hold. */
   plan: Plan;
   onArchive: (a: Agent) => void; onRestore: (a: Agent) => void; onAdd: () => void;
 }) {
   const tr = useT();
-  // Archived agents hold no slot: they get a tab of their own, last.
   const active = agents.filter(a => !a.archived_at);
-  const archived = agents.filter(a => a.type === role && a.archived_at);
-  // Agents made before the current types hold no slot (holdsSlot): counted
-  // under a type they read "12/4" beside a type the picker and the database
-  // call 1 of 4. They keep working as before, in a tab of their own, uncapped.
-  const earlier = active.filter(a => a.type === role && !holdsSlot(a));
-  const { columns } = groupByType(active.filter(holdsSlot), role, plan);
-  // Most finished work first, then most projects: the agents you rely on lead
-  // each row, the newest and emptiest trail it.
+  const archived = agents.filter(a => a.archived_at);
+  // Agents made before the current types hold no slot (holdsSlot): they keep
+  // working as before, in a filter of their own.
+  const earlier = active.filter(a => !holdsSlot(a));
+  const current = active.filter(holdsSlot);
+  const consultants = current.filter(a => a.type === "consultant");
+  const assistants = current.filter(a => a.type === "coach");
+  // Most finished work first, then most projects: the agents you rely on lead.
   const ranked = (list: Agent[]) => [...list].sort((a, b) =>
     (usage[b.id]?.docs ?? 0) - (usage[a.id]?.docs ?? 0)
     || projectTotal(b, usage[b.id]) - projectTotal(a, usage[a.id])
     || a.name.localeCompare(b.name));
-  const tabs = [
-    ...columns.map(c => ({ key: c.template.type, label: c.template.type, title: c.template.sub, agents: ranked(c.agents), cap: plan.agentsPerType })),
-    ...(earlier.length ? [{ key: "earlier", label: tr("Earlier agents"), title: tr("Made before the current types. They work as before and take no slot."), agents: ranked(earlier), cap: earlier.length }] : []),
-    ...(archived.length ? [{ key: "archived", label: tr("Archived"), title: tr("Archived agents — restore one to put it back on the team"), agents: ranked(archived), cap: archived.length }] : []),
+  const used = active.filter(a => a.type === "consultant").length;
+  const free = Math.max(0, plan.maxAgents - used);
+  const byType = groupByType(consultants, "consultant", plan).columns.filter(c => c.agents.length > 0);
+  const filters = [
+    { key: "all", label: tr("All agents"), title: undefined as string | undefined, agents: ranked([...consultants, ...assistants, ...earlier]), room: true },
+    ...byType.map(c => ({ key: c.template.id, label: c.template.type, title: c.template.sub, agents: ranked(c.agents), room: false })),
+    ...(assistants.length ? [{ key: "assistant", label: tr("Assistant"), title: undefined, agents: ranked(assistants), room: false }] : []),
+    ...(earlier.length ? [{ key: "earlier", label: tr("Earlier agents"), title: tr("Made before the current types. They work as before and take no slot."), agents: ranked(earlier), room: false }] : []),
+    ...(archived.length ? [{ key: "archived", label: tr("Archived"), title: tr("Archived agents — restore one to put it back on the team"), agents: ranked(archived), room: false }] : []),
   ];
-  // Open on the first type that has someone in it.
-  const [sel, setSel] = useState(() => Math.max(0, tabs.findIndex(t => t.agents.length > 0)));
-  const tab = tabs[Math.min(sel, tabs.length - 1)];
-  const free = Math.max(0, tab.cap - tab.agents.length);
+  const [selKey, setSelKey] = useState("all");
+  const sel = Math.max(0, filters.findIndex(f => f.key === selKey));
+  const tab = filters[sel];
   const tablistId = useId();
   const [opened, setOpened] = useState<{
     id: string; view: "info" | "docs"; inset: string; phase: OverlayMotion["phase"];
@@ -482,11 +491,8 @@ export function RoleSection({ role, label, agents, usage, plan, onArchive, onRes
   const openId = opened?.id ?? null;
   // Gone once the agent is deleted: the card closes by itself.
   const open = agents.find(a => a.id === openId) ?? null;
-  // The scroller: it fades at whichever edge has more behind it.
   const cardsRef = useScrollEdges<HTMLDivElement>();
   const roleRef = useRef<HTMLElement>(null);
-  // Which way the last tab change went, so the new cards arrive from that side.
-  const [dir, setDir] = useState(0);
 
   function show(id: string, view: "info" | "docs", from: HTMLElement) {
     const r = roleRef.current!.getBoundingClientRect();
@@ -510,10 +516,7 @@ export function RoleSection({ role, label, agents, usage, plan, onArchive, onRes
     setOpened(null);
   }
 
-  // Focus goes back to the card it was opened from as soon as the close
-  // starts: the cards are live again while the overlay shrinks into them, and
-  // its own close button has just gone inert. (Not in close() itself — at
-  // that moment the cards are still inert and refuse focus.)
+  // Focus goes back to the card it was opened from as soon as the close starts.
   const returnTo = useRef<string | null>(null);
   useEffect(() => {
     if (phase === "open" || !returnTo.current) return;
@@ -528,111 +531,55 @@ export function RoleSection({ role, label, agents, usage, plan, onArchive, onRes
   }
 
   const motion: OverlayMotion | null = opened && { phase: opened.phase, inset: opened.inset };
-  // The team stays reachable while the card shrinks away: a click on another
-  // agent mid-close opens that one instead of waiting.
+  // The team stays reachable while the card shrinks away.
   const blocking = !!open && opened?.phase !== "closing";
 
-  // The tab bar: whether there is more to either side, written onto the bar
-  // as attributes so the arrows show without a re-render on every scroll.
-  const tabsRef = useRef<HTMLDivElement>(null);
-  const tabsBarRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = tabsRef.current, bar = tabsBarRef.current;
-    if (!el || !bar) return;
-    const update = () => {
-      bar.toggleAttribute("data-more-left", el.scrollLeft > 1);
-      bar.toggleAttribute("data-more-right", el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
-    };
-    update();
-    el.addEventListener("scroll", update, { passive: true });
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => { el.removeEventListener("scroll", update); ro.disconnect(); };
-  }, [tabs.length]);
-  // Keep the chosen tab in view, the arrow keys included.
-  useEffect(() => {
-    tabsRef.current?.querySelectorAll<HTMLElement>('[role="tab"]')[sel]
-      ?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: prefersReducedMotion() ? "auto" : "smooth" });
-  }, [sel]);
-
-  function nudgeTabs(dir: 1 | -1) {
-    const el = tabsRef.current;
-    if (el) el.scrollBy({ left: dir * el.clientWidth * 0.7, behavior: prefersReducedMotion() ? "auto" : "smooth" });
-  }
-
-  // An opened agent closes first: once archived it leaves this tab.
+  // An opened agent closes first: once archived it leaves this filter.
   function toggleArchive(a: Agent) {
     if (openId === a.id) close();
     if (a.archived_at) onRestore(a); else onArchive(a);
   }
 
-  function pick(i: number) {
-    if (i === sel) return;
-    setDir(i > sel ? 1 : -1);
-    setSel(i);
-  }
-
   function onKey(e: React.KeyboardEvent) {
-    const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+    const d = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
     if (!d) return;
     e.preventDefault();
-    const next = (sel + d + tabs.length) % tabs.length;
-    pick(next);
+    const next = (sel + d + filters.length) % filters.length;
+    setSelKey(filters[next].key);
     (e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next])?.focus();
   }
 
+  const label = tr("Your AI team");
   return (
-    <section className="agx-role" ref={roleRef} aria-label={label}>
-      {/* No visible heading (Ana, 2026-10-01 mockup): the type bar opens the
-          card. Named for assistive tech, which has no picture to go by. */}
-      <h2 className="visually-hidden">{label}</h2>
-      {/* The light inside the role card: soft glows in the accent colour (the
-          Appearance accent recolours them), seen through the agents' glass
-          rather than painted on each card (Ana, 2026-10-01). */}
-      <div className="agx-role-glow" aria-hidden="true"><i /><i /></div>
-
-      {/* Drawn as the app's navbar (Ana, 2026-10-01): the same bar, and the
-          same items and hairlines — `navbar` is what scopes .nb-item and
-          .nb-rule, so a change to the navbar carries over here. */}
-      <div className="agx-tabs navbar" ref={tabsBarRef} inert={blocking ? true : undefined}>
-        {/* Arrows only where there is more to see (Ana, 2026-10-01, after
-            YouTube's chip bar): a blurred fade with a round button in it. */}
-        <button type="button" className="agx-tabs-more is-left" tabIndex={-1}
-          aria-label={tr("Scroll {role} types left", { role: label })} onClick={() => nudgeTabs(-1)}>
-          <span><IconBack size={14} /></span>
-        </button>
-        <div className="agx-tabs-scroll" ref={tabsRef} role="tablist" aria-label={tr("{role} types", { role: label })} onKeyDown={onKey}>
-          {tabs.map((t, i) => (
-            <Fragment key={t.key}>
-              {i > 0 && <span className="nb-rule" aria-hidden="true" />}
-              <button role="tab" id={`${tablistId}-${i}`} aria-selected={i === sel}
-                aria-controls={`${tablistId}-panel`} tabIndex={i === sel ? 0 : -1} title={t.title}
-                className={`nb-item${i === sel ? " active" : ""}`} onClick={() => pick(i)}>
-                {t.label}
-                {/* "3/4" where there is a cap; Archived and the earlier agents have none, just a count. */}
-                <span className="agx-tab-n">
-                  {t.key === "archived" || t.key === "earlier" ? t.agents.length : `${t.agents.length}/${t.cap}`}
-                </span>
-              </button>
-            </Fragment>
+    <section className="agx-role agx-board-grid" ref={roleRef} aria-label={label}>
+      <div className="agx-side" inert={blocking ? true : undefined}>
+        <p className="agx-side-h">{label}</p>
+        <div className="agx-filters" role="tablist" aria-orientation="vertical" aria-label={tr("Filter agents")} onKeyDown={onKey}>
+          {filters.map((f, i) => (
+            <button key={f.key} role="tab" id={`${tablistId}-${i}`} aria-selected={i === sel}
+              aria-controls={`${tablistId}-panel`} tabIndex={i === sel ? 0 : -1} title={f.title}
+              className="agx-filter" onClick={() => setSelKey(f.key)}>
+              <span className="agx-filter-l">{f.label}</span>
+              <span className="agx-tab-n">{f.agents.length}</span>
+            </button>
           ))}
         </div>
-        <button type="button" className="agx-tabs-more is-right" tabIndex={-1}
-          aria-label={tr("Scroll {role} types right", { role: label })} onClick={() => nudgeTabs(1)}>
-          <span><IconArrow size={14} /></span>
-        </button>
+        {/* How many of the plan's places are taken: the one limit the plan has. */}
+        <p className="agx-room">
+          {tr(plan.maxAgents === 1 ? "{used} of 1 consultant" : "{used} of {max} consultants", { used, max: plan.maxAgents })}
+        </p>
       </div>
 
       <div className="agx-cards" ref={cardsRef} role="tabpanel" inert={blocking ? true : undefined}
         id={`${tablistId}-panel`} aria-labelledby={`${tablistId}-${sel}`}>
-        <div className={`agx-cards-grid${dir ? " is-sliding" : ""}`} key={tab.key}
-          style={{ "--agx-dir": dir } as React.CSSProperties}>
-        {tab.agents.map(a => (
-          <AgentCard key={a.id} agent={a} usage={usage[a.id]}
-            onOpen={from => show(a.id, "info", from)}
-            onDocs={from => show(a.id, "docs", from)} onToggleArchive={() => toggleArchive(a)} />
-        ))}
-        {Array.from({ length: free }, (_, i) => <FreeSlot key={`free-${i}`} onAdd={onAdd} />)}
+        <div className="agx-cards-grid" key={tab.key}>
+          {tab.agents.map(a => (
+            <AgentCard key={a.id} agent={a} usage={usage[a.id]}
+              onOpen={from => show(a.id, "info", from)}
+              onDocs={from => show(a.id, "docs", from)} onToggleArchive={() => toggleArchive(a)} />
+          ))}
+          {/* One tile, not one per free place: the count is in the column on the left. */}
+          {tab.room && free > 0 && <FreeSlot onAdd={onAdd} />}
         </div>
       </div>
 

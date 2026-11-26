@@ -2,7 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   DELIVERABLES, CONSULTANT_DELIVERABLES, ALL_DELIVERABLES, deliverableFor, isDeliverableCommand, agendaPrompt, introFor,
-  skipStationPrompt, isSkipCommand, skippedStation,
+  skipStationPrompt, isSkipCommand, skippedStation, discussMethodPrompt, isDiscussCommand, discussedMethod,
+  optimizeMethodsPrompt, isOptimizeCommand,
 } from "./deliverables.ts";
 import { TYPE_CATALOG } from "./agent-types.ts";
 import { VISUAL_BLOCKS } from "./doc-visuals.ts";
@@ -542,4 +543,34 @@ test("skipping a station is a command, and names the station it skipped", () => 
   }
   assert.equal(isSkipCommand("Kann ich diesen Schritt überspringen?"), false);
   assert.equal(skippedStation("hello"), "");
+});
+
+test("opening a method in the Cockpit is a command, and names the method it opened", () => {
+  for (const d of ALL_DELIVERABLES) {
+    for (const s of d.stations) {
+      const cmd = discussMethodPrompt(s.label);
+      assert.ok(isDiscussCommand(cmd), s.label);
+      assert.ok(isDeliverableCommand(cmd), "counted as a button press, not typed: " + s.label);
+      assert.ok(!isSkipCommand(cmd), "not a skip: " + s.label);
+      assert.equal(discussedMethod(cmd), s.label.replace(/[„“"]/g, "").trim());
+    }
+  }
+  assert.equal(isDiscussCommand("Erkläre mir die Methode"), false);
+  assert.equal(discussedMethod("hello"), "");
+});
+
+test("the optimize button is a command, not something the person typed", () => {
+  const cmd = optimizeMethodsPrompt();
+  assert.ok(isOptimizeCommand(cmd));
+  assert.ok(isDeliverableCommand(cmd), "everything that counts typed messages must skip it");
+  assert.ok(!isSkipCommand(cmd) && !isDiscussCommand(cmd));
+  assert.ok(!isOptimizeCommand("Alle Methoden optimieren"), "a typed or clicked choice is not the command");
+  assert.match(cmd, /\[\[TOPIC\]\]/, "the interview starts with its markers");
+});
+
+test("the interview is optional: the first reply is a draft without TOPIC or PROGRESS", () => {
+  const p = agendaPrompt(CONSULTANT_DELIVERABLES.architect, null);
+  assert.match(p, /EINSTIEG/);
+  assert.match(p, /Alle Methoden optimieren/);
+  assert.match(p, /KEIN \[\[TOPIC\]\] und KEIN \[\[PROGRESS\]\]/);
 });

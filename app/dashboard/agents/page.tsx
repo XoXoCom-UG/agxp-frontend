@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { listAgents, setAgentArchived, type Agent, type AgentType } from "@/lib/agents";
-import { typesFor, groupByType, holdsSlot } from "@/lib/agent-types";
+import { listAgents, setAgentArchived, type Agent } from "@/lib/agents";
 import { useT } from "@/lib/language";
 import { useEntitlement } from "@/lib/entitlement";
 import { loadTeamStats, compactNumber, EMPTY_STATS, type TeamStats } from "@/lib/team-stats";
@@ -12,15 +11,10 @@ import { applyWork } from "@/lib/mascot-level";
 import { describeDbError } from "@/lib/db-error";
 import { AgentNav } from "@/components/layout/agent-nav";
 import { EmptyState } from "@/components/layout/empty-state";
-import { Stat, Bars, Meter, RoleSection } from "@/components/layout/agent-dashboard";
+import { Stat, Bars, Meter, AgentBoard } from "@/components/layout/agent-dashboard";
 import {
   IconPlus, IconAlert, IconRefresh,
 } from "@/components/layout/agxp-icons";
-
-const ROLES: { id: AgentType; label: string }[] = [
-  { id: "consultant", label: "Consultants" },
-  { id: "coach", label: "Coaches" },
-];
 
 export default function AgentDashboardPage() {
   const tr = useT();
@@ -57,13 +51,10 @@ export default function AgentDashboardPage() {
 
   function retry() { setLoading(true); setLoadError(false); setAttempt(n => n + 1); }
 
-  // Every slot of every type, across both roles: how much of the team is hired.
-  const slots = ROLES.reduce((n, r) => n + typesFor(r.id, plan).length * plan.agentsPerType, 0);
-  // Archived agents keep their history but hold no slot and are not "on the team";
-  // agents from before the current types hold none either (their own tab).
-  const active = agents.filter(a => !a.archived_at && holdsSlot(a));
-  const filled = ROLES.reduce((n, r) => n + groupByType(active, r.id, plan).columns
-    .reduce((m, c) => m + Math.min(plan.agentsPerType, c.agents.length), 0), 0);
+  // The plan's places for consultants (1 or 5): how much of the team is hired.
+  // The Assistant is not counted, and archived agents hold no place.
+  const slots = plan.maxAgents;
+  const filled = Math.min(slots, agents.filter(a => !a.archived_at && a.type === "consultant").length);
 
   // Archive or restore. Undoable both ways, so no "are you sure?" — the
   // agent simply moves to (or back from) its role's Archived tab.
@@ -99,7 +90,7 @@ export default function AgentDashboardPage() {
               hint={tr("Estimated from the length of your conversations. The bars are the last 8 days.")}>
               <Bars values={stats.tokensByDay} />
             </Stat>
-            <Stat label={tr("Slots filled")} value={`${filled}/${slots}`}>
+            <Stat label={tr("Consultants")} value={`${filled}/${slots}`}>
               <Meter value={filled} max={slots} />
             </Stat>
           </ul>
@@ -131,13 +122,9 @@ export default function AgentDashboardPage() {
           {!loading && !loadError && agents.length > 0 && (
             // An agent opens in a card over its own role, not on a page of
             // its own (Ana, 2026-10-01): the team stays in view behind it.
-            <div className="agx-split">
-              {ROLES.map(r => (
-                <RoleSection key={r.id} role={r.id} label={tr(r.label)} agents={agents} usage={stats.byAgent} plan={plan}
-                  onArchive={a => setArchived(a, true)} onRestore={a => setArchived(a, false)}
-                  onAdd={() => router.push("/dashboard")} />
-              ))}
-            </div>
+            <AgentBoard agents={agents} usage={stats.byAgent} plan={plan}
+              onArchive={a => setArchived(a, true)} onRestore={a => setArchived(a, false)}
+              onAdd={() => router.push("/dashboard")} />
           )}
         </div>
       </main>

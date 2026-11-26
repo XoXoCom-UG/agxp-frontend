@@ -119,6 +119,10 @@ export interface RailControls {
   restoreVersion: (version: number) => void;
   /** Skip the station the interview is on now. */
   skip: () => void;
+  /** Open one method of the Cockpit: the consultant talks it through. */
+  discuss: (label: string) => void;
+  /** Start the optional interview: the consultant asks what its first draft lacks. */
+  optimize: () => void;
 }
 
 export interface PanelSnapshot {

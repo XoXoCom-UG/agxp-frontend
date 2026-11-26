@@ -135,7 +135,7 @@ export function ChatHead({
           {topRow}
           {onMinimise && (
             <button className="head-min" onClick={onMinimise}
-              data-tooltip={t("Fold away. The Coach keeps listening.")}
+              data-tooltip={t("Fold away. The Assistant keeps listening.")}
               aria-label={t("Fold this panel away")}>
               <IconMinimise size={14} />
             </button>
@@ -157,7 +157,7 @@ export function ChatHead({
               the agent is doing anything, and a second, blue, changing word
               beside the name only added noise (Ana, 2026-09-28). */}
           <span className="r"><span className={`role-dot ${role}`} />
-            {t(role === "coach" ? "Coach" : "Consultant")}
+            {t(role === "coach" ? "Assistant" : "Consultant")}
           </span>
         </span>
         <IconChevronDown size={11} />
@@ -189,7 +189,7 @@ export function ChatHead({
           covers the composer. */}
       {!topRow && onMinimise && (
         <button className="head-min" onClick={onMinimise}
-          data-tooltip={t("Fold away. The Coach keeps listening.")}
+          data-tooltip={t("Fold away. The Assistant keeps listening.")}
           aria-label={t("Fold this panel away")}>
           <IconMinimise size={14} />
         </button>

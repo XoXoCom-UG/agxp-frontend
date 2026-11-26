@@ -55,7 +55,7 @@ export function ChatComposer({ role, sending, canSend, projectId, inputRef, onSe
   /** One line fits beside the buttons; once it doesn't, the text takes the
    *  whole width and the buttons drop to their own row underneath. */
   const [wide, setWide] = useState(false);
-  const who = role === "coach" ? "coach" : "consultant";
+  const who = role === "coach" ? "assistant" : "consultant";
   // A file on its own is a message: "here, look at this" needs no sentence.
   const ready = (!!input.trim() || files.length > 0) && !sending && canSend && uploading === 0;
   const canAttach = !!projectId && !sending;

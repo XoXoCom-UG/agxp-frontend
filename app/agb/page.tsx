@@ -62,9 +62,7 @@ export default function AGBPage() {
             const stations = p.stations === null
               ? "das vollständige Interview"
               : `${p.stations} Interviewschritte`;
-            const agents = (p.agentTypes === null
-              ? "alle Agententypen" : `${p.agentTypes} Agententyp je Rolle`) +
-              `, je Typ bis zu ${p.agentsPerType} ${p.agentsPerType === 1 ? "eigener Agent" : "eigene Agenten"}`;
+            const agents = p.maxAgents === 1 ? "ein eigener Consultant" : `bis zu ${p.maxAgents} eigene Consultants`;
             return (
               <li key={id}>
                 <b>{p.label}</b>: {projects} {period}, {stations}, {agents}.

@@ -14,6 +14,10 @@ import { describeDbError } from "@/lib/db-error";
 import { AgentNav } from "@/components/layout/agent-nav";
 import { AgentPickerPanel } from "@/components/layout/agent-picker-panel";
 import { ProjectChatPanel } from "@/components/layout/project-chat-panel";
+import { PromptPad, CockpitPlaceholder, type Activation, type PadStage } from "@/components/layout/prompt-pad";
+import { activateTeam } from "@/lib/start-flow";
+import type { DraftState } from "@/lib/method-draft";
+import { saveDraft, loadDraft } from "@/lib/method-draft-store";
 import { MethodsPanel } from "@/components/layout/methods-panel";
 import { RightTabs, type RightView } from "@/components/layout/right-tabs";
 import { ChatTour } from "@/components/layout/chat-tour";
@@ -39,7 +43,7 @@ function sameRail(a: RailState, b: RailState): boolean {
 
 const OTHER: Record<AgentType, AgentType> = { coach: "consultant", consultant: "coach" };
 const ROLES: AgentType[] = ["consultant", "coach"];
-const ROLE_NAME: Record<AgentType, string> = { consultant: "Consultant", coach: "Coach" };
+const ROLE_NAME: Record<AgentType, string> = { consultant: "Consultant", coach: "Assistant" };
 /** One line under "Build your AI team" — what this seat is for. */
 const SEAT_LINE: Record<AgentType, string> = {
   consultant: "Start with a Consultant. They work out what has to change.",
@@ -97,6 +101,13 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
    *  into the conversation the moment an agent is picked (Patryk, 2026-09-11;
    *  built this way in Ana's repo). */
   const [started, setStarted] = useState(false);
+  /** The Prompt Pad's text, until the Consultant has sent it as the first message. */
+  const [opening, setOpening] = useState<string | null>(null);
+  /** Which step the Prompt Pad is on, for the Cockpit placeholder beside it. */
+  const [padStage, setPadStage] = useState<PadStage>("write");
+  // The first method draft: written in the background from the pad's text, shown
+  // in the Cockpit, and kept in this browser for the project it started.
+  const [draft, setDraft] = useState<DraftState | null>(null);
   /** Manual override of the split: give the Coach the room instead. The two
    *  panels stay where they are — only the widths trade (Ana, 2026-09-27). */
   const [swapped, setSwapped] = useState(false);
@@ -319,6 +330,19 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
     if (project?.id) rememberProject({ id: project.id, name: project.name, category: project.category });
   }, [project?.id, project?.name, project?.category]);
 
+  // The method draft belongs to the project it started: kept once it is written,
+  // and read back when that project is opened again.
+  useEffect(() => {
+    if (project?.id && project.consultant_agent_id && draft?.status === "ready") saveDraft(project.id, draft);
+  }, [project?.id, project?.consultant_agent_id, draft]);
+  useEffect(() => {
+    // Only when a project is opened: a draft being written must not be replaced.
+    // Browser storage is read here, after mount, so the server render stays the same.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (project?.id && !draft) setDraft(loadDraft(project.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project?.id]);
+
   useEffect(() => {
     if (!token) return;
     let alive = true;
@@ -372,6 +396,16 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
     return creating.current;
   }
 
+  /** The Prompt Pad's Start: the team goes into the project, the pad's text
+   *  becomes the first message, and the chat opens. No pick, no Start gate. */
+  async function handleActivate({ prompt, plan, reuse }: Activation) {
+    const { project: p, created } = await activateTeam({ plan, reuse, agents, ensureProject });
+    if (created.length) setAgents(prev => [...prev, ...created]);
+    handleAssigned(p);
+    setOpening(prompt);
+    setStarted(true);
+  }
+
   /** Drops the assignment so the panel falls back to its picker. */
   async function changeAgent(role: AgentType) {
     if (!project) return;
@@ -420,6 +454,8 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
           } : undefined}
           headExtra={role === "consultant" && foldedSide ? sidePills() : undefined}
           topRow={role === "coach" ? sideTabs : undefined}
+          openingMessage={role === "consultant" && opening ? opening : undefined}
+          onOpeningSent={role === "consultant" ? () => setOpening(null) : undefined}
           // The document card moves to the Methods panel while that is on
           // screen. It comes back here once the side is folded away — and
           // when stacked, where the side is a tab, not a neighbour.
@@ -473,18 +509,18 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
    * conversation or the answer buttons.
    */
   function sidePills(floating = false) {
-    const name = coachAgent?.name ?? tr("the Coach");
+    const name = coachAgent?.name ?? tr("the Assistant");
     return (
       <div className={`side-pills${floating ? " is-floating" : ""}`}>
         <button className="side-pill" onClick={() => openSide("methods")}
-          aria-label={tr("Open Methods beside the Consultant")}>
-          <IconDoc size={13} />{tr("Methods")}
+          aria-label={tr("Open the Cockpit beside the Consultant")}>
+          <IconDoc size={13} />{tr("Cockpit")}
         </button>
         {coachAgent && (
           <button className={`side-pill${unseen.coach ? " raised" : ""}`} onClick={() => focusPanel("coach")}
             aria-label={`${unseen.coach ? tr("{name} has something to add.", { name }) + " " : ""}${tr("Open {name} beside the Consultant", { name })}`}>
             <AgentMascot role="coach" state={coachSnap?.busy ? "thinking" : "idle"} size={20} agentId={coachAgent.id} />
-            Coach
+            {tr("Assistant")}
             {unseen.coach && <span className="cp-dot" aria-hidden="true" />}
           </button>
         )}
@@ -556,7 +592,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
                 ref={el => { tabRefs.current[role] = el; }}
                 className={`ps-tab ${pane === role ? "on" : ""}`} onClick={() => showPane(role)}>
                 <span className={`role-dot ${role}`} aria-hidden="true" />
-                {role === "coach" && rightView === "methods" ? tr("Methods") : ROLE_NAME[role]}
+                {role === "coach" && rightView === "methods" ? tr("Cockpit") : tr(ROLE_NAME[role])}
                 {name && !(role === "coach" && rightView === "methods") && <span className="who">{name}</span>}
                 {unseen[role] && <><span className="ps-dot" aria-hidden="true" /><span className="visually-hidden">{tr(", new reply")}</span></>}
               </button>
@@ -577,7 +613,21 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
             order — Consultant, then Coach — and a thin glass rail on the
             right where the seats fill up (Ana, 2026-10-05). Nothing here is a
             live chat yet, so trading the split for this costs no state. */}
-        {!started ? (
+        {!started && !setupConsultant ? (
+          /* The Mural's start screen (19.11.): the normal two panels — Prompt
+             Pad | Consultant on the left, Cockpit | Assistant on the right —
+             and no list of consultants to pick from. */
+          <main id="main-content" tabIndex={-1} className="workspace" data-active="consultant" data-coach="split">
+            <h1 className="visually-hidden">{tr("New task")}</h1>
+            <div className="slot" data-role="consultant" style={{ flexGrow: leadShare }}>
+              <PromptPad agents={agents} onActivate={handleActivate} onStage={setPadStage} onDraft={setDraft} />
+            </div>
+            <div className="seam is-static" aria-hidden="true"><span className="seam-rail" /></div>
+            <div className="slot coach-slot split" data-role="coach" data-view="methods" style={{ flexGrow: 1 }}>
+              <CockpitPlaceholder stage={padStage} draft={draft} />
+            </div>
+          </main>
+        ) : !started ? (
           <main id="main-content" tabIndex={-1} className="workspace setup">
             <h1 className="visually-hidden">{project?.name && project.name !== "New Project" ? project.name : tr("New task")}</h1>
             <div className="slot setup-slot">
@@ -641,8 +691,8 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
               <span className="seam-rail" aria-hidden="true" />
               <button className={`swap-panels${swapped ? " flipped" : ""}`}
                 onPointerDown={e => e.stopPropagation()} onClick={swapSides}
-                data-tooltip={swapped ? tr("Give the Consultant more room") : rightView === "coach" ? tr("Give the Coach more room") : tr("Give Methods more room")}
-                aria-label={swapped ? tr("Give the Consultant more room") : rightView === "coach" ? tr("Give the Coach more room") : tr("Give Methods more room")}>
+                data-tooltip={swapped ? tr("Give the Consultant more room") : rightView === "coach" ? tr("Give the Assistant more room") : tr("Give the Cockpit more room")}
+                aria-label={swapped ? tr("Give the Consultant more room") : rightView === "coach" ? tr("Give the Assistant more room") : tr("Give the Cockpit more room")}>
                 <IconSwap size={13} />
               </button>
               <span className="seam-rail" aria-hidden="true" />
@@ -657,6 +707,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
             <MethodsPanel
               tabs={sideTabs}
               deliverable={deliverableFor("consultant", consultantAgent ? kindFor(consultantAgent) : null)}
+              draft={draft && consultantAgent && draft.kind === kindFor(consultantAgent) ? draft : null}
               snap={snaps.consultant}
               onOpenDoc={setOpenDoc}
               onMinimise={() => { setUnfolding(false); setCoachMode("min"); }} />

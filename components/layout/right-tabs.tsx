@@ -5,7 +5,8 @@ import { useT } from "@/lib/language";
 export type RightView = "methods" | "coach";
 
 /**
- * Methods or Coach: the choice for the right-hand side of the workspace.
+ * Cockpit or Assistant (meeting 2026-11-20: the Coach is now an Assistant, the
+ * Methods side is the Cockpit; the view ids stay "methods" / "coach"): the choice for the right-hand side of the workspace.
  *
  * It lives INSIDE the panel it switches (in the Methods header, in the Coach's
  * head, on the Coach's picker) rather than above it, so the right-hand card
@@ -21,10 +22,10 @@ export function RightTabs({ view, onChange, coachUnseen = false }: {
   return (
     <div className="rt-tabs" role="group" aria-label={t("Show on this side")} data-tour="panel-switch">
       <button type="button" className="rt-tab" aria-pressed={view === "methods"}
-        onClick={() => onChange("methods")}>{t("Methods")}</button>
+        onClick={() => onChange("methods")}>{t("Cockpit")}</button>
       <button type="button" className="rt-tab" aria-pressed={view === "coach"}
         onClick={() => onChange("coach")}>
-        {t("Coach")}
+        {t("Assistant")}
         {coachUnseen && (
           <><span className="rt-dot" aria-hidden="true" /><span className="visually-hidden">{t(", has something to add")}</span></>
         )}

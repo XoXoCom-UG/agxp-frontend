@@ -3,7 +3,8 @@
 import { useMemo } from "react";
 import type { PanelSnapshot } from "@/lib/peer-context";
 import type { DeliverableDoc } from "@/components/layout/deliverable-view";
-import { introFor, type Deliverable } from "@/lib/deliverables";
+import type { Deliverable } from "@/lib/deliverables";
+import type { DraftState } from "@/lib/method-draft";
 import { md, handleCodeCopyClick } from "@/lib/markdown";
 import { ArtifactActions, versionLine } from "@/components/layout/deliverable-rail";
 import { IconArrow, IconCheck, IconLock, IconMinimise, IconSpark } from "@/components/layout/agxp-icons";
@@ -30,12 +31,14 @@ const GENERATE_FROM_PCT = 60;
  * Methods that fill in live while the user talks need their own marker in the
  * chat protocol and come in a later phase.
  */
-export function MethodsPanel({ tabs, deliverable, snap, onOpenDoc, onMinimise }: {
+export function MethodsPanel({ tabs, deliverable, draft, snap, onOpenDoc, onMinimise }: {
   /** Methods or Coach — drawn in the header, inside the card. */
   tabs?: React.ReactNode;
   /** What the Consultant is working toward — its title and its questions. It
    *  depends on the agent's type, so the screen works it out. */
   deliverable: Deliverable;
+  /** The first draft of each method, written in the background when the consultant was chosen. */
+  draft?: DraftState | null;
   /** What the Consultant's panel last published: progress, document, controls. */
   snap: PanelSnapshot | undefined;
   /** Opens the document in the full reading view. */
@@ -53,10 +56,13 @@ export function MethodsPanel({ tabs, deliverable, snap, onOpenDoc, onMinimise }:
   // What the plan leaves out: the stations past the ones this conversation has.
   const locked = d.stations.slice(stations.length);
   const finished = !!doc;
-  // Before the first answer the first question is the one being worked on.
-  const nowIdx = finished ? -1 : Math.max(0, rail?.stationIdx ?? 0);
+  // No method is "in progress" until the interview has begun: it is optional,
+  // and the consultant drafts every method before asking anything.
+  const nowIdx = finished ? -1 : (rail?.stationIdx ?? -1);
 
   const html = useMemo(() => (doc ? md(doc.content) : ""), [doc]);
+  const draftText = useMemo(() => new Map((draft?.drafts ?? []).map(x => [x.label, x.text])), [draft]);
+  const drafting = draft?.status === "pending";
 
   return (
     <section className={`panel methods-panel${finished ? " is-ready" : ""}`} aria-labelledby="mp-title">
@@ -71,11 +77,11 @@ export function MethodsPanel({ tabs, deliverable, snap, onOpenDoc, onMinimise }:
           )}
         </div>
         <div className="mp-head-txt">
-          <h2 id="mp-title" className="mp-title">{d.title}</h2>
-          {/* Only the version, once there is one. Before that the title stands alone. */}
-          {doc && rail && <p className="mp-sub">{versionLine(rail.version, doc.createdAt, rail.restored, tr)}</p>}
+          <h2 id="mp-title" className="mp-title">{tr("Consulting Methods")}</h2>
+          {/* The document these methods add up to, and its version once there is one. */}
+          <p className="mp-sub">{doc && rail ? `${d.title} · ${versionLine(rail.version, doc.createdAt, rail.restored, tr)}` : d.title}</p>
           {/* Before there is a document: what is happening here, and why. */}
-          {!doc && <p className="mp-intro">{introFor(d)}</p>}
+          {!doc && <p className="mp-intro">{tr("Open a method to talk it through with your consultant.")}</p>}
         </div>
 
         {doc && rail && controls && (
@@ -94,7 +100,18 @@ export function MethodsPanel({ tabs, deliverable, snap, onOpenDoc, onMinimise }:
       </header>
 
       <div className="mp-body">
-        {!finished && rail && controls && (
+        {/* The interview is optional (meeting 2026-11-20): until it is asked for,
+            the Cockpit offers it instead of a progress bar at 0%. */}
+        {!finished && rail && controls && rail.stationIdx < 0 && (
+          <div className="mp-optimize" data-tour="rail">
+            <p className="mp-optimize-t">{tr("Your consultant drafts every method from what you wrote. Answer a few questions to sharpen them.")}</p>
+            <button className="artf-cta" disabled={snap?.busy ?? false} onClick={controls.optimize}>
+              <IconSpark size={12} />{tr("Optimize all methods")}
+            </button>
+          </div>
+        )}
+
+        {!finished && rail && controls && rail.stationIdx >= 0 && (
           <div className="mp-progress" data-tour="rail">
             <div className="mp-progress-row">
               <span className="mp-progress-step">
@@ -127,8 +144,17 @@ export function MethodsPanel({ tabs, deliverable, snap, onOpenDoc, onMinimise }:
                     {state === "done" && <IconCheck size={11} />}
                   </span>
                   <span className="mp-step-t">
-                    <span className="mp-step-l">{s.label}</span>
-                    {s.note && <span className="mp-step-n">{s.note}</span>}
+                    {/* Every method opens in the Cockpit: the consultant talks it
+                        through (meeting 2026-11-20). Not while it is answering. */}
+                    <button type="button" className="mp-step-l mp-step-open" disabled={!controls || (snap?.busy ?? false)}
+                      onClick={() => controls?.discuss(s.label)}
+                      aria-label={tr("Talk through {label}", { label: s.label })}>{s.label}</button>
+                    {/* The first draft, once there is one; until then the method's own line. */}
+                    {draftText.has(s.label)
+                      ? <span className="mp-step-d">{draftText.get(s.label)}</span>
+                      : drafting
+                        ? <span className="mp-step-d is-wait" aria-hidden="true" />
+                        : s.note && <span className="mp-step-n">{s.note}</span>}
                     {/* Only on the step being worked on (Ana 2026-11-19). */}
                     {state === "now" && rail?.canSkip && controls && (
                       <button className="step-skip-btn mp-skip" disabled={snap?.busy ?? false} onClick={controls.skip}>
