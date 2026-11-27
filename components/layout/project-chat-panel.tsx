@@ -8,7 +8,10 @@ import { loadAgentMemory, memoryLines, EMPTY_MEMORY, type AgentMemory } from "@/
 import { useAuth } from "@/lib/auth-context";
 import { useEntitlement } from "@/lib/entitlement";
 import { memoryAllowed } from "@/lib/memory-pref";
-import { deliverableFor, isDeliverableCommand, skipStationPrompt, discussMethodPrompt, optimizeMethodsPrompt } from "@/lib/deliverables";
+import {
+  deliverableFor, isDeliverableCommand, skipStationPrompt, discussMethodPrompt, optimizeMethodsPrompt,
+  jumpToStationPrompt, focusStationPrompt,
+} from "@/lib/deliverables";
 import { kindFor } from "@/lib/agent-types";
 import { experienceFor } from "@/lib/agent-level";
 import { refreshLevel, useMascotLevel } from "@/lib/mascot-level";
@@ -384,6 +387,7 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
   // One object whose identity never changes; what it calls is read at call time.
   const fns = useRef<RailControls>({
     generate: () => {}, regenerate: () => {}, openVersion: () => {}, restoreVersion: () => {}, skip: () => {}, discuss: () => {}, optimize: () => {},
+    jump: () => {}, focus: () => {},
   });
   useEffect(() => {
     fns.current = {
@@ -394,6 +398,8 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
       skip: skipStation,
       discuss: label => chat.send(discussMethodPrompt(label)),
       optimize: () => chat.send(optimizeMethodsPrompt()),
+      jump: (label, n, total) => chat.send(jumpToStationPrompt(label, n, total)),
+      focus: (label, n, total) => chat.send(focusStationPrompt(label, n, total)),
     };
   });
   const controls = useMemo<RailControls>(() => ({
@@ -404,6 +410,8 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
     skip: () => fns.current.skip(),
     discuss: label => fns.current.discuss(label),
     optimize: () => fns.current.optimize(),
+    jump: (label, n, total) => fns.current.jump(label, n, total),
+    focus: (label, n, total) => fns.current.focus(label, n, total),
   }), []);
 
   useEffect(() => {

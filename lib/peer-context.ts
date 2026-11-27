@@ -123,6 +123,10 @@ export interface RailControls {
   discuss: (label: string) => void;
   /** Start the optional interview: the consultant asks what its first draft lacks. */
   optimize: () => void;
+  /** Jump the interview to station n of total and go on from there. */
+  jump: (label: string, n: number, total: number) => void;
+  /** Work on station n of total alone first, then ask where to go next. */
+  focus: (label: string, n: number, total: number) => void;
 }
 
 export interface PanelSnapshot {

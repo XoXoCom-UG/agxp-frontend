@@ -1,4 +1,7 @@
-import { deliverableFor, isDiscussCommand, isOptimizeCommand, isSkipCommand, isDeliverableCommand, type Deliverable } from "./deliverables.ts";
+import {
+  deliverableFor, isDiscussCommand, isOptimizeCommand, isSkipCommand, isDeliverableCommand, isJumpCommand, isFocusCommand,
+  type Deliverable,
+} from "./deliverables.ts";
 import { parseStartReply, type StartPlan } from "./start-plan.ts";
 import type { TypeTemplate } from "./agent-types.ts";
 
@@ -28,7 +31,7 @@ export function fakeStartPlan(types: TypeTemplate[]): StartPlan | null {
   }), types);
 }
 
-type Turn = "first" | "optimize" | "skip" | "discuss" | "generate" | "answer";
+type Turn = "first" | "optimize" | "skip" | "discuss" | "jump" | "generate" | "answer";
 
 const OPTIMIZE_CHOICE = /optimi[sz]e all|alle methoden optimieren|optimizeaz/i;
 
@@ -40,6 +43,7 @@ function classify(turns: string[], d: Deliverable): Turn[] {
     if (isOptimizeCommand(t) || OPTIMIZE_CHOICE.test(t)) return "optimize";
     if (isSkipCommand(t)) return "skip";
     if (isDiscussCommand(t)) return "discuss";
+    if (isJumpCommand(t) || isFocusCommand(t)) return "jump";
     if (generate(t) || isDeliverableCommand(t)) return "generate";
     if (!seenFirst) { seenFirst = true; return "first"; }
     return "answer";
@@ -77,6 +81,14 @@ export function fakeConsultantReply(turns: string[], d: Deliverable): string {
     const label = /„([^“]+)“/.exec(asked)?.[1] ?? "this method";
     return `${label} would lay out, for your project, what is known and what is still open. ` +
       `So far I only have: “${gist(first)}”. ${demo}\n[[CHOICES: Tell me more|Change it|Back to the methods]]`;
+  }
+
+  if (last === "jump") {
+    // "Start here" / "Only this one first": the station number is in the command's own [[TOPIC]].
+    const asked = turns[turns.length - 1];
+    const n = Number(/\[\[TOPIC: (\d+)\//.exec(asked)?.[1] ?? "1");
+    const s = d.stations[Math.max(0, Math.min(total, n) - 1)];
+    return `Let's start with ${s.label}. ${s.goal} ${demo}${marks(d, n - 1)}`;
   }
 
   const answers = kinds.filter((k, i) => i > kinds.lastIndexOf("optimize") && (k === "answer" || k === "skip")).length;

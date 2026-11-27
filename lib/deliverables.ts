@@ -208,6 +208,62 @@ export function isOptimizeCommand(text: string): boolean {
   return text.trim().startsWith(OPTIMIZE_PREFIX);
 }
 
+/* ---------------------------------------------------------------------------
+   START HERE / ONLY THIS ONE FIRST (Cockpit, 2026-11-27)
+
+   Two more ways into one method from the Cockpit, beside talking it through:
+   - "Start here": the interview jumps to this station and goes on from it in
+     the agenda's order. The stations before it stay open, not skipped — the
+     consultant may come back to them.
+   - "Only this one first": the consultant asks this station's questions until
+     its section has enough, then asks where to go next (back to where the
+     interview was, another method, or the document now).
+   Both are user turns like the buttons above, shown as one quiet line. The
+   station's number and the agenda's length go in, so the [[TOPIC]] the agent
+   writes matches the rail exactly.
+   --------------------------------------------------------------------------- */
+
+const JUMP_PREFIX =
+  "(Systemhinweis, nicht vom Nutzer getippt: Der Nutzer möchte im Interview direkt zur Station „";
+const FOCUS_PREFIX =
+  "(Systemhinweis, nicht vom Nutzer getippt: Der Nutzer möchte zuerst nur die Station „";
+
+const cleanLabel = (label: string) => label.replace(/[„“"]/g, "").trim();
+
+export function jumpToStationPrompt(label: string, n: number, total: number): string {
+  const clean = cleanLabel(label);
+  return (
+    `${JUMP_PREFIX}${clean}“ springen. Die Stationen davor bleiben offen (NICHT übersprungen): du ` +
+    `kannst später auf sie zurückkommen, im Dokument steht bei ihnen nur, was schon gesagt wurde. Sag ` +
+    `in höchstens einem kurzen Satz, dass ihr hier einsteigt, und stell sofort die erste Frage dieser ` +
+    `Station — genau EINE, mit [[TOPIC: ${n}/${total} ${clean}]] und [[PROGRESS]]. Danach geht das ` +
+    `Interview von hier aus in der Reihenfolge der Agenda weiter.)`
+  );
+}
+
+export function focusStationPrompt(label: string, n: number, total: number): string {
+  const clean = cleanLabel(label);
+  return (
+    `${FOCUS_PREFIX}${clean}“ bearbeiten. Stell nur die Fragen dieser Station — eine pro Antwort, ` +
+    `jeweils mit [[TOPIC: ${n}/${total} ${clean}]] und [[PROGRESS]] —, bis du genug für ihren ` +
+    `Abschnitt hast. Dann sag in einem Satz, dass sie fertig ist, und frag mit CHOICES, wie es ` +
+    `weitergeht: „Interview fortsetzen“, „Andere Methode öffnen“ oder „Dokument jetzt erstellen“.)`
+  );
+}
+
+export function isJumpCommand(text: string): boolean { return text.trim().startsWith(JUMP_PREFIX); }
+export function isFocusCommand(text: string): boolean { return text.trim().startsWith(FOCUS_PREFIX); }
+
+/** The station a jump or focus command named, for the line the chat shows. */
+export function cockpitStation(text: string): string {
+  const t = text.trim();
+  const prefix = t.startsWith(JUMP_PREFIX) ? JUMP_PREFIX : t.startsWith(FOCUS_PREFIX) ? FOCUS_PREFIX : null;
+  if (!prefix) return "";
+  const rest = t.slice(prefix.length);
+  const end = rest.indexOf("“");
+  return end >= 0 ? rest.slice(0, end) : "";
+}
+
 /**
  * Is this user message the button, rather than something the person typed?
  *
@@ -222,7 +278,7 @@ export function isDeliverableCommand(text: string): boolean {
   // "Skip this step" is a button press of the same kind: everything that
   // must not count it as typed (the project name, the language, the turn
   // count, the peer transcript) asks this one function.
-  if (isSkipCommand(t) || isDiscussCommand(t) || isOptimizeCommand(t)) return true;
+  if (isSkipCommand(t) || isDiscussCommand(t) || isOptimizeCommand(t) || isJumpCommand(t) || isFocusCommand(t)) return true;
   return ALL_DELIVERABLES.some(
     d => t === d.generatePrompt.trim() || t === d.regeneratePrompt.trim(),
   );

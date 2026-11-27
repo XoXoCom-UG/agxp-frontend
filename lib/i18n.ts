@@ -241,6 +241,17 @@ export const DE: Record<string, string> = {
   "Create the document": "Dokument erstellen",
   "{done} of {total} done": "{done} von {total} fertig",
   ", drafted": ", entworfen",
+  // Cockpit: the three ways into a method and the document now, 2026-11-27.
+  "Talk it through": "Durchsprechen",
+  "Talk it through again": "Noch einmal durchsprechen",
+  "Start here": "Hier anfangen",
+  "Only this one first": "Erst nur diese",
+  "The interview continues from here. The steps before stay open.": "Das Interview geht von hier aus weiter. Die Schritte davor bleiben offen.",
+  "Only this method now, then back to where you were.": "Jetzt nur diese Methode, dann zurück, wo ihr wart.",
+  "Create the document now": "Dokument jetzt erstellen",
+  "With what we have so far. Open points stay marked as open.": "Mit dem, was wir bisher haben. Offene Punkte bleiben als offen markiert.",
+  "You started at: {label}": "Eingestiegen bei: {label}",
+  "You chose first: {label}": "Zuerst gewählt: {label}",
   // Cockpit, second pass (methods-panel.tsx), 2026-11-27.
   "Methods ready": "Fertige Methoden",
   "{n} of {total} drafted": "{n} von {total} entworfen",

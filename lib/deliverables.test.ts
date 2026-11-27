@@ -4,6 +4,7 @@ import {
   DELIVERABLES, CONSULTANT_DELIVERABLES, ALL_DELIVERABLES, deliverableFor, isDeliverableCommand, agendaPrompt, introFor,
   skipStationPrompt, isSkipCommand, skippedStation, discussMethodPrompt, isDiscussCommand, discussedMethod,
   optimizeMethodsPrompt, isOptimizeCommand,
+  jumpToStationPrompt, focusStationPrompt, isJumpCommand, isFocusCommand, cockpitStation,
 } from "./deliverables.ts";
 import { TYPE_CATALOG } from "./agent-types.ts";
 import { VISUAL_BLOCKS } from "./doc-visuals.ts";
@@ -566,6 +567,24 @@ test("the optimize button is a command, not something the person typed", () => {
   assert.ok(!isSkipCommand(cmd) && !isDiscussCommand(cmd));
   assert.ok(!isOptimizeCommand("Alle Methoden optimieren"), "a typed or clicked choice is not the command");
   assert.match(cmd, /\[\[TOPIC\]\]/, "the interview starts with its markers");
+});
+
+test("Start here and Only this one first are commands that name their station and its exact TOPIC", () => {
+  for (const d of ALL_DELIVERABLES) {
+    const total = d.stations.length;
+    d.stations.forEach((s, i) => {
+      const clean = s.label.replace(/[„“"]/g, "").trim();
+      for (const [cmd, isIt] of [[jumpToStationPrompt(s.label, i + 1, total), isJumpCommand], [focusStationPrompt(s.label, i + 1, total), isFocusCommand]] as const) {
+        assert.ok(isIt(cmd), s.label);
+        assert.ok(isDeliverableCommand(cmd), "a button press, not typed: " + s.label);
+        assert.ok(!isSkipCommand(cmd) && !isDiscussCommand(cmd) && !isOptimizeCommand(cmd));
+        assert.equal(cockpitStation(cmd), clean);
+        assert.ok(cmd.includes(`[[TOPIC: ${i + 1}/${total} ${clean}]]`), "the rail can follow it: " + s.label);
+      }
+    });
+  }
+  assert.ok(!isJumpCommand(focusStationPrompt("X", 1, 2)) && !isFocusCommand(jumpToStationPrompt("X", 1, 2)));
+  assert.equal(cockpitStation("hello"), "");
 });
 
 test("the interview is optional: the first reply is a draft without TOPIC or PROGRESS", () => {
