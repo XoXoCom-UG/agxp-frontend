@@ -241,6 +241,18 @@ export const DE: Record<string, string> = {
   "Create the document": "Dokument erstellen",
   "{done} of {total} done": "{done} von {total} fertig",
   ", drafted": ", entworfen",
+  // Start screen, third pass (prompt-pad.tsx), 2026-11-27.
+  "Good morning": "Guten Morgen",
+  "Good afternoon": "Guten Tag",
+  "Good evening": "Guten Abend",
+  "{greeting}, {name}": "{greeting}, {name}",
+  "to start": "zum Starten",
+  "new line": "neue Zeile",
+  "Pick up where you left off": "Mach weiter, wo du aufgehört hast",
+  "Roll out Microsoft 365 to 200 people": "Microsoft 365 für 200 Leute einführen",
+  "Find out if my app idea has customers": "Herausfinden, ob meine App-Idee Kunden hat",
+  "Use AI to answer our support emails": "Mit KI unsere Support-Mails beantworten",
+  "Bring my team through a reorganisation": "Mein Team durch eine Umstrukturierung bringen",
   // A project with an empty seat (consultant-switch.tsx), 2026-11-27.
   "Choose a consultant": "Consultant wählen",
   "Who should work on this project?": "Wer soll an diesem Projekt arbeiten?",

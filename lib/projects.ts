@@ -69,6 +69,21 @@ export async function listProjects(): Promise<Project[]> {
   return (data ?? []) as Project[];
 }
 
+/** The last few projects that have a consultant and a real name, newest first —
+ *  "pick up where you left off" on the start screen. Only the columns it shows. */
+export async function listRecentProjects(n = 3): Promise<Pick<Project, "id" | "name" | "consultant_agent_id" | "last_activity_at">[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase.from("agxp_projects")
+    .select("id, name, consultant_agent_id, last_activity_at, status")
+    .not("consultant_agent_id", "is", null)
+    .neq("name", PLACEHOLDER_PROJECT_NAME)
+    .neq("status", "Archived")
+    .order("last_activity_at", { ascending: false })
+    .limit(n);
+  if (error) throw error;
+  return (data ?? []) as Pick<Project, "id" | "name" | "consultant_agent_id" | "last_activity_at">[];
+}
+
 /** Is there any project that is not archived? A count, not every row with
  *  its activity log — the start screen only needs yes or no. */
 export async function hasOpenProjects(): Promise<boolean> {

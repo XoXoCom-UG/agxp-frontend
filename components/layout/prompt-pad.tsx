@@ -11,6 +11,9 @@ import { requestStartPlan, requestMethodDraft, existingFor, templateById, StartE
 import type { DraftState } from "@/lib/method-draft";
 import type { StartPlan } from "@/lib/start-plan";
 import { describeDbError } from "@/lib/db-error";
+import { listRecentProjects } from "@/lib/projects";
+import { templateFor } from "@/lib/agent-types";
+import { agoStr } from "@/lib/utils";
 import { useT } from "@/lib/language";
 import { useAuth } from "@/lib/auth-context";
 import { AgentMascot } from "@/components/layout/agent-mascot";
@@ -18,15 +21,31 @@ import {
   IconAlert, IconArrowUp, IconCheck, IconNodes, IconChart, IconSpark, IconPencil, IconUsers, IconSearch,
 } from "@/components/layout/agxp-icons";
 
-/** How each example looks on the start screen: an icon and what it is for, in a few words. */
-const EXAMPLE_LOOK: Record<string, { Icon: typeof IconNodes; line: string }> = {
-  "it-project": { Icon: IconNodes, line: "Bring in new software" },
-  "it-company": { Icon: IconChart, line: "Roll it out to everyone" },
-  "ai-use-case": { Icon: IconSpark, line: "Put AI to work" },
-  "idea": { Icon: IconPencil, line: "Test an idea" },
-  "team-change": { Icon: IconUsers, line: "Take your people along" },
-  "no-idea": { Icon: IconSearch, line: "Find the first step" },
+/** How each example looks on the start screen: an icon, a soft colour of its
+ *  own (only on the icon tile) and what it is for, in a few words. */
+const EXAMPLE_LOOK: Record<string, { Icon: typeof IconNodes; line: string; tone: string }> = {
+  "it-project": { Icon: IconNodes, line: "Bring in new software", tone: "blue" },
+  "it-company": { Icon: IconChart, line: "Roll it out to everyone", tone: "violet" },
+  "ai-use-case": { Icon: IconSpark, line: "Put AI to work", tone: "teal" },
+  "idea": { Icon: IconPencil, line: "Test an idea", tone: "amber" },
+  "team-change": { Icon: IconUsers, line: "Take your people along", tone: "rose" },
+  "no-idea": { Icon: IconSearch, line: "Find the first step", tone: "slate" },
 };
+
+/** What the empty field suggests, one after the other: real first sentences. */
+const PLACEHOLDERS = [
+  "A new CRM for our sales team by March",
+  "Roll out Microsoft 365 to 200 people",
+  "Find out if my app idea has customers",
+  "Use AI to answer our support emails",
+  "Bring my team through a reorganisation",
+];
+
+/** Good morning / afternoon / evening, by the person's own clock. */
+function greeting(hour: number): string {
+  return hour < 5 ? "Good evening" : hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+}
+
 
 /** What happens after Start, in three words each — shown once, under everything. */
 const HOW = ["Describe your project", "Your consultant picks the methods", "You get a first draft"];
@@ -73,8 +92,31 @@ export function PromptPad({ agents, onActivate, onDraft }: {
   const [values, setValues] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState(0);
+  const [hint, setHint] = useState(0);
+  const [hour, setHour] = useState<number | null>(null);
+  const [recent, setRecent] = useState<Awaited<ReturnType<typeof listRecentProjects>>>([]);
 
   const areaRef = useRef<HTMLTextAreaElement>(null);
+
+  // The clock is the person's, read after mount so the server render matches.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setHour(new Date().getHours()); }, []);
+
+  // The empty field shows one real first sentence after another; it stops as
+  // soon as there is text, and never moves for someone who asked for less motion.
+  useEffect(() => {
+    if (text || phase !== "write" || tpl) return;
+    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const id = setInterval(() => setHint(h => (h + 1) % PLACEHOLDERS.length), 3200);
+    return () => clearInterval(id);
+  }, [text, phase, tpl]);
+
+  // Pick up where you left off: the last projects with a consultant on them.
+  useEffect(() => {
+    let alive = true;
+    listRecentProjects(3).then(r => { if (alive) setRecent(r); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
 
   // The field grows with what is written through CSS (field-sizing: content on
   // .pp-area). Measuring scrollHeight in JS read the field before the column had
@@ -154,7 +196,11 @@ export function PromptPad({ agents, onActivate, onDraft }: {
                 <span className="pp-face" aria-hidden="true">
                   <AgentMascot role="consultant" size={64} attentive={typing} />
                 </span>
-                {firstName && <p className="pp-hi">{tr("Hi {name},", { name: firstName })}</p>}
+                <p className="pp-hi">
+                  {hour === null ? " " : firstName
+                    ? tr("{greeting}, {name}", { greeting: tr(greeting(hour)), name: firstName })
+                    : tr(greeting(hour))}
+                </p>
                 <h2 className="pp-title">{tr("What are you working on?")}</h2>
                 <p className="pp-lead">{tr("Tell me in a sentence. I pick the right consulting methods and draft them for you.")}</p>
               </div>
@@ -162,13 +208,16 @@ export function PromptPad({ agents, onActivate, onDraft }: {
               <div className="pp-composer">
                 <textarea ref={areaRef} className="pp-area" value={text} maxLength={MAX} rows={2} autoFocus
                   aria-label={tr("What are you working on?")}
-                  placeholder={tr("A new CRM for our sales team by March")}
+                  placeholder={tr(PLACEHOLDERS[hint])}
                   onChange={e => { setText(e.target.value); if (error) setError(null); }}
                   onKeyDown={e => {
                     // Enter sends, as in every chat; Shift+Enter is a new line.
                     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); start(); }
                   }} />
                 <div className="pp-composer-bar">
+                  <span className="pp-keys" aria-hidden="true">
+                    <kbd>Enter</kbd> {tr("to start")} · <kbd>Shift</kbd> + <kbd>Enter</kbd> {tr("new line")}
+                  </span>
                   <button type="submit" className="pp-send">
                     {tr("Start")}<IconArrowUp size={15} />
                   </button>
@@ -187,7 +236,7 @@ export function PromptPad({ agents, onActivate, onDraft }: {
                       const look = EXAMPLE_LOOK[t.id];
                       const Icon = look?.Icon ?? IconSpark;
                       return (
-                        <button key={t.id} type="button" className="pp-ex" onClick={() => pick(t)}>
+                        <button key={t.id} type="button" className="pp-ex" data-tone={look?.tone} onClick={() => pick(t)}>
                           <span className="pp-ex-i" aria-hidden="true"><Icon size={16} /></span>
                           <span className="pp-ex-t">{tr(t.title)}</span>
                           {look && <span className="pp-ex-l">{tr(look.line)}</span>}
@@ -198,7 +247,32 @@ export function PromptPad({ agents, onActivate, onDraft }: {
                 </div>
               )}
 
-              {!tpl && (
+              {/* Someone coming back sees where they left off; someone new, how it works. */}
+              {!tpl && recent.length > 0 && (
+                <div className="pp-recent">
+                  <p className="pp-examples-h">{tr("Pick up where you left off")}</p>
+                  <ul className="pp-recent-list">
+                    {recent.map(p => {
+                      const a = agents.find(x => x.id === p.consultant_agent_id);
+                      return (
+                        <li key={p.id}>
+                          <Link className="pp-recent-row" href={`/dashboard/project/${p.id}`}>
+                            <span className="pp-recent-face" aria-hidden="true">
+                              <AgentMascot role="consultant" size={28} agentId={a?.id ?? null} />
+                            </span>
+                            <span className="pp-recent-name">{p.name}</span>
+                            <span className="pp-recent-meta">
+                              {a ? `${templateFor(a)?.type ?? a.name} · ` : ""}{tr(agoStr(p.last_activity_at))}
+                            </span>
+                            <IconArrowUp size={13} className="pp-recent-go" />
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+              {!tpl && recent.length === 0 && (
                 <ol className="pp-how" aria-label={tr("How it works")}>
                   {HOW.map((h, i) => <li key={h}><span className="pp-how-n">{i + 1}</span>{tr(h)}</li>)}
                 </ol>

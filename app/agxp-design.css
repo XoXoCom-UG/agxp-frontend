@@ -9810,3 +9810,50 @@ html.light .sh-btn.sh-ghost{ background:transparent; }
   flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--sp-4);
   padding:var(--sp-6); text-align:center;
 }
+
+/* --- Start screen, third pass (2026-11-27) ------------------------------------
+   One focus ring on the whole field (not a blue box inside it), the keys under
+   the text, a soft colour per example on its icon tile only, a small lift on
+   hover, and the last projects to pick up again. */
+.pp-area:focus, .pp-area:focus-visible{ outline:0 !important; box-shadow:none !important; border-radius:0; }
+.pp-composer{ transition:border-color 180ms var(--ease-out), box-shadow 180ms var(--ease-out); }
+.pp-composer:focus-within{
+  border-color:color-mix(in srgb, var(--primary, #3b82f6) 60%, transparent);
+  box-shadow:0 0 0 4px color-mix(in srgb, var(--primary, #3b82f6) 14%, transparent);
+}
+.pp-hi{ font-size:var(--text-base); color:var(--secondary-foreground, var(--muted-foreground)); }
+.pp-keys{ margin-right:auto; padding-left:var(--sp-2); font-size:11px; color:var(--muted-foreground); white-space:nowrap; }
+.pp-keys kbd{
+  display:inline-block; min-width:18px; padding:1px 5px; font:inherit; font-size:10px; line-height:16px; text-align:center;
+  color:var(--secondary-foreground, var(--muted-foreground)); border:1px solid var(--border); border-bottom-width:2px; border-radius:5px;
+  background:var(--tint-1);
+}
+@media (max-width:640px){ .pp-keys{ display:none; } }
+
+.pp-ex{ transition:border-color 160ms var(--ease-out), background-color 160ms var(--ease-out), transform 160ms var(--ease-out); }
+@media (hover:hover) and (pointer:fine){ .pp-ex:hover{ transform:translateY(-1px); } }
+.pp-ex[data-tone] .pp-ex-i{ color:var(--tone); background:color-mix(in srgb, var(--tone) 14%, transparent); }
+.pp-ex[data-tone="blue"]{ --tone:#3b82f6; }
+.pp-ex[data-tone="violet"]{ --tone:#8b5cf6; }
+.pp-ex[data-tone="teal"]{ --tone:#14b8a6; }
+.pp-ex[data-tone="amber"]{ --tone:#f59e0b; }
+.pp-ex[data-tone="rose"]{ --tone:#f43f5e; }
+.pp-ex[data-tone="slate"]{ --tone:#94a3b8; }
+html.light .pp-ex[data-tone="slate"]{ --tone:#64748b; }
+@media (prefers-reduced-motion:reduce){ .pp-ex:hover{ transform:none; } }
+
+/* Pick up where you left off: three quiet rows, the consultant's face, the name, when. */
+.pp-recent{ display:flex; flex-direction:column; gap:var(--sp-3); margin-top:var(--sp-2); }
+.pp-recent-list{ list-style:none; margin:0; padding:0; border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.pp-recent-list li + li{ border-top:1px solid var(--border); }
+.pp-recent-row{
+  display:flex; align-items:center; gap:var(--sp-3); min-height:48px; padding:0 var(--sp-4);
+  color:var(--foreground); text-decoration:none; transition:background-color 140ms var(--ease-out);
+}
+@media (hover:hover) and (pointer:fine){ .pp-recent-row:hover{ background:var(--tint-1); } .pp-recent-row:hover .pp-recent-go{ opacity:1; } }
+.pp-recent-face{ flex:none; display:flex; }
+.pp-recent-name{ flex:1; min-width:0; font-size:var(--text-sm); font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pp-recent-meta{ flex:none; font-size:var(--text-xs); color:var(--muted-foreground); white-space:nowrap; }
+.pp-recent-go{ flex:none; transform:rotate(45deg); color:var(--muted-foreground); opacity:.5; transition:opacity 140ms var(--ease-out); }
+html.light .pp-recent-list{ background:#fff; }
+@media (max-width:520px){ .pp-recent-meta{ display:none; } }
