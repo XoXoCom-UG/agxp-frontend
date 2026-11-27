@@ -235,11 +235,13 @@ export async function POST(req: NextRequest) {
    * From this point the lease MUST be settled exactly once — by the stream
    * below, or right here if the stream never starts.
    */
-  const admitted = await beginAiCall(allowance, userId, "chat", reserveMicroUsd(inputEstimate(system, msgs), MAX_OUTPUT_TOKENS));
+  // With the project, so the conversation's own ceiling holds as well as the
+  // account's: past it the person is told to start a new project or upgrade.
+  const admitted = await beginAiCall(allowance, userId, "chat", reserveMicroUsd(inputEstimate(system, msgs), MAX_OUTPUT_TOKENS), body.projectId);
   // Not "rate_limited": the browser words that one itself as "too many
   // messages", and a call still in flight is not that. The lease's message is
   // written for the person, so these codes tell the client to show it.
-  if ("hit" in admitted) return fail(admitted.status, admitted.status === 429 ? "busy" : "limit", admitted.hit.message);
+  if ("hit" in admitted) return fail(admitted.status, admitted.status === 429 ? "busy" : admitted.hit.kind === "conversation" ? "conversation_limit" : "limit", admitted.hit.message);
   const lease = admitted.lease;
 
   /*

@@ -64,6 +64,12 @@ export interface Plan {
   maxAgents: number;
   /** The invisible ceiling. What this account may cost us per period, in USD. */
   costCeilingUsd: number;
+  /** What ONE conversation (a project, both panels together) may cost, in USD,
+   *  over its whole life. The account ceiling stops a person per month; this
+   *  stops one conversation from eating that month, since cost grows with the
+   *  square of its length. Reaching it ends the conversation with "start a new
+   *  project or upgrade" (begin_ai_call, migration 0034). Never shown as money. */
+  conversationCeilingUsd: number;
 }
 
 export const PLANS: Record<PlanId, Plan> = {
@@ -82,6 +88,8 @@ export const PLANS: Record<PlanId, Plan> = {
     maxAgents: 1,
     // Three capped interviews at ~$0.70 each, with room to retry a document.
     costCeilingUsd: 3,
+    // Three stations is about $0.70; room for a retry or two of the document.
+    conversationCeilingUsd: 1.5,
   },
   mid: {
     id: "mid",
@@ -95,6 +103,8 @@ export const PLANS: Record<PlanId, Plan> = {
     agentsPerType: 4,
     maxAgents: 5,
     costCeilingUsd: 25,
+    // A full interview is ~$1.26 before caching: room for many document rebuilds.
+    conversationCeilingUsd: 5,
   },
   max: {
     id: "max",
@@ -109,6 +119,7 @@ export const PLANS: Record<PlanId, Plan> = {
     agentsPerType: 4,
     maxAgents: 5,
     costCeilingUsd: 60,
+    conversationCeilingUsd: 8,
   },
 };
 
@@ -145,8 +156,14 @@ export const INVITE_ONLY = true;
  * Note what Max means for cost: the per-account ceiling is the only limit
  * left, and it is $60 a month. MONTHLY_BUDGET_USD below is what stops the
  * total, however many accounts there are.
+ *
+ * Off since 2026-11-20 (Tudor), so plans can be bought through Stripe: each
+ * account now gets the plan stored in agxp_entitlements (a beta key stores
+ * 'max' by default). Moving one account by hand is still one UPDATE on that
+ * row. Before this reaches production, set the agxp_plan_limits rows back
+ * (the statement is in 0015), or the database keeps Max's limits for Free.
  */
-export const EVERYONE_IS_MAX = true;
+export const EVERYONE_IS_MAX = false;
 
 /**
  * The most the whole app may spend on the model in one calendar month (UTC),
@@ -218,7 +235,25 @@ export function periodStart(period: Plan["period"], now = new Date()): string {
 }
 
 /** What the API route sends back when a limit is hit, and the UI explains. */
-export type LimitKind = "projects" | "tokens" | "stations" | "invite" | "budget";
+export type LimitKind = "projects" | "tokens" | "stations" | "invite" | "budget" | "conversation";
+
+/**
+ * What the chat says when one conversation has reached its plan's ceiling.
+ * One constant, because the chat bubble recognises it to offer the two ways on
+ * (a new project, or a bigger plan) — see components/layout/chat/chat-message.tsx.
+ */
+export const CONVERSATION_LIMIT_MESSAGE =
+  "This conversation has reached the limit of your plan. Start a new project to keep going, or upgrade for longer conversations.";
+
+/** The plan one step up, or null when there is none to sell. */
+export function upgradeTarget(id: PlanId): Exclude<PlanId, "free"> | null {
+  return id === "free" ? "mid" : id === "mid" ? "max" : null;
+}
+
+/** The plans that can be bought. */
+export function isPaidPlan(id: unknown): id is "mid" | "max" {
+  return id === "mid" || id === "max";
+}
 
 export interface LimitHit {
   kind: LimitKind;

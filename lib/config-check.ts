@@ -71,6 +71,28 @@ const SPEC: ConfigFinding[] = [
       "id or alias to let the copy be edited without a deploy.",
   },
   {
+    key: "STRIPE_SECRET_KEY",
+    level: "optional",
+    consequence: "Nobody can buy a plan: Upgrade answers \"Payments aren't set up yet\". Set by the Vercel Stripe integration.",
+  },
+  {
+    key: "STRIPE_WEBHOOK_SECRET",
+    level: "silent",
+    consequence:
+      "Stripe takes the payment but the plan never changes: the webhook refuses every event. " +
+      "Copy the signing secret of the /api/billing/webhook endpoint from the Stripe dashboard.",
+  },
+  {
+    key: "STRIPE_PRICE_MID",
+    level: "optional",
+    consequence: "The Mid plan can't be bought, and a Mid subscription would be read as free.",
+  },
+  {
+    key: "STRIPE_PRICE_MAX",
+    level: "optional",
+    consequence: "The Max plan can't be bought, and a Max subscription would be read as free.",
+  },
+  {
     key: "NEXT_PUBLIC_SENTRY_DSN",
     level: "optional",
     consequence: "No error reports from production. Sentry is wired but has nowhere to send.",

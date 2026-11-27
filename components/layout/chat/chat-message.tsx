@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Entry } from "@/lib/conversation-state";
 import { errorText } from "@/lib/conversation-state";
 import {
@@ -13,6 +14,40 @@ import { ThinkingOrb } from "@/components/layout/thinking-orb";
 import { MessageActions } from "@/components/layout/message-actions";
 import { IconArrow, IconCheck, IconDoc, IconRefresh } from "@/components/layout/agxp-icons";
 import { useT } from "@/lib/language";
+import { CONVERSATION_LIMIT_MESSAGE, upgradeTarget, PLANS } from "@/lib/plans";
+import { useEntitlement } from "@/lib/entitlement";
+import { startCheckout } from "@/lib/billing";
+
+/**
+ * The two ways on when a conversation has reached its plan's ceiling: a new
+ * project, or the next plan up through Stripe. Try again is not offered — the
+ * same conversation would be refused again.
+ */
+function ConversationLimitActions() {
+  const tr = useT();
+  const router = useRouter();
+  const { plan } = useEntitlement();
+  const next = upgradeTarget(plan.id);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  return (
+    <>
+      <div className="me-actions">
+        <button className="me-retry" onClick={() => router.push("/dashboard?new=1")}>{tr("Start a new project")}</button>
+        {next && (
+          <button className="me-retry" disabled={busy} onClick={() => {
+            setBusy(true);
+            setErr(null);
+            startCheckout(next).catch((e: Error) => { setErr(e.message); setBusy(false); });
+          }}>
+            {tr("Upgrade to {plan}", { plan: PLANS[next].label })}
+          </button>
+        )}
+      </div>
+      {err && <div className="me-detail">{err}</div>}
+    </>
+  );
+}
 
 /** "10:24" — shown under each message in the Coach's conversation. */
 function clock(iso: string): string {
@@ -163,11 +198,13 @@ export function ChatMessage({ entry, agentName, docTitle, isNew, isLeaving, isLa
   }
 
   if (entry.isError) {
+    const atLimit = errorText(m.content) === CONVERSATION_LIMIT_MESSAGE;
     return (
       <div className={`msg-agent msg-error${isLeaving ? " is-leaving" : ""}`} role="alert">
         <div className="me-title">{agentName} couldn&apos;t answer</div>
-        <div className="me-detail">{errorText(m.content)}</div>
-        {isLast && (
+        <div className="me-detail">{atLimit ? tr(CONVERSATION_LIMIT_MESSAGE) : errorText(m.content)}</div>
+        {isLast && atLimit && <ConversationLimitActions />}
+        {isLast && !atLimit && (
           <button className="me-retry" onClick={onRetry} disabled={busy}>
             <IconRefresh size={13} />{tr("Try again")}
           </button>

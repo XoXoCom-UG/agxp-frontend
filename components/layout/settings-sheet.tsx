@@ -12,7 +12,8 @@ import { IconX, IconCheck, IconMonitor, IconSun, IconMoon, IconSpark } from "@/c
 import { useDialogFocus } from "@/lib/use-dialog-focus";
 import { useExit } from "@/lib/use-exit";
 import { useEntitlement } from "@/lib/entitlement";
-import { PLANS, projectsLabel, agentsLabel, type Plan } from "@/lib/plans";
+import { PLANS, projectsLabel, agentsLabel, upgradeTarget, type Plan } from "@/lib/plans";
+import { startCheckout, openPortal, readBilling } from "@/lib/billing";
 import { replayTour } from "@/components/layout/tour-host";
 import { PrivacyTab } from "@/components/layout/privacy-tab";
 
@@ -360,9 +361,60 @@ function PlanTab() {
             </div>
           ))}
         </div>
-        <span className="ss-hint">{t("Upgrading isn't wired up yet — get in touch and we'll move your account.")}</span>
+        <BillingActions current={plan} />
       </div>
 
+    </>
+  );
+}
+
+/**
+ * Upgrade through Stripe Checkout, or manage what is already paid for in
+ * Stripe's portal. Neither button changes the plan: the signed webhook does,
+ * once Stripe says the subscription is paid (app/api/billing/webhook).
+ */
+function BillingActions({ current }: { current: Plan }) {
+  const t = useT();
+  const [billing, setBilling] = useState<Awaited<ReturnType<typeof readBilling>>>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => { readBilling().then(setBilling).catch(() => {}); }, []);
+
+  const paying = billing?.status === "active" || billing?.status === "trialing";
+  const next = upgradeTarget(current.id);
+  const go = (key: string, run: () => Promise<unknown>) => {
+    setBusy(key);
+    setError(null);
+    run().catch((e: Error) => { setError(e.message); setBusy(null); });
+  };
+
+  return (
+    <>
+      <div className="ss-row-btns">
+        {!paying && next && (
+          <button className="btn btn-hero btn-sm" disabled={!!busy} onClick={() => go("up", () => startCheckout(next))}>
+            {t("Upgrade to {plan}", { plan: PLANS[next].label })}
+          </button>
+        )}
+        {!paying && next === "mid" && (
+          <button className="btn btn-ghost btn-sm" disabled={!!busy} onClick={() => go("max", () => startCheckout("max"))}>
+            {t("Upgrade to {plan}", { plan: PLANS.max.label })}
+          </button>
+        )}
+        {billing?.status && (
+          <button className="btn btn-ghost btn-sm" disabled={!!busy} onClick={() => go("portal", openPortal)}>
+            {t("Manage subscription")}
+          </button>
+        )}
+      </div>
+      {billing?.cancel_at_period_end && billing.current_period_end && (
+        <span className="ss-hint">{t("Your subscription ends on {date}.", { date: new Date(billing.current_period_end).toLocaleDateString() })}</span>
+      )}
+      {billing && !paying && billing.status && billing.status !== "canceled" && (
+        <span className="ss-hint">{t("The last payment didn't go through. Update your card under Manage subscription to keep your plan.")}</span>
+      )}
+      {error && <span className="ss-hint" role="alert">{error}</span>}
+      <span className="ss-hint">{t("Payments are handled by Stripe. Your plan changes as soon as the payment is confirmed.")}</span>
     </>
   );
 }

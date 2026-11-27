@@ -34,6 +34,10 @@ const SCOPES = {
   account: { max: 10, windowSeconds: 600 },
   /** The email for a serious problem: the account allows 10 in ten minutes. */
   feedback: { max: 30, windowSeconds: 600 },
+  /** The metrics dashboard: a few people, a reload now and then. */
+  metrics: { max: 30, windowSeconds: 60 },
+  /** Opening Stripe checkout or the billing portal: the account allows 10 in ten minutes. */
+  billing: { max: 30, windowSeconds: 600 },
 } as const;
 
 export type IpScope = keyof typeof SCOPES;

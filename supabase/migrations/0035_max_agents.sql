@@ -1,16 +1,14 @@
 -- Cel mult 1 sau 5 consultanti pe plan (meeting 2026-11-20, Patryk: "nur noch
 -- eins oder fünf je nach Plan"). Asistentul (type = 'coach') nu se numara.
 -- Numerele sunt duplicate din lib/plans.ts (maxAgents): schimbarea unei limite
--- inseamna schimbarea in AMBELE locuri. Free si Mid au fost ridicate la Max in
--- 0015 (EVERYONE_IS_MAX); randurile de aici urmeaza aceeasi regula, deci intai
--- se pune numarul planului, apoi se aliniaza la Max cat timp flag-ul e pornit.
+-- inseamna schimbarea in AMBELE locuri.
+-- Scrisa ca 0033 pe agxp-redesign; renumerotata 0035 la merge-ul cu main
+-- (0033_metrics_dashboard si 0034_billing_and_conversation_caps erau luate).
+-- EVERYONE_IS_MAX e oprit de pe 2026-11-20, deci fiecare plan primeste propriul
+-- numar, nu cel de Max.
 alter table agxp_plan_limits add column if not exists max_agents integer not null default 5;
 update agxp_plan_limits set max_agents = 1 where plan = 'free';
 update agxp_plan_limits set max_agents = 5 where plan in ('mid', 'max');
--- Cat timp toti sunt pe Max (lib/plans.ts EVERYONE_IS_MAX), baza tine aceleasi numere ca Max.
--- Se reface la oprirea flag-ului:  update agxp_plan_limits set max_agents = 1 where plan = 'free';
-update agxp_plan_limits l set max_agents = m.max_agents
-  from agxp_plan_limits m where m.plan = 'max' and l.plan in ('free', 'mid');
 
 create or replace function enforce_agent_limit() returns trigger
 language plpgsql
