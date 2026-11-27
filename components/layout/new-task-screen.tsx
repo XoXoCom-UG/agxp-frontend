@@ -13,6 +13,7 @@ import { useMediaQuery } from "@/lib/use-media-query";
 import { describeDbError } from "@/lib/db-error";
 import { AgentNav } from "@/components/layout/agent-nav";
 import { AgentPickerPanel } from "@/components/layout/agent-picker-panel";
+import { ConsultantSwitch, AssistantMissing } from "@/components/layout/consultant-switch";
 import { ProjectChatPanel } from "@/components/layout/project-chat-panel";
 import { PromptPad, type Activation } from "@/components/layout/prompt-pad";
 import { activateTeam } from "@/lib/start-flow";
@@ -352,9 +353,11 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
       .then(([p, a, counts]) => {
         if (!alive) return;
         setProject(p); setAgents(a); setProjectCounts(counts);
-        // Opened from Project History with both agents already on it — the
-        // Start gate guards a fresh selection, not a return visit.
-        if (p?.coach_agent_id && p?.consultant_agent_id) setStarted(true);
+        // Opened from Project History with a consultant on it — the Start gate
+        // guards a fresh selection, not a return visit. The Assistant is a help,
+        // not a precondition: without it the project still opens, and its tab
+        // offers to add one (2026-11-27; it used to drop into the old setup screen).
+        if (p?.consultant_agent_id) setStarted(true);
       })
       .catch(e => { if (alive) setLoadError(describeDbError(e, "Loading this task")); })
       .finally(() => { if (alive) setLoadingData(false); });
@@ -410,6 +413,9 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
     setChangeError(null);
     try {
       setProject(await clearAgent(project.id, role));
+      // What the old agent's chat last published (its step, its "Now") must not
+      // stay on the Cockpit once it is gone.
+      setSnaps(s => ({ ...s, [role]: undefined }));
     } catch (e) {
       // Nothing changed on the server, so the panel is right to keep showing
       // the old agent — it just has to say why the click did nothing.
@@ -462,6 +468,17 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
           onOpenDoc={setOpenDoc}
           onChangeAgent={() => changeAgent(role)}
           onProjectNamed={name => setProject(p => p && { ...p, name })} />
+      );
+    }
+    // An open project with a seat empty — after "Change agent", or an agent
+    // that is gone: the new screens, never the old picker (2026-11-27).
+    if (project && started) {
+      return role === "consultant" ? (
+        <ConsultantSwitch key={role} project={project} agents={agents}
+          onAssigned={handleAssigned} onActivate={handleActivate} onDraft={setDraft} />
+      ) : (
+        <AssistantMissing key={role} project={project} agents={agents} onAssigned={handleAssigned}
+          onAgentCreated={a => setAgents(prev => [...prev, a])} topExtra={sideTabs} />
       );
     }
     return (

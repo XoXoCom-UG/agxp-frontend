@@ -9791,3 +9791,22 @@ html.light .sh-btn.sh-ghost{ background:transparent; }
 .ck-foot{ display:flex; flex-direction:column; gap:var(--sp-2); }
 .ck-now{ width:100%; height:40px; font-size:var(--text-sm); }
 .ck-now-note{ margin:0; text-align:center; font-size:var(--text-xs); color:var(--muted-foreground); }
+
+/* --- A project with an empty seat (2026-11-27) --------------------------------
+   Instead of the old picker: the person's consultants as big rows, or the
+   Prompt Pad; on the Assistant tab one sentence and one button. */
+.cs-wrap{ position:relative; display:flex; flex:1; min-height:0; }
+.cs-wrap > .panel{ flex:1; }
+.cs-back{ position:absolute; top:var(--sp-4); left:var(--sp-4); z-index:2; }
+.cs-opt{ min-height:64px; gap:var(--sp-3); }
+.cs-face{ flex:none; display:flex; }
+.cs-text{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.cs-name{ font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cs-meta{ font-size:var(--text-xs); color:var(--muted-foreground); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cs-opt:disabled{ cursor:default; opacity:.7; }
+.cs-foot{ justify-content:center; }
+.cs-assist{ display:flex; flex-direction:column; }
+.cs-assist-body{
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--sp-4);
+  padding:var(--sp-6); text-align:center;
+}

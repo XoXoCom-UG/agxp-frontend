@@ -241,6 +241,14 @@ export const DE: Record<string, string> = {
   "Create the document": "Dokument erstellen",
   "{done} of {total} done": "{done} von {total} fertig",
   ", drafted": ", entworfen",
+  // A project with an empty seat (consultant-switch.tsx), 2026-11-27.
+  "Choose a consultant": "Consultant wählen",
+  "Who should work on this project?": "Wer soll an diesem Projekt arbeiten?",
+  "Describe it and let me choose": "Beschreib es und lass mich wählen",
+  "Choosing the consultant": "Den Consultant wählen",
+  "The Assistant reads along and helps you with the people side.": "Der Assistent liest mit und hilft dir bei der menschlichen Seite.",
+  "Add the Assistant": "Assistent hinzufügen",
+  "Adding the Assistant": "Assistent hinzufügen",
   // Cockpit legend, 2026-11-27.
   "First draft": "Erster Entwurf",
   "We're here": "Hier sind wir",

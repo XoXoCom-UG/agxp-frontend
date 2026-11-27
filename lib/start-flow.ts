@@ -91,15 +91,24 @@ export async function activateTeam(input: {
   if (!reuse) created.push(consultant);
   project = await assignAgent(project.id, "consultant", consultant.id, "Consultant selected", project);
 
-  let assistant: Agent | null = agents.find(a => a.type === "coach" && !a.archived_at) ?? null;
-  if (!assistant) {
-    try {
-      assistant = await make("coach", TYPE_CATALOG.coach[0]);
-      created.push(assistant);
-    } catch { assistant = null; }
-  }
-  if (assistant) {
-    try { project = await assignAgent(project.id, "coach", assistant.id, "Assistant selected", project); } catch { /* the tab offers the picker */ }
-  }
+  try {
+    const r = await addAssistant(project, agents);
+    project = r.project;
+    created.push(...r.created);
+  } catch { /* the Assistant tab offers to add it */ }
   return { project, created };
+}
+
+/**
+ * Puts the user's Assistant into the project: the one they have, otherwise a
+ * new one. Throws when neither works (a plan limit), so the caller can say so.
+ */
+export async function addAssistant(project: Project, agents: Agent[]): Promise<{ project: Project; created: Agent[] }> {
+  let assistant: Agent | null = agents.find(a => a.type === "coach" && !a.archived_at) ?? null;
+  const created: Agent[] = [];
+  if (!assistant) {
+    assistant = await make("coach", TYPE_CATALOG.coach[0]);
+    created.push(assistant);
+  }
+  return { project: await assignAgent(project.id, "coach", assistant.id, "Assistant selected", project), created };
 }
