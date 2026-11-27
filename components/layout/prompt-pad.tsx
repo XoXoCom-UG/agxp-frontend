@@ -15,7 +15,7 @@ import { useT } from "@/lib/language";
 import { useAuth } from "@/lib/auth-context";
 import { AgentMascot } from "@/components/layout/agent-mascot";
 import {
-  IconAlert, IconArrowUp, IconCheck, IconNodes, IconChart, IconSpark, IconPencil, IconUsers, IconSearch,
+  IconAlert, IconCheck, IconNodes, IconChart, IconSpark, IconPencil, IconUsers, IconSearch,
 } from "@/components/layout/agxp-icons";
 
 /** How each example looks on the start screen: an icon, a soft colour of its
@@ -81,6 +81,8 @@ export function PromptPad({ agents, onActivate, onDraft }: {
   const { plan: account } = useEntitlement();
   const { profileName } = useAuth();
   const firstName = profileName.trim().split(/\s+/)[0] ?? "";
+  /** The prompt's user name: the first name, lower case, only letters and digits. */
+  const promptUser = firstName.toLowerCase().normalize("NFD").replace(/[^a-z0-9]/g, "") || "you";
   /** The person is writing: the consultant looks at the field. */
   const [typing, setTyping] = useState(false);
   const [phase, setPhase] = useState<Phase>("write");
@@ -191,21 +193,43 @@ export function PromptPad({ agents, onActivate, onDraft }: {
                 <p className="pp-lead">{tr("Tell me in a sentence. I pick the right consulting methods and draft them for you.")}</p>
               </div>
 
-              <div className="pp-composer">
-                <textarea ref={areaRef} className="pp-area" value={text} maxLength={MAX} rows={2} autoFocus
-                  aria-label={tr("What are you working on?")}
-                  placeholder={tr(PLACEHOLDERS[hint])}
-                  onChange={e => { setText(e.target.value); if (error) setError(null); }}
-                  onKeyDown={e => {
-                    // Enter sends, as in every chat; Shift+Enter is a new line.
-                    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); start(); }
-                  }} />
+              {/* The field as a terminal window (2026-11-27, Tudor): a title bar,
+                  a status line, a prompt sign and monospace text — you type a
+                  command to your consultant and Enter runs it. */}
+              <div className="pp-composer pp-term" onClick={() => areaRef.current?.focus()}>
+                <div className="pp-term-bar" aria-hidden="true">
+                  <span className="pp-term-dots"><i /><i /><i /></span>
+                  <span className="pp-term-title">agxp — {tr("new project")}</span>
+                  <span className="pp-term-spacer" />
+                </div>
+                <div className="pp-term-body">
+                  <p className="pp-term-log" aria-hidden="true">
+                    <span className="pp-term-ok">✓</span> {tr("consultant ready · methods loaded")}
+                  </p>
+                  <div className="pp-term-line">
+                    <span className="pp-term-prompt" aria-hidden="true">
+                      <span className="pp-term-user">{promptUser}@agxp</span>
+                      <span className="pp-term-path">:~/{tr("projects")}</span>
+                      <span className="pp-term-sign">$</span>
+                    </span>
+                    <textarea ref={areaRef} className="pp-area" value={text} maxLength={MAX} rows={2} autoFocus
+                      spellCheck={false}
+                      aria-label={tr("What are you working on?")}
+                      placeholder={tr(PLACEHOLDERS[hint])}
+                      onChange={e => { setText(e.target.value); if (error) setError(null); }}
+                      onKeyDown={e => {
+                        // Enter sends, as in every chat; Shift+Enter is a new line.
+                        if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); start(); }
+                      }} />
+                  </div>
+                </div>
                 <div className="pp-composer-bar">
                   <span className="pp-keys" aria-hidden="true">
-                    <kbd>Enter</kbd> {tr("to start")} · <kbd>Shift</kbd> + <kbd>Enter</kbd> {tr("new line")}
+                    <kbd>↵</kbd> {tr("to start")} <span className="pp-term-sep">·</span> <kbd>⇧</kbd><kbd>↵</kbd> {tr("new line")}
                   </span>
+                  <span className="pp-term-count" aria-hidden="true">{text.length}/{MAX}</span>
                   <button type="submit" className="pp-send">
-                    {tr("Start")}<IconArrowUp size={15} />
+                    {tr("Run")}<span className="pp-send-key" aria-hidden="true">↵</span>
                   </button>
                 </div>
               </div>

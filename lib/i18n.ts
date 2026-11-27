@@ -953,6 +953,10 @@ export const DE: Record<string, string> = {
   "The steps you work through, ticked off as you go. Once there is enough, you can ask for the document from here.": "Die Schritte, die du durcharbeitest, werden abgehakt. Sobald genug da ist, kannst du das Dokument von hier aus anfordern.",
   // Cockpit, fourth pass; landing; resume line; conversation meter (2026-11-27).
   "Your methods are here": "Hier sind deine Methoden",
+  "new project": "neues Projekt",
+  "consultant ready · methods loaded": "Berater bereit · Methoden geladen",
+  "projects": "projekte",
+  "Run": "Ausführen",
   "this week": "diese Woche",
   "this month": "diesen Monat",
   "{left} left": "{left} übrig",

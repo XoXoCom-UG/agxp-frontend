@@ -9940,3 +9940,56 @@ button.plan-badge:focus-visible{ outline:2px solid var(--ring, var(--primary)); 
   color:var(--background); background:var(--foreground); font-weight:600;
 }
 @media (max-width:640px){ .plan-badge em{ display:none; } }
+
+/* --- The start field as a terminal window (2026-11-27, Tudor) -----------------
+   Dark in both themes: a title bar with three lights, a status line, a prompt
+   (user@agxp:~/projects $) in green and blue, monospace text, the keys and Run
+   along the bottom like a status bar. */
+.pp-composer.pp-term{
+  --term-bg:#0b0e14; --term-bar:#121722; --term-line:#1d2431; --term-fg:#e6edf3; --term-dim:#7d8590;
+  --term-green:#3fb950; --term-blue:#58a6ff; --term-amber:#d29922;
+  gap:0; padding:0; overflow:hidden; cursor:text;
+  border-radius:12px; background:var(--term-bg); border:1px solid var(--term-line); color:var(--term-fg);
+  font-family:var(--font-mono); box-shadow:0 24px 60px -30px rgba(0,0,0,.8);
+}
+html.light .pp-composer.pp-term{ background:var(--term-bg); border-color:#1d2431; box-shadow:0 18px 40px -20px rgba(16,24,40,.45); }
+.pp-composer.pp-term:focus-within{ border-color:#2f81f7; box-shadow:0 0 0 4px rgba(47,129,247,.16), 0 24px 60px -30px rgba(0,0,0,.8); }
+
+.pp-term-bar{ display:flex; align-items:center; gap:var(--sp-3); height:32px; padding:0 var(--sp-3); background:var(--term-bar); border-bottom:1px solid var(--term-line); cursor:default; }
+.pp-term-dots{ display:flex; gap:7px; width:52px; }
+.pp-term-dots i{ width:11px; height:11px; border-radius:50%; }
+.pp-term-dots i:nth-child(1){ background:#ff5f57; }
+.pp-term-dots i:nth-child(2){ background:#febc2e; }
+.pp-term-dots i:nth-child(3){ background:#28c840; }
+.pp-term-title{ flex:1; text-align:center; font-size:11px; letter-spacing:.02em; color:var(--term-dim); }
+.pp-term-spacer{ width:52px; }
+
+.pp-term-body{ display:flex; flex-direction:column; gap:6px; padding:var(--sp-4) var(--sp-4) var(--sp-3); }
+.pp-term-log{ margin:0; font-size:12px; line-height:1.5; color:var(--term-dim); }
+.pp-term-ok{ color:var(--term-green); }
+.pp-term-line{ display:flex; align-items:flex-start; gap:10px; }
+.pp-term-prompt{ flex:none; display:inline-flex; padding-top:1px; font-size:14px; line-height:1.6; white-space:nowrap; }
+.pp-term-user{ color:var(--term-green); font-weight:500; }
+.pp-term-path{ color:var(--term-blue); }
+.pp-term-sign{ margin-left:8px; color:var(--term-fg); }
+.pp-term .pp-area{
+  min-height:68px; padding:0; font-family:inherit; font-size:14px; line-height:1.6; letter-spacing:0;
+  color:var(--term-fg); caret-color:var(--term-green);
+}
+.pp-term .pp-area::placeholder{ color:#4d5562; opacity:1; }
+
+.pp-term .pp-composer-bar{ gap:var(--sp-3); padding:6px var(--sp-3) 6px var(--sp-4); background:var(--term-bar); border-top:1px solid var(--term-line); cursor:default; }
+.pp-term .pp-keys{ padding-left:0; font-family:inherit; font-size:11px; color:var(--term-dim); }
+.pp-term .pp-keys kbd{ min-width:16px; padding:0 4px; color:#c9d1d9; background:#161b22; border-color:#30363d; font-family:inherit; }
+.pp-term-sep{ margin:0 4px; opacity:.6; }
+.pp-term-count{ font-size:11px; color:#4d5562; font-variant-numeric:tabular-nums; }
+.pp-term .pp-send{
+  height:28px; padding:0 10px 0 12px; gap:8px; border-radius:6px; font-family:inherit; font-size:12px; font-weight:500;
+  margin-left:0; color:#0b0e14; background:var(--term-green);
+}
+.pp-send-key{ padding:0 4px; font-size:11px; border-radius:4px; background:rgba(11,14,20,.18); }
+@media (max-width:640px){
+  .pp-term-path, .pp-term-count{ display:none; }
+  .pp-term .pp-send{ width:auto; margin-left:auto; }
+  .pp-term .pp-composer-bar{ flex-wrap:nowrap; }
+}
