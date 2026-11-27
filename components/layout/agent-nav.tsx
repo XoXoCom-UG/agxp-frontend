@@ -11,7 +11,7 @@ import { PLACEHOLDER_PROJECT_NAME } from "@/lib/projects";
 import { useLastProject } from "@/lib/last-project";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { usePresence, phaseClass } from "@/lib/use-presence";
-import { SettingsSheet } from "@/components/layout/settings-sheet";
+import { SettingsSheet, OPEN_SETTINGS_EVENT, type Tab as SettingsTab } from "@/components/layout/settings-sheet";
 import { PlanBadge } from "@/components/layout/plan-badge";
 import { readAccent, applyAccent } from "@/lib/accent";
 import { readAppearance, applyAppearance } from "@/lib/appearance";
@@ -93,6 +93,16 @@ export function AgentNav({ started, projectName, projectCategory }: {
   const { canSwitch } = useEntitlement();
   const [popover, setPopover] = useState<PopoverName>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>("profile");
+  // The plan badge (and anything else) opens Settings on a given tab.
+  useEffect(() => {
+    function onOpen(e: Event) {
+      setSettingsTab(((e as CustomEvent).detail as SettingsTab) ?? "profile");
+      setSettingsOpen(true);
+    }
+    window.addEventListener(OPEN_SETTINGS_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_SETTINGS_EVENT, onOpen);
+  }, []);
   const isApple = useIsApple();
   const t = useT();
   const menuId = useId();
@@ -189,7 +199,7 @@ export function AgentNav({ started, projectName, projectCategory }: {
     {/* First thing a keyboard reaches: jump past the bar to the work. */}
     <a className="skip-link" href="#main-content">{t("Skip to content")}</a>
     <header className="navbar" onClick={e => e.stopPropagation()}>
-      {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && <SettingsSheet initialTab={settingsTab} onClose={() => { setSettingsOpen(false); setSettingsTab("profile"); }} />}
       <div className="nb-left">
         {/* "New task" is the start screen — it doesn't create anything yet.
             The project row appears the moment the user actually picks an

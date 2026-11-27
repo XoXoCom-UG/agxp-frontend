@@ -1,42 +1,44 @@
 "use client";
 
 import { useEntitlement } from "@/lib/entitlement";
-import { projectsLabel } from "@/lib/plans";
+import { projectsLabel, upgradeTarget, PLANS } from "@/lib/plans";
+import { useT } from "@/lib/language";
+import { openSettings } from "@/components/layout/settings-sheet";
 
 /**
- * What is left, in the header.
+ * The plan, in the header, and the way to change it.
  *
- * The allowance used to be invisible until it ran out: you pressed New Task,
- * got an error, and found out the rule and that you had broken it in the same
- * sentence. A limit nobody can see is a trap, and "1 project left this week"
- * is also the only honest moment to mention upgrading — at the point where
- * the person can feel what they are buying.
- *
- * Deliberately quiet until it matters. On a plan with room it is a plain
- * count; it only takes colour in the last two, and says nothing at all on
- * the unlimited plan, where a number would be noise.
+ * The allowance used to be invisible until it ran out, and upgrading lived
+ * three clicks deep (profile menu → Settings → Plan). Now the badge names the
+ * plan and what is left, and one click opens Settings on the Plan tab, where
+ * Upgrade goes through Stripe (2026-11-27). On a plan that can still go up it
+ * says "Upgrade" outright; on Max it is a quiet name.
  */
 export function PlanBadge() {
+  const t = useT();
   const { plan, projectsLeft, loading } = useEntitlement();
 
-  // Nothing during the first read: a badge that appears saying "3 left" and
-  // corrects itself to "1 left" a moment later is worse than a short gap.
+  // Nothing during the first read: a badge that says "3 left" and corrects
+  // itself to "1 left" a moment later is worse than a short gap.
   if (loading) return null;
-  if (plan.projects >= 1000) return null;
 
+  const unlimited = plan.projects >= 1000;
   const left = projectsLeft;
-  const tone = left === 0 ? "out" : left <= 1 ? "low" : "";
-  const window = plan.period === "week" ? "this week" : "this month";
+  const tone = unlimited ? "" : left === 0 ? "out" : left <= 1 ? "low" : "";
+  const window_ = plan.period === "week" ? t("this week") : t("this month");
+  const next = upgradeTarget(plan.id);
+  const tip = unlimited
+    ? t("{plan} plan. Open your plan.", { plan: plan.label })
+    : t("{left} of {total} projects left {window} on the {plan} plan. Open your plan.",
+      { left, total: projectsLabel(plan), window: window_, plan: plan.label });
 
   return (
-    <span className={`plan-badge ${tone}`} data-tour="plan"
-      data-tooltip={left === 0
-        ? `No projects left ${window} on ${plan.label}. The allowance resets at the start of the next ${plan.period}.`
-        : `${left} of ${projectsLabel(plan)} projects left ${window} on the ${plan.label} plan`}>
+    <button type="button" className={`plan-badge ${tone}`} data-tour="plan" data-tooltip={tip} aria-label={tip}
+      onClick={() => openSettings("plan")}>
       <span className="pb-dot" aria-hidden="true" />
-      {left === 0
-        ? <>None left <em>{window}</em></>
-        : <>{left} left <em>{window}</em></>}
-    </span>
+      <span className="pb-name">{plan.label}</span>
+      {!unlimited && <em>{t("{left} left", { left })}</em>}
+      {next && <span className="pb-up">{t("Upgrade to {plan}", { plan: PLANS[next].label })}</span>}
+    </button>
   );
 }

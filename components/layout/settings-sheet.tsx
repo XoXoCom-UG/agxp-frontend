@@ -17,7 +17,7 @@ import { startCheckout, openPortal, readBilling } from "@/lib/billing";
 import { replayTour } from "@/components/layout/tour-host";
 import { PrivacyTab } from "@/components/layout/privacy-tab";
 
-type Tab = "profile" | "plan" | "data" | "appearance";
+export type Tab = "profile" | "plan" | "data" | "appearance";
 const TABS: { id: Tab; label: string }[] = [
   { id: "profile", label: "Profile" },
   { id: "plan", label: "Plan" },
@@ -35,10 +35,16 @@ const TABS: { id: Tab; label: string }[] = [
  *
  * Opened with Cmd/Ctrl+, the way every desktop app does, closed with Escape.
  */
-export function SettingsSheet({ onClose }: { onClose: () => void }) {
+/** Anything can open Settings on a tab: `openSettings("plan")` from a button, anywhere. */
+export const OPEN_SETTINGS_EVENT = "agxp:open-settings";
+export function openSettings(tab: Tab = "profile"): void {
+  window.dispatchEvent(new CustomEvent(OPEN_SETTINGS_EVENT, { detail: tab }));
+}
+
+export function SettingsSheet({ onClose, initialTab = "profile" }: { onClose: () => void; initialTab?: Tab }) {
   const { user, profileName, setProfileName, saveProfileName } = useAuth();
   const { theme, setTheme } = useTheme();
-  const [tab, setTab] = useState<Tab>("profile");
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [name, setName] = useState(profileName);
   const [accent, setAccent] = useState<Accent>(() => readAccent());
   const split = useChatSplit();

@@ -3,7 +3,6 @@ import { loadEntitlement, QuotaError } from "@/lib/entitlement";
 import type { AgentType } from "@/lib/agents";
 import { worthNaming, firstMessageName } from "@/lib/project-title";
 import { removeProjectFolder } from "@/lib/project-files";
-import { resumeLine, type ResumeLine } from "@/lib/resume-line";
 
 export type ProjectStatus = "Not Started" | "In Progress" | "Completed" | "Archived";
 
@@ -68,38 +67,6 @@ export async function listProjects(): Promise<Project[]> {
   const { data, error } = await supabase.from("agxp_projects").select("*").order("last_activity_at", { ascending: false });
   if (error) throw error;
   return (data ?? []) as Project[];
-}
-
-/** The last few projects that have a consultant and a real name, newest first —
- *  "pick up where you left off" on the start screen. Only the columns it shows. */
-export type RecentProject = Pick<Project, "id" | "name" | "consultant_agent_id" | "last_activity_at"> & { line: ResumeLine | null };
-
-export async function listRecentProjects(n = 3): Promise<RecentProject[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase.from("agxp_projects")
-    .select("id, name, consultant_agent_id, last_activity_at, status")
-    .not("consultant_agent_id", "is", null)
-    .neq("name", PLACEHOLDER_PROJECT_NAME)
-    .neq("status", "Archived")
-    .order("last_activity_at", { ascending: false })
-    .limit(n);
-  if (error) throw error;
-  const rows = (data ?? []) as Pick<Project, "id" | "name" | "consultant_agent_id" | "last_activity_at">[];
-  // Where each one stands: the consultant's last reply, as one line. A failed
-  // read only leaves the line out — the projects themselves are still worth showing.
-  const lines = new Map<string, ResumeLine | null>();
-  if (rows.length) {
-    const { data: msgs } = await supabase.from("agxp_project_messages")
-      .select("project_id, content")
-      .in("project_id", rows.map(r => r.id))
-      .eq("role", "assistant")
-      .order("created_at", { ascending: false })
-      .limit(rows.length * 6);
-    for (const m of (msgs ?? []) as { project_id: string; content: string }[]) {
-      if (!lines.has(m.project_id)) lines.set(m.project_id, resumeLine(m.content));
-    }
-  }
-  return rows.map(r => ({ ...r, line: lines.get(r.id) ?? null }));
 }
 
 /** Is there any project that is not archived? A count, not every row with

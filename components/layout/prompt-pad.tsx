@@ -11,9 +11,6 @@ import { requestStartPlan, requestMethodDraft, existingFor, templateById, StartE
 import type { DraftState } from "@/lib/method-draft";
 import type { StartPlan } from "@/lib/start-plan";
 import { describeDbError } from "@/lib/db-error";
-import { listRecentProjects } from "@/lib/projects";
-import { templateFor } from "@/lib/agent-types";
-import { agoStr } from "@/lib/utils";
 import { useT } from "@/lib/language";
 import { useAuth } from "@/lib/auth-context";
 import { AgentMascot } from "@/components/layout/agent-mascot";
@@ -94,7 +91,6 @@ export function PromptPad({ agents, onActivate, onDraft }: {
   const [step, setStep] = useState(0);
   const [hint, setHint] = useState(0);
   const [hour, setHour] = useState<number | null>(null);
-  const [recent, setRecent] = useState<Awaited<ReturnType<typeof listRecentProjects>>>([]);
 
   const areaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -110,13 +106,6 @@ export function PromptPad({ agents, onActivate, onDraft }: {
     const id = setInterval(() => setHint(h => (h + 1) % PLACEHOLDERS.length), 3200);
     return () => clearInterval(id);
   }, [text, phase, tpl]);
-
-  // Pick up where you left off: the last projects with a consultant on them.
-  useEffect(() => {
-    let alive = true;
-    listRecentProjects(3).then(r => { if (alive) setRecent(r); }).catch(() => {});
-    return () => { alive = false; };
-  }, []);
 
   // The field grows with what is written through CSS (field-sizing: content on
   // .pp-area). Measuring scrollHeight in JS read the field before the column had
@@ -244,39 +233,7 @@ export function PromptPad({ agents, onActivate, onDraft }: {
                 </div>
               )}
 
-              {/* Someone coming back sees where they left off; someone new, how it works. */}
-              {!tpl && recent.length > 0 && (
-                <div className="pp-recent">
-                  <p className="pp-examples-h">{tr("Pick up where you left off")}</p>
-                  <ul className="pp-recent-list">
-                    {recent.map(p => {
-                      const a = agents.find(x => x.id === p.consultant_agent_id);
-                      return (
-                        <li key={p.id}>
-                          <Link className="pp-recent-row" href={`/dashboard/project/${p.id}`}>
-                            <span className="pp-recent-face" aria-hidden="true">
-                              <AgentMascot role="consultant" size={28} agentId={a?.id ?? null} />
-                            </span>
-                            <span className="pp-recent-txt">
-                              <span className="pp-recent-name">{p.name}</span>
-                              {p.line && (
-                                <span className={`pp-recent-line is-${p.line.kind}`}>
-                                  {p.line.kind === "doc" ? tr("{title} is ready", { title: p.line.text }) : p.line.text}
-                                </span>
-                              )}
-                            </span>
-                            <span className="pp-recent-meta">
-                              {a ? `${templateFor(a)?.type ?? a.name} · ` : ""}{tr(agoStr(p.last_activity_at))}
-                            </span>
-                            <IconArrowUp size={13} className="pp-recent-go" />
-                          </Link>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              )}
-              {!tpl && recent.length === 0 && (
+              {!tpl && (
                 <ol className="pp-how" aria-label={tr("How it works")}>
                   {HOW.map((h, i) => <li key={h}><span className="pp-how-n">{i + 1}</span>{tr(h)}</li>)}
                 </ol>
