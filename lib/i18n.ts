@@ -243,7 +243,7 @@ export const DE: Record<string, string> = {
   ", drafted": ", entworfen",
   "Hi {name},": "Hallo {name},",
   "Tell me in a sentence. I pick the right consulting methods and draft them for you.": "Erzähl es mir in einem Satz. Ich wähle die passenden Beratungsmethoden und entwerfe sie für dich.",
-  "Fill in what you know. Empty fields are fine.": "Füll aus, was du weißt. Leere Felder sind in Ordnung.",
+  "Fill in the gaps you know. The rest can stay empty.": "Füll die Lücken aus, die du kennst. Der Rest darf leer bleiben.",
   "Or start from an example": "Oder starte mit einem Beispiel",
   "How it works": "So funktioniert es",
   "Describe your project": "Projekt beschreiben",

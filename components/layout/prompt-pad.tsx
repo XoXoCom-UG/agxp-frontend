@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { Agent } from "@/lib/agents";
 import { holdsSlot } from "@/lib/agent-types";
 import { useEntitlement } from "@/lib/entitlement";
-import { PROMPT_TEMPLATES, composeText, fieldsOf, type PromptTemplate } from "@/lib/prompt-templates";
+import { PROMPT_TEMPLATES, composeText, fieldsOf, partsOf, type PromptTemplate } from "@/lib/prompt-templates";
 import { requestStartPlan, requestMethodDraft, existingFor, templateById, StartError } from "@/lib/start-flow";
 import type { DraftState } from "@/lib/method-draft";
 import type { StartPlan } from "@/lib/start-plan";
@@ -152,21 +152,37 @@ export function PromptPad({ agents, onActivate, onDraft }: {
                 {firstName && <p className="pp-hi">{tr("Hi {name},", { name: firstName })}</p>}
                 <h2 className="pp-title">{tr(tpl ? tpl.title : "What are you working on?")}</h2>
                 <p className="pp-lead">{tr(tpl
-                  ? "Fill in what you know. Empty fields are fine."
+                  ? "Fill in the gaps you know. The rest can stay empty."
                   : "Tell me in a sentence. I pick the right consulting methods and draft them for you.")}</p>
               </div>
 
-              <div className="pp-composer">
+              <div className={`pp-composer${tpl ? " is-sentence" : ""}`}>
                 {tpl ? (
-                  <div className="pp-fields">
-                    {fieldsOf(tpl).map((id, i) => (
-                      <label key={id} className="pp-field">
-                        <span className="pp-field-l">{tr(tpl.hints[id] ?? id)}</span>
-                        <input ref={i === 0 ? firstFieldRef : undefined} className="pp-input" maxLength={400}
-                          value={values[id] ?? ""} onChange={e => setValues(v => ({ ...v, [id]: e.target.value }))} />
-                      </label>
+                  /* The template as the message itself, with the blanks to fill in
+                     right where they go ("My role is ___ and I want to ___"): the
+                     person reads what the consultant will get while writing it,
+                     instead of a column of empty grey lines (2026-11-27). */
+                  <p className="pp-sentence">
+                    {tpl.sentences.map((sentence, n) => (
+                      <span key={n}>
+                        {partsOf(tr(sentence)).map((part, i) => {
+                          if (!part.slot) return <span key={i}>{part.text}</span>;
+                          const id = part.slot;
+                          const hint = tr(tpl.hints[id] ?? id);
+                          const value = values[id] ?? "";
+                          return (
+                            <input key={i} ref={id === fieldsOf(tpl)[0] ? firstFieldRef : undefined}
+                              className={`pp-blank${value.trim() ? " is-filled" : ""}`} maxLength={400}
+                              aria-label={hint} placeholder={hint}
+                              // Empty: as wide as its hint. Typed into: as wide as the text.
+                              size={Math.max(4, value ? value.length + 1 : hint.length)}
+                              value={value} onChange={e => { setValues(v => ({ ...v, [id]: e.target.value })); if (error) setError(null); }} />
+                          );
+                        })}
+                        {" "}
+                      </span>
                     ))}
-                  </div>
+                  </p>
                 ) : (
                   <textarea ref={areaRef} className="pp-area" value={text} maxLength={MAX} rows={2} autoFocus
                     aria-label={tr("What are you working on?")}
