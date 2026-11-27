@@ -97,29 +97,16 @@ export const TOUR_SPOTS: Spot[] = [
  * Anchors are the same ones the long walk uses; a stop whose anchor is not on
  * screen is dropped, exactly as there.
  */
+/**
+ * The first chat explains one thing, once (2026-11-27): the Cockpit. The start
+ * screen and the chat explain themselves; a four-stop walk before the first
+ * answer was the opposite of "der User muss nicht viel nachdenken".
+ */
 export const CHAT_SPOTS: Spot[] = [
   {
-    anchor: "panel-consultant",
-    title: "Start here: this is your Consultant",
-    body: "You write to the Consultant. It guides you through your project step by step and builds your document from what you work out together. Nothing else is needed to get a result.",
-    prefer: "right",
-  },
-  {
-    anchor: "composer",
-    title: "Answer in this box",
-    body: "Type in your own words, or press one of the suggested answers above it. The paper clip takes a PDF or an image if that says it better.",
-    prefer: "top",
-  },
-  {
-    anchor: "panel-switch",
-    title: "The Coach is the second agent",
-    body: "The Coach looks after the people side — who is affected and how the rollout lands — in a conversation of its own. Open it when you want that. Methods shows the work taking shape.",
-    prefer: "left",
-  },
-  {
     anchor: "rail",
-    title: "How far along you are",
-    body: "The steps you work through, ticked off as you go. Once there is enough, you can ask for the document from here.",
+    title: "Your methods are here",
+    body: "Each method already has a first draft from what you wrote. Open one to read it, correct it or talk it through with your consultant. The document can be written at any time.",
     prefer: "left",
   },
 ];

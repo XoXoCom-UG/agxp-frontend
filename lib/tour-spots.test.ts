@@ -92,7 +92,7 @@ test("the chat walk names each stop once, with words, and only points at things 
   }
 });
 
-test("the chat walk starts with who to write to", () => {
-  assert.equal(CHAT_SPOTS[0].anchor, "panel-consultant");
-  assert.match(CHAT_SPOTS[0].body, /You write to the Consultant/);
+test("the chat explains one thing: the Cockpit's methods", () => {
+  assert.equal(CHAT_SPOTS.length, 1);
+  assert.equal(CHAT_SPOTS[0].anchor, "rail");
 });

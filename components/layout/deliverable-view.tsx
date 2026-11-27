@@ -5,6 +5,7 @@ import { useT } from "@/lib/language";
 import { createPortal } from "react-dom";
 import type { AgentType } from "@/lib/agents";
 import { md, handleCodeCopyClick } from "@/lib/markdown";
+import { downloadWord as saveWord, downloadMarkdown } from "@/lib/doc-download";
 import { useDialogFocus } from "@/lib/use-dialog-focus";
 import { useExit } from "@/lib/use-exit";
 import { AgentMascot } from "@/components/layout/agent-mascot";
@@ -25,6 +26,10 @@ export interface DeliverableDoc {
   createdAt: string;
   /** 1-based: every regeneration is a full rebuild, so versions are counted. */
   version?: number;
+  /** The stored message the document is — what a share link points at. */
+  messageId?: string;
+  /** Opened from the Cockpit's PDF button: the print window opens at once. */
+  printOnOpen?: boolean;
 }
 
 interface Heading {
@@ -79,10 +84,6 @@ function chapterise(html: string): string {
         `<div class="doc-ch-body">${body}</div></details>`;
     })
     .join("");
-}
-
-function slug(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "document";
 }
 
 /**
@@ -210,32 +211,21 @@ export function DeliverableView({ doc, onClose }: { doc: DeliverableDoc; onClose
     if (wordState === "busy") return;
     setWordState("busy");
     try {
-      const { docxBlob } = await import("@/lib/docx-export");
-      const blob = await docxBlob({
-        title: doc.title, projectName: doc.projectName, agentName: doc.agentName,
-        createdAt: doc.createdAt, version: doc.version,
-      }, doc.content);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${slug(doc.projectName)}-${slug(doc.title)}.docx`;
-      a.click();
-      URL.revokeObjectURL(url);
+      await saveWord(doc);
       setWordState("idle");
     } catch {
       setWordState("failed");
     }
   }
 
-  function download() {
-    const blob = new Blob([doc.content], { type: "text/markdown;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${slug(doc.projectName)}-${slug(doc.title)}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
+  const download = () => downloadMarkdown(doc);
+
+  // The Cockpit's PDF button: the sheet opens and so does the print window.
+  useEffect(() => {
+    if (!doc.printOnOpen) return;
+    const id = window.setTimeout(() => window.print(), 350);
+    return () => window.clearTimeout(id);
+  }, [doc]);
 
   const date = new Date(doc.createdAt).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
 

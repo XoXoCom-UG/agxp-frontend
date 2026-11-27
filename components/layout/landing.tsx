@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AgentHero } from "@/components/layout/agent-hero";
 import { BrandLogo } from "@/components/layout/brand-logo";
-import { IconArrow, IconChart, IconUsers } from "@/components/layout/agxp-icons";
+import { IconArrow, IconChart, IconDoc, IconPencil } from "@/components/layout/agxp-icons";
 import { useAuth } from "@/lib/auth-context";
 import { COMPANY } from "@/lib/company";
 import { ConsentLink } from "@/components/layout/cookie-banner";
@@ -48,32 +48,40 @@ export function Landing() {
       <main className="lp-main" id="main-content">
         <AgentHero
           kicker="AgentiX Projects"
-          title={<h1 className="home-title">{t("Two agents.")}<br /><span>{t("One project.")}</span></h1>}
-          lede={t("Bring an idea. A consultant works it out with you, step by step.")}
+          title={<h1 className="home-title">{t("Your consultant.")}<br /><span>{t("Your plan.")}</span></h1>}
+          lede={t("Describe your project in one sentence. The right consultant picks the methods, drafts them and writes the document with you.")}
         >
           <Link className="home-start" href="/login">{t("Enter with your beta key")} <IconArrow size={16} /></Link>
         </AgentHero>
 
-        {/* What the two of them actually hand you. The same two deliverables
-            lib/deliverables.ts defines, named the same way, because a landing
-            page that promises something the product does not produce is the
-            easiest way to lose the first customer. */}
-        <section className="lp-pair" aria-label={t("What you get")}>
+        {/* What happens, in the order it happens (2026-11-27): the same three
+            steps the start screen shows, so the page promises what the product
+            does — one consultant chosen for you, methods drafted, a document to
+            hand on. The Assistant is a help beside it, not a second thing to learn. */}
+        <section className="lp-pair lp-three" aria-label={t("How it works")}>
           <article>
             <div className="lp-card-top">
-              <span className="lp-ic consultant" aria-hidden="true"><IconChart size={15} /></span>
-              <span className="lp-eyebrow">{t("Consultant")}</span>
+              <span className="lp-ic consultant" aria-hidden="true"><IconPencil size={15} /></span>
+              <span className="lp-eyebrow">1</span>
             </div>
-            <h2>Transformation Concept</h2>
-            <p>{t("Where you are, what it costs, where you are going, as charts.")}</p>
+            <h2>{t("Describe it")}</h2>
+            <p>{t("A sentence is enough: a new CRM, an AI idea, a reorganisation.")}</p>
           </article>
           <article>
             <div className="lp-card-top">
-              <span className="lp-ic coach" aria-hidden="true"><IconUsers size={15} /></span>
-              <span className="lp-eyebrow">{t("Coach")}</span>
+              <span className="lp-ic consultant" aria-hidden="true"><IconChart size={15} /></span>
+              <span className="lp-eyebrow">2</span>
             </div>
-            <h2>Change Plan</h2>
-            <p>{t("Who is affected, what they fear, and how the rollout lands.")}</p>
+            <h2>{t("Methods, drafted")}</h2>
+            <p>{t("The fitting consultant drafts every method at once. Improve the ones that matter.")}</p>
+          </article>
+          <article>
+            <div className="lp-card-top">
+              <span className="lp-ic coach" aria-hidden="true"><IconDoc size={15} /></span>
+              <span className="lp-eyebrow">3</span>
+            </div>
+            <h2>{t("A document to hand on")}</h2>
+            <p>{t("As Word, as PDF or as a read-only link for your team.")}</p>
           </article>
         </section>
 

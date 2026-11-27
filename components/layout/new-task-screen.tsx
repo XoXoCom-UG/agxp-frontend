@@ -19,11 +19,12 @@ import { PromptPad, type Activation } from "@/components/layout/prompt-pad";
 import { activateTeam } from "@/lib/start-flow";
 import type { DraftState } from "@/lib/method-draft";
 import { saveDraft, loadDraft } from "@/lib/method-draft-store";
+import { saveDraftRemote, loadDraftRemote } from "@/lib/method-draft-db";
 import { MethodsPanel } from "@/components/layout/methods-panel";
 import { RightTabs, type RightView } from "@/components/layout/right-tabs";
 import { ChatTour } from "@/components/layout/chat-tour";
 import { deliverableFor } from "@/lib/deliverables";
-import { kindFor } from "@/lib/agent-types";
+import { kindFor, templateFor } from "@/lib/agent-types";
 import { DeliverableView, type DeliverableDoc } from "@/components/layout/deliverable-view";
 import { AgentMascot } from "@/components/layout/agent-mascot";
 import { TeamRail, TeamReady, TeamHeading, TeamStep } from "@/components/layout/team-setup";
@@ -329,18 +330,38 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
     if (project?.id) rememberProject({ id: project.id, name: project.name, category: project.category });
   }, [project?.id, project?.name, project?.category]);
 
-  // The method draft belongs to the project it started: kept once it is written,
-  // and read back when that project is opened again.
+  // The method draft belongs to the project it started: kept once it is written
+  // (or corrected in the Cockpit) — in the database, so it follows the project
+  // to another computer, and in this browser for the first paint.
   useEffect(() => {
-    if (project?.id && project.consultant_agent_id && draft?.status === "ready") saveDraft(project.id, draft);
+    if (!project?.id || !project.consultant_agent_id || draft?.status !== "ready") return;
+    saveDraft(project.id, draft);
+    void saveDraftRemote(project.id, draft);
   }, [project?.id, project?.consultant_agent_id, draft]);
   useEffect(() => {
     // Only when a project is opened: a draft being written must not be replaced.
     // Browser storage is read here, after mount, so the server render stays the same.
+    if (!project?.id || draft) return;
+    const id = project.id;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (project?.id && !draft) setDraft(loadDraft(project.id));
+    setDraft(loadDraft(id));
+    let alive = true;
+    loadDraftRemote(id).then(remote => {
+      if (alive && remote) setDraft(d => (d?.status === "pending" ? d : remote));
+    });
+    return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project?.id]);
+
+  /** The person corrected one method's draft in the Cockpit. */
+  const editDraft = useCallback((label: string, text: string) => {
+    setDraft(d => {
+      if (!d || d.status !== "ready") return d;
+      const has = d.drafts.some(x => x.label === label);
+      const drafts = has ? d.drafts.map(x => (x.label === label ? { label, text } : x)) : [...d.drafts, { label, text }];
+      return { ...d, drafts };
+    });
+  }, []);
 
   useEffect(() => {
     if (!token) return;
@@ -718,12 +739,16 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
             <MethodsPanel
               tabs={sideTabs}
               agentId={consultantAgent?.id ?? null}
+              consultantType={consultantAgent ? templateFor(consultantAgent)?.type : undefined}
+              onChangeConsultant={consultantAgent ? () => changeAgent("consultant") : undefined}
               // On a phone the Cockpit and the chat are two tabs: after a Cockpit
               // button the answer comes in the chat, so show it (2026-11-27).
               onAct={() => { if (window.matchMedia("(max-width: 1000px)").matches) showPane("consultant"); }}
               deliverable={deliverableFor("consultant", consultantAgent ? kindFor(consultantAgent) : null)}
               draft={draft && consultantAgent && draft.kind === kindFor(consultantAgent) ? draft : null}
               snap={snaps.consultant}
+              onEditDraft={editDraft}
+              projectId={project?.id ?? null}
               onOpenDoc={setOpenDoc}
               onMinimise={() => { setUnfolding(false); setCoachMode("min"); }} />
             {panelFor("coach")}

@@ -1,13 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { downloadWord } from "@/lib/doc-download";
+import { createShare, currentShare, revokeShares, shareUrl } from "@/lib/doc-share";
+import { conversationShare } from "@/lib/conversation-usage";
+import { useEntitlement } from "@/lib/entitlement";
+import { startCheckout } from "@/lib/billing";
+import { upgradeTarget } from "@/lib/plans";
 import type { PanelSnapshot, RailControls } from "@/lib/peer-context";
 import type { DeliverableDoc } from "@/components/layout/deliverable-view";
 import type { Deliverable } from "@/lib/deliverables";
 import type { DraftState } from "@/lib/method-draft";
 import { md, handleCodeCopyClick } from "@/lib/markdown";
 import { ArtifactActions, versionLine } from "@/components/layout/deliverable-rail";
-import { IconArrow, IconCheck, IconChevronDown, IconDoc, IconLock, IconMinimise, IconSpark } from "@/components/layout/agxp-icons";
+import { IconArrow, IconCheck, IconChevronDown, IconDoc, IconLock, IconMinimise, IconSpark, IconMore, IconPencil, IconDownload, IconPrint, IconShare } from "@/components/layout/agxp-icons";
 import { useT } from "@/lib/language";
 import { AgentMascot } from "@/components/layout/agent-mascot";
 
@@ -32,11 +38,19 @@ const GENERATE_FROM_PCT = 60;
  * Methods that fill in live while the user talks need their own marker in the
  * chat protocol and come in a later phase.
  */
-export function MethodsPanel({ tabs, agentId, deliverable, draft, snap, onOpenDoc, onMinimise, onAct }: {
+export function MethodsPanel({ tabs, agentId, consultantType, onChangeConsultant, projectId, deliverable, draft, snap, onOpenDoc, onEditDraft, onMinimise, onAct }: {
   /** Methods or Coach — drawn in the header, inside the card. */
   tabs?: React.ReactNode;
   /** The project's consultant: its face, at its own level, speaks in the Cockpit. */
   agentId?: string | null;
+  /** The consultant's type in words ("Strategy Consultant"), for the line that says why it was chosen. */
+  consultantType?: string;
+  /** Puts a different consultant on the project. Offered only before the interview began. */
+  onChangeConsultant?: () => void;
+  /** The open project: a share link belongs to it. */
+  projectId?: string | null;
+  /** The person corrected one method's draft. Without it the drafts are read-only. */
+  onEditDraft?: (label: string, text: string) => void;
   /** What the Consultant is working toward — its title and its questions. It
    *  depends on the agent's type, so the screen works it out. */
   deliverable: Deliverable;
@@ -82,11 +96,28 @@ export function MethodsPanel({ tabs, agentId, deliverable, draft, snap, onOpenDo
   const html = useMemo(() => (doc ? md(doc.content) : ""), [doc]);
   const draftText = useMemo(() => new Map((draft?.drafts ?? []).map(x => [x.label, x.text])), [draft]);
   const drafting = draft?.status === "pending";
-  /** The one method unfolded in the list, and those the consultant has already talked through. */
+  /** The one method unfolded in the list. */
   const [open, setOpen] = useState<string | null>(null);
-  const [talked, setTalked] = useState<Set<string>>(() => new Set());
-  /** Stations the interview jumped over with "Start here": open, not done. */
-  const [leftOpen, setLeftOpen] = useState<Set<string>>(() => new Set());
+  /** The one method whose "More ways in" menu is open. */
+  const [more, setMore] = useState<string | null>(null);
+  // The menu closes on a click elsewhere and on Esc.
+  useEffect(() => {
+    if (!more) return;
+    const onDown = (e: MouseEvent) => { if (!(e.target as Element).closest?.(".ck-more-wrap")) setMore(null); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMore(null); };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey); };
+  }, [more]);
+  // What the person has done with each method is read from the stored
+  // conversation (lib/cockpit-history.ts), so a reload keeps it.
+  const talked = useMemo(() => new Set(rail?.talked ?? []), [rail?.talked]);
+  const leftOpen = useMemo(() => new Set(rail?.leftOpen ?? []), [rail?.leftOpen]);
+  /** With a document: the methods the interview never reached, or jumped over,
+   *  and nobody talked through — what the document can only mark as open. */
+  const openPoints = finished
+    ? stations.filter((s, i) => (i > (rail?.stationIdx ?? -1) || leftOpen.has(s.label)) && !talked.has(s.label)).map(s => s.label)
+    : [];
 
   // A draft is half the way, a method the interview has passed is all of it:
   // the bar counts both, the words say which (a draft is not "ready").
@@ -141,18 +172,23 @@ export function MethodsPanel({ tabs, agentId, deliverable, draft, snap, onOpenDo
               </div>
               <span className="ck-count">{countLine}</span>
             </div>
-            {/* What the circles mean, once, in four words each. */}
-            <ul className="ck-legend" aria-hidden="true">
-              <li><span className="ck-dot is-draft" />{tr("First draft")}</li>
-              <li><span className="ck-dot is-now" />{tr("We're here")}</li>
-              <li><span className="ck-dot is-done"><IconCheck size={8} /></span>{tr("Done with you")}</li>
-            </ul>
             <div className="ck-say">
               <span className="ck-face" aria-hidden="true">
                 <AgentMascot role="consultant" size={40} agentId={agentId} state={snap?.busy || drafting ? "thinking" : "idle"} />
               </span>
               <p className="ck-bubble" aria-live="polite">{hint}</p>
             </div>
+            {/* Which consultant the app chose, and why, in one sentence — with a
+                way to choose another before any work has been done (2026-11-27). */}
+            {consultantType && draft?.reason && nowIdx < 0 && (
+              <p className="ck-why">
+                <span className="ck-why-k">{tr("Why {type}", { type: consultantType })}</span>
+                <span className="ck-why-t">{draft.reason}</span>
+                {onChangeConsultant && (rail?.talked.length ?? 0) === 0 && (
+                  <button type="button" className="ck-why-change" onClick={onChangeConsultant}>{tr("Choose another")}</button>
+                )}
+              </p>
+            )}
           </div>
         )}
 
@@ -167,6 +203,22 @@ export function MethodsPanel({ tabs, agentId, deliverable, draft, snap, onOpenDo
               onOpenVersion={controls.openVersion}
               onRestoreVersion={controls.restoreVersion}
             />
+            <DocTools doc={doc} projectId={projectId ?? null} onPrint={() => onOpenDoc({ ...doc, printOnOpen: true })} />
+          </div>
+        )}
+        {/* A document written before every method was talked through says
+            which ones are still open, each one click from the conversation. */}
+        {doc && controls && openPoints.length > 0 && (
+          <div className="ck-open" role="note">
+            <p className="ck-open-t">
+              {tr(openPoints.length === 1 ? "1 method is still open in this document." : "{n} methods are still open in this document.", { n: openPoints.length })}
+            </p>
+            <div className="ck-open-list">
+              {openPoints.map(l => (
+                <button key={l} type="button" className="ck-chip" disabled={snap?.busy ?? false}
+                  onClick={() => controls.discuss(l)}>{l}</button>
+              ))}
+            </div>
           </div>
         )}
       </header>
@@ -206,40 +258,43 @@ export function MethodsPanel({ tabs, agentId, deliverable, draft, snap, onOpenDo
                     <div className="ck-more">
                       {drafting && !draftText.has(s.label)
                         ? <span className="mp-step-d is-wait" aria-hidden="true" />
-                        : body && <p className="ck-text">{body}</p>}
+                        : draftText.has(s.label) && onEditDraft && !drafting
+                          ? <DraftText label={s.label} text={draftText.get(s.label) ?? ""} onSave={t => onEditDraft(s.label, t)} />
+                          : body && <p className="ck-text">{body}</p>}
                       {controls && (
                         <div className="ck-actions">
+                          {/* One clear way in; the others wait behind "More" (2026-11-27). */}
                           <button type="button" className="sh-btn sh-primary" disabled={busy}
-                            onClick={() => { setTalked(t => new Set(t).add(s.label)); controls.discuss(s.label); }}>
+                            onClick={() => controls.discuss(s.label)}>
                             {tr(talked.has(s.label) ? "Talk it through again" : "Talk it through")}
                           </button>
-                          {state !== "now" && (
-                            <button type="button" className="sh-btn" disabled={busy}
-                              title={tr("The interview continues from here. The steps before stay open.")}
-                              onClick={() => {
-                                // The stations between where the interview was and here are not done, only left open.
-                                setLeftOpen(prev => {
-                                  const next = new Set(prev);
-                                  for (let k = Math.max(0, nowIdx); k < i; k++) next.add(stations[k].label);
-                                  next.delete(s.label);
-                                  return next;
-                                });
-                                controls.jump(s.label, i + 1, stations.length);
-                              }}>
-                              <IconArrow size={13} />{tr("Start here")}
-                            </button>
-                          )}
-                          {state !== "now" && (
-                            <button type="button" className="sh-btn" disabled={busy}
-                              title={tr("Only this method now, then back to where you were.")}
-                              onClick={() => controls.focus(s.label, i + 1, stations.length)}>
-                              {tr("Only this one first")}
-                            </button>
-                          )}
                           {state === "now" && rail?.canSkip && (
                             <button type="button" className="sh-btn sh-ghost" disabled={busy} onClick={controls.skip}>
                               {tr("Skip this step")}<IconArrow size={12} />
                             </button>
+                          )}
+                          {state !== "now" && (
+                            <div className="ck-more-wrap">
+                              <button type="button" className="sh-btn sh-ghost ck-more-btn" disabled={busy}
+                                aria-expanded={more === s.label} aria-label={tr("More ways into this method")}
+                                onClick={() => setMore(m => (m === s.label ? null : s.label))}>
+                                <IconMore size={14} />
+                              </button>
+                              {more === s.label && (
+                                <div className="ck-menu" role="menu">
+                                  <button type="button" role="menuitem" className="ck-menu-item"
+                                    onClick={() => { setMore(null); controls.jump(s.label, i + 1, stations.length); }}>
+                                    <span className="ck-menu-t">{tr("Start the interview here")}</span>
+                                    <span className="ck-menu-d">{tr("The interview continues from here. The steps before stay open.")}</span>
+                                  </button>
+                                  <button type="button" role="menuitem" className="ck-menu-item"
+                                    onClick={() => { setMore(null); controls.focus(s.label, i + 1, stations.length); }}>
+                                    <span className="ck-menu-t">{tr("Only this one first")}</span>
+                                    <span className="ck-menu-d">{tr("Only this method now, then back to where you were.")}</span>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           )}
                         </div>
                       )}
@@ -303,6 +358,157 @@ export function MethodsPanel({ tabs, agentId, deliverable, draft, snap, onOpenDo
           )}
         </div>
       )}
+      {projectId && <ConversationMeter projectId={projectId} busy={snap?.busy ?? false} />}
     </section>
+  );
+}
+
+/**
+ * How much room this conversation has left, shown only from half-way on
+ * (2026-11-27). The ceiling used to be invisible until the chat refused the
+ * next message; now the person sees it coming and can start a new project or
+ * upgrade before it is in the way.
+ */
+function ConversationMeter({ projectId, busy }: { projectId: string; busy: boolean }) {
+  const tr = useT();
+  const { plan, loading } = useEntitlement();
+  const [share, setShare] = useState<number | null>(null);
+  // Read again after every answer: busy going back to false is a reply settled.
+  useEffect(() => {
+    if (busy || loading) return;
+    let alive = true;
+    conversationShare(projectId, plan.conversationCeilingUsd).then(v => { if (alive) setShare(v); });
+    return () => { alive = false; };
+  }, [projectId, busy, loading, plan.conversationCeilingUsd]);
+
+  if (share === null || share < 0.5) return null;
+  const pct = Math.round(share * 100);
+  const next = upgradeTarget(plan.id);
+  const full = share >= 1;
+  return (
+    <div className={`ck-meter${share >= 0.8 ? " is-low" : ""}`} role="status">
+      <div className="ck-meter-row">
+        <span className="ck-meter-t">
+          {full ? tr("This conversation is full.") : tr("This conversation has used {pct}% of its room.", { pct })}
+        </span>
+        {next && share >= 0.8 && (
+          <button type="button" className="ck-meter-up" onClick={() => { startCheckout(next).catch(() => {}); }}>
+            {tr("Upgrade")}
+          </button>
+        )}
+      </div>
+      <div className="ck-meter-bar" aria-hidden="true"><span style={{ width: `${pct}%` }} /></div>
+      {share >= 0.8 && <p className="ck-meter-d">{tr("Write the document soon, or start a new project for the next topic.")}</p>}
+    </div>
+  );
+}
+
+/** One method's draft, which the person can correct in place (2026-11-27). */
+function DraftText({ label, text, onSave }: { label: string; text: string; onSave: (text: string) => void }) {
+  const tr = useT();
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(text);
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => { if (editing) ref.current?.focus(); }, [editing]);
+
+  if (!editing) {
+    return (
+      <div className="ck-draft">
+        <p className="ck-text">{text}</p>
+        <button type="button" className="ck-edit" onClick={() => { setValue(text); setEditing(true); }}
+          aria-label={tr("Correct the draft of {label}", { label })} data-tooltip={tr("Correct this")}>
+          <IconPencil size={12} />
+        </button>
+      </div>
+    );
+  }
+  const save = () => {
+    const clean = value.replace(/\s+/g, " ").trim().slice(0, 440);
+    if (clean && clean !== text) onSave(clean);
+    setEditing(false);
+  };
+  return (
+    <form className="ck-draft-edit" onSubmit={e => { e.preventDefault(); save(); }}>
+      <textarea ref={ref} className="ck-draft-area" value={value} maxLength={440} rows={3}
+        aria-label={tr("Correct the draft of {label}", { label })}
+        onChange={e => setValue(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === "Escape") { e.preventDefault(); setEditing(false); }
+          if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); save(); }
+        }} />
+      <div className="ck-draft-btns">
+        <button type="submit" className="sh-btn sh-primary">{tr("Save")}</button>
+        <button type="button" className="sh-btn sh-ghost" onClick={() => setEditing(false)}>{tr("Cancel")}</button>
+      </div>
+    </form>
+  );
+}
+
+/** Word, PDF and a read-only link, right under the document (2026-11-27). */
+function DocTools({ doc, projectId, onPrint }: { doc: DeliverableDoc; projectId: string | null; onPrint: () => void }) {
+  const tr = useT();
+  const [word, setWord] = useState<"idle" | "busy" | "failed">("idle");
+  const [share, setShare] = useState<string | null>(null);
+  const [shareState, setShareState] = useState<"idle" | "busy" | "copied" | "failed">("idle");
+  const messageId = doc.messageId;
+
+  useEffect(() => {
+    let alive = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setShare(null);
+    setShareState("idle");
+    if (messageId) currentShare(messageId).then(s => { if (alive && s) setShare(shareUrl(s.token)); }).catch(() => {});
+    return () => { alive = false; };
+  }, [messageId]);
+
+  async function saveWord() {
+    if (word === "busy") return;
+    setWord("busy");
+    try { await downloadWord(doc); setWord("idle"); } catch { setWord("failed"); }
+  }
+  async function makeLink() {
+    if (!messageId || !projectId || shareState === "busy") return;
+    setShareState("busy");
+    try {
+      const s = await createShare(projectId, messageId);
+      const url = shareUrl(s.token);
+      setShare(url);
+      await navigator.clipboard.writeText(url).catch(() => {});
+      setShareState("copied");
+    } catch {
+      setShareState("failed");
+    }
+  }
+  async function stopLink() {
+    if (!messageId) return;
+    try { await revokeShares(messageId); setShare(null); setShareState("idle"); } catch { setShareState("failed"); }
+  }
+  function copyLink() {
+    if (!share) return;
+    navigator.clipboard.writeText(share).then(() => setShareState("copied")).catch(() => {});
+  }
+
+  return (
+    <div className="ck-tools">
+      <button type="button" className="sh-btn" onClick={saveWord} disabled={word === "busy"}>
+        <IconDownload size={13} />{tr(word === "failed" ? "Word failed, try again" : "Word")}
+      </button>
+      <button type="button" className="sh-btn" onClick={onPrint} data-tooltip={tr("Opens the print window: choose Save as PDF")}>
+        <IconPrint size={13} />PDF
+      </button>
+      {messageId && projectId && (share ? (
+        <>
+          <button type="button" className="sh-btn" onClick={copyLink}>
+            <IconShare size={13} />{tr(shareState === "copied" ? "Link copied" : "Copy link")}
+          </button>
+          <button type="button" className="sh-btn sh-ghost" onClick={stopLink}>{tr("Stop sharing")}</button>
+        </>
+      ) : (
+        <button type="button" className="sh-btn" onClick={makeLink} disabled={shareState === "busy"}
+          data-tooltip={tr("Anyone with the link can read this version. You can stop it any time.")}>
+          <IconShare size={13} />{tr(shareState === "failed" ? "Sharing failed, try again" : "Share read-only")}
+        </button>
+      ))}
+    </div>
   );
 }

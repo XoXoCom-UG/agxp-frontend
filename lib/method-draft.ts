@@ -21,6 +21,8 @@ export interface DraftState {
   kind: string;
   status: "pending" | "ready" | "failed";
   drafts: MethodDraft[];
+  /** Why the app chose this consultant, in one sentence (StartPlan.reason). */
+  reason?: string;
 }
 
 export interface DraftStation { label: string; goal: string }

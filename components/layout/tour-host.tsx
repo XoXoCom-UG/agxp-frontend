@@ -47,10 +47,14 @@ export function TourHost() {
 }
 
 function TourGate({ user }: { user: User }) {
-  const [phase, setPhase] = useState<Phase>(() => {
+  // The long introduction no longer opens by itself (2026-11-27): the start
+  // screen explains itself and the first chat points at the Cockpit once
+  // (ChatTour). It stays one click away in Settings, through replayTour().
+  const [phase, setPhase] = useState<Phase>("none");
+  const firstVisit = useState(() => {
     const meta = (user.user_metadata as Record<string, unknown> | undefined)?.[TOUR_META_KEY];
-    return tourSeen(meta, readLocalTour()) ? "none" : "tour";
-  });
+    return !tourSeen(meta, readLocalTour());
+  })[0];
 
   useEffect(() => {
     function onReplay() { setPhase("tour"); }
@@ -84,6 +88,9 @@ function TourGate({ user }: { user: User }) {
     setPhase("none");
     remember();
   }, [remember]);
+
+  // A first visit is written down as seen, so a replay is the only way back in.
+  useEffect(() => { if (firstVisit) remember(); }, [firstVisit, remember]);
 
   if (phase === "tour") return <Tour onDone={tourDone} />;
   if (phase === "walk") return <TourWalk onDone={walkDone} />;

@@ -1,5 +1,6 @@
 "use client";
 
+import { cockpitHistory } from "@/lib/cockpit-history";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Agent, AgentType } from "@/lib/agents";
 import type { Project } from "@/lib/projects";
@@ -379,6 +380,11 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
   const canSkip = !!station && interviewStarted && stationIdx >= 0 && stationIdx < totalStations - 1 && pct < 100 && docs.length === 0;
   const skipStation = () => chat.send(skipStationPrompt(stationLabel));
 
+  // What the Cockpit remembers per method, read from the conversation itself.
+  const history = useMemo(
+    () => cockpitHistory(messages.map(m => ({ role: m.role, content: m.content })), deliverable.stations),
+    [messages, deliverable.stations]);
+
   // The document rail, handed to the screen so the Methods panel can draw it.
   const versions = useMemo(
     () => docs.map((d, i) => ({ version: i + 1, createdAt: d.m.created_at })), [docs]);
@@ -387,7 +393,7 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
     return d ? {
       title: d.p.doc || deliverable.title, role, agentId: agent.id, agentName: agent.name,
       agentProjects: totalProjects, projectName: project.name, content: d.p.text,
-      createdAt: d.m.created_at, version: currentVersion,
+      createdAt: d.m.created_at, version: currentVersion, messageId: d.m.id,
     } : null;
   }, [docs, currentVersion, deliverable.title, role, agent.id, agent.name, totalProjects, project.name]);
   // One object whose identity never changes; what it calls is read at call time.
@@ -434,11 +440,12 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
       rail: {
         title: deliverable.title, totalStations, stationIdx, stationLabel, currentDoc,
         version: currentVersion, restored: restoredVersion !== null, versions, canSkip,
+        talked: history.talked, leftOpen: history.leftOpen,
       },
       controls, busy: sending,
     });
   }, [entries, loaded, sending, agent.name, role, docs.length, pct, station, deliverable.title, totalStations,
-      stationIdx, stationLabel, currentDoc, currentVersion, restoredVersion, versions, controls, canSkip]);
+      stationIdx, stationLabel, currentDoc, currentVersion, restoredVersion, versions, controls, canSkip, history]);
 
   const busy = sending || !!leavingId;
 

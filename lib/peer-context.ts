@@ -108,6 +108,10 @@ export interface RailState {
   versions: { version: number; createdAt: string }[];
   /** The current station can be skipped: an interview under way, not on its last station. */
   canSkip: boolean;
+  /** Methods talked through, and stations a jump left open — read from the
+   *  stored conversation (lib/cockpit-history.ts), so they survive a reload. */
+  talked: string[];
+  leftOpen: string[];
 }
 
 /** What the rail can do. One object per panel, with a stable identity: the

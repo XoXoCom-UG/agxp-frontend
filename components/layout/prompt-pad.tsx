@@ -56,8 +56,8 @@ export interface Activation { prompt: string; plan: StartPlan; reuse: Agent | nu
 type Phase = "write" | "working" | "full";
 
 const MAX = 6000;
-/** What the person sees happen while the consultant is chosen. Cosmetic: the
- *  steps tick on a timer, the real work is the one request behind them. */
+/** What the person sees happen while the consultant is chosen: reading ends
+ *  when /api/agent/start answers, choosing when the team is in the project. */
 const STEPS = ["Reading your project", "Choosing your consultant", "Preparing your methods"];
 
 /**
@@ -122,24 +122,18 @@ export function PromptPad({ agents, onActivate, onDraft }: {
   // .pp-area). Measuring scrollHeight in JS read the field before the column had
   // its width and left an empty box 280px tall.
 
-  // The steps of the waiting screen, one after the other; the last one stays.
-  useEffect(() => {
-    if (phase !== "working") return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setStep(0);
-    const id = setInterval(() => setStep(s => Math.min(s + 1, STEPS.length - 1)), 1100);
-    return () => clearInterval(id);
-  }, [phase]);
+  // The steps of the waiting screen follow the real work (2026-11-27): a step
+  // is ticked when the request behind it has answered, not on a timer.
 
   // The newest draft request: an older one that lands late is dropped.
   const draftRun = useRef(0);
   /** Writes the first draft of every method in the background. Never blocks, never shows an error. */
-  function beginDraft(prompt: string, kind: string) {
+  function beginDraft(prompt: string, kind: string, reason: string) {
     const run = ++draftRun.current;
-    onDraft?.({ kind, status: "pending", drafts: [] });
+    onDraft?.({ kind, status: "pending", drafts: [], reason });
     requestMethodDraft(prompt, kind)
-      .then(drafts => { if (run === draftRun.current) onDraft?.({ kind, status: "ready", drafts }); })
-      .catch(() => { if (run === draftRun.current) onDraft?.({ kind, status: "failed", drafts: [] }); });
+      .then(drafts => { if (run === draftRun.current) onDraft?.({ kind, status: "ready", drafts, reason }); })
+      .catch(() => { if (run === draftRun.current) onDraft?.({ kind, status: "failed", drafts: [], reason }); });
   }
 
   const prompt = tpl ? composeText(tpl, values, tr) : text.trim();
@@ -155,17 +149,20 @@ export function PromptPad({ agents, onActivate, onDraft }: {
     if (prompt.length > MAX) { setError(tr("That is too long. Keep it shorter.")); return; }
     setError(null);
     setPhase("working");
+    setStep(0);
     draftRun.current++;
     onDraft?.(null);
     try {
       const plan = await requestStartPlan(prompt);
+      setStep(1);
       // A consultant of this type that the person already has comes first.
       const reuse = existingFor(plan.kind, agents)[0] ?? null;
       if (!reuse && !canCreate(plan.kind, agents, account.agentsPerType, account.maxAgents)) {
         setPhase("full");
         return;
       }
-      beginDraft(prompt, plan.kind);
+      beginDraft(prompt, plan.kind, plan.reason);
+      setStep(2);
       await onActivate({ prompt, plan, reuse });
     } catch (e) {
       setError(e instanceof StartError ? tr(e.message) : describeDbError(e, "Starting the consultant"));
@@ -260,7 +257,14 @@ export function PromptPad({ agents, onActivate, onDraft }: {
                             <span className="pp-recent-face" aria-hidden="true">
                               <AgentMascot role="consultant" size={28} agentId={a?.id ?? null} />
                             </span>
-                            <span className="pp-recent-name">{p.name}</span>
+                            <span className="pp-recent-txt">
+                              <span className="pp-recent-name">{p.name}</span>
+                              {p.line && (
+                                <span className={`pp-recent-line is-${p.line.kind}`}>
+                                  {p.line.kind === "doc" ? tr("{title} is ready", { title: p.line.text }) : p.line.text}
+                                </span>
+                              )}
+                            </span>
                             <span className="pp-recent-meta">
                               {a ? `${templateFor(a)?.type ?? a.name} · ` : ""}{tr(agoStr(p.last_activity_at))}
                             </span>
