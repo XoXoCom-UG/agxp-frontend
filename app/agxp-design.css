@@ -9696,33 +9696,63 @@ html.light .agx-board-grid .agx-card{ background:#F6F7F9; }
 @keyframes mpDraftWait{ from{ opacity:.45; } to{ opacity:1; } }
 @media (prefers-reduced-motion:reduce){ .mp-step-d.is-wait{ animation:none; } }
 
-/* --- Cockpit, clean-up pass 2026-11-27 --------------------------------------
-   One quiet list: a dot for how far each method is (empty = not yet, half =
-   drafted, full = done, ring = being asked now), its name, and its text only
-   when opened. One main button at the bottom, always in the same place. */
-.ck-list{ list-style:none; margin:0; padding:0; border-top:1px solid var(--border); }
-.ck-item{ border-bottom:1px solid var(--border); }
+/* --- Cockpit (2026-11-27, second pass) ---------------------------------------
+   The same voice as the step-by-step start: a bar that fills, the consultant
+   saying in one line what to do next, the methods as big rows with their state
+   in a word, one big button at the bottom. Calm: one accent, no glow. */
+.ck-head{ display:flex; flex-direction:column; gap:var(--sp-4); padding:var(--sp-4) var(--sp-6) 0; }
+.ck-progress{ display:flex; align-items:center; gap:var(--sp-3); }
+.ck-progress .wz-bar{ height:8px; }
+.ck-count{ flex:none; font-size:var(--text-xs); color:var(--muted-foreground); font-variant-numeric:tabular-nums; }
+.ck-say{ display:flex; align-items:center; gap:var(--sp-3); }
+.ck-face{ flex:none; display:flex; }
+.ck-bubble{
+  position:relative; margin:0; padding:var(--sp-3) var(--sp-4);
+  font-size:var(--text-sm); line-height:1.45; color:var(--foreground);
+  border:1px solid var(--border); border-radius:14px; background:var(--card);
+}
+.ck-bubble::before{
+  content:""; position:absolute; left:-6px; top:50%; width:10px; height:10px; margin-top:-5px;
+  background:inherit; border-left:1px solid var(--border); border-bottom:1px solid var(--border); transform:rotate(45deg);
+}
+
+.ck-list{ list-style:none; margin:0; padding:0; border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+.ck-item{ border-top:1px solid var(--border); }
+.ck-item:first-child{ border-top:0; }
 .ck-row{
-  width:100%; display:flex; align-items:center; gap:var(--sp-3); min-height:44px; padding:0 var(--sp-1);
+  width:100%; display:flex; align-items:center; gap:var(--sp-3); min-height:50px; padding:0 var(--sp-4);
   font:inherit; font-size:var(--text-sm); text-align:left; color:var(--foreground);
   background:none; border:0; cursor:pointer; transition:background-color 140ms var(--ease-out);
 }
 .ck-row:disabled{ cursor:default; }
 @media (hover:hover) and (pointer:fine){ button.ck-row:hover:not(:disabled){ background:var(--tint-1); } }
-.ck-label{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.ck-item.open .ck-label{ font-weight:500; white-space:normal; }
+.ck-label{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:500; }
+.ck-item.open .ck-label{ white-space:normal; }
+.ck-item.todo .ck-label{ font-weight:400; color:var(--secondary-foreground, var(--muted-foreground)); }
+
 .ck-dot{
-  flex:none; width:10px; height:10px; box-sizing:border-box; border-radius:50%;
-  border:1.5px solid color-mix(in srgb, var(--foreground) 35%, transparent);
-  display:flex; align-items:center; justify-content:center; color:var(--muted-foreground);
+  flex:none; width:18px; height:18px; box-sizing:border-box; border-radius:50%;
+  border:1.5px solid color-mix(in srgb, var(--foreground) 30%, transparent);
+  display:flex; align-items:center; justify-content:center; color:var(--background);
 }
-.ck-item.draft .ck-dot{ border-color:var(--foreground); background:linear-gradient(90deg, var(--foreground) 50%, transparent 50%); }
-.ck-item.done .ck-dot{ border-color:var(--foreground); background:var(--foreground); }
-.ck-item.now .ck-dot{ border-color:var(--foreground); box-shadow:0 0 0 3px color-mix(in srgb, var(--foreground) 15%, transparent); }
-.ck-item.todo .ck-label{ color:var(--secondary-foreground, var(--muted-foreground)); }
+.ck-item.draft .ck-dot{ border-color:var(--primary, #3b82f6); background:linear-gradient(90deg, var(--primary, #3b82f6) 50%, transparent 50%); }
+.ck-item.done .ck-dot{ border-color:var(--primary, #3b82f6); background:var(--primary, #3b82f6); color:#fff; }
+.ck-item.now .ck-dot{ border-color:var(--primary, #3b82f6); box-shadow:0 0 0 4px color-mix(in srgb, var(--primary, #3b82f6) 20%, transparent); }
 .ck-item.locked .ck-row{ cursor:default; color:var(--muted-foreground); }
-.ck-item.locked .ck-dot{ border:0; width:12px; height:12px; }
-.ck-more{ display:flex; flex-direction:column; align-items:flex-start; gap:var(--sp-2); padding:0 var(--sp-1) var(--sp-4) calc(10px + var(--sp-3) + var(--sp-1)); }
+.ck-item.locked .ck-dot{ border:0; color:var(--muted-foreground); }
+
+.ck-tag{
+  flex:none; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; letter-spacing:0.02em;
+  color:var(--secondary-foreground, var(--muted-foreground)); background:var(--tint-2);
+}
+.ck-tag.done{ color:var(--primary, #3b82f6); background:color-mix(in srgb, var(--primary, #3b82f6) 14%, transparent); }
+.ck-tag.now{ color:var(--background); background:var(--primary, #3b82f6); }
+.ck-chev{ flex:none; color:var(--muted-foreground); transition:transform 160ms var(--ease-out); }
+.ck-item.open .ck-chev{ transform:rotate(180deg); }
+
+.ck-more{ display:flex; flex-direction:column; align-items:flex-start; gap:var(--sp-2); padding:0 var(--sp-4) var(--sp-4) calc(18px + var(--sp-3) + var(--sp-4)); }
 .ck-text{ margin:0; font-size:var(--text-sm); line-height:1.55; color:var(--secondary-foreground, var(--muted-foreground)); }
 .ck-foot{ flex:none; padding:var(--sp-4) var(--sp-6) var(--sp-5); border-top:1px solid var(--border); }
-.ck-main{ width:100%; margin-left:0; justify-content:center; height:42px; }
+.ck-main{ width:100%; }
+
+html.light .ck-bubble, html.light .ck-list{ background:#fff; }

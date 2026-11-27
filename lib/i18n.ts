@@ -241,6 +241,17 @@ export const DE: Record<string, string> = {
   "Create the document": "Dokument erstellen",
   "{done} of {total} done": "{done} von {total} fertig",
   ", drafted": ", entworfen",
+  // Cockpit, second pass (methods-panel.tsx), 2026-11-27.
+  "Methods ready": "Fertige Methoden",
+  "{n} of {total} drafted": "{n} von {total} entworfen",
+  "Now": "Jetzt",
+  "Draft": "Entwurf",
+  "I'm writing a first draft of every method…": "Ich schreibe einen ersten Entwurf jeder Methode…",
+  "One moment, I'm answering in the chat.": "Einen Moment, ich antworte im Chat.",
+  "That's enough for a document. Shall I write it?": "Das reicht für ein Dokument. Soll ich es schreiben?",
+  "We're on {label}. Answer me in the chat.": "Wir sind bei {label}. Antworte mir im Chat.",
+  "Here's a first draft. Open a method, or let me improve all of them.": "Hier ist ein erster Entwurf. Öffne eine Methode oder lass mich alle verbessern.",
+  "Open a method and I'll talk it through with you.": "Öffne eine Methode, und ich bespreche sie mit dir.",
   // Step-by-step examples (template-wizard.tsx), 2026-11-27.
   "Continue": "Weiter",
   "Skip this one": "Diese überspringen",

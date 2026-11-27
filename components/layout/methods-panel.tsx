@@ -7,8 +7,9 @@ import type { Deliverable } from "@/lib/deliverables";
 import type { DraftState } from "@/lib/method-draft";
 import { md, handleCodeCopyClick } from "@/lib/markdown";
 import { ArtifactActions, versionLine } from "@/components/layout/deliverable-rail";
-import { IconArrow, IconLock, IconMinimise, IconSpark } from "@/components/layout/agxp-icons";
+import { IconArrow, IconCheck, IconChevronDown, IconLock, IconMinimise, IconSpark } from "@/components/layout/agxp-icons";
 import { useT } from "@/lib/language";
+import { AgentMascot } from "@/components/layout/agent-mascot";
 
 /** How far the interview has to be before the document can be asked for. */
 const GENERATE_FROM_PCT = 60;
@@ -31,9 +32,11 @@ const GENERATE_FROM_PCT = 60;
  * Methods that fill in live while the user talks need their own marker in the
  * chat protocol and come in a later phase.
  */
-export function MethodsPanel({ tabs, deliverable, draft, snap, onOpenDoc, onMinimise }: {
+export function MethodsPanel({ tabs, agentId, deliverable, draft, snap, onOpenDoc, onMinimise }: {
   /** Methods or Coach — drawn in the header, inside the card. */
   tabs?: React.ReactNode;
+  /** The project's consultant: its face, at its own level, speaks in the Cockpit. */
+  agentId?: string | null;
   /** What the Consultant is working toward — its title and its questions. It
    *  depends on the agent's type, so the screen works it out. */
   deliverable: Deliverable;
@@ -67,6 +70,28 @@ export function MethodsPanel({ tabs, deliverable, draft, snap, onOpenDoc, onMini
   const [open, setOpen] = useState<string | null>(null);
   const [talked, setTalked] = useState<Set<string>>(() => new Set());
 
+  // A draft is half the way, a method the interview has passed is all of it:
+  // the bar counts both, the words say which (a draft is not "ready").
+  const doneCount = Math.max(0, Math.min(nowIdx, stations.length));
+  const drafted = stations.filter((s, i) => i > nowIdx && draftText.has(s.label)).length;
+  const fill = Math.round(((doneCount + drafted / 2) / Math.max(1, stations.length)) * 100);
+  const countLine = doneCount === 0 && drafted > 0
+    ? tr("{n} of {total} drafted", { n: drafted, total: stations.length })
+    : tr("{done} of {total} done", { done: doneCount, total: stations.length });
+  const pct = snap?.pct ?? 0;
+  /** What the consultant says above the list: the one thing to do next. */
+  const hint = drafting
+    ? tr("I'm writing a first draft of every method…")
+    : snap?.busy
+      ? tr("One moment, I'm answering in the chat.")
+      : nowIdx >= 0 && pct >= GENERATE_FROM_PCT
+        ? tr("That's enough for a document. Shall I write it?")
+        : nowIdx >= 0
+          ? tr("We're on {label}. Answer me in the chat.", { label: stations[nowIdx]?.label ?? "" })
+          : draftText.size > 0
+            ? tr("Here's a first draft. Open a method, or let me improve all of them.")
+            : tr("Open a method and I'll talk it through with you.");
+
   return (
     <section className={`panel methods-panel${finished ? " is-ready" : ""}`} aria-labelledby="mp-title">
       <header className="mp-head">
@@ -81,11 +106,30 @@ export function MethodsPanel({ tabs, deliverable, draft, snap, onOpenDoc, onMini
         </div>
         <div className="mp-head-txt">
           <h2 id="mp-title" className="mp-title">{tr("Consulting Methods")}</h2>
-          {/* Once there is a document: its name and version. Before: how many are done, nothing more. */}
-          <p className="mp-sub">{doc && rail
-            ? `${d.title} · ${versionLine(rail.version, doc.createdAt, rail.restored, tr)}`
-            : tr("{done} of {total} done", { done: Math.max(0, nowIdx), total: stations.length })}</p>
+          {/* Once there is a document: its name and version. */}
+          {doc && rail && <p className="mp-sub">{`${d.title} · ${versionLine(rail.version, doc.createdAt, rail.restored, tr)}`}</p>}
         </div>
+
+        {/* Before the document: how far it is, as a bar that fills, and the
+            consultant saying in one line what to do next (2026-11-27, the same
+            voice as the step-by-step start). */}
+        {!finished && (
+          <div className="ck-head">
+            <div className="ck-progress">
+              <div className="wz-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100}
+                aria-valuenow={fill} aria-valuetext={countLine} aria-label={tr("Methods ready")}>
+                <span style={{ width: `${Math.max(4, fill)}%` }} />
+              </div>
+              <span className="ck-count">{countLine}</span>
+            </div>
+            <div className="ck-say">
+              <span className="ck-face" aria-hidden="true">
+                <AgentMascot role="consultant" size={40} agentId={agentId} state={snap?.busy || drafting ? "thinking" : "idle"} />
+              </span>
+              <p className="ck-bubble" aria-live="polite">{hint}</p>
+            </div>
+          </div>
+        )}
 
         {doc && rail && controls && (
           <div className="mp-actions" data-tour="rail">
@@ -125,8 +169,13 @@ export function MethodsPanel({ tabs, deliverable, draft, snap, onOpenDoc, onMini
                         controls?.discuss(s.label);
                       }
                     }}>
-                    <span className="ck-dot" aria-hidden="true" />
+                    <span className="ck-dot" aria-hidden="true">{state === "done" && <IconCheck size={10} />}</span>
                     <span className="ck-label">{s.label}</span>
+                    {/* The state in a word, not only a dot: readable at a glance. */}
+                    {state !== "todo" && (
+                      <span className={`ck-tag ${state}`}>{tr(state === "done" ? "Done" : state === "now" ? "Now" : "Draft")}</span>
+                    )}
+                    <IconChevronDown size={14} className="ck-chev" />
                     <span className="visually-hidden">{tr(state === "done" ? ", done" : state === "now" ? ", in progress" : state === "draft" ? ", drafted" : ", not yet")}</span>
                   </button>
                   {isOpen && (
@@ -180,11 +229,11 @@ export function MethodsPanel({ tabs, deliverable, draft, snap, onOpenDoc, onMini
       {!finished && rail && controls && (rail.stationIdx < 0 || (snap?.pct ?? 0) >= GENERATE_FROM_PCT) && (
         <div className="ck-foot">
           {rail.stationIdx < 0 ? (
-            <button className="pp-send ck-main" disabled={snap?.busy ?? false} onClick={controls.optimize}>
+            <button className="wz-go ck-main" disabled={snap?.busy ?? false} onClick={controls.optimize}>
               <IconSpark size={13} />{tr("Improve all methods")}
             </button>
           ) : (
-            <button className="pp-send ck-main" disabled={snap?.busy ?? false} onClick={controls.generate}>
+            <button className="wz-go ck-main" disabled={snap?.busy ?? false} onClick={controls.generate}>
               <IconSpark size={13} />{tr("Create the document")}
             </button>
           )}

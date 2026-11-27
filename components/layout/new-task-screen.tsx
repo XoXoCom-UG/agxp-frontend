@@ -700,6 +700,7 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
             data-view={rightView} style={{ flexGrow: share("coach") }} {...slotProps("coach")}>
             <MethodsPanel
               tabs={sideTabs}
+              agentId={consultantAgent?.id ?? null}
               deliverable={deliverableFor("consultant", consultantAgent ? kindFor(consultantAgent) : null)}
               draft={draft && consultantAgent && draft.kind === kindFor(consultantAgent) ? draft : null}
               snap={snaps.consultant}
