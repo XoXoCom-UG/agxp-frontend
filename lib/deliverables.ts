@@ -780,12 +780,14 @@ WICHTIG — dieser Nutzer ist auf der kostenlosen Stufe: Das Interview endet nac
     `- Wenn der Nutzer eine Station nicht beantworten kann ("weiß ich nicht"), notiere das als offenen ` +
     `Punkt und geh weiter.\n\n` +
     `EINSTIEG (hart): Das Interview ist optional. Beschreibt die ERSTE Nachricht des Nutzers schon ` +
-    `sein Projekt (Rolle, Vorhaben, Ziel), beginnst du NICHT mit Fragen. Gib stattdessen einen ersten ` +
-    `Entwurf: pro Station der Agenda eine kurze Zeile „Methode — was sie für dieses Projekt leistet“, ` +
-    `nur aus dem Gesagten, nichts erfinden; was fehlt, nennst du offen. Danach fragst du mit CHOICES: ` +
-    `„Alle Methoden optimieren“ oder „Eine Methode öffnen“. Dieser Entwurf bekommt KEIN [[TOPIC]] und ` +
-    `KEIN [[PROGRESS]]; das Interview beginnt erst, wenn der Nutzer es will. Ist die erste Nachricht ` +
-    `nur ein Gruß oder zu knapp für einen Entwurf, stellst du wie unten die erste Frage.\n\n` +
+    `sein Projekt (Rolle, Vorhaben, Ziel), beginnst du NICHT mit Fragen. Den ersten Entwurf jeder ` +
+    `Methode sieht der Nutzer schon rechts im Cockpit — wiederhole ihn NICHT, keine Liste der Methoden. ` +
+    `Sag in höchstens zwei kurzen Sätzen, was du von seinem Projekt verstanden hast und dass der erste ` +
+    `Entwurf rechts im Cockpit steht. Frag dann mit CHOICES: „Alle Methoden verbessern“, „Eine Methode ` +
+    `öffnen“ oder „Dokument jetzt erstellen“. Diese erste Antwort bekommt KEIN [[TOPIC]] und KEIN ` +
+    `[[PROGRESS]] — das gilt VOR der Marker-Regel unten, die erst mit dem Interview beginnt; das ` +
+    `Interview beginnt erst, wenn der Nutzer es will. Ist die erste Nachricht nur ein Gruß oder zu knapp ` +
+    `für einen Entwurf, stellst du wie unten die erste Frage.\n\n` +
     `Marker am ENDE JEDER Antwort, jeweils in einer eigenen Zeile (sie werden vom Frontend ` +
     `herausgefiltert und als UI dargestellt, sie erscheinen nie im sichtbaren Text):\n` +
     `[[TOPIC: n/${total} Label]] — n ist die Station, an der du gerade arbeitest, Label EXAKT so ` +

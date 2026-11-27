@@ -587,9 +587,13 @@ test("Start here and Only this one first are commands that name their station an
   assert.equal(cockpitStation("hello"), "");
 });
 
-test("the interview is optional: the first reply is a draft without TOPIC or PROGRESS", () => {
+test("the interview is optional: the first reply points to the Cockpit, short, without TOPIC or PROGRESS", () => {
   const p = agendaPrompt(CONSULTANT_DELIVERABLES.architect, null);
   assert.match(p, /EINSTIEG/);
-  assert.match(p, /Alle Methoden optimieren/);
-  assert.match(p, /KEIN \[\[TOPIC\]\] und KEIN \[\[PROGRESS\]\]/);
+  // The draft is already in the Cockpit: the chat must not repeat it (2026-11-27).
+  assert.match(p, /wiederhole ihn NICHT/);
+  assert.match(p, /Alle Methoden verbessern/);
+  assert.match(p, /Dokument jetzt erstellen/);
+  assert.match(p, /KEIN \[\[TOPIC\]\] und KEIN\s+\[\[PROGRESS\]\]/);
+  assert.match(p, /VOR der Marker-Regel unten/, "the marker rule below must not win over it");
 });

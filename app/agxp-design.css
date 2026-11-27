@@ -9735,9 +9735,18 @@ html.light .agx-board-grid .agx-card{ background:#F6F7F9; }
   border:1.5px solid color-mix(in srgb, var(--foreground) 30%, transparent);
   display:flex; align-items:center; justify-content:center; color:var(--background);
 }
-.ck-item.draft .ck-dot{ border-color:var(--primary, #3b82f6); background:linear-gradient(90deg, var(--primary, #3b82f6) 50%, transparent 50%); }
-.ck-item.done .ck-dot{ border-color:var(--primary, #3b82f6); background:var(--primary, #3b82f6); color:#fff; }
-.ck-item.now .ck-dot{ border-color:var(--primary, #3b82f6); box-shadow:0 0 0 4px color-mix(in srgb, var(--primary, #3b82f6) 20%, transparent); }
+/* A draft is a dashed circle with a light fill (sketched, not finished), the
+   method the interview is on a ring with a halo, a finished one solid with a tick. */
+.ck-item.draft .ck-dot, .ck-dot.is-draft{
+  border-style:dashed; border-color:var(--primary, #3b82f6);
+  background:color-mix(in srgb, var(--primary, #3b82f6) 16%, transparent);
+}
+.ck-item.done .ck-dot, .ck-dot.is-done{ border-color:var(--primary, #3b82f6); background:var(--primary, #3b82f6); color:#fff; }
+.ck-item.now .ck-dot, .ck-dot.is-now{ border-color:var(--primary, #3b82f6); box-shadow:0 0 0 4px color-mix(in srgb, var(--primary, #3b82f6) 20%, transparent); }
+
+.ck-legend{ list-style:none; margin:calc(-1 * var(--sp-2)) 0 0; padding:0; display:flex; flex-wrap:wrap; gap:var(--sp-1) var(--sp-4); }
+.ck-legend li{ display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted-foreground); }
+.ck-legend .ck-dot{ width:12px; height:12px; border-width:1.5px; }
 .ck-item.locked .ck-row{ cursor:default; color:var(--muted-foreground); }
 .ck-item.locked .ck-dot{ border:0; color:var(--muted-foreground); }
 

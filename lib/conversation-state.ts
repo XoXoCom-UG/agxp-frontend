@@ -15,7 +15,27 @@ import { isReadAlongCommand, isReviewCommand } from "@/lib/peer-context";
 
 /** A turn the machine sent, not the person: never shown, never named a project. */
 const isUnprompted = (t: string) => isReadAlongCommand(t) || isReviewCommand(t);
-import { isDeliverableCommand, isDiscussCommand, isOptimizeCommand } from "@/lib/deliverables";
+import {
+  isDeliverableCommand, isDiscussCommand, isOptimizeCommand, isJumpCommand, isFocusCommand, isSkipCommand,
+} from "@/lib/deliverables";
+
+/**
+ * Has the interview begun? Asked for with a Cockpit button (improve all, start
+ * here, only this one first, skip), or the person answered something after
+ * their first message — typed, or a choice clicked. Until then the first
+ * message is only the project, and the consultant's reply only the draft.
+ */
+export function interviewHasStarted(messages: { role: string; content: string }[]): boolean {
+  let typed = 0;
+  for (const m of messages) {
+    if (m.role !== "user") continue;
+    const t = m.content;
+    if (isOptimizeCommand(t) || isJumpCommand(t) || isFocusCommand(t) || isSkipCommand(t)) return true;
+    if (!isDeliverableCommand(t) && !isUnprompted(t) && !isErrorLine(t)) typed++;
+    if (typed >= 2) return true;
+  }
+  return false;
+}
 
 /** A failed turn is kept in the list (never saved) with this prefix. */
 export const ERROR_PREFIX = "Error: ";

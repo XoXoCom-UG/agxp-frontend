@@ -241,6 +241,13 @@ export const DE: Record<string, string> = {
   "Create the document": "Dokument erstellen",
   "{done} of {total} done": "{done} von {total} fertig",
   ", drafted": ", entworfen",
+  // Cockpit legend, 2026-11-27.
+  "First draft": "Erster Entwurf",
+  "We're here": "Hier sind wir",
+  "Done with you": "Mit dir fertig",
+  "Talked through with you in the interview": "Im Interview mit dir besprochen",
+  "The interview is on this method now": "Das Interview ist gerade bei dieser Methode",
+  "A first draft from what you wrote": "Ein erster Entwurf aus dem, was du geschrieben hast",
   // Cockpit: the three ways into a method and the document now, 2026-11-27.
   "Talk it through": "Durchsprechen",
   "Talk it through again": "Noch einmal durchsprechen",

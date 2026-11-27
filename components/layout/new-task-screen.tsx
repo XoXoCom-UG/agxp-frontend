@@ -701,6 +701,9 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
             <MethodsPanel
               tabs={sideTabs}
               agentId={consultantAgent?.id ?? null}
+              // On a phone the Cockpit and the chat are two tabs: after a Cockpit
+              // button the answer comes in the chat, so show it (2026-11-27).
+              onAct={() => { if (window.matchMedia("(max-width: 1000px)").matches) showPane("consultant"); }}
               deliverable={deliverableFor("consultant", consultantAgent ? kindFor(consultantAgent) : null)}
               draft={draft && consultantAgent && draft.kind === kindFor(consultantAgent) ? draft : null}
               snap={snaps.consultant}

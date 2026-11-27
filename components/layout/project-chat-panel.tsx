@@ -17,7 +17,7 @@ import { experienceFor } from "@/lib/agent-level";
 import { refreshLevel, useMascotLevel } from "@/lib/mascot-level";
 import { handleCodeCopyClick } from "@/lib/markdown";
 import { peerTranscript, previewLine, isReadAlongCommand, isReviewCommand, type PeerContext, type PanelSnapshot, type RailControls } from "@/lib/peer-context";
-import { parseEntries, deriveConversation } from "@/lib/conversation-state";
+import { parseEntries, deriveConversation, interviewHasStarted } from "@/lib/conversation-state";
 import { useAgentConversation, type ReplyInfo } from "@/lib/use-agent-conversation";
 import { useMascotChoreography } from "@/lib/use-mascot-choreography";
 import { useReadAlongNudge } from "@/lib/use-read-along-nudge";
@@ -353,7 +353,13 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
   const byLabel = station
     ? deliverable.stations.findIndex(s => s.label.trim().toLowerCase() === station.label.trim().toLowerCase())
     : -1;
-  const stationIdx = byLabel >= 0 ? byLabel : station ? station.index - 1 : (messages.length > 0 ? 0 : -1);
+  // No station until the interview has really begun (2026-11-27). It is
+  // optional: the consultant's first reply only points to the draft in the
+  // Cockpit, and a [[TOPIC]] the model puts on it anyway, or no marker at all,
+  // used to read as "on step 1" — "Now" on the first method and no way to
+  // improve all of them.
+  const interviewStarted = interviewHasStarted(messages);
+  const stationIdx = !interviewStarted || !station ? -1 : byLabel >= 0 ? byLabel : station.index - 1;
   const stationLabel = deliverable.stations[Math.max(0, stationIdx)]?.label || station?.label || "";
   // How many stations this conversation has: the plan's cap on the agenda,
   // the same cap the chat route gives the agent. A capped plan is told it has
@@ -370,7 +376,7 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
   // because the Methods panel beside it already offers it. Not on the last station: skipping
   // that one means "write the document", which has its own button. Not once
   // a document exists: the interview is over.
-  const canSkip = !!station && stationIdx >= 0 && stationIdx < totalStations - 1 && pct < 100 && docs.length === 0;
+  const canSkip = !!station && interviewStarted && stationIdx >= 0 && stationIdx < totalStations - 1 && pct < 100 && docs.length === 0;
   const skipStation = () => chat.send(skipStationPrompt(stationLabel));
 
   // The document rail, handed to the screen so the Methods panel can draw it.

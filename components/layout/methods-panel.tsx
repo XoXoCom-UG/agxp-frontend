@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { PanelSnapshot } from "@/lib/peer-context";
+import type { PanelSnapshot, RailControls } from "@/lib/peer-context";
 import type { DeliverableDoc } from "@/components/layout/deliverable-view";
 import type { Deliverable } from "@/lib/deliverables";
 import type { DraftState } from "@/lib/method-draft";
@@ -32,7 +32,7 @@ const GENERATE_FROM_PCT = 60;
  * Methods that fill in live while the user talks need their own marker in the
  * chat protocol and come in a later phase.
  */
-export function MethodsPanel({ tabs, agentId, deliverable, draft, snap, onOpenDoc, onMinimise }: {
+export function MethodsPanel({ tabs, agentId, deliverable, draft, snap, onOpenDoc, onMinimise, onAct }: {
   /** Methods or Coach — drawn in the header, inside the card. */
   tabs?: React.ReactNode;
   /** The project's consultant: its face, at its own level, speaks in the Cockpit. */
@@ -47,11 +47,27 @@ export function MethodsPanel({ tabs, agentId, deliverable, draft, snap, onOpenDo
   /** Opens the document in the full reading view. */
   onOpenDoc: (doc: DeliverableDoc) => void;
   onMinimise?: () => void;
+  /** After a button that sends something to the consultant: the screen shows the chat. */
+  onAct?: () => void;
 }) {
   const tr = useT();
   const d = deliverable;
   const rail = snap?.rail;
-  const controls = snap?.controls;
+  // Every button that makes the consultant answer also calls onAct; opening or
+  // restoring a document version does not (the answer is not in the chat).
+  const raw = snap?.controls;
+  const controls: RailControls | undefined = raw && onAct
+    ? {
+      ...raw,
+      generate: () => { raw.generate(); onAct(); },
+      regenerate: () => { raw.regenerate(); onAct(); },
+      skip: () => { raw.skip(); onAct(); },
+      discuss: l => { raw.discuss(l); onAct(); },
+      optimize: () => { raw.optimize(); onAct(); },
+      jump: (l, n, t) => { raw.jump(l, n, t); onAct(); },
+      focus: (l, n, t) => { raw.focus(l, n, t); onAct(); },
+    }
+    : raw;
   const doc = rail?.currentDoc ?? null;
 
   // A plan may cover fewer stations than the full agenda; the agent says how many.
@@ -80,7 +96,8 @@ export function MethodsPanel({ tabs, agentId, deliverable, draft, snap, onOpenDo
   const countLine = doneCount === 0 && drafted > 0
     ? tr("{n} of {total} drafted", { n: drafted, total: stations.length })
     : tr("{done} of {total} done", { done: doneCount, total: stations.length });
-  const pct = snap?.pct ?? 0;
+  // A PROGRESS the model wrote before the interview began says nothing yet.
+  const pct = nowIdx >= 0 ? snap?.pct ?? 0 : 0;
   /** What the consultant says above the list: the one thing to do next. */
   const hint = drafting
     ? tr("I'm writing a first draft of every method…")
@@ -124,6 +141,12 @@ export function MethodsPanel({ tabs, agentId, deliverable, draft, snap, onOpenDo
               </div>
               <span className="ck-count">{countLine}</span>
             </div>
+            {/* What the circles mean, once, in four words each. */}
+            <ul className="ck-legend" aria-hidden="true">
+              <li><span className="ck-dot is-draft" />{tr("First draft")}</li>
+              <li><span className="ck-dot is-now" />{tr("We're here")}</li>
+              <li><span className="ck-dot is-done"><IconCheck size={8} /></span>{tr("Done with you")}</li>
+            </ul>
             <div className="ck-say">
               <span className="ck-face" aria-hidden="true">
                 <AgentMascot role="consultant" size={40} agentId={agentId} state={snap?.busy || drafting ? "thinking" : "idle"} />
@@ -171,7 +194,10 @@ export function MethodsPanel({ tabs, agentId, deliverable, draft, snap, onOpenDo
                     <span className="ck-label">{s.label}</span>
                     {/* The state in a word, not only a dot: readable at a glance. */}
                     {state !== "todo" && (
-                      <span className={`ck-tag ${state}`}>{tr(state === "done" ? "Done" : state === "now" ? "Now" : "Draft")}</span>
+                      <span className={`ck-tag ${state}`}
+                        title={tr(state === "done" ? "Talked through with you in the interview" : state === "now" ? "The interview is on this method now" : "A first draft from what you wrote")}>
+                        {tr(state === "done" ? "Done" : state === "now" ? "Now" : "Draft")}
+                      </span>
                     )}
                     <IconChevronDown size={14} className="ck-chev" />
                     <span className="visually-hidden">{tr(state === "done" ? ", done" : state === "now" ? ", in progress" : state === "draft" ? ", drafted" : ", not yet")}</span>
