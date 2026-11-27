@@ -106,7 +106,7 @@ export const CHAT_SPOTS: Spot[] = [
   {
     anchor: "rail",
     title: "Your methods are here",
-    body: "Each method already has a first draft from what you wrote. Open one to read it, correct it or talk it through with your consultant. The document can be written at any time.",
+    body: "Press Draw conclusions and each method gets one short sentence from what you wrote. Open a method to correct it, skip it or talk it through. The document can be written at any time.",
     prefer: "left",
   },
 ];

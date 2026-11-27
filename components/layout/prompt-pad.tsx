@@ -45,7 +45,7 @@ function greeting(hour: number): string {
 
 
 /** What happens after Start, in three words each — shown once, under everything. */
-const HOW = ["Describe your project", "Your consultant picks the methods", "You get a first draft"];
+const HOW = ["Describe your project", "Your consultant picks the methods", "You draw conclusions"];
 
 /** What the screen needs to put the team into the project. */
 export interface Activation { prompt: string; plan: StartPlan; reuse: Agent | null }
@@ -185,7 +185,7 @@ export function PromptPad({ agents, onActivate, onDraft }: {
                     : tr(greeting(hour))}
                 </p>
                 <h2 className="pp-title">{tr("What are you working on?")}</h2>
-                <p className="pp-lead">{tr("Tell me in a sentence. I pick the right consulting methods and draft them for you.")}</p>
+                <p className="pp-lead">{tr("Tell me in a sentence. I pick the right consulting methods for you.")}</p>
               </div>
 
               {/* The field as a terminal window (2026-11-27, Tudor): a title bar,

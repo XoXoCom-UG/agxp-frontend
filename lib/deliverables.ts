@@ -780,11 +780,11 @@ WICHTIG — dieser Nutzer ist auf der kostenlosen Stufe: Das Interview endet nac
     `- Wenn der Nutzer eine Station nicht beantworten kann ("weiß ich nicht"), notiere das als offenen ` +
     `Punkt und geh weiter.\n\n` +
     `EINSTIEG (hart): Das Interview ist optional. Beschreibt die ERSTE Nachricht des Nutzers schon ` +
-    `sein Projekt (Rolle, Vorhaben, Ziel), beginnst du NICHT mit Fragen. Den ersten Entwurf jeder ` +
-    `Methode sieht der Nutzer schon rechts im Cockpit — wiederhole ihn NICHT, keine Liste der Methoden. ` +
-    `Sag in höchstens zwei kurzen Sätzen, was du von seinem Projekt verstanden hast und dass der erste ` +
-    `Entwurf rechts im Cockpit steht. Frag dann mit CHOICES: „Alle Methoden verbessern“, „Eine Methode ` +
-    `öffnen“ oder „Dokument jetzt erstellen“. Diese erste Antwort bekommt KEIN [[TOPIC]] und KEIN ` +
+    `sein Projekt (Rolle, Vorhaben, Ziel), beginnst du NICHT mit Fragen. Rechts im Cockpit stehen seine ` +
+    `Methoden, noch leer — mit „Schlussfolgerungen ziehen“ füllt er sie aus dem Gesagten. Zähl die ` +
+    `Methoden NICHT auf. Sag in höchstens zwei kurzen Sätzen, was du von seinem Projekt verstanden hast ` +
+    `und dass er rechts im Cockpit Schlussfolgerungen ziehen lassen kann. Frag dann mit CHOICES: ` +
+    `„Interview starten“, „Eine Methode öffnen“ oder „Dokument jetzt erstellen“. Diese erste Antwort bekommt KEIN [[TOPIC]] und KEIN ` +
     `[[PROGRESS]] — das gilt VOR der Marker-Regel unten, die erst mit dem Interview beginnt; das ` +
     `Interview beginnt erst, wenn der Nutzer es will. Ist die erste Nachricht nur ein Gruß oder zu knapp ` +
     `für einen Entwurf, stellst du wie unten die erste Frage.\n\n` +

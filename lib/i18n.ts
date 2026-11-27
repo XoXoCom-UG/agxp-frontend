@@ -953,6 +953,9 @@ export const DE: Record<string, string> = {
   "The steps you work through, ticked off as you go. Once there is enough, you can ask for the document from here.": "Die Schritte, die du durcharbeitest, werden abgehakt. Sobald genug da ist, kannst du das Dokument von hier aus anfordern.",
   // Cockpit, fourth pass; landing; resume line; conversation meter (2026-11-27).
   "Your methods are here": "Hier sind deine Methoden",
+  "Press Draw conclusions and each method gets one short sentence from what you wrote. Open a method to correct it, skip it or talk it through. The document can be written at any time.": "Drück „Schlussfolgerungen ziehen“, und jede Methode bekommt einen kurzen Satz aus dem, was du geschrieben hast. Öffne eine Methode, um sie zu korrigieren, zu überspringen oder durchzusprechen. Das Dokument kann jederzeit geschrieben werden.",
+  "You draw conclusions": "Du ziehst Schlussfolgerungen",
+  "Tell me in a sentence. I pick the right consulting methods for you.": "Sag es mir in einem Satz. Ich wähle die passenden Beratungsmethoden für dich.",
   "I'm drawing conclusions from what you wrote…": "Ich ziehe Schlussfolgerungen aus dem, was du geschrieben hast…",
   "That didn't work. Try Draw conclusions again in a moment.": "Das hat nicht geklappt. Versuch „Schlussfolgerungen ziehen“ gleich noch einmal.",
   "These are my conclusions so far. Open a method to correct it, skip it or talk it through.": "Das sind meine Schlussfolgerungen bisher. Öffne eine Methode, um sie zu korrigieren, zu überspringen oder durchzusprechen.",
