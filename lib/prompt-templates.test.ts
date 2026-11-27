@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { PROMPT_TEMPLATES, composeText, fieldsOf, fillText, nextBlank, partsOf, slotsOf } from "./prompt-templates.ts";
+import { PROMPT_TEMPLATES, composeText, fieldsOf, fillText, nextBlank, partsOf, slotsOf, stepsOf } from "./prompt-templates.ts";
 import { DE } from "./i18n.ts";
 
 test("the small form lists each field once, in the order the sentences ask", () => {
@@ -16,6 +16,32 @@ test("a sentence with an empty field is left out whole, never a bracket", () => 
 
 test("nothing filled in writes nothing", () => {
   assert.equal(composeText(PROMPT_TEMPLATES[0], {}), "");
+});
+
+test("every blank of every template gets its own question, with ready answers", () => {
+  for (const t of PROMPT_TEMPLATES) {
+    const steps = stepsOf(t);
+    assert.deepEqual(steps.map(s => s.id), fieldsOf(t), t.id);
+    for (const s of steps) {
+      assert.ok(s.ask.endsWith("?"), `${t.id}.${s.id} asks a question`);
+      assert.ok(s.options.length >= 3 && s.options.length <= 5, `${t.id}.${s.id} has 3-5 answers`);
+    }
+  }
+});
+
+test("a German screen asks and answers in German", () => {
+  const missing: string[] = [];
+  for (const t of PROMPT_TEMPLATES) {
+    for (const s of stepsOf(t)) for (const text of [s.ask, ...s.options]) if (!(text in DE)) missing.push(text);
+  }
+  assert.deepEqual(missing, []);
+});
+
+test("a tapped answer reads as a sentence", () => {
+  const t = PROMPT_TEMPLATES.find(x => x.id === "it-project")!;
+  const [role, what] = stepsOf(t);
+  assert.equal(composeText(t, { role: role.options[0], what: what.options[0] }),
+    "My role is Head of IT and I want to implement a new CRM.");
 });
 
 const first = PROMPT_TEMPLATES[0];

@@ -5,7 +5,8 @@ import Link from "next/link";
 import type { Agent } from "@/lib/agents";
 import { holdsSlot } from "@/lib/agent-types";
 import { useEntitlement } from "@/lib/entitlement";
-import { PROMPT_TEMPLATES, composeText, fieldsOf, partsOf, type PromptTemplate } from "@/lib/prompt-templates";
+import { PROMPT_TEMPLATES, composeText, type PromptTemplate } from "@/lib/prompt-templates";
+import { TemplateWizard } from "@/components/layout/template-wizard";
 import { requestStartPlan, requestMethodDraft, existingFor, templateById, StartError } from "@/lib/start-flow";
 import type { DraftState } from "@/lib/method-draft";
 import type { StartPlan } from "@/lib/start-plan";
@@ -14,7 +15,7 @@ import { useT } from "@/lib/language";
 import { useAuth } from "@/lib/auth-context";
 import { AgentMascot } from "@/components/layout/agent-mascot";
 import {
-  IconAlert, IconArrowUp, IconBack, IconCheck, IconNodes, IconChart, IconSpark, IconPencil, IconUsers, IconSearch,
+  IconAlert, IconArrowUp, IconCheck, IconNodes, IconChart, IconSpark, IconPencil, IconUsers, IconSearch,
 } from "@/components/layout/agxp-icons";
 
 /** How each example looks on the start screen: an icon and what it is for, in a few words. */
@@ -74,13 +75,10 @@ export function PromptPad({ agents, onActivate, onDraft }: {
   const [step, setStep] = useState(0);
 
   const areaRef = useRef<HTMLTextAreaElement>(null);
-  const firstFieldRef = useRef<HTMLInputElement>(null);
 
   // The field grows with what is written through CSS (field-sizing: content on
   // .pp-area). Measuring scrollHeight in JS read the field before the column had
   // its width and left an empty box 280px tall.
-
-  useEffect(() => { if (tpl) firstFieldRef.current?.focus(); }, [tpl]);
 
   // The steps of the waiting screen, one after the other; the last one stays.
   useEffect(() => {
@@ -108,8 +106,8 @@ export function PromptPad({ agents, onActivate, onDraft }: {
     if (phase === "working") return;
     // Kept pressable and answered on use, rather than a grey button that says nothing.
     if (!prompt) {
-      setError(tr(tpl ? "Fill in at least the first field." : "Write a few words first."));
-      (tpl ? firstFieldRef.current : areaRef.current)?.focus();
+      setError(tr(tpl ? "Answer at least one question first." : "Write a few words first."));
+      areaRef.current?.focus();
       return;
     }
     if (prompt.length > MAX) { setError(tr("That is too long. Keep it shorter.")); return; }
@@ -140,7 +138,14 @@ export function PromptPad({ agents, onActivate, onDraft }: {
     <section className="panel pp" aria-label={tr("New task")}>
       <div className="pp-body">
         <div className="pp-col">
-          {phase === "write" && (
+          {/* An example: one question at a time, with the consultant (2026-11-27). */}
+          {phase === "write" && tpl && (
+            <TemplateWizard template={tpl} values={values} error={error}
+              onChange={(id, v) => { setValues(prev => ({ ...prev, [id]: v })); if (error) setError(null); }}
+              onExit={unpick} onStart={start} />
+          )}
+
+          {phase === "write" && !tpl && (
             <form className="pp-write" onSubmit={e => { e.preventDefault(); start(); }}
               onFocus={() => setTyping(true)} onBlur={() => setTyping(false)}>
               {/* A face and a hello: the consultant is already here, waiting for the
@@ -150,55 +155,20 @@ export function PromptPad({ agents, onActivate, onDraft }: {
                   <AgentMascot role="consultant" size={64} attentive={typing} />
                 </span>
                 {firstName && <p className="pp-hi">{tr("Hi {name},", { name: firstName })}</p>}
-                <h2 className="pp-title">{tr(tpl ? tpl.title : "What are you working on?")}</h2>
-                <p className="pp-lead">{tr(tpl
-                  ? "Fill in the gaps you know. The rest can stay empty."
-                  : "Tell me in a sentence. I pick the right consulting methods and draft them for you.")}</p>
+                <h2 className="pp-title">{tr("What are you working on?")}</h2>
+                <p className="pp-lead">{tr("Tell me in a sentence. I pick the right consulting methods and draft them for you.")}</p>
               </div>
 
-              <div className={`pp-composer${tpl ? " is-sentence" : ""}`}>
-                {tpl ? (
-                  /* The template as the message itself, with the blanks to fill in
-                     right where they go ("My role is ___ and I want to ___"): the
-                     person reads what the consultant will get while writing it,
-                     instead of a column of empty grey lines (2026-11-27). */
-                  <p className="pp-sentence">
-                    {tpl.sentences.map((sentence, n) => (
-                      <span key={n}>
-                        {partsOf(tr(sentence)).map((part, i) => {
-                          if (!part.slot) return <span key={i}>{part.text}</span>;
-                          const id = part.slot;
-                          const hint = tr(tpl.hints[id] ?? id);
-                          const value = values[id] ?? "";
-                          return (
-                            <input key={i} ref={id === fieldsOf(tpl)[0] ? firstFieldRef : undefined}
-                              className={`pp-blank${value.trim() ? " is-filled" : ""}`} maxLength={400}
-                              aria-label={hint} placeholder={hint}
-                              // Empty: as wide as its hint. Typed into: as wide as the text.
-                              size={Math.max(4, value ? value.length + 1 : hint.length)}
-                              value={value} onChange={e => { setValues(v => ({ ...v, [id]: e.target.value })); if (error) setError(null); }} />
-                          );
-                        })}
-                        {" "}
-                      </span>
-                    ))}
-                  </p>
-                ) : (
-                  <textarea ref={areaRef} className="pp-area" value={text} maxLength={MAX} rows={2} autoFocus
-                    aria-label={tr("What are you working on?")}
-                    placeholder={tr("A new CRM for our sales team by March")}
-                    onChange={e => { setText(e.target.value); if (error) setError(null); }}
-                    onKeyDown={e => {
-                      // Enter sends, as in every chat; Shift+Enter is a new line.
-                      if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); start(); }
-                    }} />
-                )}
+              <div className="pp-composer">
+                <textarea ref={areaRef} className="pp-area" value={text} maxLength={MAX} rows={2} autoFocus
+                  aria-label={tr("What are you working on?")}
+                  placeholder={tr("A new CRM for our sales team by March")}
+                  onChange={e => { setText(e.target.value); if (error) setError(null); }}
+                  onKeyDown={e => {
+                    // Enter sends, as in every chat; Shift+Enter is a new line.
+                    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); start(); }
+                  }} />
                 <div className="pp-composer-bar">
-                  {tpl && (
-                    <button type="button" className="pp-link" onClick={unpick}>
-                      <IconBack size={12} />{tr("Write freely instead")}
-                    </button>
-                  )}
                   <button type="submit" className="pp-send">
                     {tr("Start")}<IconArrowUp size={15} />
                   </button>

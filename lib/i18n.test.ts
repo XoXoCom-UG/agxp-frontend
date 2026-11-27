@@ -20,6 +20,7 @@ const FILES = [
   "components/layout/new-task-screen.tsx",
   "components/layout/methods-panel.tsx",
   "components/layout/prompt-pad.tsx",
+  "components/layout/template-wizard.tsx",
   "components/layout/message-actions.tsx",
   "components/layout/chat/chat-message.tsx",
   "components/layout/agent-dashboard.tsx",

@@ -9543,29 +9543,92 @@ html.light .pp-ex{ background:#fff; border-color:rgba(0,0,0,0.08); }
 }
 @media (hover:hover) and (pointer:fine){ .pp-link:hover{ color:var(--foreground); } }
 
-/* A template: its sentences, large, with the blanks inline where they go —
-   the message reads as it is written. A blank is a soft pill with its hint in
-   it; typed into, it turns the colour of the text around it. */
-.pp-composer.is-sentence{ padding:var(--sp-5) var(--sp-5) var(--sp-3); }
-.pp-sentence{
-  margin:0; padding:0 var(--sp-1) var(--sp-2);
-  font-size:var(--text-lg); line-height:2.3; letter-spacing:-0.005em; color:var(--secondary-foreground, var(--muted-foreground));
+/* --- An example, one question at a time (2026-11-27) ------------------------
+   A bar that fills, the consultant asking in a speech bubble, ready answers as
+   big rows to tap, a field for your own, one big button at the bottom. Calm:
+   one accent for what is chosen, no glow. */
+.wz{ display:flex; flex-direction:column; gap:var(--sp-6); width:min(560px, 100%); margin:0 auto; }
+.wz-top{ display:flex; align-items:center; gap:var(--sp-3); }
+.wz-back{
+  flex:none; width:36px; height:36px; display:flex; align-items:center; justify-content:center;
+  border:0; border-radius:50%; background:none; color:var(--muted-foreground); cursor:pointer;
+  transition:background-color 140ms var(--ease-out), color 140ms var(--ease-out);
 }
-.pp-sentence .pp-blank{
-  display:inline-block; box-sizing:content-box; max-width:100%; height:1.6em; margin:0 2px; padding:0 10px;
-  vertical-align:baseline; font:inherit; color:var(--foreground);
-  background:color-mix(in srgb, var(--primary, #3b82f6) 14%, transparent);
-  border:0; border-bottom:1.5px dashed color-mix(in srgb, var(--primary, #3b82f6) 55%, transparent); border-radius:8px 8px 2px 2px;
-  outline:0; box-shadow:none;
-  transition:background-color 160ms var(--ease-out), border-color 160ms var(--ease-out);
+@media (hover:hover) and (pointer:fine){ .wz-back:hover{ background:var(--tint-1); color:var(--foreground); } }
+.wz-bar{ flex:1; height:10px; border-radius:999px; background:var(--tint-2); overflow:hidden; }
+.wz-bar > span{ display:block; height:100%; border-radius:inherit; background:var(--primary, #3b82f6); transition:width 420ms var(--ease-out); }
+
+/* The consultant and its question. */
+.wz-ask{ display:flex; align-items:center; gap:var(--sp-4); animation:wzIn 260ms var(--ease-out) both; }
+.wz-face{ flex:none; display:flex; }
+.wz-bubble{
+  position:relative; margin:0; padding:var(--sp-4) var(--sp-5);
+  font-size:var(--text-lg); line-height:1.45; font-weight:500; color:var(--foreground);
+  border:1px solid var(--border); border-radius:16px; background:var(--card);
 }
-.pp-sentence .pp-blank::placeholder{ color:color-mix(in srgb, var(--primary, #3b82f6) 45%, var(--foreground)); opacity:.8; }
-.pp-sentence .pp-blank:focus, .pp-sentence .pp-blank:focus-visible{
-  outline:0; box-shadow:none; border-bottom-style:solid; border-bottom-color:var(--primary, #3b82f6);
-  background:color-mix(in srgb, var(--primary, #3b82f6) 22%, transparent);
+.wz-bubble::before{
+  content:""; position:absolute; left:-7px; top:50%; width:12px; height:12px; margin-top:-6px;
+  background:inherit; border-left:1px solid var(--border); border-bottom:1px solid var(--border); transform:rotate(45deg);
 }
-.pp-sentence .pp-blank.is-filled{ background:var(--tint-1); border-bottom:1.5px solid var(--foreground); font-weight:500; }
-.pp-sentence .pp-blank.is-filled:focus{ background:var(--tint-2); }
+
+.wz-body{ display:flex; flex-direction:column; gap:var(--sp-3); animation:wzIn 260ms 60ms var(--ease-out) both; }
+.wz-options{ display:flex; flex-direction:column; border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+.wz-opt{
+  display:flex; align-items:center; justify-content:space-between; gap:var(--sp-3);
+  min-height:52px; padding:0 var(--sp-5); text-align:left; cursor:pointer;
+  font:inherit; font-size:var(--text-base); color:var(--foreground);
+  background:none; border:0; border-top:1px solid var(--border);
+  transition:background-color 140ms var(--ease-out), color 140ms var(--ease-out);
+}
+.wz-opt:first-child{ border-top:0; }
+.wz-opt-t::first-letter{ text-transform:uppercase; }
+@media (hover:hover) and (pointer:fine){ .wz-opt:hover{ background:var(--tint-1); } }
+.wz-opt.on{
+  color:var(--primary, #3b82f6); font-weight:500;
+  background:color-mix(in srgb, var(--primary, #3b82f6) 12%, transparent);
+  box-shadow:inset 0 0 0 2px var(--primary, #3b82f6);
+}
+.wz-own{
+  width:100%; box-sizing:border-box; height:52px; padding:0 var(--sp-5);
+  font:inherit; font-size:var(--text-base); color:var(--foreground);
+  background:none; border:1px dashed var(--border-strong, var(--border)); border-radius:14px; outline:0;
+  transition:border-color 140ms var(--ease-out);
+}
+.wz-own::placeholder{ color:var(--muted-foreground); }
+.wz-own:focus, .wz-own:focus-visible{ border-style:solid; border-color:var(--primary, #3b82f6); outline:0; box-shadow:none; }
+.wz-own.on{ border-style:solid; border-color:var(--primary, #3b82f6); }
+
+.wz-summary{
+  margin:0; padding:var(--sp-5); font-size:var(--text-base); line-height:1.6; color:var(--foreground);
+  border:1px solid var(--border); border-left:3px solid var(--primary, #3b82f6); border-radius:0 12px 12px 0; background:var(--tint-1);
+}
+
+.wz-foot{ display:flex; align-items:center; justify-content:space-between; gap:var(--sp-4); padding-top:var(--sp-2); }
+.wz-count{ font-size:var(--text-xs); color:var(--muted-foreground); font-variant-numeric:tabular-nums; }
+.wz-go{
+  display:inline-flex; align-items:center; justify-content:center; gap:8px; min-width:180px; height:48px; padding:0 var(--sp-6);
+  font:inherit; font-size:var(--text-base); font-weight:600; letter-spacing:0.01em; cursor:pointer;
+  color:var(--background); background:var(--foreground); border:0; border-radius:14px;
+  transition:opacity 160ms var(--ease-out), transform 100ms var(--ease-out), background-color 160ms var(--ease-out), color 160ms var(--ease-out);
+}
+.wz-go:active{ transform:scale(0.98); }
+@media (hover:hover) and (pointer:fine){ .wz-go:hover{ opacity:.88; } }
+/* Nothing chosen yet: the same button, quieter, saying it skips. */
+.wz-go.is-quiet{ color:var(--foreground); background:var(--tint-2); }
+
+@keyframes wzIn{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:none; } }
+@media (prefers-reduced-motion:reduce){ .wz-ask, .wz-body{ animation:none; } .wz-bar > span{ transition:none; } }
+
+@media (max-width:520px){
+  .wz{ gap:var(--sp-5); }
+  .wz-bubble{ font-size:var(--text-base); }
+  .wz-foot{ flex-direction:column-reverse; align-items:stretch; }
+  .wz-go{ width:100%; }
+  .wz-count{ text-align:center; }
+}
+
+html.light .wz-bubble{ background:#fff; }
+html.light .wz-options, html.light .wz-own{ background:#fff; }
 
 .pp-error{ display:flex; align-items:center; justify-content:center; gap:6px; margin:0; font-size:var(--text-sm); color:var(--destructive, #e5484d); }
 

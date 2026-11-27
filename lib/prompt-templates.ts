@@ -117,6 +117,77 @@ export const PROMPT_TEMPLATES: PromptTemplate[] = [
   },
 ];
 
+/**
+ * The step-by-step start (2026-11-27, "pas cu pas, ca la înscrierea în
+ * Duolingo"): every blank of a template becomes one screen — the consultant
+ * asks one question, the person taps a ready answer or types their own.
+ *
+ * The answers are written to drop straight into the template's sentence
+ * ("My role is {role}" + "Head of IT"), lower case where the sentence goes on
+ * around them. A blank without an entry here still gets a screen, asked with
+ * its hint and with no ready answers.
+ */
+export interface TemplateStep {
+  /** The question the consultant asks, one short line. */
+  ask: string;
+  /** Ready answers, 3-5, each one a phrase that reads right inside the sentence. */
+  options: string[];
+}
+
+const ROLE_STEP: TemplateStep = {
+  ask: "What is your role?",
+  options: ["Head of IT", "project manager", "managing director", "team lead", "consultant"],
+};
+
+export const TEMPLATE_STEPS: Record<string, Record<string, TemplateStep>> = {
+  "it-project": {
+    role: ROLE_STEP,
+    what: { ask: "What do you want to implement?", options: ["a new CRM", "an ERP system", "a new HR tool", "a data platform", "an AI assistant"] },
+    goal: { ask: "What should it help you with?", options: ["save time", "cut costs", "win more customers", "make fewer mistakes", "see our numbers in one place"] },
+    who: { ask: "Who is involved?", options: ["the IT team", "sales", "management", "the whole company", "an outside partner"] },
+    when: { ask: "By when does it have to be done?", options: ["the end of this month", "the end of this quarter", "the end of the year", "the middle of next year"] },
+  },
+  "it-company": {
+    role: ROLE_STEP,
+    company: { ask: "What kind of company is it?", options: ["a mid-sized company", "a start-up", "a large corporation", "a public authority"] },
+    what: { ask: "What do you want to roll out?", options: ["Microsoft 365", "a new ERP system", "an AI assistant for everyone", "a new way of working"] },
+    departments: { ask: "Which departments are affected?", options: ["all of them", "sales and marketing", "finance and HR", "production and logistics"] },
+    worry: { ask: "What worries you most?", options: ["that people won't use it", "the budget", "the timeline", "data protection"] },
+  },
+  "ai-use-case": {
+    role: ROLE_STEP,
+    task: { ask: "What should the AI do?", options: ["answer customer questions", "write offers", "sort incoming emails", "summarise documents"] },
+    users: { ask: "Who would use it?", options: ["our support team", "sales", "every employee", "our customers"] },
+    data: { ask: "What data do you have?", options: ["emails and documents", "a CRM", "Excel sheets", "almost nothing yet"] },
+    first: { ask: "What would a good first result be?", options: ["a working demo", "one team using it", "time saved every week", "a clear yes or no"] },
+  },
+  "idea": {
+    idea: { ask: "What is your idea?", options: ["an app", "an online shop", "a service for companies", "a new product"] },
+    "for": { ask: "Who is it for?", options: ["small businesses", "families", "students", "companies like mine"] },
+    exists: { ask: "How do people solve this today?", options: ["doing it by hand", "using Excel", "paying an agency", "not at all"] },
+    step: { ask: "What would your first step be?", options: ["talking to customers", "building a prototype", "finding a co-founder", "working that out"] },
+  },
+  "team-change": {
+    team: { ask: "Which team do you lead?", options: ["the sales team", "the IT team", "a department of about 20 people", "the whole company"] },
+    when: { ask: "From when does it change?", options: ["next month", "the start of next quarter", "January", "a date we still have to set"] },
+    change: { ask: "What will change for them?", options: ["work with a new tool", "work in new teams", "follow a new process", "work more from home"] },
+    fear: { ask: "What do people fear?", options: ["losing their job", "more work", "not keeping up", "losing control"] },
+  },
+  "no-idea": {
+    role: ROLE_STEP,
+    problem: { ask: "What is the problem?", options: ["too much manual work", "projects run late", "we lose customers", "the team is overloaded"] },
+  },
+};
+
+/** One screen per blank, in the order the sentences ask for them. */
+export function stepsOf(template: PromptTemplate): ({ id: string; hint: string } & TemplateStep)[] {
+  return fieldsOf(template).map(id => {
+    const hint = template.hints[id] ?? id;
+    const step = TEMPLATE_STEPS[template.id]?.[id];
+    return { id, hint, ask: step?.ask ?? hint, options: step?.options ?? [] };
+  });
+}
+
 const SLOT = /\{(\w+)\}/g;
 
 /** The blanks of a sentence, in the order they appear. */
