@@ -203,9 +203,6 @@ export function PromptPad({ agents, onActivate, onDraft }: {
                   <span className="pp-term-spacer" />
                 </div>
                 <div className="pp-term-body">
-                  <p className="pp-term-log" aria-hidden="true">
-                    <span className="pp-term-ok">✓</span> {tr("consultant ready · methods loaded")}
-                  </p>
                   <div className="pp-term-line">
                     <span className="pp-term-prompt" aria-hidden="true">
                       <span className="pp-term-user">{promptUser}@agxp</span>

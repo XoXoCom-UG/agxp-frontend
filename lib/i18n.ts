@@ -954,7 +954,6 @@ export const DE: Record<string, string> = {
   // Cockpit, fourth pass; landing; resume line; conversation meter (2026-11-27).
   "Your methods are here": "Hier sind deine Methoden",
   "new project": "neues Projekt",
-  "consultant ready · methods loaded": "Berater bereit · Methoden geladen",
   "projects": "projekte",
   "Run": "Ausführen",
   "this week": "diese Woche",

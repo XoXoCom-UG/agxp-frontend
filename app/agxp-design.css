@@ -9993,3 +9993,22 @@ html.light .pp-composer.pp-term{ background:var(--term-bg); border-color:#1d2431
   .pp-term .pp-send{ width:auto; margin-left:auto; }
   .pp-term .pp-composer-bar{ flex-wrap:nowrap; }
 }
+
+/* Terminal, plainer (2026-11-27, Tudor: "prea colorata, mai simpla si negru"):
+   black, white and greys only — no coloured lights, no green, no blue ring. */
+.pp-composer.pp-term{
+  --term-bg:#000; --term-bar:#0a0a0a; --term-line:#262626; --term-fg:#ededed; --term-dim:#737373;
+  --term-green:#ededed; --term-blue:#a3a3a3;
+  box-shadow:none;
+}
+html.light .pp-composer.pp-term{ background:#000; border-color:#262626; box-shadow:0 12px 30px -18px rgba(0,0,0,.5); }
+.pp-composer.pp-term:focus-within{ border-color:#525252; box-shadow:none; }
+.pp-term-dots i:nth-child(n){ background:#2e2e2e; }
+.pp-term-user{ font-weight:400; }
+.pp-term .pp-area{ caret-color:#ededed; }
+.pp-term .pp-area::placeholder{ color:#525252; }
+.pp-term .pp-keys kbd{ color:#a3a3a3; background:#111; border-color:#2e2e2e; }
+.pp-term-count{ color:#404040; }
+.pp-term .pp-send{ color:#000; background:#ededed; }
+@media (hover:hover) and (pointer:fine){ .pp-term .pp-send:hover:not(:disabled){ opacity:1; background:#fff; } }
+.pp-send-key{ background:rgba(0,0,0,.12); }
