@@ -74,3 +74,25 @@ test("only the latest 20 projects are kept", () => {
 test("the drafts are dropped with the account", () => {
   assert.ok(USER_BOUND_KEYS.includes(DRAFT_KEY));
 });
+
+test("a long conclusion is cut at a sentence or a word, never inside a word", async () => {
+  const { shorten } = await import("./method-draft.ts");
+  const cut = shorten("With the goal (more customers via ERP) and the deadline (end of year) as anchors, we can already frame the gap analysis around time and goals, but we still need your input on dimensions like current skills, technology, other things", 160);
+  assert.ok(cut.length <= 160);
+  assert.ok(cut.endsWith("…"));
+  assert.ok(!/\bo…$/.test(cut));
+  assert.equal(shorten("Short.", 160), "Short.");
+});
+
+test("a project with only the reason for its consultant is kept, skips survive", () => {
+  const m = memory();
+  saveDraft("p2", { kind: "strategy", status: "ready", drafts: [], reason: "Because." }, m);
+  assert.equal(loadDraft("p2", m)?.reason, "Because.");
+  saveDraft("p3", { kind: "strategy", status: "ready", drafts: [{ label: "Risks", text: "x", skipped: true }] }, m);
+  assert.equal(loadDraft("p3", m)?.drafts[0].skipped, true);
+});
+
+test("a cut prefers the end of a sentence", async () => {
+  const { shorten } = await import("./method-draft.ts");
+  assert.equal(shorten("The budget is set for this year. The rest of it is still very much open for now.", 50), "The budget is set for this year.");
+});

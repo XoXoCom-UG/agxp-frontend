@@ -13,7 +13,12 @@ function clean(drafts: unknown): MethodDraft[] {
   if (!Array.isArray(drafts)) return [];
   return drafts
     .filter((d): d is MethodDraft => !!d && typeof d.label === "string" && typeof d.text === "string")
-    .map(d => ({ label: d.label.slice(0, 120), text: d.text.replace(/\[\[|\]\]/g, "").slice(0, MAX_DRAFT_TEXT * 2) }));
+    .map(d => ({
+      label: d.label.slice(0, 120),
+      text: d.text.replace(/\[\[|\]\]/g, "").slice(0, MAX_DRAFT_TEXT * 3),
+      ...(d.skipped === true ? { skipped: true } : {}),
+      ...(d.edited === true ? { edited: true } : {}),
+    }));
 }
 
 export async function loadDraftRemote(projectId: string): Promise<DraftState | null> {
@@ -22,14 +27,15 @@ export async function loadDraftRemote(projectId: string): Promise<DraftState | n
       .select("kind, drafts, reason").eq("project_id", projectId).maybeSingle();
     if (error || !data) return null;
     const drafts = clean(data.drafts);
-    return drafts.length ? { kind: data.kind, status: "ready", drafts, reason: typeof data.reason === "string" ? data.reason : undefined } : null;
+    const reason = typeof data.reason === "string" ? data.reason : undefined;
+    return drafts.length || reason ? { kind: data.kind, status: "ready", drafts, reason } : null;
   } catch {
     return null;
   }
 }
 
 export async function saveDraftRemote(projectId: string, draft: DraftState): Promise<void> {
-  if (draft.status !== "ready" || draft.drafts.length === 0) return;
+  if (draft.status !== "ready" || (draft.drafts.length === 0 && !draft.reason)) return;
   try {
     await createClient().from("agxp_method_drafts").upsert({
       project_id: projectId, kind: draft.kind, drafts: clean(draft.drafts), reason: draft.reason?.slice(0, 400) ?? null, updated_at: new Date().toISOString(),

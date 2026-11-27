@@ -13,7 +13,7 @@ import type { Deliverable } from "@/lib/deliverables";
 import type { DraftState } from "@/lib/method-draft";
 import { md, handleCodeCopyClick } from "@/lib/markdown";
 import { ArtifactActions, versionLine } from "@/components/layout/deliverable-rail";
-import { IconArrow, IconCheck, IconChevronDown, IconDoc, IconLock, IconMinimise, IconSpark, IconMore, IconPencil, IconDownload, IconPrint, IconShare } from "@/components/layout/agxp-icons";
+import { IconArrow, IconCheck, IconChevronDown, IconDoc, IconLock, IconMinimise, IconSpark, IconRefresh, IconMore, IconPencil, IconDownload, IconPrint, IconShare } from "@/components/layout/agxp-icons";
 import { useT } from "@/lib/language";
 import { AgentMascot } from "@/components/layout/agent-mascot";
 
@@ -38,7 +38,7 @@ const GENERATE_FROM_PCT = 60;
  * Methods that fill in live while the user talks need their own marker in the
  * chat protocol and come in a later phase.
  */
-export function MethodsPanel({ tabs, agentId, consultantType, onChangeConsultant, projectId, deliverable, draft, snap, onOpenDoc, onEditDraft, onMinimise, onAct }: {
+export function MethodsPanel({ tabs, agentId, consultantType, onChangeConsultant, projectId, deliverable, draft, snap, onOpenDoc, onEditDraft, onSkipMethod, onDrawConclusions, conclusionsFailed, onMinimise, onAct }: {
   /** Methods or Coach — drawn in the header, inside the card. */
   tabs?: React.ReactNode;
   /** The project's consultant: its face, at its own level, speaks in the Cockpit. */
@@ -51,6 +51,12 @@ export function MethodsPanel({ tabs, agentId, consultantType, onChangeConsultant
   projectId?: string | null;
   /** The person corrected one method's draft. Without it the drafts are read-only. */
   onEditDraft?: (label: string, text: string) => void;
+  /** Skip a method (true) or bring it back (false). */
+  onSkipMethod?: (label: string, skip: boolean) => void;
+  /** One short conclusion per method, from what the person has typed so far. */
+  onDrawConclusions?: (text: string) => void;
+  /** The last "Draw conclusions" did not come back. */
+  conclusionsFailed?: boolean;
   /** What the Consultant is working toward — its title and its questions. It
    *  depends on the agent's type, so the screen works it out. */
   deliverable: Deliverable;
@@ -94,7 +100,13 @@ export function MethodsPanel({ tabs, agentId, consultantType, onChangeConsultant
   const nowIdx = finished ? -1 : (rail?.stationIdx ?? -1);
 
   const html = useMemo(() => (doc ? md(doc.content) : ""), [doc]);
-  const draftText = useMemo(() => new Map((draft?.drafts ?? []).map(x => [x.label, x.text])), [draft]);
+  const draftText = useMemo(() => new Map((draft?.drafts ?? []).filter(x => !x.skipped).map(x => [x.label, x.text])), [draft]);
+  /** Methods the person chose to leave out. */
+  const skipped = useMemo(() => new Set((draft?.drafts ?? []).filter(x => x.skipped).map(x => x.label)), [draft]);
+  /** What the conclusions are drawn from: the person's own words in the chat. */
+  const userText = rail?.userText ?? "";
+  const canConclude = !!onDrawConclusions && !!userText.trim() && draft?.status !== "pending" && !(snap?.busy ?? false);
+  const conclude = () => { if (canConclude) onDrawConclusions?.(userText); };
   const drafting = draft?.status === "pending";
   /** The one method unfolded in the list. */
   const [open, setOpen] = useState<string | null>(null);
@@ -121,8 +133,8 @@ export function MethodsPanel({ tabs, agentId, consultantType, onChangeConsultant
 
   // A draft is half the way, a method the interview has passed is all of it:
   // the bar counts both, the words say which (a draft is not "ready").
-  const doneCount = stations.filter((s, i) => i < nowIdx && !leftOpen.has(s.label)).length;
-  const drafted = stations.filter((s, i) => i > nowIdx && draftText.has(s.label)).length;
+  const doneCount = stations.filter((s, i) => skipped.has(s.label) || (i < nowIdx && !leftOpen.has(s.label))).length;
+  const drafted = stations.filter((s, i) => i > nowIdx && !skipped.has(s.label) && draftText.has(s.label)).length;
   const fill = Math.round(((doneCount + drafted / 2) / Math.max(1, stations.length)) * 100);
   const countLine = doneCount === 0 && drafted > 0
     ? tr("{n} of {total} drafted", { n: drafted, total: stations.length })
@@ -131,7 +143,9 @@ export function MethodsPanel({ tabs, agentId, consultantType, onChangeConsultant
   const pct = nowIdx >= 0 ? snap?.pct ?? 0 : 0;
   /** What the consultant says above the list: the one thing to do next. */
   const hint = drafting
-    ? tr("I'm writing a first draft of every method…")
+    ? tr("I'm drawing conclusions from what you wrote…")
+    : conclusionsFailed
+      ? tr("That didn't work. Try Draw conclusions again in a moment.")
     : snap?.busy
       ? tr("One moment, I'm answering in the chat.")
       : nowIdx >= 0 && pct >= GENERATE_FROM_PCT
@@ -139,8 +153,8 @@ export function MethodsPanel({ tabs, agentId, consultantType, onChangeConsultant
         : nowIdx >= 0
           ? tr("We're on {label}. Answer me in the chat.", { label: stations[nowIdx]?.label ?? "" })
           : draftText.size > 0
-            ? tr("Here's a first draft. Open a method, or let me improve all of them.")
-            : tr("Open a method and I'll talk it through with you.");
+            ? tr("These are my conclusions so far. Open a method to correct it, skip it or talk it through.")
+            : tr("Nothing is filled in yet. I can draw conclusions from what you wrote, or we go through it in the chat.");
 
   return (
     <section className={`panel methods-panel${finished ? " is-ready" : ""}`} aria-labelledby="mp-title">
@@ -233,7 +247,7 @@ export function MethodsPanel({ tabs, agentId, consultantType, onChangeConsultant
           <ul className="ck-list" data-tour="rail">
             {stations.map((s, i) => {
               const passed = i < nowIdx && !leftOpen.has(s.label);
-              const state = passed ? "done" : i === nowIdx ? "now" : draftText.has(s.label) ? "draft" : "todo";
+              const state = skipped.has(s.label) ? "skipped" : passed ? "done" : i === nowIdx ? "now" : draftText.has(s.label) ? "draft" : "todo";
               const isOpen = open === s.label;
               const body = draftText.get(s.label) ?? s.note;
               const busy = !controls || (snap?.busy ?? false);
@@ -247,21 +261,30 @@ export function MethodsPanel({ tabs, agentId, consultantType, onChangeConsultant
                     {/* The state in a word, not only a dot: readable at a glance. */}
                     {state !== "todo" && (
                       <span className={`ck-tag ${state}`}
-                        title={tr(state === "done" ? "Talked through with you in the interview" : state === "now" ? "The interview is on this method now" : "A first draft from what you wrote")}>
-                        {tr(state === "done" ? "Done" : state === "now" ? "Now" : "Draft")}
+                        title={tr(state === "skipped" ? "You left this method out" : state === "done" ? "Talked through with you in the interview" : state === "now" ? "The interview is on this method now" : "A conclusion from what you wrote")}>
+                        {tr(state === "skipped" ? "Skipped" : state === "done" ? "Done" : state === "now" ? "Now" : "Draft")}
                       </span>
                     )}
                     <IconChevronDown size={14} className="ck-chev" />
-                    <span className="visually-hidden">{tr(state === "done" ? ", done" : state === "now" ? ", in progress" : state === "draft" ? ", drafted" : ", not yet")}</span>
+                    <span className="visually-hidden">{tr(state === "skipped" ? ", skipped" : state === "done" ? ", done" : state === "now" ? ", in progress" : state === "draft" ? ", drafted" : ", not yet")}</span>
                   </button>
                   {isOpen && (
                     <div className="ck-more">
-                      {drafting && !draftText.has(s.label)
+                      {state === "skipped"
+                        ? <p className="ck-text">{tr("You skipped this method. It stays out of the document.")}</p>
+                        : drafting && !draftText.has(s.label)
                         ? <span className="mp-step-d is-wait" aria-hidden="true" />
                         : draftText.has(s.label) && onEditDraft && !drafting
                           ? <DraftText label={s.label} text={draftText.get(s.label) ?? ""} onSave={t => onEditDraft(s.label, t)} />
                           : body && <p className="ck-text">{body}</p>}
-                      {controls && (
+                      {controls && state === "skipped" && onSkipMethod && (
+                        <div className="ck-actions">
+                          <button type="button" className="sh-btn" onClick={() => onSkipMethod(s.label, false)}>
+                            {tr("Bring it back")}
+                          </button>
+                        </div>
+                      )}
+                      {controls && state !== "skipped" && (
                         <div className="ck-actions">
                           {/* One clear way in; the others wait behind "More" (2026-11-27). */}
                           <button type="button" className="sh-btn sh-primary" disabled={busy}
@@ -271,6 +294,12 @@ export function MethodsPanel({ tabs, agentId, consultantType, onChangeConsultant
                           {state === "now" && rail?.canSkip && (
                             <button type="button" className="sh-btn sh-ghost" disabled={busy} onClick={controls.skip}>
                               {tr("Skip this step")}<IconArrow size={12} />
+                            </button>
+                          )}
+                          {state !== "now" && onSkipMethod && (
+                            <button type="button" className="sh-btn sh-ghost" disabled={busy}
+                              onClick={() => { onSkipMethod(s.label, true); setOpen(null); }}>
+                              {tr("Skip")}
                             </button>
                           )}
                           {state !== "now" && (
@@ -339,9 +368,21 @@ export function MethodsPanel({ tabs, agentId, consultantType, onChangeConsultant
           method leads; once there is enough, the document does. */}
       {!finished && rail && controls && (
         <div className="ck-foot">
-          {rail.stationIdx < 0 && (
+          {/* Nothing filled in until the person asks: Draw conclusions first,
+              then the interview to improve them (2026-11-27). */}
+          {rail.stationIdx < 0 && draftText.size === 0 && onDrawConclusions && (
+            <button className="wz-go ck-main" disabled={!canConclude} onClick={conclude}>
+              <IconSpark size={13} />{tr(drafting ? "Drawing conclusions…" : "Draw conclusions")}
+            </button>
+          )}
+          {rail.stationIdx < 0 && (draftText.size > 0 || !onDrawConclusions) && (
             <button className="wz-go ck-main" disabled={snap?.busy ?? false} onClick={controls.optimize}>
               <IconSpark size={13} />{tr("Improve all methods")}
+            </button>
+          )}
+          {draftText.size > 0 && onDrawConclusions && (
+            <button className="sh-btn sh-ghost ck-again" disabled={!canConclude} onClick={conclude}>
+              <IconRefresh size={12} />{tr(drafting ? "Drawing conclusions…" : "Draw conclusions again")}
             </button>
           )}
           {pct >= GENERATE_FROM_PCT ? (

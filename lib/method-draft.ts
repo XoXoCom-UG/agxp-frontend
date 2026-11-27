@@ -13,7 +13,18 @@
  * run under plain node.
  */
 
-export interface MethodDraft { label: string; text: string }
+export interface MethodDraft {
+  label: string;
+  text: string;
+  /** The person pressed Skip on this method: it is not worked on, and the
+   *  consultant reads it as "übersprungen". */
+  skipped?: boolean;
+  /** The person corrected this line: drawing conclusions again keeps it. */
+  edited?: boolean;
+}
+
+/** What a skipped method says to the consultant (it reads the draft as material). */
+export const SKIPPED_TEXT = "übersprungen (der Nutzer hat diese Methode ausgelassen)";
 
 /** The Cockpit's view of the draft: still being written, there, or not coming. */
 export interface DraftState {
@@ -27,17 +38,19 @@ export interface DraftState {
 
 export interface DraftStation { label: string; goal: string }
 
-/** A long agenda drafts its first methods only: the draft is a taste, not the interview. */
-export const MAX_DRAFT_METHODS = 10;
-export const MAX_DRAFT_TEXT = 220;
+/** Every method of the agenda gets its conclusion (the longest agenda has 16). */
+export const MAX_DRAFT_METHODS = 20;
+/** One short sentence: the Cockpit is a list to scan, not a page to read (2026-11-27). */
+export const MAX_DRAFT_TEXT = 160;
 
 export function draftSystemPrompt(stations: DraftStation[]): string {
   const list = stations.map(s => `- ${s.label}: ${s.goal}`).join("\n");
   return (
-    "Du schreibst für einen Berater den ersten Entwurf seiner Methoden. Der Nutzer beschreibt, was er vorhat. " +
-    "Zu jeder Methode dieser Liste schreibst du ein bis zwei kurze Sätze: was diese Methode für DIESES Projekt " +
-    "bringt, nur aus dem, was der Nutzer gesagt hat. Erfinde nichts, keine Zahlen, keine Namen. Weiß der Text " +
-    'nichts dazu, schreibst du „offen: “ und sagst in einem Satz, was fehlt.\n\n' +
+    "Du ziehst für einen Berater Schlussfolgerungen zu seinen Methoden, aus dem, was der Nutzer bisher " +
+    "geschrieben hat. Zu jeder Methode dieser Liste schreibst du GENAU EINEN kurzen Satz, höchstens 18 Wörter: " +
+    "die Schlussfolgerung für DIESES Projekt, nur aus dem Gesagten. Keine Einleitung, kein „Mit dem Ziel …“, " +
+    "keine Wiederholung der Methode. Erfinde nichts, keine Zahlen, keine Namen. Weiß der Text nichts dazu, " +
+    'schreibst du „offen: “ und in wenigen Wörtern, was fehlt.\n\n' +
     `Methoden:\n${list}\n\n` +
     "Gib NUR ein JSON-Objekt zurück, ohne Text davor oder danach:\n" +
     '{"drafts":[{"label":"<Methode, genau wie in der Liste>","text":"<Entwurf>"}, …]}\n' +
@@ -54,7 +67,20 @@ function jsonObject(text: string): unknown {
 
 /** A draft line: one paragraph, no markers, no markup that could pass for the app's own. */
 function cleanText(raw: string): string {
-  return raw.replace(/\[\[|\]\]/g, "").replace(/\s+/g, " ").trim().slice(0, MAX_DRAFT_TEXT);
+  return shorten(raw.replace(/\[\[|\]\]/g, "").replace(/\s+/g, " ").trim());
+}
+
+/**
+ * Cut to `max` at the end of a sentence if there is one, else at a word, with
+ * "…" — never in the middle of a word ("technology, o").
+ */
+export function shorten(text: string, max = MAX_DRAFT_TEXT): string {
+  if (text.length <= max) return text;
+  const head = text.slice(0, max);
+  const sentence = Math.max(head.lastIndexOf(". "), head.lastIndexOf("! "), head.lastIndexOf("? "));
+  if (sentence > max * 0.4) return head.slice(0, sentence + 1);
+  const space = head.lastIndexOf(" ");
+  return `${head.slice(0, space > max * 0.4 ? space : max - 1).replace(/[,;:\s]+$/, "")}…`;
 }
 
 /**

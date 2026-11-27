@@ -112,6 +112,9 @@ export interface RailState {
    *  stored conversation (lib/cockpit-history.ts), so they survive a reload. */
   talked: string[];
   leftOpen: string[];
+  /** Everything the person typed here, oldest first, without the app's own
+   *  commands — what "Draw conclusions" draws them from. */
+  userText: string;
 }
 
 /** What the rail can do. One object per panel, with a stable identity: the

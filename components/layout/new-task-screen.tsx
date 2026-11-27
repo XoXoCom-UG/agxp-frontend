@@ -16,8 +16,8 @@ import { AgentPickerPanel } from "@/components/layout/agent-picker-panel";
 import { ConsultantSwitch, AssistantMissing } from "@/components/layout/consultant-switch";
 import { ProjectChatPanel } from "@/components/layout/project-chat-panel";
 import { PromptPad, type Activation } from "@/components/layout/prompt-pad";
-import { activateTeam } from "@/lib/start-flow";
-import type { DraftState } from "@/lib/method-draft";
+import { activateTeam, requestMethodDraft } from "@/lib/start-flow";
+import { SKIPPED_TEXT, type DraftState, type MethodDraft } from "@/lib/method-draft";
 import { saveDraft, loadDraft } from "@/lib/method-draft-store";
 import { saveDraftRemote, loadDraftRemote } from "@/lib/method-draft-db";
 import { MethodsPanel } from "@/components/layout/methods-panel";
@@ -358,9 +358,50 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
     setDraft(d => {
       if (!d || d.status !== "ready") return d;
       const has = d.drafts.some(x => x.label === label);
-      const drafts = has ? d.drafts.map(x => (x.label === label ? { label, text } : x)) : [...d.drafts, { label, text }];
+      const drafts = has ? d.drafts.map(x => (x.label === label ? { label, text, edited: true } : x)) : [...d.drafts, { label, text, edited: true }];
       return { ...d, drafts };
     });
+  }, []);
+
+  /** Skip, or bring back, one method: a skipped one is not worked on (2026-11-27). */
+  const skipMethod = useCallback((label: string, skip: boolean) => {
+    setDraft(d => {
+      if (!d || d.status !== "ready") return d;
+      const rest = d.drafts.filter(x => x.label !== label);
+      return { ...d, drafts: skip ? [...rest, { label, text: SKIPPED_TEXT, skipped: true }] : rest };
+    });
+  }, []);
+
+  /**
+   * "Draw conclusions" (2026-11-27): one short sentence per method, from what
+   * the person has typed so far. Asked for, never automatic — an empty Cockpit
+   * that filled itself read as "I didn't fill anything in, who did?". Methods
+   * the person skipped or corrected keep what they have.
+   */
+  const [conclusionsFailed, setConclusionsFailed] = useState(false);
+  const conclusionsRun = useRef(0);
+  const drawConclusions = useCallback((text: string, kind: string) => {
+    if (!text.trim()) return;
+    const run = ++conclusionsRun.current;
+    let kept: MethodDraft[] = [];
+    let reason: string | undefined;
+    setDraft(d => {
+      kept = d?.kind === kind ? d.drafts.filter(x => x.skipped || x.edited) : [];
+      reason = d?.reason;
+      return { kind, status: "pending", drafts: d?.kind === kind ? d.drafts : [], reason };
+    });
+    requestMethodDraft(text, kind)
+      .then(drafts => {
+        if (run !== conclusionsRun.current) return;
+        const keep = new Set(kept.map(x => x.label));
+        setDraft({ kind, status: "ready", reason, drafts: [...kept, ...drafts.filter(x => !keep.has(x.label))] });
+      })
+      .catch(() => {
+        if (run !== conclusionsRun.current) return;
+        setDraft(d => (d ? { ...d, status: "ready" } : d));
+        setConclusionsFailed(true);
+      });
+    setConclusionsFailed(false);
   }, []);
 
   useEffect(() => {
@@ -748,6 +789,9 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
               draft={draft && consultantAgent && draft.kind === kindFor(consultantAgent) ? draft : null}
               snap={snaps.consultant}
               onEditDraft={editDraft}
+              onSkipMethod={skipMethod}
+              onDrawConclusions={consultantAgent ? text => drawConclusions(text, kindFor(consultantAgent)) : undefined}
+              conclusionsFailed={conclusionsFailed}
               projectId={project?.id ?? null}
               onOpenDoc={setOpenDoc}
               onMinimise={() => { setUnfolding(false); setCoachMode("min"); }} />

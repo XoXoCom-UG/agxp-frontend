@@ -7,7 +7,7 @@ import { holdsSlot } from "@/lib/agent-types";
 import { useEntitlement } from "@/lib/entitlement";
 import { PROMPT_TEMPLATES, composeText, type PromptTemplate } from "@/lib/prompt-templates";
 import { TemplateWizard } from "@/components/layout/template-wizard";
-import { requestStartPlan, requestMethodDraft, existingFor, templateById, StartError } from "@/lib/start-flow";
+import { requestStartPlan, existingFor, templateById, StartError } from "@/lib/start-flow";
 import type { DraftState } from "@/lib/method-draft";
 import type { StartPlan } from "@/lib/start-plan";
 import { describeDbError } from "@/lib/db-error";
@@ -116,15 +116,11 @@ export function PromptPad({ agents, onActivate, onDraft }: {
   // The steps of the waiting screen follow the real work (2026-11-27): a step
   // is ticked when the request behind it has answered, not on a timer.
 
-  // The newest draft request: an older one that lands late is dropped.
-  const draftRun = useRef(0);
-  /** Writes the first draft of every method in the background. Never blocks, never shows an error. */
-  function beginDraft(prompt: string, kind: string, reason: string) {
-    const run = ++draftRun.current;
-    onDraft?.({ kind, status: "pending", drafts: [], reason });
-    requestMethodDraft(prompt, kind)
-      .then(drafts => { if (run === draftRun.current) onDraft?.({ kind, status: "ready", drafts, reason }); })
-      .catch(() => { if (run === draftRun.current) onDraft?.({ kind, status: "failed", drafts: [], reason }); });
+  /** Nothing is drafted at Start any more (2026-11-27, Tudor: "nu am completat
+   *  nimic"): the Cockpit opens empty and the person asks for conclusions with
+   *  one button. Only the type and the reason it was chosen go along. */
+  function announce(kind: string, reason: string) {
+    onDraft?.({ kind, status: "ready", drafts: [], reason });
   }
 
   const prompt = tpl ? composeText(tpl, values, tr) : text.trim();
@@ -141,7 +137,6 @@ export function PromptPad({ agents, onActivate, onDraft }: {
     setError(null);
     setPhase("working");
     setStep(0);
-    draftRun.current++;
     onDraft?.(null);
     try {
       const plan = await requestStartPlan(prompt);
@@ -152,7 +147,7 @@ export function PromptPad({ agents, onActivate, onDraft }: {
         setPhase("full");
         return;
       }
-      beginDraft(prompt, plan.kind, plan.reason);
+      announce(plan.kind, plan.reason);
       setStep(2);
       await onActivate({ prompt, plan, reuse });
     } catch (e) {

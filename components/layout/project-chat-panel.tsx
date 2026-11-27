@@ -380,6 +380,11 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
   const canSkip = !!station && interviewStarted && stationIdx >= 0 && stationIdx < totalStations - 1 && pct < 100 && docs.length === 0;
   const skipStation = () => chat.send(skipStationPrompt(stationLabel));
 
+  // What the person typed, for "Draw conclusions": their own words only.
+  const userText = useMemo(() => entries
+    .filter(e => e.m.role === "user" && !e.isCommand && !e.isError)
+    .map(e => e.p.text.trim()).filter(Boolean).join("\n\n").slice(-6000), [entries]);
+
   // What the Cockpit remembers per method, read from the conversation itself.
   const history = useMemo(
     () => cockpitHistory(messages.map(m => ({ role: m.role, content: m.content })), deliverable.stations),
@@ -440,12 +445,12 @@ export function ProjectChatPanel({ project, role, agent, projectCount = 0, peer,
       rail: {
         title: deliverable.title, totalStations, stationIdx, stationLabel, currentDoc,
         version: currentVersion, restored: restoredVersion !== null, versions, canSkip,
-        talked: history.talked, leftOpen: history.leftOpen,
+        talked: history.talked, leftOpen: history.leftOpen, userText,
       },
       controls, busy: sending,
     });
   }, [entries, loaded, sending, agent.name, role, docs.length, pct, station, deliverable.title, totalStations,
-      stationIdx, stationLabel, currentDoc, currentVersion, restoredVersion, versions, controls, canSkip, history]);
+      stationIdx, stationLabel, currentDoc, currentVersion, restoredVersion, versions, controls, canSkip, history, userText]);
 
   const busy = sending || !!leavingId;
 

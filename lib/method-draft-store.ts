@@ -20,9 +20,9 @@ function read(storage: Pick<Storage, "getItem">): Store {
   }
 }
 
-/** Only a finished draft is worth keeping. */
+/** Only a finished draft is worth keeping, or the reason the consultant was chosen. */
 export function saveDraft(projectId: string, draft: DraftState, storage: Pick<Storage, "getItem" | "setItem"> = window.localStorage): void {
-  if (draft.status !== "ready" || draft.drafts.length === 0) return;
+  if (draft.status !== "ready" || (draft.drafts.length === 0 && !draft.reason)) return;
   try {
     const all = read(storage);
     delete all[projectId]; // re-insert last: insertion order is the age
