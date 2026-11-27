@@ -9454,7 +9454,7 @@ html.light .panel.pp{ border-color:rgba(0,0,0,0.07); }
 }
 .pp-composer:focus-within{ border-color:var(--border-strong, var(--border)); }
 .pp-area{
-  width:100%; min-height:84px; max-height:280px; box-sizing:border-box; padding:var(--sp-2) var(--sp-2) 0; resize:none;
+  width:100%; min-height:84px; max-height:280px; field-sizing:content; box-sizing:border-box; padding:var(--sp-2) var(--sp-2) 0; resize:none;
   font:inherit; font-size:var(--text-lg); line-height:1.5; letter-spacing:-0.005em; color:var(--foreground);
   background:none; border:0; outline:0; box-shadow:none; overflow-y:auto;
 }
@@ -9483,12 +9483,59 @@ html.light .panel.pp{ border-color:rgba(0,0,0,0.07); }
 /* The start screen alone (clean-up pass 2026-11-27): the pad fills the
    workspace, one column in the middle, nothing beside it. */
 .workspace.pp-workspace > .slot{ flex:1 1 auto; }
-.pp-col{ justify-content:center; }
+/* "safe": when the column is taller than the screen (a phone), it starts at the
+   top instead of being centred with its head cut off. */
+.pp-col{ justify-content:safe center; width:min(760px, 100%); }
 .pp-write{ display:flex; flex-direction:column; gap:var(--sp-5); }
 .pp-title{ margin:0; text-align:center; font-size:clamp(22px, 2.4vw, 28px); font-weight:500; letter-spacing:-0.015em; color:var(--foreground); }
 
-/* The examples: a quiet row of words under the field. One opens a few short fields. */
-.pp-examples{ display:flex; flex-wrap:wrap; justify-content:center; gap:var(--sp-2); }
+/* The hello: the consultant's face, the person's name, the question and one
+   line on what happens. Gives the screen someone to talk to (2026-11-27). */
+.pp-hello{ display:flex; flex-direction:column; align-items:center; gap:var(--sp-2); text-align:center; }
+.pp-face{ display:flex; margin-bottom:var(--sp-2); }
+.pp-hi{ margin:0; font-size:var(--text-base); color:var(--muted-foreground); }
+.pp-lead{ margin:0; max-width:44ch; font-size:var(--text-sm); line-height:1.55; color:var(--muted-foreground); }
+
+/* Light theme: a white field with a hairline and a soft lift, not a grey slab. */
+html.light .pp-composer{ background:#fff; border-color:rgba(0,0,0,0.1); box-shadow:0 1px 2px rgba(16,24,40,0.04), 0 6px 20px -8px rgba(16,24,40,0.10); }
+html.light .pp-composer:focus-within{ border-color:rgba(0,0,0,0.22); }
+html.light .pp-ex{ background:#fff; border-color:rgba(0,0,0,0.08); }
+
+/* The examples: small cards, an icon, a name and what it is for. One opens a few short fields. */
+.pp-examples-wrap{ display:flex; flex-direction:column; gap:var(--sp-3); margin-top:var(--sp-2); }
+.pp-examples-h{ margin:0; font-size:var(--text-xs); color:var(--muted-foreground); text-align:center; }
+.pp-examples{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:var(--sp-2); }
+.pp-ex{
+  display:grid; grid-template-columns:auto minmax(0, 1fr); grid-template-rows:auto auto; column-gap:var(--sp-3); row-gap:2px;
+  align-items:center; padding:var(--sp-3) var(--sp-4); text-align:left; cursor:pointer;
+  font:inherit; color:var(--foreground); background:none; border:1px solid var(--border); border-radius:12px;
+  transition:border-color 160ms var(--ease-out), background-color 160ms var(--ease-out), transform 100ms var(--ease-out);
+}
+.pp-ex:active{ transform:scale(0.98); }
+@media (hover:hover) and (pointer:fine){ .pp-ex:hover{ border-color:var(--border-strong, var(--border)); background:var(--tint-1); } }
+.pp-ex-i{
+  grid-row:1 / span 2; width:32px; height:32px; display:flex; align-items:center; justify-content:center;
+  border-radius:9px; background:var(--tint-1); color:var(--secondary-foreground, var(--foreground));
+}
+.pp-ex-t{ font-size:var(--text-sm); font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pp-ex-l{ font-size:var(--text-xs); color:var(--muted-foreground); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+@media (max-width:720px){ .pp-examples{ grid-template-columns:repeat(2, minmax(0, 1fr)); } }
+/* On a phone: two small cards a row, the name only, so the field stays in view. */
+@media (max-width:520px){
+  .pp-ex{ padding:var(--sp-3); column-gap:var(--sp-2); }
+  .pp-ex-i{ width:28px; height:28px; grid-row:auto; }
+  .pp-ex-t{ white-space:normal; font-size:var(--text-xs); line-height:1.3; }
+  .pp-ex-l{ display:none; }
+}
+
+/* What happens after Start, once, at the bottom: three numbered words. */
+.pp-how{ list-style:none; margin:var(--sp-4) 0 0; padding:0; display:flex; flex-wrap:wrap; justify-content:center; gap:var(--sp-2) var(--sp-5); }
+@media (max-width:520px){ .pp-how{ display:none; } }
+.pp-how li{ display:flex; align-items:center; gap:var(--sp-2); font-size:var(--text-xs); color:var(--muted-foreground); }
+.pp-how-n{
+  width:18px; height:18px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%;
+  border:1px solid var(--border); font-size:10px; font-variant-numeric:tabular-nums; color:var(--secondary-foreground, var(--muted-foreground));
+}
 .pp-link{
   display:inline-flex; align-items:center; gap:6px; padding:0; border:0; background:none; cursor:pointer;
   font:inherit; font-size:var(--text-xs); color:var(--muted-foreground);

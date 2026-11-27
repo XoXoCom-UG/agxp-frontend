@@ -11,7 +11,24 @@ import type { DraftState } from "@/lib/method-draft";
 import type { StartPlan } from "@/lib/start-plan";
 import { describeDbError } from "@/lib/db-error";
 import { useT } from "@/lib/language";
-import { IconAlert, IconArrowUp, IconBack, IconCheck } from "@/components/layout/agxp-icons";
+import { useAuth } from "@/lib/auth-context";
+import { AgentMascot } from "@/components/layout/agent-mascot";
+import {
+  IconAlert, IconArrowUp, IconBack, IconCheck, IconNodes, IconChart, IconSpark, IconPencil, IconUsers, IconSearch,
+} from "@/components/layout/agxp-icons";
+
+/** How each example looks on the start screen: an icon and what it is for, in a few words. */
+const EXAMPLE_LOOK: Record<string, { Icon: typeof IconNodes; line: string }> = {
+  "it-project": { Icon: IconNodes, line: "Bring in new software" },
+  "it-company": { Icon: IconChart, line: "Roll it out to everyone" },
+  "ai-use-case": { Icon: IconSpark, line: "Put AI to work" },
+  "idea": { Icon: IconPencil, line: "Test an idea" },
+  "team-change": { Icon: IconUsers, line: "Take your people along" },
+  "no-idea": { Icon: IconSearch, line: "Find the first step" },
+};
+
+/** What happens after Start, in three words each — shown once, under everything. */
+const HOW = ["Describe your project", "Your consultant picks the methods", "You get a first draft"];
 
 /** What the screen needs to put the team into the project. */
 export interface Activation { prompt: string; plan: StartPlan; reuse: Agent | null }
@@ -45,6 +62,10 @@ export function PromptPad({ agents, onActivate, onDraft }: {
 }) {
   const tr = useT();
   const { plan: account } = useEntitlement();
+  const { profileName } = useAuth();
+  const firstName = profileName.trim().split(/\s+/)[0] ?? "";
+  /** The person is writing: the consultant looks at the field. */
+  const [typing, setTyping] = useState(false);
   const [phase, setPhase] = useState<Phase>("write");
   const [text, setText] = useState("");
   const [tpl, setTpl] = useState<PromptTemplate | null>(null);
@@ -55,18 +76,9 @@ export function PromptPad({ agents, onActivate, onDraft }: {
   const areaRef = useRef<HTMLTextAreaElement>(null);
   const firstFieldRef = useRef<HTMLInputElement>(null);
 
-  // The field grows with what is written, like a chat box, up to a ceiling.
-  // Measured after layout: on the first frame the column may not have its width
-  // yet, and a narrow field reads as tall.
-  useEffect(() => {
-    const id = requestAnimationFrame(() => {
-      const el = areaRef.current;
-      if (!el) return;
-      el.style.height = "auto";
-      el.style.height = `${Math.min(el.scrollHeight, 280)}px`;
-    });
-    return () => cancelAnimationFrame(id);
-  }, [text, tpl, phase]);
+  // The field grows with what is written through CSS (field-sizing: content on
+  // .pp-area). Measuring scrollHeight in JS read the field before the column had
+  // its width and left an empty box 280px tall.
 
   useEffect(() => { if (tpl) firstFieldRef.current?.focus(); }, [tpl]);
 
@@ -129,8 +141,20 @@ export function PromptPad({ agents, onActivate, onDraft }: {
       <div className="pp-body">
         <div className="pp-col">
           {phase === "write" && (
-            <form className="pp-write" onSubmit={e => { e.preventDefault(); start(); }}>
-              <h2 className="pp-title">{tr(tpl ? tpl.title : "What are you working on?")}</h2>
+            <form className="pp-write" onSubmit={e => { e.preventDefault(); start(); }}
+              onFocus={() => setTyping(true)} onBlur={() => setTyping(false)}>
+              {/* A face and a hello: the consultant is already here, waiting for the
+                  project. It looks at the field while the person writes. */}
+              <div className="pp-hello">
+                <span className="pp-face" aria-hidden="true">
+                  <AgentMascot role="consultant" size={64} attentive={typing} />
+                </span>
+                {firstName && <p className="pp-hi">{tr("Hi {name},", { name: firstName })}</p>}
+                <h2 className="pp-title">{tr(tpl ? tpl.title : "What are you working on?")}</h2>
+                <p className="pp-lead">{tr(tpl
+                  ? "Fill in what you know. Empty fields are fine."
+                  : "Tell me in a sentence. I pick the right consulting methods and draft them for you.")}</p>
+              </div>
 
               <div className="pp-composer">
                 {tpl ? (
@@ -165,20 +189,44 @@ export function PromptPad({ agents, onActivate, onDraft }: {
                 </div>
               </div>
 
+              {error && (
+                <p className="pp-error" role="alert"><IconAlert size={13} />{error}</p>
+              )}
+
               {!tpl && (
-                <div className="pp-examples" role="group" aria-label={tr("Examples")}>
-                  {PROMPT_TEMPLATES.map(t => (
-                    <button key={t.id} type="button" className="pp-chip" onClick={() => pick(t)}>{tr(t.title)}</button>
-                  ))}
+                <div className="pp-examples-wrap">
+                  <p className="pp-examples-h">{tr("Or start from an example")}</p>
+                  <div className="pp-examples" role="group" aria-label={tr("Examples")}>
+                    {PROMPT_TEMPLATES.map(t => {
+                      const look = EXAMPLE_LOOK[t.id];
+                      const Icon = look?.Icon ?? IconSpark;
+                      return (
+                        <button key={t.id} type="button" className="pp-ex" onClick={() => pick(t)}>
+                          <span className="pp-ex-i" aria-hidden="true"><Icon size={16} /></span>
+                          <span className="pp-ex-t">{tr(t.title)}</span>
+                          {look && <span className="pp-ex-l">{tr(look.line)}</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
-              {error && (
-                <p className="pp-error" role="alert"><IconAlert size={13} />{error}</p>
+              {!tpl && (
+                <ol className="pp-how" aria-label={tr("How it works")}>
+                  {HOW.map((h, i) => <li key={h}><span className="pp-how-n">{i + 1}</span>{tr(h)}</li>)}
+                </ol>
               )}
             </form>
           )}
 
+          {phase === "working" && (
+            <div className="pp-hello">
+              <span className="pp-face" aria-hidden="true">
+                <AgentMascot role="consultant" size={64} state="thinking" />
+              </span>
+            </div>
+          )}
           {phase === "working" && (
             <ol className="pp-steps" role="status" aria-live="polite">
               {STEPS.map((s, i) => (
