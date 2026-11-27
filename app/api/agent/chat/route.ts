@@ -4,7 +4,7 @@ import { caller } from "@/lib/caller-id";
 import { memoryAllowed } from "@/lib/memory-pref";
 import type { AgentType } from "@/lib/agents";
 import { DELIVERABLES, isDeliverableCommand } from "@/lib/deliverables";
-import { systemPrompt, peerPrompt } from "@/lib/agent-prompt";
+import { systemPrompt, peerPrompt, draftPrompt } from "@/lib/agent-prompt";
 import { withAttachments } from "@/lib/message-files";
 import { peerTranscript, isReadAlongCommand, isReviewCommand, type PeerContext } from "@/lib/peer-context";
 import { replyLanguage, languagePrompt, languageNote, typedByUser } from "@/lib/reply-language";
@@ -13,7 +13,7 @@ import { estimateInputTokens, reserveMicroUsd } from "@/lib/cost";
 import { validateMessages, cleanLabel, cleanMemory, cleanKind, AGENT_NAME_MAX } from "@/lib/chat-input";
 import { loadConversation, peerTurns, saveReply, isProjectId, type StoredTurn } from "@/lib/conversation-server";
 import { cutUnfinishedMarker } from "@/lib/conversation-state";
-import { bearerOf } from "@/lib/server-db";
+import { bearerOf, userClient } from "@/lib/server-db";
 import { ipGate } from "@/lib/ip-gate";
 import { layoutMessages } from "@/lib/cache-layout";
 import { fakeAiOn, fakeReplyFor, fakeStream } from "@/lib/dev-fake-ai";
@@ -226,7 +226,10 @@ export async function POST(req: NextRequest) {
   const resolved: Anthropic.MessageParam[] = await withAttachments(messages, bearer, userId);
   // Breakpoint on the history, then the per-turn extras behind it. The peer
   // text comes first and the language note stays last, the last thing read.
-  const msgs = layoutMessages(resolved, [peerPrompt(body.agentType, peer), languageNote(lang)]);
+  // The Consultant also reads the Cockpit's draft (0037), under the caller's
+  // own token: RLS hands back this project's row or nothing.
+  const drafts = body.agentType === "consultant" ? await readDrafts(bearer, body.projectId) : [];
+  const msgs = layoutMessages(resolved, [draftPrompt(drafts), peerPrompt(body.agentType, peer), languageNote(lang)]);
 
   /*
    * The call is admitted here, after the request is fully built and before a
@@ -385,4 +388,16 @@ export async function POST(req: NextRequest) {
       "X-Accel-Buffering": "no",
     },
   });
+}
+
+/** The Cockpit's draft for this project, read as the caller. Empty without 0037 or a draft. */
+async function readDrafts(bearer: string, projectId: string): Promise<{ label: string; text: string }[]> {
+  const db = userClient(bearer);
+  if (!db) return [];
+  const { data, error } = await db.from("agxp_method_drafts").select("drafts").eq("project_id", projectId).maybeSingle();
+  if (error || !data || !Array.isArray(data.drafts)) return [];
+  return (data.drafts as unknown[])
+    .filter((d): d is { label: string; text: string } =>
+      !!d && typeof (d as { label?: unknown }).label === "string" && typeof (d as { text?: unknown }).text === "string")
+    .slice(0, 20);
 }
