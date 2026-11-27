@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { PanelSnapshot } from "@/lib/peer-context";
 import type { DeliverableDoc } from "@/components/layout/deliverable-view";
 import type { Deliverable } from "@/lib/deliverables";
 import type { DraftState } from "@/lib/method-draft";
 import { md, handleCodeCopyClick } from "@/lib/markdown";
 import { ArtifactActions, versionLine } from "@/components/layout/deliverable-rail";
-import { IconArrow, IconCheck, IconLock, IconMinimise, IconSpark } from "@/components/layout/agxp-icons";
+import { IconArrow, IconLock, IconMinimise, IconSpark } from "@/components/layout/agxp-icons";
 import { useT } from "@/lib/language";
 
 /** How far the interview has to be before the document can be asked for. */
@@ -63,6 +63,9 @@ export function MethodsPanel({ tabs, deliverable, draft, snap, onOpenDoc, onMini
   const html = useMemo(() => (doc ? md(doc.content) : ""), [doc]);
   const draftText = useMemo(() => new Map((draft?.drafts ?? []).map(x => [x.label, x.text])), [draft]);
   const drafting = draft?.status === "pending";
+  /** The one method unfolded in the list, and those the consultant has already talked through. */
+  const [open, setOpen] = useState<string | null>(null);
+  const [talked, setTalked] = useState<Set<string>>(() => new Set());
 
   return (
     <section className={`panel methods-panel${finished ? " is-ready" : ""}`} aria-labelledby="mp-title">
@@ -78,10 +81,10 @@ export function MethodsPanel({ tabs, deliverable, draft, snap, onOpenDoc, onMini
         </div>
         <div className="mp-head-txt">
           <h2 id="mp-title" className="mp-title">{tr("Consulting Methods")}</h2>
-          {/* The document these methods add up to, and its version once there is one. */}
-          <p className="mp-sub">{doc && rail ? `${d.title} · ${versionLine(rail.version, doc.createdAt, rail.restored, tr)}` : d.title}</p>
-          {/* Before there is a document: what is happening here, and why. */}
-          {!doc && <p className="mp-intro">{tr("Open a method to talk it through with your consultant.")}</p>}
+          {/* Once there is a document: its name and version. Before: how many are done, nothing more. */}
+          <p className="mp-sub">{doc && rail
+            ? `${d.title} · ${versionLine(rail.version, doc.createdAt, rail.restored, tr)}`
+            : tr("{done} of {total} done", { done: Math.max(0, nowIdx), total: stations.length })}</p>
         </div>
 
         {doc && rail && controls && (
@@ -100,83 +103,57 @@ export function MethodsPanel({ tabs, deliverable, draft, snap, onOpenDoc, onMini
       </header>
 
       <div className="mp-body">
-        {/* The interview is optional (meeting 2026-11-20): until it is asked for,
-            the Cockpit offers it instead of a progress bar at 0%. */}
-        {!finished && rail && controls && rail.stationIdx < 0 && (
-          <div className="mp-optimize" data-tour="rail">
-            <p className="mp-optimize-t">{tr("Your consultant drafts every method from what you wrote. Answer a few questions to sharpen them.")}</p>
-            <button className="artf-cta" disabled={snap?.busy ?? false} onClick={controls.optimize}>
-              <IconSpark size={12} />{tr("Optimize all methods")}
-            </button>
-          </div>
-        )}
-
-        {!finished && rail && controls && rail.stationIdx >= 0 && (
-          <div className="mp-progress" data-tour="rail">
-            <div className="mp-progress-row">
-              <span className="mp-progress-step">
-                {rail.stationIdx < 0
-                  ? tr("{n} steps · not started", { n: rail.totalStations })
-                  : `${tr("Step {n} of {total}", { n: rail.stationIdx + 1, total: rail.totalStations })} · ${rail.stationLabel}`}
-              </span>
-              <span className="mp-progress-pct">{Math.round(snap?.pct ?? 0)}%</span>
-            </div>
-            <div className="artf-bar" style={{ ["--dr-steps" as string]: rail.totalStations }}>
-              <span style={{ ["--p" as string]: `${Math.max(0, Math.min(100, snap?.pct ?? 0))}%` }} />
-            </div>
-            {/* Only once there is enough to write from: a Generate button at 0%
-                asks for a document out of nothing. */}
-            {(snap?.pct ?? 0) >= GENERATE_FROM_PCT && (
-              <button className="artf-cta mp-generate" disabled={snap?.busy ?? false} onClick={controls.generate}>
-                <IconSpark size={12} />{tr("Generate")}
-              </button>
-            )}
-          </div>
-        )}
-
+        {/* The methods as one quiet list (clean-up pass 2026-11-27): a dot that
+            says how far each one is, its name, and nothing else until it is
+            opened. Opening one shows its draft and has the consultant talk it
+            through — once per method, so a second click only folds it away. */}
         {!finished && (
-          <ol className="mp-steps">
+          <ul className="ck-list" data-tour="rail">
             {stations.map((s, i) => {
-              const state = i < nowIdx ? "done" : i === nowIdx ? "now" : "todo";
+              const state = i < nowIdx ? "done" : i === nowIdx ? "now" : draftText.has(s.label) ? "draft" : "todo";
+              const isOpen = open === s.label;
+              const body = draftText.get(s.label) ?? s.note;
               return (
-                <li key={s.label} className={`mp-step ${state}`} aria-current={state === "now" ? "step" : undefined}>
-                  <span className="mp-node" aria-hidden="true">
-                    {state === "done" && <IconCheck size={11} />}
-                  </span>
-                  <span className="mp-step-t">
-                    {/* Every method opens in the Cockpit: the consultant talks it
-                        through (meeting 2026-11-20). Not while it is answering. */}
-                    <button type="button" className="mp-step-l mp-step-open" disabled={!controls || (snap?.busy ?? false)}
-                      onClick={() => controls?.discuss(s.label)}
-                      aria-label={tr("Talk through {label}", { label: s.label })}>{s.label}</button>
-                    {/* The first draft, once there is one; until then the method's own line. */}
-                    {draftText.has(s.label)
-                      ? <span className="mp-step-d">{draftText.get(s.label)}</span>
-                      : drafting
+                <li key={s.label} className={`ck-item ${state}${isOpen ? " open" : ""}`} aria-current={state === "now" ? "step" : undefined}>
+                  <button type="button" className="ck-row" aria-expanded={isOpen}
+                    disabled={!controls}
+                    onClick={() => {
+                      if (isOpen) { setOpen(null); return; }
+                      setOpen(s.label);
+                      if (!talked.has(s.label) && !(snap?.busy ?? false)) {
+                        setTalked(t => new Set(t).add(s.label));
+                        controls?.discuss(s.label);
+                      }
+                    }}>
+                    <span className="ck-dot" aria-hidden="true" />
+                    <span className="ck-label">{s.label}</span>
+                    <span className="visually-hidden">{tr(state === "done" ? ", done" : state === "now" ? ", in progress" : state === "draft" ? ", drafted" : ", not yet")}</span>
+                  </button>
+                  {isOpen && (
+                    <div className="ck-more">
+                      {drafting && !draftText.has(s.label)
                         ? <span className="mp-step-d is-wait" aria-hidden="true" />
-                        : s.note && <span className="mp-step-n">{s.note}</span>}
-                    {/* Only on the step being worked on (Ana 2026-11-19). */}
-                    {state === "now" && rail?.canSkip && controls && (
-                      <button className="step-skip-btn mp-skip" disabled={snap?.busy ?? false} onClick={controls.skip}>
-                        {tr("Skip this step")}<IconArrow size={12} />
-                      </button>
-                    )}
-                  </span>
-                  <span className="visually-hidden">{tr(state === "done" ? ", done" : state === "now" ? ", in progress" : ", not yet")}</span>
+                        : body && <p className="ck-text">{body}</p>}
+                      {state === "now" && rail?.canSkip && controls && (
+                        <button className="pp-link" disabled={snap?.busy ?? false} onClick={controls.skip}>
+                          {tr("Skip this step")}<IconArrow size={12} />
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </li>
               );
             })}
             {locked.map(s => (
-              <li key={s.label} className="mp-step locked">
-                <span className="mp-node" aria-hidden="true"><IconLock size={11} /></span>
-                <span className="mp-step-t">
-                  <span className="mp-step-l">{s.label}</span>
-                  {s.note && <span className="mp-step-n">{s.note}</span>}
+              <li key={s.label} className="ck-item locked">
+                <span className="ck-row" aria-disabled="true">
+                  <span className="ck-dot" aria-hidden="true"><IconLock size={9} /></span>
+                  <span className="ck-label">{s.label}</span>
+                  <span className="visually-hidden">{tr(", locked on this plan")}</span>
                 </span>
-                <span className="visually-hidden">{tr(", locked on this plan")}</span>
               </li>
             ))}
-          </ol>
+          </ul>
         )}
 
         {doc && (
@@ -196,6 +173,23 @@ export function MethodsPanel({ tabs, deliverable, draft, snap, onOpenDoc, onMini
           </p>
         )}
       </div>
+
+      {/* One main button, always in the same place: improve every method while
+          the interview has not started, write the document once there is
+          enough. Nothing in between — the chat carries the interview. */}
+      {!finished && rail && controls && (rail.stationIdx < 0 || (snap?.pct ?? 0) >= GENERATE_FROM_PCT) && (
+        <div className="ck-foot">
+          {rail.stationIdx < 0 ? (
+            <button className="pp-send ck-main" disabled={snap?.busy ?? false} onClick={controls.optimize}>
+              <IconSpark size={13} />{tr("Improve all methods")}
+            </button>
+          ) : (
+            <button className="pp-send ck-main" disabled={snap?.busy ?? false} onClick={controls.generate}>
+              <IconSpark size={13} />{tr("Create the document")}
+            </button>
+          )}
+        </div>
+      )}
     </section>
   );
 }

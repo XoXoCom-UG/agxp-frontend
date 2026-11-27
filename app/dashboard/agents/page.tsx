@@ -6,12 +6,12 @@ import { useAuth } from "@/lib/auth-context";
 import { listAgents, setAgentArchived, type Agent } from "@/lib/agents";
 import { useT } from "@/lib/language";
 import { useEntitlement } from "@/lib/entitlement";
-import { loadTeamStats, compactNumber, EMPTY_STATS, type TeamStats } from "@/lib/team-stats";
+import { loadTeamStats, EMPTY_STATS, type TeamStats } from "@/lib/team-stats";
 import { applyWork } from "@/lib/mascot-level";
 import { describeDbError } from "@/lib/db-error";
 import { AgentNav } from "@/components/layout/agent-nav";
 import { EmptyState } from "@/components/layout/empty-state";
-import { Stat, Bars, Meter, AgentBoard } from "@/components/layout/agent-dashboard";
+import { Stat, Meter, AgentBoard } from "@/components/layout/agent-dashboard";
 import {
   IconPlus, IconAlert, IconRefresh,
 } from "@/components/layout/agxp-icons";
@@ -54,7 +54,8 @@ export default function AgentDashboardPage() {
   // The plan's places for consultants (1 or 5): how much of the team is hired.
   // The Assistant is not counted, and archived agents hold no place.
   const slots = plan.maxAgents;
-  const filled = Math.min(slots, agents.filter(a => !a.archived_at && a.type === "consultant").length);
+  // The real count, not capped at the plan: the board says what to do when it is over.
+  const filled = agents.filter(a => !a.archived_at && a.type === "consultant").length;
 
   // Archive or restore. Undoable both ways, so no "are you sure?" — the
   // agent simply moves to (or back from) its role's Archived tab.
@@ -86,12 +87,10 @@ export default function AgentDashboardPage() {
           <h1 className="visually-hidden">{tr("Your AI team")}</h1>
           <ul className="agx-stats" aria-label={tr("Your team at a glance")}>
             <Stat label={tr("Projects in progress")} value={String(stats.projectsInProgress)} />
-            <Stat label={tr("Tokens used, est.")} value={compactNumber(stats.tokens)}
-              hint={tr("Estimated from the length of your conversations. The bars are the last 8 days.")}>
-              <Bars values={stats.tokensByDay} />
-            </Stat>
+            {/* No token count here (clean-up pass 2026-11-27): a word the
+                customer has no use for, and the app meters money anyway. */}
             <Stat label={tr("Consultants")} value={`${filled}/${slots}`}>
-              <Meter value={filled} max={slots} />
+              <Meter value={Math.min(filled, slots)} max={slots} />
             </Stat>
           </ul>
         </header>

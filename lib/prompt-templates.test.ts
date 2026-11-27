@@ -1,7 +1,22 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { PROMPT_TEMPLATES, fillText, nextBlank, partsOf, slotsOf } from "./prompt-templates.ts";
+import { PROMPT_TEMPLATES, composeText, fieldsOf, fillText, nextBlank, partsOf, slotsOf } from "./prompt-templates.ts";
 import { DE } from "./i18n.ts";
+
+test("the small form lists each field once, in the order the sentences ask", () => {
+  assert.deepEqual(fieldsOf(PROMPT_TEMPLATES[0]), ["role", "what", "goal", "who", "when"]);
+});
+
+test("a sentence with an empty field is left out whole, never a bracket", () => {
+  const text = composeText(PROMPT_TEMPLATES[0], { role: " Head of IT ", what: "a new CRM", goal: "", who: "sales", when: "March" });
+  assert.equal(text, "My role is Head of IT and I want to implement a new CRM. " +
+    "The people involved are sales, and it has to be done by March.");
+  assert.ok(!text.includes("["));
+});
+
+test("nothing filled in writes nothing", () => {
+  assert.equal(composeText(PROMPT_TEMPLATES[0], {}), "");
+});
 
 const first = PROMPT_TEMPLATES[0];
 

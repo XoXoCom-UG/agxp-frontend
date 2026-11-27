@@ -9437,29 +9437,15 @@ html.light .td-card{ background:linear-gradient(180deg, rgba(255,255,255,0.72), 
 }
 html.light .panel.pp{ border-color:rgba(0,0,0,0.07); }
 .panel.pp::before, .panel.pp::after{ display:none; }
-.pp-head{ flex:none; display:flex; align-items:flex-end; padding:0 var(--sp-6); border-bottom:1px solid var(--border); }
-.pp-head .rt-tab{ height:44px; }
-.pp-head .rt-tab:disabled{ opacity:.4; cursor:default; }
 .pp-body{ flex:1 1 0; min-height:0; overflow-y:auto; display:flex; justify-content:center; }
 .pp-col{
   width:min(640px, 100%); box-sizing:border-box; display:flex; flex-direction:column; gap:var(--sp-6);
   padding:clamp(28px, 8vh, 88px) var(--sp-6) var(--sp-7);
 }
-.pp-back{ align-self:flex-start; }
 .pp-note{ margin:0; font-size:var(--text-sm); line-height:1.55; color:var(--muted-foreground); }
 
 /* The field: a chat box. One rounded surface holding the text and, under it,
    the two things you can do besides typing and the one thing you do when done. */
-.pp-col[data-view="write"]{ justify-content:center; padding-top:var(--sp-6); }
-.pp-stage{ position:relative; }
-/* A soft blue light behind the box (Ana, 2026-11-24, "ca la Gemini"): a blurred
-   radial wash, static, never in front of the text. */
-.pp-stage::before{
-  content:""; position:absolute; inset:-70px -110px -90px; z-index:0; pointer-events:none;
-  background:radial-gradient(60% 70% at 50% 62%, rgba(56,104,255,.42), rgba(56,104,255,.14) 55%, transparent 78%);
-  filter:blur(34px);
-}
-html.light .pp-stage::before{ background:radial-gradient(60% 70% at 50% 62%, rgba(56,104,255,.22), rgba(56,104,255,.08) 55%, transparent 78%); }
 .pp-composer{
   position:relative; z-index:1;
   display:flex; flex-direction:column; gap:var(--sp-2); padding:var(--sp-4) var(--sp-4) var(--sp-3);
@@ -9494,74 +9480,47 @@ html.light .pp-stage::before{ background:radial-gradient(60% 70% at 50% 62%, rgb
 @media (hover:hover) and (pointer:fine){ .pp-send:hover:not(:disabled){ opacity:.86; } }
 @media (max-width:640px){ .pp-composer-bar{ flex-wrap:wrap; } .pp-send{ margin-left:0; width:100%; justify-content:center; } }
 
-/* Command Prompts: each template as an example, written out with the blanks
-   filled in, so you see what a good first message looks like. */
-.pp-cards{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:var(--sp-3); }
-.pp-card{
-  width:100%; display:flex; flex-direction:column; gap:var(--sp-2); text-align:left; padding:var(--sp-4) var(--sp-5);
-  font:inherit; color:var(--foreground); cursor:pointer;
-  background:color-mix(in srgb, var(--foreground) 3%, transparent); border:1px solid var(--border); border-radius:16px;
-  transition:border-color 160ms var(--ease-out), background-color 160ms var(--ease-out), transform 100ms var(--ease-out);
+/* The start screen alone (clean-up pass 2026-11-27): the pad fills the
+   workspace, one column in the middle, nothing beside it. */
+.workspace.pp-workspace > .slot{ flex:1 1 auto; }
+.pp-col{ justify-content:center; }
+.pp-write{ display:flex; flex-direction:column; gap:var(--sp-5); }
+.pp-title{ margin:0; text-align:center; font-size:clamp(22px, 2.4vw, 28px); font-weight:500; letter-spacing:-0.015em; color:var(--foreground); }
+
+/* The examples: a quiet row of words under the field. One opens a few short fields. */
+.pp-examples{ display:flex; flex-wrap:wrap; justify-content:center; gap:var(--sp-2); }
+.pp-link{
+  display:inline-flex; align-items:center; gap:6px; padding:0; border:0; background:none; cursor:pointer;
+  font:inherit; font-size:var(--text-xs); color:var(--muted-foreground);
+  transition:color 160ms var(--ease-out);
 }
-.pp-card:active{ transform:scale(0.995); }
-@media (hover:hover) and (pointer:fine){ .pp-card:hover{ border-color:var(--border-strong, var(--border)); background:color-mix(in srgb, var(--foreground) 6%, transparent); } }
-.pp-card-t{ margin:0; font-size:var(--text-2xs); font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--muted-foreground); }
-.pp-card-b{ font-size:var(--text-base); line-height:1.65; color:var(--secondary-foreground); }
-.pp-ph{ color:var(--foreground); }
+@media (hover:hover) and (pointer:fine){ .pp-link:hover{ color:var(--foreground); } }
 
-.pp-gloss{ margin:0; border-top:1px solid var(--border); }
-.pp-gloss > div{ padding:var(--sp-3) 0; border-bottom:1px solid var(--border); }
-.pp-gloss dt{ font-size:var(--text-sm); font-weight:600; color:var(--foreground); }
-.pp-gloss dd{ margin:2px 0 0; font-size:var(--text-sm); color:var(--muted-foreground); }
-
-.pp-wait{ display:flex; flex-direction:column; align-items:center; gap:var(--sp-4); padding:var(--sp-7) 0; color:var(--muted-foreground); }
-.pp-wait p{ margin:0; font-size:var(--text-sm); }
-
-/* The Consultant tab: who it is, the methods, and a Start. */
-.pp-agent{ display:flex; align-items:center; gap:var(--sp-4); padding-bottom:var(--sp-5); border-bottom:1px solid var(--border); }
-.pp-agent-face{ flex:none; display:flex; }
-.pp-agent-txt{ min-width:0; flex:1; }
-.pp-agent-name{ margin:0; font-size:var(--text-lg); font-weight:600; color:var(--foreground); }
-.pp-agent-role{ margin:2px 0 0; font-size:var(--text-2xs); letter-spacing:.12em; text-transform:uppercase; color:var(--muted-foreground); }
-.pp-agent-xp{ display:flex; flex-direction:column; align-items:flex-end; gap:4px; font-size:var(--text-xs); color:var(--muted-foreground); }
-.pp-xp{ display:flex; align-items:center; gap:var(--sp-2); }
-.pp-xp b{ font-size:var(--text-sm); font-weight:600; color:var(--foreground); }
-.pp-pips{ display:flex; gap:3px; }
-.pp-pips i{ width:12px; height:3px; border-radius:2px; background:color-mix(in srgb, var(--foreground) 18%, transparent); }
-.pp-pips i.on{ background:var(--foreground); }
-
-.pp-methods-card{ display:flex; flex-direction:column; gap:var(--sp-3); }
-.pp-sub{ margin:0; font-size:var(--text-base); line-height:1.55; color:var(--foreground); }
-.pp-sub-2{ margin:0; font-size:var(--text-sm); color:var(--muted-foreground); }
-.pp-methods{ list-style:none; margin:var(--sp-2) 0 0; padding:0; border-top:1px solid var(--border); }
-.pp-methods li{
-  display:flex; align-items:baseline; justify-content:space-between; gap:var(--sp-4);
-  padding:var(--sp-3) 0; border-bottom:1px solid var(--border); font-size:var(--text-sm); color:var(--foreground);
+/* A template's fields: a label over a line, nothing boxed inside the box. */
+.pp-fields{ display:flex; flex-direction:column; gap:var(--sp-3); padding:var(--sp-2) var(--sp-2) var(--sp-1); }
+.pp-field{ display:flex; flex-direction:column; gap:4px; }
+.pp-field-l{ font-size:var(--text-xs); color:var(--muted-foreground); }
+.pp-field-l::first-letter{ text-transform:uppercase; }
+.pp-input{
+  width:100%; box-sizing:border-box; padding:6px 0; font:inherit; font-size:var(--text-base); color:var(--foreground);
+  background:none; border:0; border-bottom:1px solid var(--border); border-radius:0; outline:0;
+  transition:border-color 160ms var(--ease-out);
 }
-.pp-methods li small{ font-size:var(--text-xs); color:var(--muted-foreground); text-align:right; }
+.pp-input:focus, .pp-input:focus-visible{ border-bottom-color:var(--foreground); outline:0; box-shadow:none; }
 
-.pp-choice{ display:flex; flex-wrap:wrap; gap:var(--sp-2); }
-.pp-pill{
-  padding:6px var(--sp-3); font:inherit; font-size:var(--text-xs); color:var(--muted-foreground);
-  background:none; border:1px solid var(--border); border-radius:8px; cursor:pointer;
-}
-.pp-pill[aria-pressed="true"]{ color:var(--foreground); border-color:var(--foreground); }
-.pp-start{
-  width:100%; min-height:52px; font:inherit; font-size:var(--text-base); font-weight:500;
-  color:var(--background); background:var(--foreground); border:0; border-radius:10px; cursor:pointer;
-  display:flex; align-items:center; justify-content:center;
-  transition:opacity 160ms var(--ease-out), transform 120ms var(--ease-out);
-}
-.pp-start:active:not(:disabled){ transform:scale(0.99); }
-.pp-start:disabled{ opacity:.3; cursor:not-allowed; }
-@media (hover:hover) and (pointer:fine){ .pp-start:hover:not(:disabled){ opacity:.86; } }
-.pp-error{ margin:0; }
+.pp-error{ display:flex; align-items:center; justify-content:center; gap:6px; margin:0; font-size:var(--text-sm); color:var(--destructive, #e5484d); }
 
-/* The right-hand side before there is a chat: the tabs, and one sentence. */
-.cp-idle .mp-head{ border-bottom:1px solid var(--border); }
-.cp-idle-body{ flex:1 1 0; min-height:0; display:flex; align-items:center; justify-content:center; }
-.cp-idle-body p{ max-width:30ch; margin:0; padding:var(--sp-6); text-align:center; font-size:var(--text-lg); line-height:1.5; color:var(--muted-foreground); }
-.seam.is-static{ cursor:default; }
+/* While the consultant is chosen: three short lines that tick off. */
+.pp-steps{ list-style:none; align-self:center; margin:0; padding:0; display:flex; flex-direction:column; gap:var(--sp-3); }
+.pp-steps li{ display:flex; align-items:center; gap:var(--sp-3); font-size:var(--text-base); color:var(--muted-foreground); transition:color 200ms var(--ease-out); }
+.pp-steps li.now, .pp-steps li.done{ color:var(--foreground); }
+.pp-step-dot{ flex:none; width:18px; height:18px; display:flex; align-items:center; justify-content:center; border-radius:50%; border:1px solid var(--border); }
+.pp-steps li.done .pp-step-dot{ border-color:var(--foreground); }
+.pp-step-dot .spinner{ width:12px; height:12px; }
+
+.pp-full{ display:flex; flex-direction:column; align-items:center; gap:var(--sp-4); text-align:center; }
+.pp-full-actions{ display:flex; align-items:center; gap:var(--sp-4); }
+.pp-full-actions .pp-send{ margin-left:0; text-decoration:none; }
 
 
 /* --- The agent board (meeting 2026-11-20) ----------------------------------
@@ -9614,3 +9573,34 @@ html.light .agx-board-grid .agx-card{ background:#F6F7F9; }
 .mp-step-d.is-wait{ height:10px; width:72%; margin-top:6px; border-radius:5px; background:var(--tint-2); animation:mpDraftWait 1.4s var(--ease-in-out) infinite alternate; }
 @keyframes mpDraftWait{ from{ opacity:.45; } to{ opacity:1; } }
 @media (prefers-reduced-motion:reduce){ .mp-step-d.is-wait{ animation:none; } }
+
+/* --- Cockpit, clean-up pass 2026-11-27 --------------------------------------
+   One quiet list: a dot for how far each method is (empty = not yet, half =
+   drafted, full = done, ring = being asked now), its name, and its text only
+   when opened. One main button at the bottom, always in the same place. */
+.ck-list{ list-style:none; margin:0; padding:0; border-top:1px solid var(--border); }
+.ck-item{ border-bottom:1px solid var(--border); }
+.ck-row{
+  width:100%; display:flex; align-items:center; gap:var(--sp-3); min-height:44px; padding:0 var(--sp-1);
+  font:inherit; font-size:var(--text-sm); text-align:left; color:var(--foreground);
+  background:none; border:0; cursor:pointer; transition:background-color 140ms var(--ease-out);
+}
+.ck-row:disabled{ cursor:default; }
+@media (hover:hover) and (pointer:fine){ button.ck-row:hover:not(:disabled){ background:var(--tint-1); } }
+.ck-label{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ck-item.open .ck-label{ font-weight:500; white-space:normal; }
+.ck-dot{
+  flex:none; width:10px; height:10px; box-sizing:border-box; border-radius:50%;
+  border:1.5px solid color-mix(in srgb, var(--foreground) 35%, transparent);
+  display:flex; align-items:center; justify-content:center; color:var(--muted-foreground);
+}
+.ck-item.draft .ck-dot{ border-color:var(--foreground); background:linear-gradient(90deg, var(--foreground) 50%, transparent 50%); }
+.ck-item.done .ck-dot{ border-color:var(--foreground); background:var(--foreground); }
+.ck-item.now .ck-dot{ border-color:var(--foreground); box-shadow:0 0 0 3px color-mix(in srgb, var(--foreground) 15%, transparent); }
+.ck-item.todo .ck-label{ color:var(--secondary-foreground, var(--muted-foreground)); }
+.ck-item.locked .ck-row{ cursor:default; color:var(--muted-foreground); }
+.ck-item.locked .ck-dot{ border:0; width:12px; height:12px; }
+.ck-more{ display:flex; flex-direction:column; align-items:flex-start; gap:var(--sp-2); padding:0 var(--sp-1) var(--sp-4) calc(10px + var(--sp-3) + var(--sp-1)); }
+.ck-text{ margin:0; font-size:var(--text-sm); line-height:1.55; color:var(--secondary-foreground, var(--muted-foreground)); }
+.ck-foot{ flex:none; padding:var(--sp-4) var(--sp-6) var(--sp-5); border-top:1px solid var(--border); }
+.ck-main{ width:100%; margin-left:0; justify-content:center; height:42px; }

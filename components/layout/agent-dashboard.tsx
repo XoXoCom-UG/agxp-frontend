@@ -9,7 +9,7 @@ import { groupByType, templateFor, kindFor, holdsSlot } from "@/lib/agent-types"
 import { deliverableFor } from "@/lib/deliverables";
 import { useT } from "@/lib/language";
 import type { Plan } from "@/lib/plans";
-import { compactNumber, type AgentUsage } from "@/lib/team-stats";
+import type { AgentUsage } from "@/lib/team-stats";
 import { loadAgentDocuments, type AgentDocument } from "@/lib/agent-documents";
 import { methodLabel } from "@/lib/method-labels";
 import { dateStr } from "@/lib/utils";
@@ -153,7 +153,6 @@ function AgentCard({ agent, usage, onOpen, onDocs, onToggleArchive }: {
 
       <div className="agx-card-stats">
         <div><span>{tr("Projects")}</span><b>{projects}</b></div>
-        <div><span>{tr("Tokens")}</span><b>{compactNumber(usage?.tokens ?? 0)}</b></div>
         {/* Which industries its projects were in (Patryk: "Branche, also z.B. Bank oder Software"). */}
         <div className="agx-stat-industry" title={usage?.industries.join(", ") || undefined}>
           <span>{tr("Industry")}</span>
@@ -377,7 +376,6 @@ function AgentInfo({ agent, usage, motion, onClose, onClosed, onToggleArchive }:
               </span>
             </dd>
           </div>
-          <div><dt>{tr("Tokens, est.")}</dt><dd>{compactNumber(usage?.tokens ?? 0)}</dd></div>
           <div><dt>{tr("Documents")}</dt><dd>{docs === null ? "–" : docs.length}</dd></div>
         </dl>
 
@@ -565,8 +563,11 @@ export function AgentBoard({ agents, usage, plan, onArchive, onRestore, onAdd }:
           ))}
         </div>
         {/* How many of the plan's places are taken: the one limit the plan has. */}
-        <p className="agx-room">
-          {tr(plan.maxAgents === 1 ? "{used} of 1 consultant" : "{used} of {max} consultants", { used, max: plan.maxAgents })}
+        <p className={`agx-room${used > plan.maxAgents ? " is-over" : ""}`}>
+          {used > plan.maxAgents
+            // More than the plan keeps (agents made before the limit): say what to do, not "27 of 5".
+            ? tr("Your plan keeps {max}. Archive {n} to add a new one.", { max: plan.maxAgents, n: used - plan.maxAgents + 1 })
+            : tr(plan.maxAgents === 1 ? "{used} of 1 consultant" : "{used} of {max} consultants", { used, max: plan.maxAgents })}
         </p>
       </div>
 

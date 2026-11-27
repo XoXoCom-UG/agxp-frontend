@@ -147,6 +147,29 @@ export function fillText(template: PromptTemplate, say: (english: string) => str
     .join(" ");
 }
 
+/** Every blank of a template, once, in the order the sentences ask for them. */
+export function fieldsOf(template: PromptTemplate): string[] {
+  return [...new Set(template.sentences.flatMap(slotsOf))];
+}
+
+/**
+ * The first message a template's small form writes: its sentences with what the
+ * person typed in each field. A sentence with a field left empty is dropped
+ * whole, so no "[your role]" and no half sentence ever reaches the consultant;
+ * "" when nothing was filled in. Clean-up pass of 2026-11-27 (Kaizen): fields
+ * instead of a paragraph of square brackets to type over.
+ */
+export function composeText(
+  template: PromptTemplate,
+  values: Record<string, string>,
+  say: (english: string) => string = s => s,
+): string {
+  return template.sentences
+    .filter(sentence => slotsOf(sentence).every(id => (values[id] ?? "").trim()))
+    .map(sentence => say(sentence).replace(SLOT, (_m, id: string) => values[id].trim().replace(/\s+/g, " ")))
+    .join(" ");
+}
+
 /** The next "[…]" at or after `from` as a [start, end) range; null when none is left. */
 export function nextBlank(text: string, from: number): [number, number] | null {
   const re = /\[[^\]\n]+\]/g;

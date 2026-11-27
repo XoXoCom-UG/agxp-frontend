@@ -15,7 +15,7 @@ import { isReadAlongCommand, isReviewCommand } from "@/lib/peer-context";
 
 /** A turn the machine sent, not the person: never shown, never named a project. */
 const isUnprompted = (t: string) => isReadAlongCommand(t) || isReviewCommand(t);
-import { isDeliverableCommand } from "@/lib/deliverables";
+import { isDeliverableCommand, isDiscussCommand, isOptimizeCommand } from "@/lib/deliverables";
 
 /** A failed turn is kept in the list (never saved) with this prefix. */
 export const ERROR_PREFIX = "Error: ";
@@ -44,10 +44,17 @@ export interface Entry {
 
 export function parseEntries(messages: ProjectMessage[], docTitle: string): Entry[] {
   return messages.map((m, i) => {
-    const p = parseMarkers(m.content);
+    const parsed = parseMarkers(m.content);
     const assistant = m.role === "assistant";
     const isError = assistant && isErrorLine(m.content);
     const before = messages[i - 1];
+    // An answer to a Cockpit button (open a method, improve all) offers where to
+    // go next — "Tell me more", "Change it", "Back to the methods" — and only one
+    // of those can be taken: one tap sends it, no boxes to tick (clean-up pass
+    // 2026-11-27). Every other list stays a multiple choice (Ana, 2026-11-20).
+    const afterCockpit = assistant && !!before && before.role === "user"
+      && (isDiscussCommand(before.content) || isOptimizeCommand(before.content));
+    const p = afterCockpit ? { ...parsed, multi: false } : parsed;
     return {
       m, p, isError,
       isDoc: assistant && !isError && isDocReply(p, docTitle),

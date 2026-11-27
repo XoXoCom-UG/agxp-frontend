@@ -14,7 +14,7 @@ import { describeDbError } from "@/lib/db-error";
 import { AgentNav } from "@/components/layout/agent-nav";
 import { AgentPickerPanel } from "@/components/layout/agent-picker-panel";
 import { ProjectChatPanel } from "@/components/layout/project-chat-panel";
-import { PromptPad, CockpitPlaceholder, type Activation, type PadStage } from "@/components/layout/prompt-pad";
+import { PromptPad, type Activation } from "@/components/layout/prompt-pad";
 import { activateTeam } from "@/lib/start-flow";
 import type { DraftState } from "@/lib/method-draft";
 import { saveDraft, loadDraft } from "@/lib/method-draft-store";
@@ -103,8 +103,6 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
   const [started, setStarted] = useState(false);
   /** The Prompt Pad's text, until the Consultant has sent it as the first message. */
   const [opening, setOpening] = useState<string | null>(null);
-  /** Which step the Prompt Pad is on, for the Cockpit placeholder beside it. */
-  const [padStage, setPadStage] = useState<PadStage>("write");
   // The first method draft: written in the background from the pad's text, shown
   // in the Cockpit, and kept in this browser for the project it started.
   const [draft, setDraft] = useState<DraftState | null>(null);
@@ -614,17 +612,13 @@ export function NewTaskScreen({ projectId }: { projectId?: string }) {
             right where the seats fill up (Ana, 2026-10-05). Nothing here is a
             live chat yet, so trading the split for this costs no state. */}
         {!started && !setupConsultant ? (
-          /* The Mural's start screen (19.11.): the normal two panels — Prompt
-             Pad | Consultant on the left, Cockpit | Assistant on the right —
-             and no list of consultants to pick from. */
-          <main id="main-content" tabIndex={-1} className="workspace" data-active="consultant" data-coach="split">
+          /* The start screen: the Prompt Pad alone, one thing to do (clean-up
+             pass 2026-11-27). The Cockpit comes with the chat, when it has
+             methods to show. */
+          <main id="main-content" tabIndex={-1} className="workspace pp-workspace">
             <h1 className="visually-hidden">{tr("New task")}</h1>
-            <div className="slot" data-role="consultant" style={{ flexGrow: leadShare }}>
-              <PromptPad agents={agents} onActivate={handleActivate} onStage={setPadStage} onDraft={setDraft} />
-            </div>
-            <div className="seam is-static" aria-hidden="true"><span className="seam-rail" /></div>
-            <div className="slot coach-slot split" data-role="coach" data-view="methods" style={{ flexGrow: 1 }}>
-              <CockpitPlaceholder stage={padStage} draft={draft} />
+            <div className="slot" data-role="consultant">
+              <PromptPad agents={agents} onActivate={handleActivate} onDraft={setDraft} />
             </div>
           </main>
         ) : !started ? (
